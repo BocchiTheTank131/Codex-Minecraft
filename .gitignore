@@ -1,0 +1,13 @@
+/build/
+/.vs/
+*.user
+*.suo
+
+/voxel_world.vxw
+/voxel_inventory.vxi
+/voxel_player.vps
+/world_seed.txt
+
+/screenshots/
+/voxel_settings.cfg
+/voxel_mobs.vxm
