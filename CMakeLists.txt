@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.0 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.1.0 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 if(VOXEL_STANDALONE)
@@ -57,12 +57,21 @@ add_executable(VoxelFrontier
 target_include_directories(VoxelFrontier PRIVATE include ${miniaudio_SOURCE_DIR})
 target_link_libraries(VoxelFrontier PRIVATE glfw glad glm::glm OpenGL::GL Threads::Threads)
 
+if(WIN32)
+    set(VOXEL_RESOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/embedded")
+    file(MAKE_DIRECTORY "${VOXEL_RESOURCE_DIR}")
+    file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/packaging/VoxelFrontier.ico" VOXEL_ICON_RC_PATH)
+    configure_file(packaging/VoxelVersion.rc.in
+                   "${VOXEL_RESOURCE_DIR}/VoxelVersion.rc" @ONLY)
+    target_sources(VoxelFrontier PRIVATE "${VOXEL_RESOURCE_DIR}/VoxelVersion.rc")
+endif()
+
 if(VOXEL_STANDALONE)
+    target_sources(VoxelFrontier PRIVATE src/UserData.cpp)
+    target_link_libraries(VoxelFrontier PRIVATE shell32 ole32)
     file(GLOB_RECURSE VOXEL_SOUND_FILES CONFIGURE_DEPENDS
         RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/sounds" "${CMAKE_CURRENT_SOURCE_DIR}/sounds/*.ogg")
     list(SORT VOXEL_SOUND_FILES)
-    set(VOXEL_RESOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/embedded")
-    file(MAKE_DIRECTORY "${VOXEL_RESOURCE_DIR}")
     set(VOXEL_RC "${VOXEL_RESOURCE_DIR}/VoxelResources.rc")
     set(VOXEL_HEADER "${VOXEL_RESOURCE_DIR}/EmbeddedResources.h")
     file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/assets/item_icons_expansion.rgba" VOXEL_ATLAS_PATH)

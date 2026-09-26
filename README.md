@@ -35,24 +35,43 @@ It includes procedural terrain, streamed chunks, caves, structures, mobs, crafti
 - 27-slot persistent chests
 - Persistent world edits, mobs, inventory, player stats, furnaces, and chests
 
-## Standalone Windows Release
+## Windows Release
 
-The Windows x64 release is distributed as a single:
+The Windows x64 release provides a standalone executable and an installer. The standalone
+download is one `VoxelFrontier.exe`; the installer adds Start Menu and optional Desktop
+shortcuts and registers Voxel Frontier in Windows Installed Apps.
 
-```text
-VoxelFrontier.exe
-```
+The executable embeds the item atlas and all OGG sound effects. Shaders are compiled into the
+program. It needs no external asset folder, sound folder, or Visual C++ Redistributable.
 
-Textures, item sprites, and OGG sound effects are embedded directly into the executable.
+The game stores worlds, settings, seed metadata, and screenshots in
+`%LOCALAPPDATA%\VoxelFrontier\`. This location survives installer upgrades and uninstall.
+If an older standalone copy has saves beside it, launching the new executable from that folder
+copies those files into the new location when no profile exists there. The originals remain in
+place. The `VOXEL_FRONTIER_DATA_DIR` environment variable can select a different data folder.
 
-No external asset folder, sound folder, or Visual C++ Redistributable is required.
+The installer uses `%LOCALAPPDATA%\Programs\Voxel Frontier\` by default and needs no
+administrator privileges. Running a newer installer upgrades the existing installation. Running
+the same version offers Repair/Reinstall, Uninstall, or Cancel; an older installer blocks a
+downgrade. Uninstall removes program files and shortcuts while keeping personal data.
 
 ### Requirements
 
-- Windows x64
+- Windows 10 or newer, x64
 - OpenGL 3.3-capable GPU and graphics driver
 
-Save files, settings, and screenshots are created in the game's working directory.
+### Build both release artifacts
+
+Install Inno Setup 7 once, then run the packaging script from PowerShell:
+
+```powershell
+winget install --id JRSoftware.InnoSetup.7 -e --scope user --silent --accept-package-agreements --accept-source-agreements
+.\package_release.ps1
+```
+
+If using Visual Studio 2022, pass `-Generator 'Visual Studio 17 2022'`. The script builds in
+Release mode and writes `dist/VoxelFrontier.exe`, the versioned Windows Setup executable, and
+`dist/SHA256SUMS.txt`. The installer contains only the game executable.
 
 ## Building from Source
 
@@ -83,6 +102,10 @@ cmake --build build --config Release
 cmake -S . -B build/standalone -G "Visual Studio 17 2022" -A x64 -DVOXEL_STANDALONE=ON
 cmake --build build/standalone --config Release
 ```
+
+The ordinary CMake build above still copies `assets/` and `sounds/` beside its executable and
+uses its working directory for saves. The standalone build embeds those runtime assets and uses
+the Windows user-data directory.
 
 Output:
 
