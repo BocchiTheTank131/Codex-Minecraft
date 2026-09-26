@@ -2,7 +2,7 @@
 
 > A Minecraft-inspired voxel sandbox built entirely with **ChatGPT Codex**.
 
-Everything in this project was created with the help of Codex, including the game code, README, GitHub updates, and development prompts.
+Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
 ## About
 
