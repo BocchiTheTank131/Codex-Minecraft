@@ -1,4 +1,4 @@
-# Minecraft using C++ built entirely with ChatGPT Codex
+# Minecraft built entirely with ChatGPT Codex
 
 ## Voxel Frontier: Survival, Creative & Spectator World
 
