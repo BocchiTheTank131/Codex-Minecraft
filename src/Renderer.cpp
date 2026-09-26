@@ -16,9 +16,20 @@
 #include <fstream>
 #include <iostream>
 #include <random>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#ifdef VOXEL_STANDALONE
+#include "EmbeddedResources.h"
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#ifdef APIENTRY
+#undef APIENTRY
+#endif
+#include <windows.h>
+#endif
 
 namespace {
 struct EntityVisibility {
@@ -970,9 +981,23 @@ GLuint Renderer::createAtlasTexture() {
 }
 
 GLuint Renderer::loadItemTexture(const std::string& path) {
+#ifdef VOXEL_STANDALONE
+    const HRSRC resource = FindResourceW(nullptr, MAKEINTRESOURCEW(EmbeddedItemAtlasId),
+                                        MAKEINTRESOURCEW(10));
+    if (!resource)
+        throw std::runtime_error("Missing embedded item atlas");
+    const HGLOBAL loaded = LoadResource(nullptr, resource);
+    const void* bytes = loaded ? LockResource(loaded) : nullptr;
+    const DWORD length = SizeofResource(nullptr, resource);
+    if (!bytes || length == 0)
+        throw std::runtime_error("Cannot load embedded item atlas");
+    std::istringstream input(std::string(static_cast<const char*>(bytes), length),
+                             std::ios::in | std::ios::binary);
+#else
     std::ifstream input(path, std::ios::binary);
     if (!input)
         throw std::runtime_error("Missing item atlas: " + path);
+#endif
     std::int32_t width = 0, height = 0;
     input.read(reinterpret_cast<char*>(&width), 4);
     input.read(reinterpret_cast<char*>(&height), 4);

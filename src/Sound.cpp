@@ -26,6 +26,9 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#ifdef VOXEL_STANDALONE
+#include "EmbeddedResources.h"
+#endif
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -56,10 +59,20 @@ const char* mobFolder(MobSoundType type) {
 
 struct SoundSystem::Impl {
     struct Asset {
+#ifdef VOXEL_STANDALONE
+        std::vector<float> pcm;
+        ma_uint64 frameCount = 0;
+        ma_uint32 channels = 0;
+        ma_uint32 sampleRate = 0;
+#else
         std::unique_ptr<ma_sound> source;
+#endif
     };
     struct Voice {
         std::unique_ptr<ma_sound> sound;
+#ifdef VOXEL_STANDALONE
+        std::unique_ptr<ma_audio_buffer> buffer;
+#endif
         int priority = 0;
     };
 
@@ -79,6 +92,7 @@ struct SoundSystem::Impl {
     float eatBurpDelay = -1.0f;
 
     explicit Impl(const std::filesystem::path& executablePath) {
+#ifndef VOXEL_STANDALONE
         std::vector<std::filesystem::path> candidates;
         std::error_code error;
         if (!executablePath.empty()) {
@@ -114,12 +128,50 @@ struct SoundSystem::Impl {
             std::cerr << "Audio: sounds directory not found; effects disabled\n";
             return;
         }
+#else
+        (void)executablePath;
+#endif
         const ma_engine_config config = ma_engine_config_init();
         if (ma_engine_init(&config, &engine) != MA_SUCCESS) {
             std::cerr << "Audio: output device unavailable; effects disabled\n";
             return;
         }
         engineReady = true;
+#ifdef VOXEL_STANDALONE
+        for (const auto& embedded : EmbeddedSounds) {
+            const HRSRC resource = FindResourceW(nullptr, MAKEINTRESOURCEW(embedded.id),
+                                                MAKEINTRESOURCEW(10));
+            const HGLOBAL loaded = resource ? LoadResource(nullptr, resource) : nullptr;
+            const void* bytes = loaded ? LockResource(loaded) : nullptr;
+            const DWORD length = resource ? SizeofResource(nullptr, resource) : 0;
+            if (!bytes || length == 0) {
+                std::cerr << "Audio: missing embedded sound " << embedded.name << '\n';
+                continue;
+            }
+            ma_decoder_config decoderConfig = ma_decoder_config_init(ma_format_f32, 0, 0);
+            ma_uint64 frameCount = 0;
+            void* decoded = nullptr;
+            if (ma_decode_memory(bytes, length, &decoderConfig, &frameCount, &decoded) != MA_SUCCESS ||
+                !decoded || frameCount == 0 || decoderConfig.channels == 0) {
+                std::cerr << "Audio: cannot decode " << embedded.name << '\n';
+                if (decoded) ma_free(decoded, nullptr);
+                continue;
+            }
+            Asset asset;
+            asset.frameCount = frameCount;
+            asset.channels = decoderConfig.channels;
+            asset.sampleRate = decoderConfig.sampleRate;
+            const auto* samples = static_cast<const float*>(decoded);
+            asset.pcm.assign(samples, samples + frameCount * asset.channels);
+            ma_free(decoded, nullptr);
+            const std::string name = embedded.name;
+            std::string group = name.substr(0, name.find_last_of('.'));
+            while (!group.empty() && group.back() >= '0' && group.back() <= '9')
+                group.pop_back();
+            groups[group].push_back(assets.size());
+            assets.push_back(std::move(asset));
+        }
+#else
         error.clear();
         for (const auto& entry : std::filesystem::recursive_directory_iterator(root, error)) {
             if (error) break;
@@ -141,6 +193,7 @@ struct SoundSystem::Impl {
             groups[group].push_back(assets.size());
             assets.push_back({std::move(source)});
         }
+#endif
         for (const char* required : {"break", "pop", "orb", "splash", "click",
                                      "dig/stone", "dig/wood", "dig/grass"}) {
             if (groups.find(required) == groups.end()) {
@@ -148,15 +201,28 @@ struct SoundSystem::Impl {
                 warnedGroups.insert(required);
             }
         }
-        std::cout << "Audio: loaded " << assets.size() << " OGG effects from "
-                  << root.string() << '\n';
+        std::cout << "Audio: loaded " << assets.size() << " OGG effects"
+#ifdef VOXEL_STANDALONE
+                  << " from embedded resources\n";
+#else
+                  << " from " << root.string() << '\n';
+#endif
     }
 
     ~Impl() {
         if (!engineReady) return;
-        for (auto& voice : voices) ma_sound_uninit(voice.sound.get());
+        for (auto& voice : voices) releaseVoice(voice);
+#ifndef VOXEL_STANDALONE
         for (auto& asset : assets) ma_sound_uninit(asset.source.get());
+#endif
         ma_engine_uninit(&engine);
+    }
+
+    static void releaseVoice(Voice& voice) {
+        ma_sound_uninit(voice.sound.get());
+#ifdef VOXEL_STANDALONE
+        ma_audio_buffer_uninit(voice.buffer.get());
+#endif
     }
 
     void play(const std::string& group, float gain, int priority,
@@ -171,14 +237,14 @@ struct SoundSystem::Impl {
         if (position && glm::distance(*position, listener) > 28.0f) return;
         voices.erase(std::remove_if(voices.begin(), voices.end(), [](Voice& voice) {
             if (ma_sound_is_playing(voice.sound.get())) return false;
-            ma_sound_uninit(voice.sound.get());
+            releaseVoice(voice);
             return true;
         }), voices.end());
         if (voices.size() >= MaximumVoices) {
             auto weakest = std::min_element(voices.begin(), voices.end(),
                 [](const Voice& a, const Voice& b) { return a.priority < b.priority; });
             if (weakest == voices.end() || weakest->priority >= priority) return;
-            ma_sound_uninit(weakest->sound.get());
+            releaseVoice(*weakest);
             voices.erase(weakest);
         }
         const auto& variants = found->second;
@@ -190,8 +256,23 @@ struct SoundSystem::Impl {
             variant = (variant + 1) % variants.size();
         lastVariant[group] = variant;
         auto sound = std::make_unique<ma_sound>();
+#ifdef VOXEL_STANDALONE
+        const Asset& asset = assets[variants[variant]];
+        auto buffer = std::make_unique<ma_audio_buffer>();
+        ma_audio_buffer_config bufferConfig = ma_audio_buffer_config_init(
+            ma_format_f32, asset.channels, asset.frameCount, asset.pcm.data(), nullptr);
+        bufferConfig.sampleRate = asset.sampleRate;
+        if (ma_audio_buffer_init(&bufferConfig, buffer.get()) != MA_SUCCESS) return;
+        if (ma_sound_init_from_data_source(&engine,
+                reinterpret_cast<ma_data_source*>(buffer.get()), 0, nullptr,
+                sound.get()) != MA_SUCCESS) {
+            ma_audio_buffer_uninit(buffer.get());
+            return;
+        }
+#else
         if (ma_sound_init_copy(&engine, assets[variants[variant]].source.get(),
                                0, nullptr, sound.get()) != MA_SUCCESS) return;
+#endif
         ma_sound_set_volume(sound.get(), gain);
         if (pitchRange > 0.0f) {
             std::uniform_real_distribution<float> pitch(1.0f - pitchRange,
@@ -208,7 +289,11 @@ struct SoundSystem::Impl {
             ma_sound_set_spatialization_enabled(sound.get(), MA_FALSE);
         }
         ma_sound_start(sound.get());
+#ifdef VOXEL_STANDALONE
+        voices.push_back({std::move(sound), std::move(buffer), priority});
+#else
         voices.push_back({std::move(sound), priority});
+#endif
     }
 
     void tick(float deltaTime) {

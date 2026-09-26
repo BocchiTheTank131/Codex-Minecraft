@@ -33,6 +33,25 @@ Voxel Frontier is a compact C++17/OpenGL 3.3 survival voxel sandbox. It uses rea
 
 CMake downloads pinned GLFW 3.4, GLAD 0.1.36, and GLM 1.0.1 with `FetchContent`.
 
+## Standalone Windows release
+
+The published Windows x64 release is a single `VoxelFrontier.exe`. The item atlas and all OGG
+effects are embedded in the executable, and the MSVC runtime is linked statically. No asset
+folder, sound folder, or Visual C++ redistributable is required. Windows and an OpenGL 3.3-capable
+graphics driver are still required. Saves, settings, seed metadata, and screenshots are created in
+the current working directory when the game runs.
+
+To build this form from source with Visual Studio 2022 or newer:
+
+```powershell
+cmake -S . -B build/standalone -G "Visual Studio 18 2026" -A x64 -DVOXEL_STANDALONE=ON
+cmake --build build/standalone --config Release
+```
+
+The release file is `build/standalone/Release/VoxelFrontier.exe`. Use the generator installed on
+your PC (for example, `Visual Studio 17 2022` for Visual Studio 2022). The normal build below
+continues to copy `assets/` and `sounds/` beside the executable.
+
 ## Build and run
 
 Windows (PowerShell):

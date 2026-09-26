@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.20)
 project(VoxelFrontier VERSION 2.0 LANGUAGES C CXX)
 
+option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
+if(VOXEL_STANDALONE)
+    if(NOT WIN32 OR NOT MSVC)
+        message(FATAL_ERROR "VOXEL_STANDALONE requires an MSVC Windows build")
+    endif()
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 # GLAD 0.1.36 predates CMake 4.x; retain its intended policy behavior.
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 set(CMAKE_CXX_STANDARD 17)
@@ -49,6 +57,34 @@ add_executable(VoxelFrontier
 target_include_directories(VoxelFrontier PRIVATE include ${miniaudio_SOURCE_DIR})
 target_link_libraries(VoxelFrontier PRIVATE glfw glad glm::glm OpenGL::GL Threads::Threads)
 
+if(VOXEL_STANDALONE)
+    file(GLOB_RECURSE VOXEL_SOUND_FILES CONFIGURE_DEPENDS
+        RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/sounds" "${CMAKE_CURRENT_SOURCE_DIR}/sounds/*.ogg")
+    list(SORT VOXEL_SOUND_FILES)
+    set(VOXEL_RESOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/embedded")
+    file(MAKE_DIRECTORY "${VOXEL_RESOURCE_DIR}")
+    set(VOXEL_RC "${VOXEL_RESOURCE_DIR}/VoxelResources.rc")
+    set(VOXEL_HEADER "${VOXEL_RESOURCE_DIR}/EmbeddedResources.h")
+    file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/assets/item_icons_expansion.rgba" VOXEL_ATLAS_PATH)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/item_icons_expansion.rgba")
+    file(WRITE "${VOXEL_RC}" "100 RCDATA \"${VOXEL_ATLAS_PATH}\"\n")
+    file(WRITE "${VOXEL_HEADER}" "#pragma once\nstruct EmbeddedSound { const char* name; int id; };\ninline constexpr int EmbeddedItemAtlasId = 100;\ninline constexpr EmbeddedSound EmbeddedSounds[] = {\n")
+    set(VOXEL_SOUND_ID 1000)
+    foreach(VOXEL_SOUND IN LISTS VOXEL_SOUND_FILES)
+        file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/sounds/${VOXEL_SOUND}" VOXEL_SOUND_PATH)
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/sounds/${VOXEL_SOUND}")
+        file(APPEND "${VOXEL_RC}" "${VOXEL_SOUND_ID} RCDATA \"${VOXEL_SOUND_PATH}\"\n")
+        file(APPEND "${VOXEL_HEADER}" "    {\"${VOXEL_SOUND}\", ${VOXEL_SOUND_ID}},\n")
+        math(EXPR VOXEL_SOUND_ID "${VOXEL_SOUND_ID} + 1")
+    endforeach()
+    file(APPEND "${VOXEL_HEADER}" "};\n")
+    target_sources(VoxelFrontier PRIVATE "${VOXEL_RC}")
+    target_include_directories(VoxelFrontier PRIVATE "${VOXEL_RESOURCE_DIR}")
+    target_compile_definitions(VoxelFrontier PRIVATE VOXEL_STANDALONE)
+endif()
+
 if(MSVC)
     target_compile_options(VoxelFrontier PRIVATE /W4 /permissive-)
 else()
@@ -58,11 +94,13 @@ endif()
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT VoxelFrontier)
 
 
-add_custom_command(TARGET VoxelFrontier POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_CURRENT_SOURCE_DIR}/assets
-            $<TARGET_FILE_DIR:VoxelFrontier>/assets)
-add_custom_command(TARGET VoxelFrontier POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-            ${CMAKE_CURRENT_SOURCE_DIR}/sounds
-            $<TARGET_FILE_DIR:VoxelFrontier>/sounds)
+if(NOT VOXEL_STANDALONE)
+    add_custom_command(TARGET VoxelFrontier POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_CURRENT_SOURCE_DIR}/assets
+                $<TARGET_FILE_DIR:VoxelFrontier>/assets)
+    add_custom_command(TARGET VoxelFrontier POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_CURRENT_SOURCE_DIR}/sounds
+                $<TARGET_FILE_DIR:VoxelFrontier>/sounds)
+endif()
