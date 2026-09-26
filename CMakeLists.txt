@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.1.0 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.1.1 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 if(VOXEL_STANDALONE)
@@ -69,6 +69,14 @@ endif()
 if(VOXEL_STANDALONE)
     target_sources(VoxelFrontier PRIVATE src/UserData.cpp)
     target_link_libraries(VoxelFrontier PRIVATE shell32 ole32)
+    if(MSVC)
+        # Keep main(argc, argv) while avoiding a console in distribution builds.
+        target_link_options(VoxelFrontier PRIVATE
+            "$<$<CONFIG:Release>:/SUBSYSTEM:WINDOWS>"
+            "$<$<CONFIG:Release>:/ENTRY:mainCRTStartup>")
+        target_compile_definitions(VoxelFrontier PRIVATE
+            "$<$<CONFIG:Release>:VOXEL_GUI_RELEASE>")
+    endif()
     file(GLOB_RECURSE VOXEL_SOUND_FILES CONFIGURE_DEPENDS
         RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/sounds" "${CMAKE_CURRENT_SOURCE_DIR}/sounds/*.ogg")
     list(SORT VOXEL_SOUND_FILES)

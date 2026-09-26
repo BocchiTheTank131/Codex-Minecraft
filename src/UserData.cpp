@@ -8,6 +8,8 @@
 
 #include <array>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <stdexcept>
 #include <string>
 
@@ -84,5 +86,17 @@ void initialize() {
             copyLegacyProfile(executableDirectory(), destination);
     }
     fs::current_path(destination);
+}
+
+void initializeLogging() {
+    const fs::path logDirectory = fs::current_path() / "logs";
+    fs::create_directories(logDirectory);
+    const fs::path logFile = logDirectory / "VoxelFrontier.log";
+    static auto* stream = new std::ofstream(logFile, std::ios::app);
+    if (!stream->is_open())
+        throw std::runtime_error("Cannot open Voxel Frontier log file");
+    std::cout.rdbuf(stream->rdbuf());
+    std::cerr.rdbuf(stream->rdbuf());
+    std::cout << "Voxel Frontier started\n" << std::flush;
 }
 } // namespace UserData

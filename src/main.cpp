@@ -14,6 +14,9 @@ int main(int argc, char** argv) {
 #ifdef VOXEL_STANDALONE
     try {
         UserData::initialize();
+#ifdef VOXEL_GUI_RELEASE
+        UserData::initializeLogging();
+#endif
     } catch (const std::exception& error) {
         std::cerr << "Cannot open Voxel Frontier user data: " << error.what() << '\n';
         MessageBoxA(nullptr, error.what(), "Voxel Frontier - User Data Error", MB_OK | MB_ICONERROR);

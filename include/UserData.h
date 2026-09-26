@@ -2,4 +2,5 @@
 
 namespace UserData {
 void initialize();
+void initializeLogging();
 }

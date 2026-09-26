@@ -46,6 +46,7 @@ program. It needs no external asset folder, sound folder, or Visual C++ Redistri
 
 The game stores worlds, settings, seed metadata, and screenshots in
 `%LOCALAPPDATA%\VoxelFrontier\`. This location survives installer upgrades and uninstall.
+Release builds write startup and runtime output to `logs\VoxelFrontier.log` there.
 If an older standalone copy has saves beside it, launching the new executable from that folder
 copies those files into the new location when no profile exists there. The originals remain in
 place. The `VOXEL_FRONTIER_DATA_DIR` environment variable can select a different data folder.
