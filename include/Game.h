@@ -106,6 +106,7 @@ private:
     bool showWorldgenDebug_ = false;
     bool wasInWater_ = false;
     bool screenshotRequested_ = false;
+    double saveWarningUntil_ = 0.0;
     bool creativeMode_ = false;
     bool spectatorMode_ = false;
     GameMode resetMode_ = GameMode::Survival;
@@ -127,6 +128,7 @@ private:
     void synchronizeCursorCapture();
     void applyFullscreenSetting();
     void saveAll();
+    void saveSettings();
     void saveWorldMetadata() const;
     GameMode gameMode() const;
     void setGameMode(GameMode mode);

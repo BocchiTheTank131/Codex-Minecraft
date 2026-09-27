@@ -1,6 +1,6 @@
 #pragma once
 
 namespace UserData {
-void initialize();
+void initialize(bool migrateLegacy);
 void initializeLogging();
 }

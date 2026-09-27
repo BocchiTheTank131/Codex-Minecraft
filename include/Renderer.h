@@ -81,7 +81,9 @@ public:
                     bool settingsPage,
                     int hovered,
                     const GameSettings& settings,
-                    GameMode mode) const;
+                    GameMode mode,
+                    bool standaloneDemo,
+                    bool showSaveWarning) const;
     void renderControlsMenu(int width, int height, int hovered,
                             const GameSettings& settings, int activeBinding) const;
     void renderResetMenu(int width,

@@ -8,19 +8,29 @@ $cmakeText = Get-Content -LiteralPath (Join-Path $root 'CMakeLists.txt') -Raw
 $match = [regex]::Match($cmakeText, 'project\(VoxelFrontier VERSION (\d+\.\d+\.\d+)')
 if (-not $match.Success) { throw 'Could not read the project version from CMakeLists.txt.' }
 $version = $match.Groups[1].Value
-$buildDir = Join-Path $root 'build/standalone-release'
+$fullBuildDir = Join-Path $root 'build/installed-release'
+$demoBuildDir = Join-Path $root 'build/standalone-demo-release'
 $distDir = Join-Path $root 'dist'
 $icon = Join-Path $root 'packaging/VoxelFrontier.ico'
-$standalone = Join-Path $distDir 'VoxelFrontier.exe'
+$standalone = Join-Path $distDir "VoxelFrontier-v$version-Windows-Standalone.exe"
+$fullExe = Join-Path $fullBuildDir 'Release/VoxelFrontier.exe'
 $setup = Join-Path $distDir "VoxelFrontier-v$version-Windows-Setup.exe"
 
 if (-not (Test-Path -LiteralPath $icon)) { throw 'Windows icon is missing.' }
 New-Item -ItemType Directory -Path $distDir -Force | Out-Null
-& cmake -S $root -B $buildDir -G $Generator -A x64 -DVOXEL_STANDALONE=ON
-if ($LASTEXITCODE -ne 0) { throw 'CMake configuration failed.' }
-& cmake --build $buildDir --config Release --parallel
-if ($LASTEXITCODE -ne 0) { throw 'Release build failed.' }
-Copy-Item -LiteralPath (Join-Path $buildDir 'Release/VoxelFrontier.exe') -Destination $standalone -Force
+foreach ($variant in @(
+    @{ Path = $fullBuildDir; Demo = 'OFF'; Name = 'full installed game' },
+    @{ Path = $demoBuildDir; Demo = 'ON'; Name = 'standalone demo' }
+)) {
+    $demoOption = "-DVOXELFRONTIER_STANDALONE_DEMO=$($variant.Demo)"
+    & cmake -S $root -B $variant.Path -G $Generator -A x64 `
+        -DVOXEL_STANDALONE=ON $demoOption
+    if ($LASTEXITCODE -ne 0) { throw "CMake configuration failed for $($variant.Name)." }
+    & cmake --build $variant.Path --config Release --parallel
+    if ($LASTEXITCODE -ne 0) { throw "Release build failed for $($variant.Name)." }
+}
+if (-not (Test-Path -LiteralPath $fullExe)) { throw 'Full game executable is missing.' }
+Copy-Item -LiteralPath (Join-Path $demoBuildDir 'Release/VoxelFrontier.exe') -Destination $standalone -Force
 
 $compiler = @(
     (Join-Path $env:LOCALAPPDATA 'Programs/Inno Setup 7/ISCC.exe'),
@@ -36,7 +46,7 @@ if ($LASTEXITCODE -ne 0 -or $compilerVersion -notmatch '^7\.') {
 }
 $isccArgs = @(
     "--define=AppVersion=$version",
-    "--define=SourceExe=$standalone",
+    "--define=SourceExe=$fullExe",
     "--define=OutputDir=$distDir",
     "--define=IconPath=$icon",
     (Join-Path $root 'packaging/VoxelFrontier.iss')

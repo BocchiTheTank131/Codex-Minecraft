@@ -53,19 +53,23 @@ ingredients exist.
 
 ## Windows Release
 
-The Windows x64 release provides a standalone executable and an installer. The standalone
-download is one `VoxelFrontier.exe`; the installer adds Start Menu and optional Desktop
-shortcuts and registers Voxel Frontier in Windows Installed Apps.
+The Windows x64 release provides a stateless standalone demo and a full installer. The
+standalone download is one `VoxelFrontier-vX.Y.Z-Windows-Standalone.exe`: it starts a fresh
+session each time, ignores existing saves, and does not save worlds, player state, inventory,
+mobs, seed, or settings. Its Save World button explains that saving is unavailable. The
+installer adds Start Menu and optional Desktop shortcuts and registers the full game in
+Windows Installed Apps.
 
 The executable embeds the item atlas and all OGG sound effects. Shaders are compiled into the
 program. It needs no external asset folder, sound folder, or Visual C++ Redistributable.
 
-The game stores worlds, settings, seed metadata, and screenshots in
+The installed game stores worlds, settings, seed metadata, and screenshots in
 `%LOCALAPPDATA%\VoxelFrontier\`. This location survives installer upgrades and uninstall.
-Release builds write startup and runtime output to `logs\VoxelFrontier.log` there.
-If an older standalone copy has saves beside it, launching the new executable from that folder
-copies those files into the new location when no profile exists there. The originals remain in
-place. The `VOXEL_FRONTIER_DATA_DIR` environment variable can select a different data folder.
+Release builds write startup and runtime output to `logs\VoxelFrontier.log` there. The demo
+may also write logs and explicit F2 screenshots there, but no game state or settings. The full
+game can migrate saves from an older copy beside its executable when no profile exists in the
+new location. The originals remain in place. The `VOXEL_FRONTIER_DATA_DIR` environment
+variable can select a different data folder.
 
 The installer uses `%LOCALAPPDATA%\Programs\Voxel Frontier\` by default and needs no
 administrator privileges. Running a newer installer upgrades the existing installation. Running
@@ -87,8 +91,9 @@ winget install --id JRSoftware.InnoSetup.7 -e --scope user --silent --accept-pac
 ```
 
 If using Visual Studio 2022, pass `-Generator 'Visual Studio 17 2022'`. The script builds in
-Release mode and writes `dist/VoxelFrontier.exe`, the versioned Windows Setup executable, and
-`dist/SHA256SUMS.txt`. The installer contains only the game executable.
+Release mode for both full and demo variants and writes the versioned standalone demo and
+Windows Setup executables plus `dist/SHA256SUMS.txt`. The installer contains the full game
+executable.
 
 ## Building from Source
 
@@ -116,7 +121,7 @@ cmake --build build --config Release
 ### Standalone Windows Build
 
 ```powershell
-cmake -S . -B build/standalone -G "Visual Studio 17 2022" -A x64 -DVOXEL_STANDALONE=ON
+cmake -S . -B build/standalone -G "Visual Studio 17 2022" -A x64 -DVOXEL_STANDALONE=ON -DVOXELFRONTIER_STANDALONE_DEMO=ON
 cmake --build build/standalone --config Release
 ```
 
@@ -130,7 +135,9 @@ Output:
 build/standalone/Release/VoxelFrontier.exe
 ```
 
-The standalone build statically links the MSVC runtime and embeds runtime assets into the executable.
+The demo build statically links the MSVC runtime and embeds runtime assets into the executable.
+Omit `-DVOXELFRONTIER_STANDALONE_DEMO=ON` for a full persistent build. The release packaging
+script builds both configurations separately.
 
 ### Linux
 
@@ -208,7 +215,7 @@ This generates an overhead development preview and exits automatically.
 
 ## Saves
 
-Voxel Frontier uses separate persistent save files:
+The installed game uses separate persistent save files:
 
 ```text
 voxel_world.vxw
@@ -219,7 +226,8 @@ voxel_mobs.vxm
 
 They store world edits, player state, inventory, mobs, furnaces, chests, and other persistent data.
 
-Autosaves occur every **12 seconds** and when the game exits normally.
+The installed game autosaves every **12 seconds** and when it exits normally. The standalone
+demo never loads or writes these saves.
 
 Delete the save files to generate a fresh world using the configured seed.
 

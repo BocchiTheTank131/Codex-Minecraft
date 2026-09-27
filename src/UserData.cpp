@@ -63,7 +63,7 @@ fs::path defaultDirectory() {
 } // namespace
 
 namespace UserData {
-void initialize() {
+void initialize(bool migrateLegacy) {
     const fs::path previousDirectory = fs::current_path();
     const DWORD requested = GetEnvironmentVariableW(L"VOXEL_FRONTIER_DATA_DIR", nullptr, 0);
     fs::path destination;
@@ -80,7 +80,7 @@ void initialize() {
     }
     destination = fs::absolute(destination);
     fs::create_directories(destination);
-    if (!hasProfile(destination)) {
+    if (migrateLegacy && !hasProfile(destination)) {
         copyLegacyProfile(previousDirectory, destination);
         if (!hasProfile(destination))
             copyLegacyProfile(executableDirectory(), destination);

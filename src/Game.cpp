@@ -3,6 +3,7 @@
 #include "Definitions.h"
 #include "Farming.h"
 #include "Player.h"
+#include "Persistence.h"
 #include "Renderer.h"
 #include "SaveFile.h"
 #include "Screenshot.h"
@@ -138,7 +139,8 @@ Game::~Game() {
 
 bool Game::initialize(int argc, char** argv) {
     if (argc > 0 && argv[0]) executablePath_ = argv[0];
-    settings_.load(SettingsPath);
+    if (Persistence::enabled())
+        settings_.load(SettingsPath);
     parseArguments(argc, argv);
 
     if (!glfwInit()) {
@@ -212,7 +214,7 @@ int Game::run() {
             }
         }
 
-        if (saveOnExit_) {
+        if (Persistence::enabled() && saveOnExit_) {
             saveAll();
         }
     } catch (const std::exception& error) {
@@ -246,7 +248,7 @@ void Game::shutdown() {
 }
 
 void Game::parseArguments(int argc, char** argv) {
-    {
+    if (Persistence::enabled()) {
         std::ifstream seedFile(SeedPath);
         std::uint64_t storedSeed = 0;
         if (seedFile >> storedSeed) {
@@ -291,7 +293,7 @@ void Game::parseArguments(int argc, char** argv) {
         }
     }
 
-    if (!smokeTest_.worldgenEnabled)
+    if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
         saveWorldMetadata();
 }
 
@@ -332,7 +334,7 @@ void Game::createWorldAndSystems() {
     world_ = std::make_unique<World>(seed_);
     world_->setSimulationDistance(settings_.simulationDistance);
     glm::vec3 spawnPosition(0.5f, 0.0f, 0.5f);
-    const bool loadedWorld = !smokeTest_.worldgenEnabled &&
+    const bool loadedWorld = Persistence::enabled() && !smokeTest_.worldgenEnabled &&
                              world_->loadWorld(WorldSavePath, spawnPosition);
     const glm::vec3 safeSpawn = world_->findSafeSpawnNear(0, 0);
     const float spawnDeltaX = spawnPosition.x - safeSpawn.x;
@@ -354,7 +356,7 @@ void Game::createWorldAndSystems() {
     world_->generate(settings_.renderDistance, spawnPosition);
     player_ = std::make_unique<Player>(spawnPosition);
     player_->setMouseSensitivity(settings_.mouseSensitivity);
-    if (!smokeTest_.worldgenEnabled)
+    if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
         player_->load(PlayerSavePath, seed_);
     player_->setCreativeMode(creativeMode_);
     if (spectatorMode_)
@@ -366,10 +368,10 @@ void Game::createWorldAndSystems() {
     }
 
     inventory_ = std::make_unique<Inventory>();
-    if (!smokeTest_.worldgenEnabled)
+    if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
         inventory_->load(InventorySavePath, seed_);
     survival_ = std::make_unique<SurvivalWorld>(seed_);
-    if (!smokeTest_.worldgenEnabled)
+    if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
         survival_->load(MobSavePath, seed_);
     survival_->setSoundSystem(sounds_.get());
     farming_ = std::make_unique<FarmingSystem>();
@@ -410,6 +412,7 @@ void Game::applyFullscreenSetting() {
 }
 
 void Game::saveAll() {
+    if (!Persistence::enabled()) return;
     if (!player_->isDead()) {
         world_->saveWorld(WorldSavePath, player_->position());
     }
@@ -421,7 +424,13 @@ void Game::saveAll() {
     timing_.lastSave = glfwGetTime();
 }
 
+void Game::saveSettings() {
+    if (Persistence::enabled())
+        settings_.save(SettingsPath);
+}
+
 void Game::saveWorldMetadata() const {
+    if (!Persistence::enabled()) return;
     SaveFile::write(SeedPath, std::ios::out, [&](std::ofstream& output) {
         const char* mode = spectatorMode_ ? "spectator"
                            : creativeMode_ ? "creative" : "survival";
@@ -520,10 +529,11 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     world_.reset();
 
     std::error_code error;
-    for (const char* path : {WorldSavePath, InventorySavePath, PlayerSavePath, MobSavePath}) {
-        error.clear();
-        std::filesystem::remove(path, error);
-    }
+    if (Persistence::enabled())
+        for (const char* path : {WorldSavePath, InventorySavePath, PlayerSavePath, MobSavePath}) {
+            error.clear();
+            std::filesystem::remove(path, error);
+        }
 
     seed_ = newSeed;
     creativeMode_ = mode == GameMode::Creative;
@@ -606,7 +616,7 @@ void Game::handleGlobalInput() {
             if (ui_.state() == GameState::Settings) {
                 world_->setRenderDistance(settings_.renderDistance);
                 world_->setSimulationDistance(settings_.simulationDistance);
-                settings_.save(SettingsPath);
+                saveSettings();
                 activeSettingsSlider_ = -1;
             }
             ui_.handleEscape(*inventory_);
@@ -657,7 +667,7 @@ void Game::updatePauseInterface() {
             if (settings_.bindControl(
                     static_cast<ControlAction>(activeControlBinding_), pressedKey)) {
                 input_.setBindings(settings_.controls);
-                settings_.save(SettingsPath);
+                saveSettings();
             }
             activeControlBinding_ = -1;
         }
@@ -692,7 +702,7 @@ void Game::updatePauseInterface() {
             world_->setRenderDistance(settings_.renderDistance);
             world_->setSimulationDistance(settings_.simulationDistance);
             activeSettingsSlider_ = -1;
-            settings_.save(SettingsPath);
+            saveSettings();
         }
         if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) &&
             ((hit >= 0 && hit < 5) || hit == 11) &&
@@ -750,7 +760,7 @@ void Game::updatePauseInterface() {
         else if (hit == ControlActionCount) {
             settings_.controls = defaultControlBindings();
             input_.setBindings(settings_.controls);
-            settings_.save(SettingsPath);
+            saveSettings();
         } else {
             ui_.openSettings();
         }
@@ -774,10 +784,14 @@ void Game::updatePauseInterface() {
             ui_.openResetWorld();
             break;
         case 4:
-            saveAll();
+            if (Persistence::enabled())
+                saveAll();
+            else
+                saveWarningUntil_ = glfwGetTime() + 4.0;
             break;
         case 5:
-            saveAll();
+            if (Persistence::enabled())
+                saveAll();
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
             break;
         case 6:
@@ -868,7 +882,7 @@ void Game::updatePauseInterface() {
     }
     if (hit >= 5 && hit <= 9)
         settings_.graphicsPreset = GraphicsPreset::Custom;
-    settings_.save(SettingsPath);
+    saveSettings();
 }
 
 void Game::updateSimulation(float deltaTime) {
@@ -1417,7 +1431,8 @@ void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
 
     renderer_->updateParticles(deltaTime);
     interaction_.heldItemSwing = std::max(0.0f, interaction_.heldItemSwing - deltaTime * 4.0f);
-    if (glfwGetTime() - timing_.lastSave >= 12.0 && !player_->isDead()) {
+    if (Persistence::enabled() && glfwGetTime() - timing_.lastSave >= 12.0 &&
+        !player_->isDead()) {
         saveAll();
     }
 }
@@ -1566,7 +1581,9 @@ void Game::renderFrame(float deltaTime) {
                                   ui_.state() == GameState::Settings,
                                   ui_.hoveredMenuItem(cursor, width, height),
                                   settings_,
-                                  gameMode());
+                                  gameMode(),
+                                  !Persistence::enabled(),
+                                  glfwGetTime() < saveWarningUntil_);
         }
     }
 

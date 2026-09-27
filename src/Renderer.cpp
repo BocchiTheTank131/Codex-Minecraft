@@ -1508,7 +1508,9 @@ void Renderer::renderMenu(int width,
                           bool settingsPage,
                           int hovered,
                           const GameSettings& settings,
-                          GameMode mode) const {
+                          GameMode mode,
+                          bool standaloneDemo,
+                          bool showSaveWarning) const {
     std::vector<UiVertex> vertices;
     auto drawText = [&](std::string value, float x, float y, float scale, glm::vec4 color) {
         for (char raw : value) {
@@ -1553,7 +1555,7 @@ void Renderer::renderMenu(int width,
             std::string("MODE  ") + gameModeName(mode),
             "RESET WORLD",
             "SAVE WORLD",
-            "SAVE & QUIT",
+            standaloneDemo ? "QUIT TO DESKTOP" : "SAVE & QUIT",
             "EXIT GAME"};
         for (int index = 0; index < static_cast<int>(labels.size()); ++index) {
             const float y = panelY + 82.0f + index * 61.0f;
@@ -1571,6 +1573,14 @@ void Renderer::renderMenu(int width,
                      y + 14.0f,
                      1.8f,
                      {1, 1, 1, 1});
+        }
+        if (standaloneDemo) {
+            drawText("STANDALONE DEMO  SAVING DISABLED", panelX + 38.0f,
+                     panelY + 527.0f, 1.35f, {1, .85f, .52f, 1});
+        }
+        if (showSaveWarning) {
+            drawText("SAVING NOT AVAILABLE IN STANDALONE DEMO", panelX + 22.0f,
+                     panelY + 554.0f, 1.15f, {1, .67f, .56f, 1});
         }
     } else {
         const std::string antiAliasing = settings.antiAliasingSamples == 0

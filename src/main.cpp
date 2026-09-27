@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "Persistence.h"
 #ifdef VOXEL_STANDALONE
 #include "UserData.h"
 #include <iostream>
@@ -13,7 +14,7 @@
 int main(int argc, char** argv) {
 #ifdef VOXEL_STANDALONE
     try {
-        UserData::initialize();
+        UserData::initialize(Persistence::enabled());
 #ifdef VOXEL_GUI_RELEASE
         UserData::initializeLogging();
 #endif
