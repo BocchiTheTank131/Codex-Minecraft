@@ -16,6 +16,8 @@ public:
     SoundSystem& operator=(const SoundSystem&) = delete;
 
     void setMasterVolume(float value);
+    void setCategoryVolumes(float music, float sfx, float passiveMobs, float hostileMobs);
+    void startMusic();
     void setListener(const glm::vec3& position, const glm::vec3& forward);
     void update(float deltaTime);
     void playBlockBreak(Block block, const glm::vec3& position);
@@ -36,6 +38,7 @@ public:
     void playMobDeath(MobSoundType type, const glm::vec3& position);
     void playMobStep(MobSoundType type, const glm::vec3& position);
     bool verifyLibrary();
+    bool verifyMusic();
 
 private:
     struct Impl;

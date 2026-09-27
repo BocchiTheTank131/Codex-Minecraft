@@ -205,6 +205,7 @@ int Game::run() {
                 updatePauseInterface();
             }
 
+            sounds_->update(deltaTime);
             updateSimulation(deltaTime);
             renderFrame(deltaTime);
             if (settings_.frameLimit > 0) {
@@ -330,6 +331,9 @@ void Game::createWorldAndSystems() {
     renderer_->setEffectQuality(settings_.effectQuality);
     sounds_ = std::make_unique<SoundSystem>(executablePath_);
     sounds_->setMasterVolume(settings_.masterVolume);
+    sounds_->setCategoryVolumes(settings_.musicVolume, settings_.sfxVolume,
+                                settings_.passiveMobVolume, settings_.hostileMobVolume);
+    sounds_->startMusic();
 
     world_ = std::make_unique<World>(seed_);
     world_->setSimulationDistance(settings_.simulationDistance);
@@ -618,6 +622,9 @@ void Game::handleGlobalInput() {
                 world_->setSimulationDistance(settings_.simulationDistance);
                 saveSettings();
                 activeSettingsSlider_ = -1;
+            } else if (ui_.state() == GameState::AudioSettings) {
+                saveSettings();
+                activeSettingsSlider_ = -1;
             }
             ui_.handleEscape(*inventory_);
         }
@@ -695,6 +702,41 @@ void Game::updatePauseInterface() {
     const glm::dvec2 cursor = input_.framebufferCursorPosition();
     const int hit = ui_.hoveredMenuItem(cursor, framebufferWidth, framebufferHeight);
 
+    if (ui_.state() == GameState::AudioSettings) {
+        const bool leftDown = input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
+        const float panelX = framebufferWidth * 0.5f - 220.0f;
+        if (!leftDown && activeSettingsSlider_ >= 0) {
+            activeSettingsSlider_ = -1;
+            saveSettings();
+        }
+        if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) && hit >= 0 && hit < 5 &&
+            cursor.x >= panelX + 180.0f && cursor.x <= panelX + 350.0f) {
+            activeSettingsSlider_ = hit;
+            sounds_->playClick();
+        }
+        if (leftDown && activeSettingsSlider_ >= 0) {
+            const float value = std::clamp(
+                static_cast<float>((cursor.x - (panelX + 190.0f)) / 150.0f), 0.0f, 1.0f);
+            switch (activeSettingsSlider_) {
+            case 0: settings_.masterVolume = value; break;
+            case 1: settings_.musicVolume = value; break;
+            case 2: settings_.sfxVolume = value; break;
+            case 3: settings_.passiveMobVolume = value; break;
+            case 4: settings_.hostileMobVolume = value; break;
+            default: break;
+            }
+            sounds_->setMasterVolume(settings_.masterVolume);
+            sounds_->setCategoryVolumes(settings_.musicVolume, settings_.sfxVolume,
+                                        settings_.passiveMobVolume, settings_.hostileMobVolume);
+            return;
+        }
+        if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) && hit == 5) {
+            sounds_->playClick();
+            ui_.openSettings();
+        }
+        return;
+    }
+
     if (ui_.state() == GameState::Settings) {
         const bool leftDown = input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
         const float panelX = framebufferWidth * 0.5f - 220.0f;
@@ -705,7 +747,7 @@ void Game::updatePauseInterface() {
             saveSettings();
         }
         if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) &&
-            ((hit >= 0 && hit < 5) || hit == 11) &&
+            ((hit >= 0 && hit < 4) || hit == 11) &&
             cursor.x >= panelX + 180.0f && cursor.x <= panelX + 350.0f) {
             activeSettingsSlider_ = hit;
             sounds_->playClick();
@@ -729,10 +771,6 @@ void Game::updatePauseInterface() {
             case 3:
                 settings_.mouseSensitivity = 0.03f + slider * 0.27f;
                 player_->setMouseSensitivity(settings_.mouseSensitivity);
-                break;
-            case 4:
-                settings_.masterVolume = slider;
-                sounds_->setMasterVolume(settings_.masterVolume);
                 break;
             case 11:
                 settings_.entityDistance = static_cast<int>(std::round(2.0f + slider * 62.0f));
@@ -831,6 +869,9 @@ void Game::updatePauseInterface() {
     }
 
     switch (hit) {
+    case 4:
+        ui_.openAudioSettings();
+        return;
     case 5:
         settings_.antiAliasingSamples = settings_.antiAliasingSamples == 0
                                             ? 2
@@ -1398,7 +1439,6 @@ void Game::handleUseAction() {
 
 void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
     sounds_->setListener(player_->cameraPosition(), player_->lookDirection());
-    sounds_->update(deltaTime);
     survival_->update(deltaTime, *world_, *player_, *inventory_, daylight(timing_.worldTime));
 
     if (player_->health() < oldHealth) {
@@ -1583,7 +1623,8 @@ void Game::renderFrame(float deltaTime) {
                                   settings_,
                                   gameMode(),
                                   !Persistence::enabled(),
-                                  glfwGetTime() < saveWarningUntil_);
+                                  glfwGetTime() < saveWarningUntil_,
+                                  ui_.state() == GameState::AudioSettings);
         }
     }
 
@@ -1779,7 +1820,7 @@ bool Game::playerIsWalking() const {
 }
 
 void Game::runSurvivalSmokeTest() {
-    const bool audioPassed = sounds_->verifyLibrary() &&
+    const bool audioPassed = sounds_->verifyLibrary() && sounds_->verifyMusic() &&
         blockDefinition(Block::Snow).soundMaterial == SoundMaterial::Snow &&
         blockDefinition(Block::Sand).soundMaterial == SoundMaterial::Sand &&
         blockDefinition(Block::Log).soundMaterial == SoundMaterial::Wood;
@@ -2014,6 +2055,10 @@ void Game::runSurvivalSmokeTest() {
     testSettings.antiAliasingSamples = 4;
     testSettings.entityDistance = 18;
     testSettings.frameLimit = 60;
+    testSettings.musicVolume = .5f;
+    testSettings.sfxVolume = .25f;
+    testSettings.passiveMobVolume = .75f;
+    testSettings.hostileMobVolume = 0.0f;
     GameSettings reloadedSettings;
     distancePassed = distancePassed && testSettings.save(settingsTestPath) &&
                      reloadedSettings.load(settingsTestPath) &&
@@ -2021,7 +2066,11 @@ void Game::runSurvivalSmokeTest() {
                      reloadedSettings.simulationDistance == 32 &&
                      reloadedSettings.antiAliasingSamples == 4 &&
                      reloadedSettings.entityDistance == 18 &&
-                     reloadedSettings.frameLimit == 60;
+                     reloadedSettings.frameLimit == 60 &&
+                     reloadedSettings.musicVolume == .5f &&
+                     reloadedSettings.sfxVolume == .25f &&
+                     reloadedSettings.passiveMobVolume == .75f &&
+                     reloadedSettings.hostileMobVolume == 0.0f;
     std::filesystem::remove(settingsTestPath);
 
     GameSettings presetSettings;

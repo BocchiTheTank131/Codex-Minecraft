@@ -35,6 +35,10 @@ void GameSettings::clamp() {
     fov = std::clamp(fov, 55.0f, 105.0f);
     mouseSensitivity = std::clamp(mouseSensitivity, 0.03f, 0.30f);
     masterVolume = std::clamp(masterVolume, 0.0f, 1.0f);
+    musicVolume = std::clamp(musicVolume, 0.0f, 1.0f);
+    sfxVolume = std::clamp(sfxVolume, 0.0f, 1.0f);
+    passiveMobVolume = std::clamp(passiveMobVolume, 0.0f, 1.0f);
+    hostileMobVolume = std::clamp(hostileMobVolume, 0.0f, 1.0f);
     if (antiAliasingSamples != 2 && antiAliasingSamples != 4)
         antiAliasingSamples = 0;
     entityDistance = std::clamp(entityDistance, 2, 64);
@@ -119,6 +123,14 @@ bool GameSettings::load(const std::string& path) {
                 mouseSensitivity = std::stof(value);
             else if (key == "master_volume")
                 masterVolume = std::stof(value);
+            else if (key == "music_volume")
+                musicVolume = std::stof(value);
+            else if (key == "sfx_volume")
+                sfxVolume = std::stof(value);
+            else if (key == "passive_mob_volume")
+                passiveMobVolume = std::stof(value);
+            else if (key == "hostile_mob_volume")
+                hostileMobVolume = std::stof(value);
             else if (key == "anti_aliasing_samples")
                 antiAliasingSamples = std::stoi(value);
             else if (key == "graphics_preset")
@@ -158,6 +170,10 @@ bool GameSettings::save(const std::string& path) const {
            << "fov=" << fov << '\n'
            << "mouse_sensitivity=" << mouseSensitivity << '\n'
            << "master_volume=" << masterVolume << '\n'
+           << "music_volume=" << musicVolume << '\n'
+           << "sfx_volume=" << sfxVolume << '\n'
+           << "passive_mob_volume=" << passiveMobVolume << '\n'
+           << "hostile_mob_volume=" << hostileMobVolume << '\n'
            << "anti_aliasing_samples=" << antiAliasingSamples << '\n'
            << "graphics_preset=" << static_cast<int>(graphicsPreset) << '\n'
            << "entity_distance=" << entityDistance << '\n'

@@ -293,7 +293,7 @@ Available options include:
 - Simulation distance
 - Field of view
 - Mouse sensitivity
-- Master volume
+- Audio submenu: Master, Music, SFX, Passive Mobs, and Hostile Mobs volume
 - Off / 2x / 4x MSAA
 - Fullscreen
 - VSync
@@ -302,6 +302,12 @@ Available options include:
 - Custom keybindings
 
 Most settings apply immediately.
+
+Background music uses every valid OGG track in `sounds/background/` and plays through a
+shuffled list continuously. Music is streamed separately from sound effects and continues in
+menus. The Music slider controls 0–100% of the intended music level; its real playback gain is
+`Master × Music × 0.30`. The full installed game saves audio settings. The standalone demo keeps
+them only for the current session. Release builds embed the background tracks in the executable.
 
 ## Source Structure
 

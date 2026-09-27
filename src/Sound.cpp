@@ -20,9 +20,13 @@
 #endif
 
 #include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <numeric>
 #include <iostream>
 #include <random>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -35,6 +39,12 @@
 
 namespace {
 constexpr std::size_t MaximumVoices = 32;
+enum class AudioCategory { Sfx, PassiveMob, HostileMob };
+
+AudioCategory mobCategory(MobSoundType type) {
+    return type == MobSoundType::Pillager ? AudioCategory::HostileMob
+                                          : AudioCategory::PassiveMob;
+}
 
 const char* materialGroup(SoundMaterial material) {
     switch (material) {
@@ -74,6 +84,17 @@ struct SoundSystem::Impl {
         std::unique_ptr<ma_audio_buffer> buffer;
 #endif
         int priority = 0;
+        float baseGain = 1.0f;
+        AudioCategory category = AudioCategory::Sfx;
+    };
+    struct MusicTrack {
+        std::string name;
+#ifdef VOXEL_STANDALONE
+        const void* bytes = nullptr;
+        std::size_t byteCount = 0;
+#else
+        std::filesystem::path path;
+#endif
     };
 
     ma_engine engine{};
@@ -84,9 +105,22 @@ struct SoundSystem::Impl {
     std::unordered_map<std::string, std::size_t> lastVariant;
     std::unordered_set<std::string> warnedGroups;
     std::vector<Voice> voices;
+    std::vector<MusicTrack> musicTracks;
+    std::vector<std::size_t> musicBag;
+    std::size_t lastMusic = static_cast<std::size_t>(-1);
+    std::size_t musicGeneration = 0;
+    std::unique_ptr<ma_decoder> musicDecoder;
+    std::unique_ptr<ma_sound> musicSound;
     std::mt19937 random{std::random_device{}()};
     glm::vec3 listener{0.0f};
     float masterVolume = 1.0f;
+    float musicVolume = 1.0f;
+    float sfxVolume = 1.0f;
+    float passiveMobVolume = 1.0f;
+    float hostileMobVolume = 1.0f;
+    bool musicFadeOutStarted = false;
+    ma_uint64 musicLengthFrames = 0;
+    ma_uint32 musicSampleRate = 0;
     float pickupCooldown = 0.0f;
     float xpCooldown = 0.0f;
     float eatBurpDelay = -1.0f;
@@ -148,6 +182,11 @@ struct SoundSystem::Impl {
                 std::cerr << "Audio: missing embedded sound " << embedded.name << '\n';
                 continue;
             }
+            const std::string name = embedded.name;
+            if (name.rfind("background/", 0) == 0) {
+                musicTracks.push_back({name, bytes, length});
+                continue;
+            }
             ma_decoder_config decoderConfig = ma_decoder_config_init(ma_format_f32, 0, 0);
             ma_uint64 frameCount = 0;
             void* decoded = nullptr;
@@ -164,7 +203,6 @@ struct SoundSystem::Impl {
             const auto* samples = static_cast<const float*>(decoded);
             asset.pcm.assign(samples, samples + frameCount * asset.channels);
             ma_free(decoded, nullptr);
-            const std::string name = embedded.name;
             std::string group = name.substr(0, name.find_last_of('.'));
             while (!group.empty() && group.back() >= '0' && group.back() <= '9')
                 group.pop_back();
@@ -179,6 +217,10 @@ struct SoundSystem::Impl {
             const auto relative = std::filesystem::relative(entry.path(), root, error);
             if (error) continue;
             const std::string name = relative.generic_string();
+            if (name.rfind("background/", 0) == 0) {
+                musicTracks.push_back({name, entry.path()});
+                continue;
+            }
             std::string group = name.substr(0, name.find_last_of('.'));
             while (!group.empty() && group.back() >= '0' && group.back() <= '9')
                 group.pop_back();
@@ -207,10 +249,15 @@ struct SoundSystem::Impl {
 #else
                   << " from " << root.string() << '\n';
 #endif
+        if (musicTracks.empty())
+            std::cerr << "Audio: no background OGG tracks found; music disabled\n";
+        else
+            std::cout << "Audio: indexed " << musicTracks.size() << " background tracks\n";
     }
 
     ~Impl() {
         if (!engineReady) return;
+        stopMusic();
         for (auto& voice : voices) releaseVoice(voice);
 #ifndef VOXEL_STANDALONE
         for (auto& asset : assets) ma_sound_uninit(asset.source.get());
@@ -225,9 +272,117 @@ struct SoundSystem::Impl {
 #endif
     }
 
+    float categoryVolume(AudioCategory category) const {
+        switch (category) {
+        case AudioCategory::PassiveMob: return passiveMobVolume;
+        case AudioCategory::HostileMob: return hostileMobVolume;
+        default: return sfxVolume;
+        }
+    }
+
+    void stopMusic() {
+        if (musicSound) {
+            ma_sound_uninit(musicSound.get());
+            musicSound.reset();
+        }
+        if (musicDecoder) {
+            ma_decoder_uninit(musicDecoder.get());
+            musicDecoder.reset();
+        }
+        musicFadeOutStarted = false;
+        musicLengthFrames = 0;
+        musicSampleRate = 0;
+    }
+
+    void refillMusicBag() {
+        musicBag.resize(musicTracks.size());
+        std::iota(musicBag.begin(), musicBag.end(), 0);
+        std::shuffle(musicBag.begin(), musicBag.end(), random);
+        if (musicBag.size() > 1 && musicBag.back() == lastMusic)
+            std::swap(musicBag.back(), musicBag.front());
+    }
+
+    void startNextMusic() {
+        stopMusic();
+        while (!musicTracks.empty()) {
+            if (musicBag.empty()) refillMusicBag();
+            const std::size_t index = musicBag.back();
+            musicBag.pop_back();
+            const MusicTrack& track = musicTracks[index];
+            auto decoder = std::make_unique<ma_decoder>();
+            const ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 0, 0);
+#ifdef VOXEL_STANDALONE
+            const ma_result decoded = ma_decoder_init_memory(
+                track.bytes, track.byteCount, &config, decoder.get());
+#else
+            const ma_result decoded = ma_decoder_init_file(
+                track.path.string().c_str(), &config, decoder.get());
+#endif
+            if (decoded != MA_SUCCESS) {
+                std::cerr << "Audio: cannot stream background track " << track.name << '\n';
+                musicTracks.erase(musicTracks.begin() + static_cast<std::ptrdiff_t>(index));
+                musicBag.clear();
+                lastMusic = static_cast<std::size_t>(-1);
+                continue;
+            }
+            auto sound = std::make_unique<ma_sound>();
+            if (ma_sound_init_from_data_source(
+                    &engine, reinterpret_cast<ma_data_source*>(decoder.get()),
+                    0, nullptr, sound.get()) != MA_SUCCESS) {
+                ma_decoder_uninit(decoder.get());
+                std::cerr << "Audio: cannot play background track " << track.name << '\n';
+                musicTracks.erase(musicTracks.begin() + static_cast<std::ptrdiff_t>(index));
+                musicBag.clear();
+                lastMusic = static_cast<std::size_t>(-1);
+                continue;
+            }
+            ma_sound_set_spatialization_enabled(sound.get(), MA_FALSE);
+            ma_sound_set_volume(sound.get(), musicVolume * 0.30f);
+            ma_sound_set_fade_in_milliseconds(sound.get(), 0.0f, 1.0f, 800);
+            if (ma_sound_start(sound.get()) != MA_SUCCESS) {
+                ma_sound_uninit(sound.get());
+                ma_decoder_uninit(decoder.get());
+                std::cerr << "Audio: cannot start background track " << track.name << '\n';
+                musicTracks.erase(musicTracks.begin() + static_cast<std::ptrdiff_t>(index));
+                musicBag.clear();
+                lastMusic = static_cast<std::size_t>(-1);
+                continue;
+            }
+            lastMusic = index;
+            ++musicGeneration;
+            musicDecoder = std::move(decoder);
+            musicSound = std::move(sound);
+            ma_sound_get_length_in_pcm_frames(musicSound.get(), &musicLengthFrames);
+            ma_decoder_get_data_format(musicDecoder.get(), nullptr, nullptr, &musicSampleRate,
+                                       nullptr, 0);
+            std::cout << "Audio: playing background track " << track.name << '\n';
+            return;
+        }
+        std::cerr << "Audio: no playable background tracks; music disabled\n";
+    }
+
+    void updateMusic() {
+        if (!musicSound) return;
+        if (ma_sound_at_end(musicSound.get())) {
+            startNextMusic();
+            return;
+        }
+        if (!musicFadeOutStarted) {
+            ma_uint64 cursor = 0;
+            if (ma_sound_get_cursor_in_pcm_frames(musicSound.get(), &cursor) == MA_SUCCESS &&
+                musicSampleRate > 0 && musicLengthFrames > cursor &&
+                musicLengthFrames - cursor <= musicSampleRate) {
+                ma_sound_set_fade_in_milliseconds(musicSound.get(), -1.0f, 0.0f, 900);
+                musicFadeOutStarted = true;
+            }
+        }
+    }
+
     void play(const std::string& group, float gain, int priority,
-              const glm::vec3* position = nullptr, float pitchRange = 0.06f) {
-        if (!engineReady || masterVolume <= 0.001f) return;
+              const glm::vec3* position = nullptr, float pitchRange = 0.06f,
+              AudioCategory category = AudioCategory::Sfx) {
+        if (!engineReady || masterVolume <= 0.001f ||
+            categoryVolume(category) <= 0.001f) return;
         const auto found = groups.find(group);
         if (found == groups.end() || found->second.empty()) {
             if (warnedGroups.insert(group).second)
@@ -273,7 +428,7 @@ struct SoundSystem::Impl {
         if (ma_sound_init_copy(&engine, assets[variants[variant]].source.get(),
                                0, nullptr, sound.get()) != MA_SUCCESS) return;
 #endif
-        ma_sound_set_volume(sound.get(), gain);
+        ma_sound_set_volume(sound.get(), gain * categoryVolume(category));
         if (pitchRange > 0.0f) {
             std::uniform_real_distribution<float> pitch(1.0f - pitchRange,
                                                         1.0f + pitchRange);
@@ -290,13 +445,14 @@ struct SoundSystem::Impl {
         }
         ma_sound_start(sound.get());
 #ifdef VOXEL_STANDALONE
-        voices.push_back({std::move(sound), std::move(buffer), priority});
+        voices.push_back({std::move(sound), std::move(buffer), priority, gain, category});
 #else
-        voices.push_back({std::move(sound), priority});
+        voices.push_back({std::move(sound), priority, gain, category});
 #endif
     }
 
     void tick(float deltaTime) {
+        updateMusic();
         pickupCooldown = std::max(0.0f, pickupCooldown - deltaTime);
         xpCooldown = std::max(0.0f, xpCooldown - deltaTime);
         if (eatBurpDelay >= 0.0f) {
@@ -312,6 +468,22 @@ SoundSystem::~SoundSystem() = default;
 void SoundSystem::setMasterVolume(float value) {
     impl_->masterVolume = std::clamp(value, 0.0f, 1.0f);
     if (impl_->engineReady) ma_engine_set_volume(&impl_->engine, impl_->masterVolume);
+}
+void SoundSystem::setCategoryVolumes(float music, float sfx, float passiveMobs,
+                                     float hostileMobs) {
+    impl_->musicVolume = std::clamp(music, 0.0f, 1.0f);
+    impl_->sfxVolume = std::clamp(sfx, 0.0f, 1.0f);
+    impl_->passiveMobVolume = std::clamp(passiveMobs, 0.0f, 1.0f);
+    impl_->hostileMobVolume = std::clamp(hostileMobs, 0.0f, 1.0f);
+    if (impl_->musicSound)
+        ma_sound_set_volume(impl_->musicSound.get(), impl_->musicVolume * 0.30f);
+    for (auto& voice : impl_->voices)
+        ma_sound_set_volume(voice.sound.get(),
+                            voice.baseGain * impl_->categoryVolume(voice.category));
+}
+void SoundSystem::startMusic() {
+    if (impl_->engineReady && !impl_->musicSound && !impl_->musicTracks.empty())
+        impl_->startNextMusic();
 }
 void SoundSystem::setListener(const glm::vec3& position, const glm::vec3& forward) {
     impl_->listener = position;
@@ -361,24 +533,26 @@ void SoundSystem::playChest(bool open, const glm::vec3& position) {
 void SoundSystem::playClick() { impl_->play("click", .38f, 3, nullptr, 0.0f); }
 void SoundSystem::playMobAmbient(MobSoundType type, const glm::vec3& position) {
     const std::string folder = mobFolder(type);
-    if (!folder.empty()) impl_->play(folder + "say", .70f, 2, &position);
+    if (!folder.empty()) impl_->play(folder + "say", .70f, 2, &position, .06f,
+                                     mobCategory(type));
 }
 void SoundSystem::playMobHurt(MobSoundType type, const glm::vec3& position) {
     const std::string folder = mobFolder(type);
     if (!folder.empty() && impl_->groups.count(folder + "hurt"))
-        impl_->play(folder + "hurt", .78f, 6, &position);
+        impl_->play(folder + "hurt", .78f, 6, &position, .06f, mobCategory(type));
 }
 void SoundSystem::playMobDeath(MobSoundType type, const glm::vec3& position) {
     const std::string folder = mobFolder(type);
     if (folder.empty()) return;
     if (impl_->groups.count(folder + "death"))
-        impl_->play(folder + "death", .80f, 7, &position);
+        impl_->play(folder + "death", .80f, 7, &position, .06f, mobCategory(type));
     else if (impl_->groups.count(folder + "hurt"))
-        impl_->play(folder + "hurt", .80f, 7, &position);
+        impl_->play(folder + "hurt", .80f, 7, &position, .06f, mobCategory(type));
 }
 void SoundSystem::playMobStep(MobSoundType type, const glm::vec3& position) {
     const std::string folder = mobFolder(type);
-    if (!folder.empty()) impl_->play(folder + "step", .24f, 1, &position);
+    if (!folder.empty()) impl_->play(folder + "step", .24f, 1, &position, .06f,
+                                     mobCategory(type));
 }
 bool SoundSystem::verifyLibrary() {
     if (!impl_->engineReady) return true; // Headless systems should remain playable.
@@ -406,5 +580,72 @@ bool SoundSystem::verifyLibrary() {
     impl_->play("click", .1f, 3, nullptr, 0.0f);
     const bool mutePassed = impl_->voices.size() == mutedCount;
     setMasterVolume(savedVolume);
-    return concurrent && mutePassed;
+    const float music = impl_->musicVolume;
+    const float sfx = impl_->sfxVolume;
+    const float passive = impl_->passiveMobVolume;
+    const float hostile = impl_->hostileMobVolume;
+    setCategoryVolumes(music, 0.0f, passive, hostile);
+    impl_->play("click", .1f, 3, nullptr, 0.0f);
+    const bool sfxMutePassed = impl_->voices.size() == mutedCount;
+    setCategoryVolumes(music, sfx, 0.0f, hostile);
+    impl_->play("cow/say", .1f, 3, nullptr, 0.0f, AudioCategory::PassiveMob);
+    const bool passiveMutePassed = impl_->voices.size() == mutedCount;
+    setCategoryVolumes(music, sfx, passive, 0.0f);
+    impl_->play("click", .1f, 3, nullptr, 0.0f, AudioCategory::HostileMob);
+    const bool hostileMutePassed = impl_->voices.size() == mutedCount;
+    setCategoryVolumes(music, sfx, passive, hostile);
+    return concurrent && mutePassed && sfxMutePassed && passiveMutePassed &&
+           hostileMutePassed;
+}
+
+bool SoundSystem::verifyMusic() {
+    if (!impl_->engineReady || impl_->musicTracks.empty()) return true;
+    if (!impl_->musicSound || !impl_->musicDecoder) return false;
+    const float savedMaster = impl_->masterVolume;
+    const float savedMusic = impl_->musicVolume;
+    const float savedSfx = impl_->sfxVolume;
+    const float savedPassive = impl_->passiveMobVolume;
+    const float savedHostile = impl_->hostileMobVolume;
+    const auto checkGain = [&](float master, float music, float expected) {
+        setMasterVolume(master);
+        setCategoryVolumes(music, savedSfx, savedPassive, savedHostile);
+        const float actual = ma_engine_get_volume(&impl_->engine) *
+                             ma_sound_get_volume(impl_->musicSound.get());
+        return std::abs(actual - expected) < 0.0001f;
+    };
+    const bool gainPassed = checkGain(1.0f, 1.0f, .30f) &&
+                            checkGain(1.0f, .5f, .15f) &&
+                            checkGain(1.0f, .1f, .03f) &&
+                            checkGain(.5f, 1.0f, .15f) &&
+                            checkGain(0.0f, 1.0f, 0.0f);
+    setMasterVolume(savedMaster);
+    setCategoryVolumes(savedMusic, savedSfx, savedPassive, savedHostile);
+    if (!gainPassed) return false;
+
+    const std::size_t trackCount = impl_->musicTracks.size();
+    std::unordered_set<std::string> heard;
+    std::string previous;
+    for (std::size_t i = 0; i <= trackCount; ++i) {
+        if (!impl_->musicSound || impl_->lastMusic >= impl_->musicTracks.size()) return false;
+        const std::string current = impl_->musicTracks[impl_->lastMusic].name;
+        if (trackCount > 1 && current == previous) return false;
+        if (i < trackCount && !heard.insert(current).second) return false;
+        previous = current;
+        if (i == trackCount) break;
+        ma_uint64 length = 0;
+        if (ma_sound_get_length_in_pcm_frames(impl_->musicSound.get(), &length) != MA_SUCCESS ||
+            length < 2000) return false;
+        if (ma_sound_seek_to_pcm_frame(impl_->musicSound.get(), length - 1000) != MA_SUCCESS)
+            return false;
+        const std::size_t generation = impl_->musicGeneration;
+        for (int attempt = 0; attempt < 100 && impl_->musicGeneration == generation; ++attempt) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
+            impl_->updateMusic();
+        }
+        if (impl_->musicGeneration == generation) return false;
+    }
+    std::cout << "Music smoke: " << heard.size()
+              << " unique streamed tracks, automatic transitions, shuffle boundary, "
+                 "and exact category gain passed\n";
+    return heard.size() == trackCount;
 }

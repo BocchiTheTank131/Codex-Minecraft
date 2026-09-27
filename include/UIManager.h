@@ -20,6 +20,7 @@ enum class GameState {
     Chest,
     PauseMenu,
     Settings,
+    AudioSettings,
     Controls,
     ResetWorld,
 };
@@ -57,6 +58,7 @@ public:
     void closeGameplayInterface(Inventory& inventory);
     void openPauseMenu();
     void openSettings();
+    void openAudioSettings();
     void openControls();
     void openResetWorld();
     void resumeGame();

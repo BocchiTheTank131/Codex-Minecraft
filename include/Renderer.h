@@ -83,7 +83,8 @@ public:
                     const GameSettings& settings,
                     GameMode mode,
                     bool standaloneDemo,
-                    bool showSaveWarning) const;
+                    bool showSaveWarning,
+                    bool audioPage) const;
     void renderControlsMenu(int width, int height, int hovered,
                             const GameSettings& settings, int activeBinding) const;
     void renderResetMenu(int width,

@@ -11,6 +11,10 @@ struct GameSettings {
     float fov = 74.0f;
     float mouseSensitivity = 0.10f;
     float masterVolume = 1.0f;
+    float musicVolume = 1.0f;
+    float sfxVolume = 1.0f;
+    float passiveMobVolume = 1.0f;
+    float hostileMobVolume = 1.0f;
     int antiAliasingSamples = 0;
     GraphicsPreset graphicsPreset = GraphicsPreset::Custom;
     int entityDistance = 12;

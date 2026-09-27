@@ -12,6 +12,7 @@
 
 bool UIManager::simulationPaused() const {
     return state_ == GameState::PauseMenu || state_ == GameState::Settings ||
+           state_ == GameState::AudioSettings ||
            state_ == GameState::Controls || state_ == GameState::ResetWorld;
 }
 
@@ -139,6 +140,10 @@ void UIManager::openSettings() {
     state_ = GameState::Settings;
 }
 
+void UIManager::openAudioSettings() {
+    state_ = GameState::AudioSettings;
+}
+
 void UIManager::openControls() {
     state_ = GameState::Controls;
 }
@@ -164,6 +169,7 @@ void UIManager::handleEscape(Inventory& inventory) {
         state_ = GameState::PauseMenu;
         break;
     case GameState::Controls:
+    case GameState::AudioSettings:
         state_ = GameState::Settings;
         break;
     case GameState::PauseMenu:
@@ -437,6 +443,19 @@ int UIManager::menuHit(
             if (mouseY >= controlsY + 604.0f && mouseY < controlsY + 644.0f)
                 return ControlActionCount + 1;
         }
+        return -1;
+    }
+    if (state == GameState::AudioSettings) {
+        const float audioY = height * 0.5f - 220.0f;
+        for (int index = 0; index < 5; ++index) {
+            const float y = audioY + 70.0f + index * 58.0f;
+            if (mouseX >= panelX + 24.0f && mouseX < panelX + 416.0f &&
+                mouseY >= y && mouseY < y + 46.0f)
+                return index;
+        }
+        if (mouseX >= panelX + 95.0f && mouseX < panelX + 345.0f &&
+            mouseY >= audioY + 372.0f && mouseY < audioY + 416.0f)
+            return 5;
         return -1;
     }
     if (state != GameState::Settings)

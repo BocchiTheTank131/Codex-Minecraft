@@ -1510,7 +1510,8 @@ void Renderer::renderMenu(int width,
                           const GameSettings& settings,
                           GameMode mode,
                           bool standaloneDemo,
-                          bool showSaveWarning) const {
+                          bool showSaveWarning,
+                          bool audioPage) const {
     std::vector<UiVertex> vertices;
     auto drawText = [&](std::string value, float x, float y, float scale, glm::vec4 color) {
         for (char raw : value) {
@@ -1539,16 +1540,44 @@ void Renderer::renderMenu(int width,
             width,
             height);
     const float panelX = width * .5f - 220.0f;
-    const float panelY = height * .5f - (settingsPage ? 350.0f : 300.0f);
-    const float panelHeight = settingsPage ? 700.0f : 600.0f;
+    const float panelY = height * .5f - (audioPage ? 220.0f : settingsPage ? 350.0f : 300.0f);
+    const float panelHeight = audioPage ? 440.0f : settingsPage ? 700.0f : 600.0f;
     addRect(vertices, panelX, panelY, 440, panelHeight, {.075f, .075f, .085f, .98f}, width, height);
-    drawText(settingsPage ? "SETTINGS" : "GAME PAUSED",
-             panelX + (settingsPage ? 114.0f : 92.0f),
+    drawText(audioPage ? "AUDIO" : settingsPage ? "SETTINGS" : "GAME PAUSED",
+             panelX + (audioPage ? 175.0f : settingsPage ? 114.0f : 92.0f),
              panelY + 28.0f,
              3.0f,
              {1, .92f, .68f, 1});
 
-    if (!settingsPage) {
+    if (audioPage) {
+        const std::array<std::string, 5> labels{
+            "MASTER VOLUME", "MUSIC VOLUME", "SFX VOLUME",
+            "PASSIVE MOBS", "HOSTILE MOBS"};
+        const std::array<float, 5> values{
+            settings.masterVolume, settings.musicVolume, settings.sfxVolume,
+            settings.passiveMobVolume, settings.hostileMobVolume};
+        for (int index = 0; index < 5; ++index) {
+            const float y = panelY + 70.0f + index * 58.0f;
+            addRect(vertices, panelX + 24.0f, y, 392.0f, 46.0f,
+                    index == hovered ? glm::vec4(.35f, .44f, .29f, 1)
+                                     : glm::vec4(.19f, .19f, .22f, 1), width, height);
+            drawText(labels[static_cast<std::size_t>(index)], panelX + 38.0f,
+                     y + 9.0f, 1.25f, {1, 1, 1, 1});
+            const float sliderX = panelX + 190.0f;
+            addRect(vertices, sliderX, y + 29.0f, 150.0f, 5.0f,
+                    {.10f, .11f, .12f, 1}, width, height);
+            addRect(vertices, sliderX, y + 29.0f, 150.0f * values[index], 5.0f,
+                    {.48f, .70f, .34f, 1}, width, height);
+            addRect(vertices, sliderX + 150.0f * values[index] - 4.0f,
+                    y + 22.0f, 8.0f, 19.0f, {.88f, .92f, .78f, 1}, width, height);
+            drawText(std::to_string(static_cast<int>(std::round(values[index] * 100.0f))) + "%",
+                     panelX + 354.0f, y + 25.0f, 1.25f, {1, .93f, .70f, 1});
+        }
+        addRect(vertices, panelX + 95.0f, panelY + 372.0f, 250.0f, 44.0f,
+                hovered == 5 ? glm::vec4(.38f, .48f, .30f, 1)
+                             : glm::vec4(.20f, .20f, .23f, 1), width, height);
+        drawText("BACK", panelX + 180.0f, panelY + 385.0f, 2.0f, {1, 1, 1, 1});
+    } else if (!settingsPage) {
         const std::array<std::string, 7> labels{
             "RESUME GAME",
             "SETTINGS",
@@ -1601,7 +1630,7 @@ void Renderer::renderMenu(int width,
             "SIMULATION DISTANCE",
             "FOV",
             "MOUSE SENSITIVITY",
-            "MASTER VOLUME",
+            "AUDIO SETTINGS",
             std::string("ANTI ALIASING  ") + antiAliasing,
             std::string("FULLSCREEN  ") + (settings.fullscreen ? "ON" : "OFF"),
             std::string("VSYNC  ") + (settings.vsync ? "ON" : "OFF"),
@@ -1641,7 +1670,7 @@ void Renderer::renderMenu(int width,
                      y + (index < 5 || index == 11 ? 7.0f : 12.0f),
                      index < 5 || index == 11 ? 1.15f : 1.4f,
                      {1, 1, 1, 1});
-            if (index < 5 || index == 11) {
+            if (index < 4 || index == 11) {
                 const std::size_t sliderIndex = index == 11 ? 5 : static_cast<std::size_t>(index);
                 constexpr float sliderXOffset = 190.0f;
                 constexpr float sliderWidth = 150.0f;
