@@ -259,6 +259,10 @@ void Game::parseArguments(int argc, char** argv) {
                 creativeMode_ = storedMode == "creative";
                 spectatorMode_ = storedMode == "spectator";
             }
+            float savedWorldTime = 35.0f;
+            if (seedFile >> savedWorldTime && std::isfinite(savedWorldTime) &&
+                savedWorldTime >= 0.0f)
+                timing_.worldTime = std::fmod(savedWorldTime, DayNightCycleSeconds);
         }
     }
 
@@ -348,6 +352,8 @@ void Game::createWorldAndSystems() {
     glm::vec3 spawnPosition(0.5f, 0.0f, 0.5f);
     const bool loadedWorld = Persistence::enabled() && !smokeTest_.worldgenEnabled &&
                              world_->loadWorld(WorldSavePath, spawnPosition);
+    if (!loadedWorld)
+        timing_.worldTime = 35.0f;
     const glm::vec3 safeSpawn = world_->findSafeSpawnNear(0, 0);
     const float spawnDeltaX = spawnPosition.x - safeSpawn.x;
     const float spawnDeltaZ = spawnPosition.z - safeSpawn.z;
@@ -454,7 +460,9 @@ void Game::saveWorldMetadata() const {
     SaveFile::write(SeedPath, std::ios::out, [&](std::ofstream& output) {
         const char* mode = spectatorMode_ ? "spectator"
                            : creativeMode_ ? "creative" : "survival";
-        output << seed_ << '\n' << mode << '\n';
+        output << seed_ << '\n' << mode << '\n'
+               << std::setprecision(std::numeric_limits<float>::max_digits10)
+               << std::fmod(std::max(0.0f, timing_.worldTime), DayNightCycleSeconds) << '\n';
         return static_cast<bool>(output);
     });
 }
@@ -558,6 +566,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     seed_ = newSeed;
     creativeMode_ = mode == GameMode::Creative;
     spectatorMode_ = mode == GameMode::Spectator;
+    timing_.worldTime = 35.0f;
     saveWorldMetadata();
 
     world_ = std::make_unique<World>(seed_);
@@ -1815,6 +1824,9 @@ std::string Game::buildDebugText() const {
          << "ENTITIES " << renderer_->visibleEntityCount() << " VISIBLE\n"
          << "MOBS " << mobs.passive << "/" << mobs.passiveCap << " PASSIVE  "
          << mobs.hostile << "/" << mobs.hostileCap << " HOSTILE\n"
+         << (interaction_.mobTarget.valid()
+                 ? "TARGET " + survival_->mobName(interaction_.mobTarget.index) + "\n"
+                 : "")
          << "SPAWN " << mobs.spawnAttempts << " ATTEMPTS  "
          << mobs.spawnSuccesses << " SUCCESS\n"
          << "AI " << mobs.aiMilliseconds << " MS  NAV "

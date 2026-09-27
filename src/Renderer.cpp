@@ -1866,7 +1866,8 @@ void Renderer::renderMenu(int width,
                      index < 4 || index == 5 || index == 12 ? 1.15f : 1.4f,
                      {1, 1, 1, 1});
             if (index < 4 || index == 5 || index == 12) {
-                const std::size_t sliderIndex = index == 12 ? 6 : static_cast<std::size_t>(index);
+                const std::size_t sliderIndex = index == 12 ? 6 : index == 5 ? 4
+                                                   : static_cast<std::size_t>(index);
                 constexpr float sliderXOffset = 190.0f;
                 constexpr float sliderWidth = 150.0f;
                 addRect(vertices,

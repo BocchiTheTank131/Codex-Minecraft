@@ -290,6 +290,7 @@ public:
     RenderCuboid mobOutline(int index) const;
     std::vector<RenderCuboid> renderCuboids() const;
     std::vector<RenderBillboard> renderBillboards() const;
+    std::string mobName(int index) const;
     std::vector<RenderItemSprite> renderItemSprites() const;
     bool save(const std::string& path, std::uint32_t seed) const;
     bool load(const std::string& path, std::uint32_t seed);
@@ -299,7 +300,10 @@ public:
 private:
     // ID 3 is a retired Wolf ID in old save files. Never reuse it.
     enum class AnimalType : std::uint8_t { Cow = 0, Pig = 1, Sheep = 2, Villager = 4,
-                                            Pillager = 5, BillboardHostile = 6 };
+                                            Pillager = 5, BillboardFirst = 6 };
+    static bool isBillboard(AnimalType type);
+    static std::size_t billboardIndex(AnimalType type);
+    static AnimalType billboardType(std::size_t index);
     struct Animal {
         AnimalType type = AnimalType::Cow;
         glm::vec3 position{0}, velocity{0}, home{0};
@@ -313,7 +317,6 @@ private:
               wanderPhase = 0;
         glm::vec3 rememberedTarget{0};
         bool persistent = false;
-        std::uint8_t spriteVariant = 0;
         bool grounded = false, dropsReleased = false;
     };
     struct Drop {

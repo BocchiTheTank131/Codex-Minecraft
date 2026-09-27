@@ -5,7 +5,9 @@
 #include "Definitions.h"
 #include "Player.h"
 #include "World.h"
+#include "SpriteManifest.h"
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstring>
@@ -22,6 +24,34 @@ constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '4', '\0', '\0'};
 constexpr char MobMagic[8] = {'V', 'X', 'M', 'O', 'B', '1', '\0', '\0'};
 constexpr int PassiveMobCap = 26;
 constexpr int HostileMobCap = 18;
+constexpr std::size_t BillboardMobCount = sizeof(SpriteAssets) / sizeof(SpriteAssets[0]);
+struct BillboardMobDefinition {
+    std::string name;
+    float health = 20.0f;
+    float chaseSpeed = 2.35f;
+    float damage = 2.0f;
+    float attackCooldown = 1.0f;
+    float spawnWeight = 1.0f;
+    MobSoundType sound = MobSoundType::BillboardHostile;
+};
+const std::array<BillboardMobDefinition, BillboardMobCount>& billboardMobDefinitions() {
+    static const auto definitions = [] {
+        std::array<BillboardMobDefinition, BillboardMobCount> result{};
+        for (std::size_t index = 0; index < BillboardMobCount; ++index) {
+            const std::string filename = SpriteAssets[index].name;
+            result[index].name = filename.substr(0, filename.find_last_of('.'));
+        }
+        return result;
+    }();
+    return definitions;
+}
+MobSoundType mobSoundType(std::uint8_t id) {
+    return id >= 6 && id < 6 + BillboardMobCount
+        ? billboardMobDefinitions()[id - 6].sound : static_cast<MobSoundType>(id);
+}
+std::string billboardMobName(std::size_t index) {
+    return billboardMobDefinitions()[index].name;
+}
 bool pick(Item i) {
     return itemDefinition(i).tool == ToolKind::Pickaxe;
 }
@@ -1490,6 +1520,29 @@ glm::vec3 itemColor(Item i) {
 }
 
 SurvivalWorld::SurvivalWorld(std::uint32_t seed) : seed_(seed) {}
+bool SurvivalWorld::isBillboard(AnimalType type) {
+    const auto id = static_cast<std::uint8_t>(type);
+    return id >= 6 && id < 6 + BillboardMobCount;
+}
+std::size_t SurvivalWorld::billboardIndex(AnimalType type) {
+    return static_cast<std::uint8_t>(type) - 6;
+}
+SurvivalWorld::AnimalType SurvivalWorld::billboardType(std::size_t index) {
+    return static_cast<AnimalType>(6 + index);
+}
+std::string SurvivalWorld::mobName(int index) const {
+    if (index < 0 || index >= static_cast<int>(animals_.size())) return {};
+    const auto type = animals_[index].type;
+    if (isBillboard(type)) return billboardMobName(billboardIndex(type));
+    switch (type) {
+    case AnimalType::Cow: return "Cow";
+    case AnimalType::Pig: return "Pig";
+    case AnimalType::Sheep: return "Sheep";
+    case AnimalType::Villager: return "Villager";
+    case AnimalType::Pillager: return "Pillager";
+    default: return {};
+    }
+}
 std::int64_t SurvivalWorld::chunkKey(int x, int z) {
     return (static_cast<std::int64_t>(x) << 32) ^ static_cast<std::uint32_t>(z);
 }
@@ -1538,15 +1591,14 @@ void SurvivalWorld::spawnBillboardPreview(const glm::vec3& origin,
     if (glm::dot(horizontal, horizontal) < .01f) horizontal = {0.0f, -1.0f};
     horizontal = glm::normalize(horizontal);
     const glm::vec2 side(-horizontal.y, horizontal.x);
-    for (int index = 0; index < 4; ++index) {
+    for (std::size_t index = 0; index < BillboardMobCount; ++index) {
         Animal mob;
-        mob.type = AnimalType::BillboardHostile;
-        mob.spriteVariant = static_cast<std::uint8_t>(index);
+        mob.type = billboardType(index);
         mob.position = origin + glm::vec3(horizontal.x * 6.0f + side.x * (index - 1.5f) * 1.4f,
                                           0.0f,
                                           horizontal.y * 6.0f + side.y * (index - 1.5f) * 1.4f);
         mob.home = mob.position;
-        mob.health = 20.0f;
+        mob.health = billboardMobDefinitions()[index].health;
         mob.thinkTimer = 8.0f;
         animals_.push_back(mob);
     }
@@ -1560,12 +1612,17 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         return;
     std::mt19937 random(seed_ ^ (++spawnSequence_ * 0x9e3779b9U));
     std::uniform_real_distribution<float> unit(0.0f, 1.0f);
+    std::array<double, BillboardMobCount> billboardWeights{};
+    for (std::size_t index = 0; index < BillboardMobCount; ++index)
+        billboardWeights[index] = billboardMobDefinitions()[index].spawnWeight;
+    std::discrete_distribution<std::size_t> billboardChoice(
+        billboardWeights.begin(), billboardWeights.end());
     int passiveCount = 0;
     int hostileCount = 0;
     for (const Animal& animal : animals_) {
         if (animal.deathTimer > 0)
             continue;
-        (animal.type == AnimalType::BillboardHostile || animal.type == AnimalType::Pillager
+        (isBillboard(animal.type) || animal.type == AnimalType::Pillager
             ? hostileCount : passiveCount)++;
     }
     spawnAttemptsLastTick_ = 0;
@@ -1630,13 +1687,11 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         }
         Animal animal;
         animal.position = {x + .5f, feetY + .01f, z + .5f};
-        animal.type = hostile ? AnimalType::BillboardHostile
+        animal.type = hostile ? billboardType(billboardChoice(random))
                       : static_cast<AnimalType>(static_cast<int>(unit(random) * 3.0f));
-        animal.health = animal.type == AnimalType::BillboardHostile ? 20.0f
+        animal.health = isBillboard(animal.type)
+                        ? billboardMobDefinitions()[billboardIndex(animal.type)].health
                         : animal.type == AnimalType::Cow ? 10.0f : 8.0f;
-        if (hostile)
-            animal.spriteVariant = static_cast<std::uint8_t>(
-                std::uniform_int_distribution<int>(0, 3)(random));
         animal.thinkTimer = unit(random) * 2.0f;
         animals_.push_back(animal);
         ++spawnSuccessesLastTick_;
@@ -1653,7 +1708,7 @@ int SurvivalWorld::targetedAnimal(const glm::vec3& o, const glm::vec3& d, float 
         if (a.deathTimer > 0)
             continue;
         float t;
-        const bool billboard = a.type == AnimalType::BillboardHostile;
+        const bool billboard = isBillboard(a.type);
         const bool hit = billboard
             ? rayBox(o, d, a.position + glm::vec3(-.305f, 0, -.305f),
                      a.position + glm::vec3(.305f, 1.5f, .305f), reach, t)
@@ -1677,7 +1732,7 @@ MobTarget SurvivalWorld::raycastMob(const glm::vec3& o,
     if (i < 0)
         return result;
     float along = 0;
-    const bool billboard = animals_[i].type == AnimalType::BillboardHostile;
+    const bool billboard = isBillboard(animals_[i].type);
     glm::vec3 center = animals_[i].position + glm::vec3(0, billboard ? .75f : .55f, 0);
     if (billboard)
         rayBox(o, d, animals_[i].position + glm::vec3(-.305f, 0, -.305f),
@@ -1701,7 +1756,7 @@ SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& a
     r.hit = true;
     r.critical = critical;
     r.damage = attackDamage(held) * (critical ? 1.5f : 1.f);
-    r.position = a.position + glm::vec3(0, a.type == AnimalType::BillboardHostile ? .75f : .55f, 0);
+    r.position = a.position + glm::vec3(0, isBillboard(a.type) ? .75f : .55f, 0);
     a.health -= r.damage;
     a.hurtCooldown = .34f;
     a.hurtFlash = .22f;
@@ -1713,7 +1768,7 @@ SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& a
         push = glm::normalize(push);
     a.velocity += push * (critical ? 6.f : 4.4f);
     a.velocity.y = critical ? 4.2f : 3.f;
-    if (a.type == AnimalType::BillboardHostile || a.type == AnimalType::Pillager) {
+    if (isBillboard(a.type) || a.type == AnimalType::Pillager) {
         a.angerTimer = 18.0f;
         a.rememberedTarget = attacker;
         a.memoryTimer = 6.0f;
@@ -1723,7 +1778,7 @@ SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& a
     }
     a.thinkTimer = 0.0f;
     if (sounds_) {
-        const MobSoundType type = static_cast<MobSoundType>(a.type);
+        const MobSoundType type = mobSoundType(static_cast<std::uint8_t>(a.type));
         if (a.health <= 0.0f) sounds_->playMobDeath(type, a.position);
         else sounds_->playMobHurt(type, a.position);
     }
@@ -1753,7 +1808,7 @@ RenderCuboid SurvivalWorld::mobOutline(int i) const {
     if (i < 0 || i >= static_cast<int>(animals_.size()))
         return {};
     const Animal& a = animals_[i];
-    if (a.type == AnimalType::BillboardHostile)
+    if (isBillboard(a.type))
         return {a.position + glm::vec3(0, .75f, 0), glm::vec3(.61f, 1.5f, .61f), {1, 1, 1}};
     float baby = a.age < 0 ? .55f : 1;
     return {
@@ -1823,7 +1878,7 @@ bool SurvivalWorld::canNavigateTo(const Animal& animal, const World& world,
     const int x = static_cast<int>(std::floor(target.x));
     const int z = static_cast<int>(std::floor(target.y));
     const int currentFeet = static_cast<int>(std::floor(animal.position.y + 0.05f));
-    const bool billboard = animal.type == AnimalType::BillboardHostile;
+    const bool billboard = isBillboard(animal.type);
     for (int rise : {0, 1, -1}) {
         const int feetY = currentFeet + rise;
         if (billboard) {
@@ -1916,20 +1971,20 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         }
         a.ambientSoundTimer -= dt;
         if (a.ambientSoundTimer <= 0.0f) {
-            sounds_->playMobAmbient(static_cast<MobSoundType>(a.type), a.position);
+            sounds_->playMobAmbient(mobSoundType(static_cast<std::uint8_t>(a.type)), a.position);
             a.ambientSoundTimer = 5.0f +
                 std::abs(std::sin(a.position.x * 5.71f + a.position.z * 3.17f + a.age)) * 8.0f;
         }
         a.stepSoundTimer -= dt;
         if (a.grounded && glm::dot(a.heading, a.heading) > .1f &&
             a.stepSoundTimer <= 0.0f) {
-            sounds_->playMobStep(static_cast<MobSoundType>(a.type), a.position);
+            sounds_->playMobStep(mobSoundType(static_cast<std::uint8_t>(a.type)), a.position);
             a.stepSoundTimer = .43f;
         }
     }
     const bool hostile = !player.isCreative() && !player.isSpectator() &&
         (a.type == AnimalType::Pillager ||
-         a.type == AnimalType::BillboardHostile);
+         isBillboard(a.type));
     const Item heldFood = inventory.selectedItem();
     const bool preferredFood = !player.isSpectator() &&
         (a.type == AnimalType::Cow || a.type == AnimalType::Sheep
@@ -1943,7 +1998,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         bool active = false;
         if (a.type == AnimalType::Villager) {
             for (const Animal& nearby : animals_) {
-                if ((nearby.type != AnimalType::BillboardHostile &&
+                if ((!isBillboard(nearby.type) &&
                      nearby.type != AnimalType::Pillager) || nearby.deathTimer > 0.0f)
                     continue;
                 const glm::vec2 threat(nearby.position.x - a.position.x,
@@ -1997,11 +2052,16 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     }
     if (hostile && distance < 1.5f && a.attackCooldown <= 0.0f &&
         canSeePlayer(a, w, player)) {
-        player.damage(2.0f);
-        a.attackCooldown = a.type == AnimalType::BillboardHostile ? 1.0f : 1.25f;
+        player.damage(isBillboard(a.type)
+                          ? billboardMobDefinitions()[billboardIndex(a.type)].damage : 2.0f);
+        a.attackCooldown = isBillboard(a.type)
+            ? billboardMobDefinitions()[billboardIndex(a.type)].attackCooldown : 1.25f;
     }
     const float speed = a.fleeTimer > 0.0f ? 2.65f
-                        : hostile && a.memoryTimer > 0.0f ? 2.35f
+                        : hostile && a.memoryTimer > 0.0f
+                            ? (isBillboard(a.type)
+                                   ? billboardMobDefinitions()[billboardIndex(a.type)].chaseSpeed
+                                   : 2.35f)
                         : preferredFood && distance < 8.0f ? 1.15f : 0.75f;
     glm::vec3 move(a.heading.x * speed + a.velocity.x, 0, a.heading.y * speed + a.velocity.z);
     glm::vec3 next = a.position + move * dt;
@@ -2039,13 +2099,13 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         a.grounded = true;
     } else
         a.grounded = false;
-    if (a.type == AnimalType::BillboardHostile && billboardTouchesSolid(w, next)) {
+    if (isBillboard(a.type) && billboardTouchesSolid(w, next)) {
         next.x = a.position.x;
         next.z = a.position.z;
         a.thinkTimer = 0.0f;
     }
     a.position = next;
-    const bool billboard = a.type == AnimalType::BillboardHostile;
+    const bool billboard = isBillboard(a.type);
     const float halfWidth = billboard ? .305f : .38f;
     const glm::vec3 mobMinimum = a.position + glm::vec3(-halfWidth, 0.0f, -halfWidth);
     const glm::vec3 mobMaximum = a.position + glm::vec3(halfWidth, billboard ? 1.5f : 1.15f, halfWidth);
@@ -2054,7 +2114,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         a.hurtCooldown = 0.65f;
         a.hurtFlash = 0.22f;
         if (sounds_) {
-            const MobSoundType type = static_cast<MobSoundType>(a.type);
+            const MobSoundType type = mobSoundType(static_cast<std::uint8_t>(a.type));
             if (a.health <= 0.0f) sounds_->playMobDeath(type, a.position);
             else sounds_->playMobHurt(type, a.position);
         }
@@ -2118,7 +2178,7 @@ void SurvivalWorld::update(float dt, World& w, Player& p, Inventory& i, float da
                                           return false;
                                       const glm::vec2 delta(animal.position.x - despawnReference.x,
                                                             animal.position.z - despawnReference.z);
-                                      const float limit = animal.type == AnimalType::BillboardHostile ||
+                                      const float limit = isBillboard(animal.type) ||
                                                           animal.type == AnimalType::Pillager
                                                               ? despawnDistance
                                                               : despawnDistance + 48.0f;
@@ -2197,7 +2257,7 @@ SurvivalWorld::MobDiagnostics SurvivalWorld::diagnostics(
     for (const Animal& animal : animals_) {
         if (animal.deathTimer > 0)
             continue;
-        (animal.type == AnimalType::BillboardHostile || animal.type == AnimalType::Pillager
+        (isBillboard(animal.type) || animal.type == AnimalType::Pillager
             ? result.hostile : result.passive)++;
     }
     return result;
@@ -2206,7 +2266,7 @@ std::vector<RenderCuboid> SurvivalWorld::renderCuboids() const {
     std::vector<RenderCuboid> out;
     out.reserve(animals_.size() * 6 + experienceOrbs_.size());
     for (const auto& a : animals_) {
-        if (a.type == AnimalType::BillboardHostile)
+        if (isBillboard(a.type))
             continue;
         float baby = a.age < 0 ? .55f : 1,
               death = a.deathTimer > 0 ? std::max(.1f, a.deathTimer / .65f) : 1;
@@ -2241,8 +2301,8 @@ std::vector<RenderCuboid> SurvivalWorld::renderCuboids() const {
 std::vector<RenderBillboard> SurvivalWorld::renderBillboards() const {
     std::vector<RenderBillboard> out;
     for (const Animal& a : animals_)
-        if (a.type == AnimalType::BillboardHostile && a.deathTimer >= 0.0f)
-            out.push_back({a.position, a.spriteVariant, a.hurtFlash,
+        if (isBillboard(a.type) && a.deathTimer >= 0.0f)
+            out.push_back({a.position, static_cast<std::uint8_t>(billboardIndex(a.type)), a.hurtFlash,
                            a.deathTimer > 0.0f ? std::clamp(a.deathTimer / .65f, 0.0f, 1.0f) : 1.0f});
     return out;
 }
@@ -2269,7 +2329,9 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
             case AnimalType::Sheep: type = 2; break;
             case AnimalType::Villager: type = 4; break;
             case AnimalType::Pillager: type = 5; break;
-            case AnimalType::BillboardHostile: type = 6; break;
+            default:
+                if (isBillboard(a.type)) type = static_cast<std::uint8_t>(a.type);
+                break;
             }
             wr(f, type);
             wr(f, a.position);
@@ -2281,12 +2343,16 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     wr(f, markerCount);
     for (std::uint64_t id : spawnedStructureMarkers_)
         wr(f, id);
-    // Optional tail keeps the original MOB1 records and marker section readable.
-    f.write("VAR1", 4);
+    // Filename identities survive changes to sprite ordering between releases.
+    f.write("BID1", 4);
     wr(f, n);
-    for (const Animal& a : animals_)
-        if (a.deathTimer <= 0)
-            wr(f, a.spriteVariant);
+    for (const Animal& a : animals_) if (a.deathTimer <= 0) {
+        const std::string name = isBillboard(a.type)
+            ? billboardMobName(billboardIndex(a.type)) : std::string{};
+        const auto length = static_cast<std::uint8_t>(name.size());
+        wr(f, length);
+        f.write(name.data(), length);
+    }
     return !!f;
     });
 }
@@ -2315,15 +2381,17 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
         case 3: continue; // Retired Wolf from an older save.
         case 4: a.type = AnimalType::Villager; break;
         case 5: a.type = AnimalType::Pillager; break;
-        case 6: a.type = AnimalType::BillboardHostile; break;
-        default: return false;
+        default:
+            if (type < 6 || type >= 6 + BillboardMobCount) return false;
+            a.type = static_cast<AnimalType>(type);
+            break;
         }
         a.health = std::clamp(a.health, .1f, 20.f);
         a.home = a.position;
         a.persistent = true;
         recordIndices.push_back(k);
         loaded.push_back(a);
-        if (a.type != AnimalType::BillboardHostile && a.type != AnimalType::Pillager) {
+        if (!isBillboard(a.type) && a.type != AnimalType::Pillager) {
             loadedSpawnedChunks.insert(
                 chunkKey(static_cast<int>(std::floor(a.position.x / CHUNK_SIZE)),
                          static_cast<int>(std::floor(a.position.z / CHUNK_SIZE))));
@@ -2341,18 +2409,36 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
             loadedMarkers.insert(id);
         }
         if (f.peek() != std::char_traits<char>::eof()) {
-            char variantMagic[4]{};
-            std::uint32_t variantCount = 0;
-            f.read(variantMagic, 4);
-            if (std::memcmp(variantMagic, "VAR1", 4) || !rd(f, variantCount) ||
-                variantCount != n)
+            char identityMagic[4]{};
+            std::uint32_t identityCount = 0;
+            f.read(identityMagic, 4);
+            const bool legacyVariants = std::memcmp(identityMagic, "VAR1", 4) == 0;
+            const bool namedTypes = std::memcmp(identityMagic, "BID1", 4) == 0;
+            if ((!legacyVariants && !namedTypes) || !rd(f, identityCount) ||
+                identityCount != n)
                 return false;
             std::size_t loadedIndex = 0;
             for (std::uint32_t record = 0; record < n; ++record) {
-                std::uint8_t variant = 0;
-                if (!rd(f, variant)) return false;
-                if (loadedIndex < recordIndices.size() && recordIndices[loadedIndex] == record)
-                    loaded[loadedIndex++].spriteVariant = variant < 4 ? variant : 0;
+                std::uint8_t value = 0;
+                if (!rd(f, value)) return false;
+                std::string name;
+                if (namedTypes) {
+                    name.resize(value);
+                    f.read(name.data(), value);
+                    if (!f) return false;
+                }
+                if (loadedIndex < recordIndices.size() && recordIndices[loadedIndex] == record) {
+                    Animal& animal = loaded[loadedIndex++];
+                    if (legacyVariants && isBillboard(animal.type))
+                        animal.type = billboardType(value < BillboardMobCount ? value : 0);
+                    if (namedTypes && !name.empty()) {
+                        for (std::size_t sprite = 0; sprite < BillboardMobCount; ++sprite)
+                            if (name == billboardMobName(sprite)) {
+                                animal.type = billboardType(sprite);
+                                break;
+                            }
+                    }
+                }
             }
         }
     }
@@ -2387,15 +2473,17 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
           !rayBox({.31f, .75f, -2}, {0, 0, 1}, boxMin, boxMax, 5, hitDistance);
     if (!ok) firstFailure = "billboard hitbox dimensions";
     std::array<AnimalType, 4> types{
-        AnimalType::Cow, AnimalType::Pig, AnimalType::Sheep, AnimalType::BillboardHostile};
+        AnimalType::Cow, AnimalType::Pig, AnimalType::Sheep, billboardType(0)};
     std::array<Item, 4> expected{Item::RawBeef, Item::RawPork, Item::Wool, Item::None};
     glm::vec3 origin = testPlayer.cameraPosition(), dir = testPlayer.lookDirection();
     for (int k = 0; k < 4; ++k) {
         Animal a;
         a.type = types[k];
         a.position = origin + dir * 3.f - glm::vec3(0,
-            a.type == AnimalType::BillboardHostile ? .75f : .55f, 0);
-        a.health = types[k] == AnimalType::BillboardHostile ? 20.f : (types[k] == AnimalType::Cow ? 10.f : 8.f);
+            isBillboard(a.type) ? .75f : .55f, 0);
+        a.health = isBillboard(types[k])
+            ? billboardMobDefinitions()[billboardIndex(types[k])].health
+            : (types[k] == AnimalType::Cow ? 10.f : 8.f);
         animals_.push_back(a);
         MobTarget target = raycastMob(origin, dir, 5, w, 5);
         if (!target.valid() && firstFailure.empty())
@@ -2435,7 +2523,7 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     if (!ok && firstFailure.empty()) firstFailure = "ray occlusion";
     animals_.clear();
     Animal hunter;
-    hunter.type = AnimalType::BillboardHostile;
+    hunter.type = billboardType(0);
     hunter.position = testPlayer.position() + glm::vec3(1.f, 0, 0);
     hunter.health = 12;
     animals_.push_back(hunter);
@@ -2500,17 +2588,38 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     if (!ok && firstFailure.empty()) firstFailure = "item pickup";
     animals_.clear();
     Animal variant;
-    variant.type = AnimalType::BillboardHostile;
-    variant.spriteVariant = 3;
     variant.position = testPlayer.position() + glm::vec3(2.0f, 0.0f, 0.0f);
-    animals_.push_back(variant);
+    for (std::size_t sprite = 0; sprite < BillboardMobCount; ++sprite) {
+        variant.type = billboardType(sprite);
+        animals_.push_back(variant);
+    }
     const std::string variantPath = "voxel_billboard_variant_smoke.vxm";
     SurvivalWorld reloaded(seed_);
     ok &= save(variantPath, seed_) && reloaded.load(variantPath, seed_);
     const auto billboards = reloaded.renderBillboards();
-    ok &= billboards.size() == 1 && billboards.front().variant == 3;
-    if (!ok && firstFailure.empty()) firstFailure = "variant save/load";
+    ok &= billboards.size() == BillboardMobCount;
+    for (std::size_t sprite = 0; sprite < BillboardMobCount; ++sprite)
+        ok &= reloaded.mobName(static_cast<int>(sprite)) == billboardMobName(sprite) &&
+              reloaded.animals_[sprite].type == billboardType(sprite) &&
+              billboards[sprite].variant == sprite;
+    if (!ok && firstFailure.empty()) firstFailure = "named mob identity save/load";
     std::filesystem::remove(variantPath);
+    const std::string previousVersionPath = "voxel_previous_billboard_smoke.vxm";
+    ok &= SaveFile::write(previousVersionPath, std::ios::binary, [&](std::ofstream& output) {
+        output.write(MobMagic, 8);
+        const std::uint32_t count = 1, markers = 0;
+        const std::uint8_t oldType = 6, oldVariant = 2;
+        return wr(output, seed_) && wr(output, count) && wr(output, oldType) &&
+               wr(output, variant.position) && wr(output, variant.health) &&
+               wr(output, variant.age) && wr(output, markers) &&
+               (output.write("VAR1", 4), static_cast<bool>(output)) &&
+               wr(output, count) && wr(output, oldVariant);
+    });
+    SurvivalWorld previousVersion(seed_);
+    ok &= previousVersion.load(previousVersionPath, seed_) &&
+          previousVersion.mobName(0) == billboardMobName(2);
+    if (!ok && firstFailure.empty()) firstFailure = "previous billboard save migration";
+    std::filesystem::remove(previousVersionPath);
     const std::string legacyPath = "voxel_legacy_wolf_smoke.vxm";
     ok &= SaveFile::write(legacyPath, std::ios::binary, [&](std::ofstream& output) {
         output.write(MobMagic, 8);
@@ -2545,9 +2654,9 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     for (int attempt = 0; attempt < 100 && variantMask != 15; ++attempt) {
         spawnProbe.spawnNearbyAnimals(w, testPlayer.position(), 0.0f);
         for (const Animal& spawned : spawnProbe.animals_)
-            if (spawned.type == AnimalType::BillboardHostile) {
+            if (isBillboard(spawned.type)) {
                 sawNightSpawn = true;
-                variantMask |= static_cast<std::uint8_t>(1U << spawned.spriteVariant);
+                variantMask |= static_cast<std::uint8_t>(1U << billboardIndex(spawned.type));
             }
         if (spawnProbe.animals_.size() >= HostileMobCap)
             spawnProbe.animals_.clear();
@@ -2562,7 +2671,7 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     drops_ = std::move(oldDrops);
     experienceOrbs_ = std::move(oldOrbs);
     spawnedChunks_ = std::move(oldSpawned);
-    report = ok ? "mob combat, 1.5-block hitbox, night-only spawning, four variants, old Wolf saves, drops, hostile/pillager attacks, and Creative immunity passed"
+    report = ok ? "mob combat, 1.5-block hitbox, night-only spawning, four named mob types, old billboard/Wolf saves, drops, hostile/pillager attacks, and Creative immunity passed"
                 : "combat regression: " + firstFailure;
     return ok;
 }
