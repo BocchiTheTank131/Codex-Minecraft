@@ -116,13 +116,31 @@ struct ItemStack {
 };
 
 enum class RecipeCategory : int { All, Building, Tools, Food, Misc, Count };
+enum class IngredientGroup : std::uint8_t { None, Planks, Logs };
+struct Ingredient {
+    Item item = Item::None;
+    IngredientGroup group = IngredientGroup::None;
+    Ingredient() = default;
+    Ingredient(Item value) : item(value) {}
+    Ingredient(IngredientGroup value) : group(value) {}
+    bool empty() const { return item == Item::None && group == IngredientGroup::None; }
+    bool accepts(Item value) const {
+        if (group == IngredientGroup::Planks)
+            return value == Item::Planks || value == Item::BirchPlanks;
+        if (group == IngredientGroup::Logs)
+            return value == Item::Log || value == Item::BirchLog;
+        return item == value;
+    }
+};
 struct RecipeInfo {
     int w = 0;
     int h = 0;
-    std::array<Item, 9> cells{};
+    std::array<Ingredient, 9> cells{};
     Item output = Item::None;
     int count = 0;
     bool table = false;
+    bool allowMirror = false;
+    bool shapeless = false;
     RecipeCategory category = RecipeCategory::Misc;
 };
 const std::vector<RecipeInfo>& craftingRecipes();

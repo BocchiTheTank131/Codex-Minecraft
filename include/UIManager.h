@@ -77,6 +77,7 @@ public:
         return worldContainerPosition_;
     }
     const RecipeBookView& recipeBook() const { return recipeBook_; }
+    static bool runRecipeBookSelfTest(std::string& report);
 
 private:
     GameState state_ = GameState::Playing;

@@ -178,7 +178,7 @@ const Blocks& blocks() {
         put(Block::Air, 0, 3, 3, 3, Item::None);
         put(Block::Grass, 1, 0, 1, 2, Item::Grass);
         put(Block::Dirt, 2, 2, 2, 2, Item::Dirt);
-        put(Block::Stone, 3, 3, 3, 3, Item::Stone);
+        put(Block::Stone, 3, 3, 3, 3, Item::Cobblestone);
         put(Block::Sand, 4, 4, 4, 4, Item::Sand);
         put(Block::Log, 5, 6, 5, 6, Item::Log);
         put(Block::Leaves, 6, 7, 7, 7, Item::Leaves);

@@ -1804,6 +1804,8 @@ void Game::runSurvivalSmokeTest() {
     std::string meshEditReport;
     std::string fluidReport;
     const bool craftingPassed = Inventory::runCraftingSelfTest(craftingReport);
+    std::string recipeBookReport;
+    const bool recipeBookPassed = UIManager::runRecipeBookSelfTest(recipeBookReport);
     const bool selectedCreativeMode = player_->isCreative();
     player_->setCreativeMode(false);
     const bool combatPassed =
@@ -1818,7 +1820,7 @@ void Game::runSurvivalSmokeTest() {
         asyncMeshPassed = asyncMeshWorld.runAsyncMeshSmokeTest(asyncMeshReport);
     }
     const bool fluidsPassed = world_->runFluidSmokeTest(fluidReport);
-    bool passed = recoilPassed && structuresPassed && craftingPassed &&
+    bool passed = recoilPassed && structuresPassed && craftingPassed && recipeBookPassed &&
                   combatPassed && meshEditsPassed &&
                   asyncMeshPassed && fluidsPassed;
 
@@ -2569,6 +2571,7 @@ void Game::runSurvivalSmokeTest() {
               << "rapid hits " << (recoilPassed ? "passed" : "FAILED") << '\n'
               << "Structure smoke: " << structureReport << '\n'
               << "Crafting smoke: " << craftingReport << '\n'
+              << "Recipe Book smoke: " << recipeBookReport << '\n'
               << "UI/container smoke: shared slot hits and container isolation "
               << (uiLayoutPassed ? "passed" : "FAILED") << '\n'
               << "Metadata smoke: stable IDs, atlas bounds, and Apple food "
@@ -2789,6 +2792,15 @@ void Game::updateUiSmokeTest(double now) {
             glm::ivec3(glm::floor(player_->position())) + glm::ivec3(2, 0, 0);
         world_->setBlock(tablePosition.x, tablePosition.y, tablePosition.z, Block::CraftingTable);
         ui_.openCraftingTable(tablePosition);
+        inventory_->add(Item::Cobblestone, 8);
+        bool furnacePrepared = false;
+        for (int index = 0; index < static_cast<int>(craftingRecipes().size()); ++index)
+            if (craftingRecipes()[static_cast<std::size_t>(index)].output == Item::Furnace) {
+                furnacePrepared = inventory_->fillRecipe(index, true, false) &&
+                                  inventory_->craftingOutput(true).item == Item::Furnace;
+                break;
+            }
+        smokeTest_.checksPassed &= furnacePrepared;
         smokeTest_.craftingStartTime = timing_.worldTime;
         fullbright_ = false;
         break;

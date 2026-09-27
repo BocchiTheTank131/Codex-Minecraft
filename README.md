@@ -35,6 +35,22 @@ It includes procedural terrain, streamed chunks, caves, structures, mobs, crafti
 - 27-slot persistent chests
 - Persistent world edits, mobs, inventory, player stats, furnaces, and chests
 
+## Crafting
+
+Crafting uses the same recipes for manual grid matching and the Recipe Book. The player grid
+accepts recipes up to 2×2; the Crafting Table accepts up to 3×3. Plank recipes accept oak and
+birch planks, including mixed planks where the output has no wood variant. Breaking Stone
+provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; smelting
+Cobblestone produces Stone for Stone Bricks and Stone Slabs.
+Andesite crafts from Diorite and Cobblestone.
+
+Bookshelves have no survival crafting recipe yet because Books are not implemented. Bricks
+likewise need brick items, which are not implemented. Glass and cooked food use the Furnace,
+not the crafting grid. Mossy blocks and Snow Blocks retain Voxel Frontier's existing adapted
+recipes because vines and snowballs are not implemented. The recipe set follows the
+[Minecraft Wiki crafting reference](https://minecraft.wiki/w/Crafting) where the game's
+ingredients exist.
+
 ## Windows Release
 
 The Windows x64 release provides a standalone executable and an installer. The standalone

@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
+#include <functional>
 #include <limits>
 #include <random>
 #include <sstream>
@@ -54,13 +55,16 @@ bool raySphere(const glm::vec3& o,
 }
 
 using Recipe = RecipeInfo;
-Recipe recipe(int w, int h, std::initializer_list<Item> cells, Item output, int count, bool table) {
+Recipe recipe(int w, int h, std::initializer_list<Ingredient> cells, Item output, int count,
+              bool table, bool allowMirror = false, bool shapeless = false) {
     Recipe r;
     r.w = w;
     r.h = h;
     r.output = output;
     r.count = count;
     r.table = table;
+    r.allowMirror = allowMirror;
+    r.shapeless = shapeless;
     r.category = isTool(output) || isSword(output) ? RecipeCategory::Tools
                  : isFood(output) ? RecipeCategory::Food
                  : output == Item::Torch ? RecipeCategory::Misc
@@ -73,34 +77,35 @@ const std::vector<Recipe>& recipes() {
     static const std::vector<Recipe> all = []() {
         std::vector<Recipe> r;
         r.push_back(recipe(1, 1, {Item::Log}, Item::Planks, 4, false));
-        r.push_back(recipe(1, 2, {Item::Planks, Item::Planks}, Item::Stick, 4, false));
+        r.push_back(recipe(1, 2, {IngredientGroup::Planks, IngredientGroup::Planks}, Item::Stick, 4, false));
         r.push_back(recipe(1, 2, {Item::Coal, Item::Stick}, Item::Torch, 4, false));
-        r.push_back(recipe(1, 2, {Item::CoalOre, Item::Stick}, Item::Torch, 4, false));
         r.push_back(recipe(2,
                            2,
-                           {Item::Planks, Item::Planks, Item::Planks, Item::Planks},
+                           {IngredientGroup::Planks, IngredientGroup::Planks,
+                            IngredientGroup::Planks, IngredientGroup::Planks},
                            Item::CraftingTable,
                            1,
                            false));
         r.push_back(recipe(3, 1, {Item::Wheat, Item::Wheat, Item::Wheat}, Item::Bread, 1, true));
-        for (Item m : {Item::Planks, Item::Stone, Item::IronIngot, Item::GoldIngot, Item::Diamond}) {
+        for (Item m : {Item::Planks, Item::Cobblestone, Item::IronIngot, Item::GoldIngot, Item::Diamond}) {
+            const Ingredient material = m == Item::Planks ? IngredientGroup::Planks : Ingredient(m);
             Item p = m == Item::Planks
                          ? Item::WoodPickaxe
-                         : (m == Item::Stone
+                         : (m == Item::Cobblestone
                                 ? Item::StonePickaxe
                                 : (m == Item::IronIngot
                                        ? Item::IronPickaxe
                                        : (m == Item::GoldIngot ? Item::GoldPickaxe
                                                                : Item::DiamondPickaxe)));
             Item a = m == Item::Planks ? Item::WoodAxe
-                                       : (m == Item::Stone
+                                       : (m == Item::Cobblestone
                                               ? Item::StoneAxe
                                               : (m == Item::IronIngot
                                                      ? Item::IronAxe
                                                      : (m == Item::GoldIngot ? Item::GoldAxe
                                                                              : Item::DiamondAxe)));
             Item s = m == Item::Planks ? Item::WoodShovel
-                                       : (m == Item::Stone
+                         : (m == Item::Cobblestone
                                               ? Item::StoneShovel
                                               : (m == Item::IronIngot
                                                      ? Item::IronShovel
@@ -109,41 +114,35 @@ const std::vector<Recipe>& recipes() {
             r.push_back(recipe(
                 3,
                 3,
-                {m, m, m, Item::None, Item::Stick, Item::None, Item::None, Item::Stick, Item::None},
+                {material, material, material, Item::None, Item::Stick, Item::None,
+                 Item::None, Item::Stick, Item::None},
                 p,
                 1,
                 true));
-            r.push_back(recipe(2, 3, {m, m, m, Item::Stick, Item::None, Item::Stick}, a, 1, true));
-            r.push_back(recipe(1, 3, {m, Item::Stick, Item::Stick}, s, 1, true));
+            r.push_back(recipe(2, 3,
+                {material, material, material, Item::Stick, Item::None, Item::Stick},
+                a, 1, true, true));
+            r.push_back(recipe(1, 3, {material, Item::Stick, Item::Stick}, s, 1, true));
             Item sword = m == Item::Planks
                              ? Item::WoodSword
-                             : (m == Item::Stone
+                             : (m == Item::Cobblestone
                                     ? Item::StoneSword
                                     : (m == Item::IronIngot
                                            ? Item::IronSword
                                            : (m == Item::GoldIngot ? Item::GoldSword
                                                                    : Item::DiamondSword)));
-            r.push_back(recipe(1, 3, {m, m, Item::Stick}, sword, 1, true));
+            r.push_back(recipe(1, 3, {material, material, Item::Stick}, sword, 1, true));
         }
         r.push_back(recipe(1, 1, {Item::BirchLog}, Item::BirchPlanks, 4, false));
         r.push_back(recipe(2,
                            2,
                            {Item::Stone, Item::Stone, Item::Stone, Item::Stone},
-                           Item::Cobblestone,
-                           4,
-                           false));
-        r.push_back(recipe(2,
-                           2,
-                           {Item::Cobblestone,
-                            Item::Cobblestone,
-                            Item::Cobblestone,
-                            Item::Cobblestone},
                            Item::StoneBricks,
                            4,
                            false));
-        r.push_back(recipe(2, 2, {Item::Clay, Item::Clay, Item::Clay, Item::Clay}, Item::Bricks, 4, false));
-        r.push_back(recipe(2, 2, {Item::Sand, Item::Sand, Item::Sand, Item::Sand}, Item::Glass, 4, false));
         r.push_back(recipe(2, 2, {Item::Snow, Item::Snow, Item::Snow, Item::Snow}, Item::SnowBlock, 1, false));
+        r.push_back(recipe(2, 1, {Item::Diorite, Item::Cobblestone},
+                           Item::Andesite, 2, false, false, true));
         r.push_back(recipe(3,
                            3,
                            {Item::Cobblestone,
@@ -160,15 +159,15 @@ const std::vector<Recipe>& recipes() {
                            true));
         r.push_back(recipe(3,
                            3,
-                           {Item::Planks,
-                            Item::Planks,
-                            Item::Planks,
-                            Item::Planks,
+                           {IngredientGroup::Planks,
+                            IngredientGroup::Planks,
+                            IngredientGroup::Planks,
+                            IngredientGroup::Planks,
                             Item::None,
-                            Item::Planks,
-                            Item::Planks,
-                            Item::Planks,
-                            Item::Planks},
+                            IngredientGroup::Planks,
+                            IngredientGroup::Planks,
+                            IngredientGroup::Planks,
+                            IngredientGroup::Planks},
                            Item::Chest,
                            1,
                            true));
@@ -178,7 +177,7 @@ const std::vector<Recipe>& recipes() {
                             Item::None,
                             Item::Stick,
                             Item::Stick,
-                            Item::None,
+                            Item::Stick,
                             Item::Stick,
                             Item::Stick,
                             Item::None,
@@ -194,7 +193,7 @@ const std::vector<Recipe>& recipes() {
                             Item::Cobblestone},
                            Item::MossyCobblestone,
                            2,
-                           false));
+                           false, false, true));
         r.push_back(recipe(2,
                            2,
                            {Item::StoneBricks,
@@ -203,35 +202,22 @@ const std::vector<Recipe>& recipes() {
                             Item::StoneBricks},
                            Item::MossyStoneBricks,
                            2,
-                           false));
-        r.push_back(recipe(3,
-                           3,
-                           {Item::Planks,
-                            Item::Planks,
-                            Item::Planks,
-                            Item::Leather,
-                            Item::Leather,
-                            Item::Leather,
-                            Item::Planks,
-                            Item::Planks,
-                            Item::Planks},
-                           Item::Bookshelf,
-                           1,
-                           true));
+                           false, false, true));
         r.push_back(recipe(2,
                            3,
-                           {Item::Planks,
-                            Item::Planks,
-                            Item::Planks,
-                            Item::Planks,
-                            Item::Planks,
-                            Item::Planks},
+                           {IngredientGroup::Planks,
+                            IngredientGroup::Planks,
+                            IngredientGroup::Planks,
+                            IngredientGroup::Planks,
+                            IngredientGroup::Planks,
+                            IngredientGroup::Planks},
                            Item::WoodenDoor,
                            3,
                            true));
         r.push_back(recipe(3,
                            1,
-                           {Item::Planks, Item::Planks, Item::Planks},
+                           {IngredientGroup::Planks, IngredientGroup::Planks,
+                            IngredientGroup::Planks},
                            Item::WoodenSlab,
                            6,
                            true));
@@ -459,18 +445,48 @@ void Inventory::clickStack(ItemStack& slot, ItemStack& cursor, bool right) {
 }
 
 bool Inventory::findCraftingMatch(bool table, ItemStack& out, std::vector<int>* used) const {
-    int grid = table ? 3 : 2;
+    const int grid = table ? 3 : 2;
     for (const Recipe& r : recipes()) {
-        if (r.table && !table || r.w > grid || r.h > grid)
+        if ((r.table && !table) || r.w > grid || r.h > grid)
             continue;
+        if (r.shapeless) {
+            std::vector<int> slots;
+            for (int y = 0; y < grid; ++y)
+                for (int x = 0; x < grid; ++x)
+                    if (!crafting_[static_cast<std::size_t>(y * 3 + x)].empty())
+                        slots.push_back(y * 3 + x);
+            int required = 0;
+            for (int i = 0; i < r.w * r.h; ++i)
+                required += !r.cells[static_cast<std::size_t>(i)].empty();
+            if (static_cast<int>(slots.size()) != required)
+                continue;
+            std::function<bool(int, int)> assign = [&](int cell, int claimed) {
+                if (cell == r.w * r.h)
+                    return true;
+                const Ingredient& ingredient = r.cells[static_cast<std::size_t>(cell)];
+                if (ingredient.empty())
+                    return assign(cell + 1, claimed);
+                for (int i = 0; i < required; ++i)
+                    if (!(claimed & (1 << i)) &&
+                        ingredient.accepts(crafting_[static_cast<std::size_t>(slots[i])].item) &&
+                        assign(cell + 1, claimed | (1 << i)))
+                        return true;
+                return false;
+            };
+            if (!assign(0, 0))
+                continue;
+            out = {r.output, r.count, maxDurability(r.output)};
+            if (used) *used = slots;
+            return true;
+        }
         for (int oy = 0; oy <= grid - r.h; ++oy)
             for (int ox = 0; ox <= grid - r.w; ++ox)
-                for (int mirror = 0; mirror < (r.w > 1 ? 2 : 1); ++mirror) {
+                for (int mirror = 0; mirror < (r.allowMirror && r.w > 1 ? 2 : 1); ++mirror) {
                     bool ok = true;
                     std::vector<int> indices;
                     for (int y = 0; y < grid; ++y)
                         for (int x = 0; x < grid; ++x) {
-                            Item expected = Item::None;
+                            Ingredient expected;
                             if (x >= ox && x < ox + r.w && y >= oy && y < oy + r.h) {
                                 int rx = x - ox;
                                 if (mirror)
@@ -478,12 +494,12 @@ bool Inventory::findCraftingMatch(bool table, ItemStack& out, std::vector<int>* 
                                 expected = r.cells[(y - oy) * r.w + rx];
                             }
                             int ci = y * 3 + x;
-                            Item actual = crafting_[ci].empty() ? Item::None : crafting_[ci].item;
-                            if (actual != expected) {
+                            const Item actual = crafting_[ci].empty() ? Item::None : crafting_[ci].item;
+                            if (!expected.accepts(actual)) {
                                 ok = false;
                                 break;
                             }
-                            if (expected != Item::None)
+                            if (!expected.empty())
                                 indices.push_back(ci);
                         }
                     if (ok) {
@@ -547,27 +563,8 @@ int Inventory::craftOutputToInventory(bool table) {
 }
 
 bool Inventory::recipeCraftable(int recipeIndex, bool table) const {
-    const auto& all = craftingRecipes();
-    if (recipeIndex < 0 || recipeIndex >= static_cast<int>(all.size()))
-        return false;
-    const RecipeInfo& recipe = all[static_cast<std::size_t>(recipeIndex)];
-    if ((recipe.table && !table) || recipe.w > (table ? 3 : 2) ||
-        recipe.h > (table ? 3 : 2))
-        return false;
     Inventory candidate = *this;
-    candidate.returnCraftingItems();
-    for (const ItemStack& stack : candidate.crafting_) {
-        if (!stack.empty())
-            return false;
-    }
-    for (int y = 0; y < recipe.h; ++y) {
-        for (int x = 0; x < recipe.w; ++x) {
-            const Item ingredient = recipe.cells[static_cast<std::size_t>(y * recipe.w + x)];
-            if (ingredient != Item::None && !candidate.remove(ingredient))
-                return false;
-        }
-    }
-    return true;
+    return candidate.fillRecipe(recipeIndex, table, false);
 }
 
 bool Inventory::fillRecipe(int recipeIndex, bool table, bool maximize) {
@@ -578,39 +575,74 @@ bool Inventory::fillRecipe(int recipeIndex, bool table, bool maximize) {
     if ((recipe.table && !table) || recipe.w > (table ? 3 : 2) ||
         recipe.h > (table ? 3 : 2))
         return false;
-    Inventory candidate = *this;
-    candidate.returnCraftingItems();
-    for (const ItemStack& stack : candidate.crafting_) {
-        if (!stack.empty())
-            return false;
-    }
-    int craftCount = maximize ? 64 : 1;
-    for (int y = 0; y < recipe.h; ++y) {
-        for (int x = 0; x < recipe.w; ++x) {
-            const Item ingredient = recipe.cells[static_cast<std::size_t>(y * recipe.w + x)];
-            if (ingredient == Item::None)
-                continue;
-            int required = 0;
-            for (int cell = 0; cell < recipe.w * recipe.h; ++cell)
-                required += recipe.cells[static_cast<std::size_t>(cell)] == ingredient ? 1 : 0;
-            craftCount = std::min(craftCount,
-                                  candidate.count(ingredient) / required);
-            craftCount = std::min(craftCount, maxStack(ingredient));
+    const int limit = maximize ? 64 : 1;
+    const int grid = table ? 3 : 2;
+    auto prepare = [&](Inventory& candidate, int craftCount) {
+        for (int y = 0; y < 3; ++y)
+            for (int x = 0; x < 3; ++x) {
+                const Ingredient ingredient = x < recipe.w && y < recipe.h
+                    ? recipe.cells[static_cast<std::size_t>(y * recipe.w + x)] : Ingredient{};
+                ItemStack& destination = candidate.crafting_[static_cast<std::size_t>(y * 3 + x)];
+                if (x >= grid || y >= grid || ingredient.empty()) {
+                    if (!destination.empty()) return false;
+                    continue;
+                }
+                if (!destination.empty()) {
+                    if (!ingredient.accepts(destination.item)) return false;
+                    const int needed = std::max(0, craftCount - destination.count);
+                    if (destination.count + needed > maxStack(destination.item) ||
+                        !candidate.remove(destination.item, needed)) return false;
+                    destination.count += needed;
+                    continue;
+                }
+                Item chosen = Item::None;
+                int available = 0;
+                for (int itemIndex = static_cast<int>(Item::Grass);
+                     itemIndex < static_cast<int>(Item::Count); ++itemIndex) {
+                    const Item item = static_cast<Item>(itemIndex);
+                    const int stock = candidate.count(item);
+                    if (ingredient.accepts(item) && stock >= craftCount &&
+                        stock > available && maxStack(item) >= craftCount) {
+                        chosen = item;
+                        available = stock;
+                    }
+                }
+                if (chosen == Item::None || !candidate.remove(chosen, craftCount))
+                    return false;
+                destination = {chosen, craftCount, 0};
+            }
+        return candidate.craftingOutput(table).item == recipe.output;
+    };
+
+    Inventory best = *this;
+    int bestCount = 0;
+    if (!recipe.shapeless)
+        for (int craftCount = limit; craftCount >= 1; --craftCount) {
+            Inventory candidate = *this;
+            if (prepare(candidate, craftCount)) {
+                best = std::move(candidate);
+                bestCount = craftCount;
+                if (!maximize) { *this = std::move(best); return true; }
+                break;
+            }
         }
-    }
-    if (craftCount <= 0)
-        return false;
-    for (int y = 0; y < recipe.h; ++y) {
-        for (int x = 0; x < recipe.w; ++x) {
-            const Item ingredient = recipe.cells[static_cast<std::size_t>(y * recipe.w + x)];
-            if (ingredient == Item::None)
-                continue;
-            candidate.remove(ingredient, craftCount);
-            candidate.crafting_[static_cast<std::size_t>(y * 3 + x)] =
-                {ingredient, craftCount, 0};
+
+    Inventory base = *this;
+    base.returnCraftingItems();
+    bool returnedAll = true;
+    for (const ItemStack& stack : base.crafting_)
+        returnedAll &= stack.empty();
+    if (returnedAll)
+        for (int craftCount = limit; craftCount > bestCount; --craftCount) {
+            Inventory candidate = base;
+            if (prepare(candidate, craftCount)) {
+                best = std::move(candidate);
+                bestCount = craftCount;
+                break;
+            }
         }
-    }
-    *this = std::move(candidate);
+    if (bestCount == 0) return false;
+    *this = std::move(best);
     return true;
 }
 
@@ -632,7 +664,7 @@ bool Inventory::shiftIngredientToCrafting(int playerSlot, int recipeIndex, bool 
     // Shift-click useful for recipes with repeated ingredients (for example, tools).
     for (int y = 0; y < recipe.h; ++y) {
         for (int x = 0; x < recipe.w; ++x) {
-            if (recipe.cells[static_cast<std::size_t>(y * recipe.w + x)] != source.item)
+            if (!recipe.cells[static_cast<std::size_t>(y * recipe.w + x)].accepts(source.item))
                 continue;
             ItemStack& destination = crafting_[static_cast<std::size_t>(y * 3 + x)];
             if (!destination.empty())
@@ -647,7 +679,7 @@ bool Inventory::shiftIngredientToCrafting(int playerSlot, int recipeIndex, bool 
     }
     for (int y = 0; y < recipe.h; ++y) {
         for (int x = 0; x < recipe.w; ++x) {
-            if (recipe.cells[static_cast<std::size_t>(y * recipe.w + x)] != source.item)
+            if (!recipe.cells[static_cast<std::size_t>(y * recipe.w + x)].accepts(source.item))
                 continue;
             ItemStack& destination = crafting_[static_cast<std::size_t>(y * 3 + x)];
             if (destination.item != source.item)
@@ -922,10 +954,6 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
              {{0, Item::Planks}, {1, Item::Planks}, {3, Item::Planks}, {4, Item::Planks}},
              Item::CraftingTable) &&
         test(false,
-             {{0, Item::Stone}, {1, Item::Stone}, {3, Item::Stone}, {4, Item::Stone}},
-             Item::Cobblestone,
-             4) &&
-        test(false,
              {{0, Item::StoneBricks},
               {1, Item::TallGrass},
               {3, Item::TallGrass},
@@ -980,6 +1008,7 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
              {{0, Item::Stick},
               {2, Item::Stick},
               {3, Item::Stick},
+              {4, Item::Stick},
               {5, Item::Stick},
               {6, Item::Stick},
               {8, Item::Stick}},
@@ -1038,8 +1067,102 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
                     emptyOutput.x + 22, emptyOutput.y + 22, 1280, 720,
                     false, false, true) &&
                fastCraft.cursor_.item == Item::Diamond && fastCraft.cursor_.count == 2;
+    const std::array<Item, 5> materials = {Item::Planks, Item::Cobblestone,
+        Item::IronIngot, Item::GoldIngot, Item::Diamond};
+    const std::array<Item, 5> picks = {Item::WoodPickaxe, Item::StonePickaxe,
+        Item::IronPickaxe, Item::GoldPickaxe, Item::DiamondPickaxe};
+    const std::array<Item, 5> axes = {Item::WoodAxe, Item::StoneAxe,
+        Item::IronAxe, Item::GoldAxe, Item::DiamondAxe};
+    const std::array<Item, 5> shovels = {Item::WoodShovel, Item::StoneShovel,
+        Item::IronShovel, Item::GoldShovel, Item::DiamondShovel};
+    const std::array<Item, 5> swords = {Item::WoodSword, Item::StoneSword,
+        Item::IronSword, Item::GoldSword, Item::DiamondSword};
+    for (std::size_t i = 0; i < materials.size(); ++i) {
+        const Item m = materials[i];
+        improved &= test(true, {{0,m},{1,m},{2,m},{4,Item::Stick},{7,Item::Stick}}, picks[i]);
+        improved &= test(true, {{0,m},{1,m},{3,m},{4,Item::Stick},{7,Item::Stick}}, axes[i]);
+        improved &= test(true, {{1,m},{2,m},{4,Item::Stick},{5,m},{7,Item::Stick}}, axes[i]);
+        improved &= test(true, {{1,m},{4,Item::Stick},{7,Item::Stick}}, shovels[i]);
+        improved &= test(true, {{1,m},{4,m},{7,Item::Stick}}, swords[i]);
+    }
+    improved &= test(false, {{0,Item::Coal},{3,Item::Stick}}, Item::Torch, 4);
+    improved &= test(true, {{4,Item::BirchPlanks},{5,Item::Planks},
+        {7,Item::Planks},{8,Item::BirchPlanks}}, Item::CraftingTable);
+    improved &= test(true, {{3,Item::Stone},{4,Item::Stone},{5,Item::Stone}},
+        Item::StoneSlab, 6);
+    improved &= test(true, {{3,Item::BirchPlanks},{4,Item::Planks},
+        {5,Item::BirchPlanks}}, Item::WoodenSlab, 6);
+    improved &= test(false, {{0,Item::TallGrass},{1,Item::Cobblestone},
+        {3,Item::Cobblestone},{4,Item::TallGrass}}, Item::MossyCobblestone, 2);
+    improved &= test(false, {{0,Item::Cobblestone},{4,Item::Diorite}},
+        Item::Andesite, 2);
+    fastCraft.clear();
+    for (int slot : {0,1,2,3,5,6,7,8})
+        fastCraft.crafting_[static_cast<std::size_t>(slot)] = {Item::Cobblestone, 1, 0};
+    improved &= fastCraft.craftingOutput(true).item == Item::Furnace &&
+                fastCraft.craftingOutput(false).empty();
+    fastCraft.crafting_[4] = {Item::Cobblestone, 1, 0};
+    improved &= fastCraft.craftingOutput(true).empty();
+    fastCraft.crafting_[4].clear();
+    fastCraft.crafting_[0] = {Item::Stone, 1, 0};
+    improved &= fastCraft.craftingOutput(true).empty();
+    fastCraft.crafting_[0].clear();
+    improved &= fastCraft.craftingOutput(true).empty();
+    fastCraft.clear();
+    fastCraft.add(Item::Planks, 16);
+    fastCraft.add(Item::BirchPlanks, 16);
+    int chestRecipe = -1;
+    for (int i = 0; i < static_cast<int>(craftingRecipes().size()); ++i)
+        if (craftingRecipes()[static_cast<std::size_t>(i)].output == Item::Chest)
+            chestRecipe = i;
+    improved &= chestRecipe >= 0 && fastCraft.recipeCraftable(chestRecipe, true) &&
+                !fastCraft.recipeCraftable(chestRecipe, false) &&
+                fastCraft.fillRecipe(chestRecipe, true, true) &&
+                fastCraft.craftSlot(0).count == 4 &&
+                fastCraft.craftingOutput(true).item == Item::Chest &&
+                fastCraft.craftOutputToInventory(true) == 4 &&
+                fastCraft.count(Item::Chest) == 4 &&
+                fastCraft.count(Item::Planks) == 0 &&
+                fastCraft.count(Item::BirchPlanks) == 0;
+    fastCraft.clear();
+    fastCraft.add(Item::BirchPlanks, 8);
+    improved &= fastCraft.fillRecipe(chestRecipe, true, false) &&
+                fastCraft.craftingOutput(true).item == Item::Chest;
+    fastCraft.crafting_[4] = {Item::Stone, 1, 0};
+    const int before = fastCraft.count(Item::BirchPlanks);
+    improved &= fastCraft.fillRecipe(chestRecipe, true, false) &&
+                fastCraft.count(Item::BirchPlanks) == before &&
+                fastCraft.count(Item::Stone) == 1 &&
+                fastCraft.crafting_[4].empty();
+    int furnaceRecipe = -1;
+    for (int i = 0; i < static_cast<int>(craftingRecipes().size()); ++i)
+        if (craftingRecipes()[static_cast<std::size_t>(i)].output == Item::Furnace)
+            furnaceRecipe = i;
+    fastCraft.clear();
+    for (ItemStack& stack : fastCraft.slots_)
+        stack = {Item::Stone, 64, 0};
+    fastCraft.slots_[0] = {Item::Cobblestone, 1, 0};
+    for (int slot : {1,2,3,5,6,7,8})
+        fastCraft.crafting_[static_cast<std::size_t>(slot)] = {Item::Cobblestone, 1, 0};
+    improved &= furnaceRecipe >= 0 && fastCraft.recipeCraftable(furnaceRecipe, true) &&
+                fastCraft.fillRecipe(furnaceRecipe, true, false) &&
+                fastCraft.craftingOutput(true).item == Item::Furnace &&
+                fastCraft.count(Item::Cobblestone) == 0 &&
+                fastCraft.crafting_[1].count == 1;
+    fastCraft.crafting_[4] = {Item::Stone, 1, 0};
+    improved &= !fastCraft.fillRecipe(furnaceRecipe, true, false) &&
+                fastCraft.crafting_[4].item == Item::Stone;
+    improved &= blockToItem(Block::Stone) == Item::Cobblestone &&
+                smeltingResult(Item::Cobblestone) == Item::Stone &&
+                smeltingResult(Item::Sand) == Item::Glass &&
+                smeltingResult(Item::IronOre) == Item::IronIngot &&
+                smeltingResult(Item::GoldOre) == Item::GoldIngot &&
+                smeltingResult(Item::CopperOre) == Item::CopperIngot &&
+                smeltingResult(Item::RawBeef) == Item::CookedBeef &&
+                smeltingResult(Item::RawPork) == Item::CookedPork &&
+                smeltingResult(Item::RawMutton) == Item::CookedMutton;
     report = ok && improved
-                 ? "2x2/3x3 recipes, autofill, repeated-ingredient Shift-click, batch output, insufficient ingredients, and full inventory passed"
+                 ? "2x2/3x3 recipes, shifted shapes, tools/mirrors, material groups, autofill, batch output, invalid ingredients, and full inventory passed"
                  : "crafting regression";
     return ok && improved;
 }

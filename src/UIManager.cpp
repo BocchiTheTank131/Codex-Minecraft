@@ -93,6 +93,44 @@ void UIManager::refreshRecipeBook(const Inventory& inventory, bool tableMode) {
         std::max(0, (static_cast<int>(recipeBook_.entries.size()) - 1) / 8));
 }
 
+bool UIManager::runRecipeBookSelfTest(std::string& report) {
+    Inventory inventory;
+    inventory.clear();
+    inventory.add(Item::Cobblestone, 8);
+    UIManager ui;
+    ui.openInventory();
+    ui.recipeBook_.search = "furnace";
+    ui.refreshRecipeBook(inventory, false);
+    bool passed = ui.recipeBook_.entries.empty();
+    ui.openCraftingTable({0, 0, 0});
+    ui.recipeBook_.craftableOnly = true;
+    ui.refreshRecipeBook(inventory, true);
+    passed &= ui.recipeBook_.entries.size() == 1;
+    if (!ui.recipeBook_.entries.empty()) {
+        const int index = ui.recipeBook_.entries[0];
+        passed &= craftingRecipes()[static_cast<std::size_t>(index)].output == Item::Furnace &&
+                  inventory.fillRecipe(index, true, false) &&
+                  inventory.craftingOutput(true).item == Item::Furnace;
+    }
+    ui.recipeBook_.search = "missing recipe";
+    ui.refreshRecipeBook(inventory, true);
+    passed &= ui.recipeBook_.entries.empty();
+    ui.recipeBook_.search.clear();
+    ui.recipeBook_.craftableOnly = false;
+    ui.recipeBook_.page = 999;
+    ui.refreshRecipeBook(inventory, true);
+    passed &= ui.recipeBook_.entries.size() > 8 &&
+              ui.recipeBook_.page == (static_cast<int>(ui.recipeBook_.entries.size()) - 1) / 8;
+    ui.recipeBook_.category = RecipeCategory::Tools;
+    ui.refreshRecipeBook(inventory, true);
+    passed &= !ui.recipeBook_.entries.empty();
+    for (int index : ui.recipeBook_.entries)
+        passed &= craftingRecipes()[static_cast<std::size_t>(index)].category == RecipeCategory::Tools;
+    report = passed ? "grid filtering, craftable toggle, search, pagination, and autofill passed"
+                    : "recipe book regression";
+    return passed;
+}
+
 void UIManager::openPauseMenu() {
     state_ = GameState::PauseMenu;
 }
