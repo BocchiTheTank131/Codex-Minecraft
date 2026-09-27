@@ -34,6 +34,7 @@ void GameSettings::clamp() {
     simulationDistance = std::clamp(simulationDistance, 2, 32);
     fov = std::clamp(fov, 55.0f, 105.0f);
     mouseSensitivity = std::clamp(mouseSensitivity, 0.03f, 0.30f);
+    brightness = std::clamp(brightness, 0.0f, 1.0f);
     masterVolume = std::clamp(masterVolume, 0.0f, 1.0f);
     musicVolume = std::clamp(musicVolume, 0.0f, 1.0f);
     sfxVolume = std::clamp(sfxVolume, 0.0f, 1.0f);
@@ -121,6 +122,8 @@ bool GameSettings::load(const std::string& path) {
                 fov = std::stof(value);
             else if (key == "mouse_sensitivity")
                 mouseSensitivity = std::stof(value);
+            else if (key == "brightness")
+                brightness = std::stof(value);
             else if (key == "master_volume")
                 masterVolume = std::stof(value);
             else if (key == "music_volume")
@@ -169,6 +172,7 @@ bool GameSettings::save(const std::string& path) const {
            << "simulation_distance=" << simulationDistance << '\n'
            << "fov=" << fov << '\n'
            << "mouse_sensitivity=" << mouseSensitivity << '\n'
+           << "brightness=" << brightness << '\n'
            << "master_volume=" << masterVolume << '\n'
            << "music_volume=" << musicVolume << '\n'
            << "sfx_volume=" << sfxVolume << '\n'

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.4.0 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.5.0 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 option(VOXELFRONTIER_STANDALONE_DEMO "Build the stateless standalone demo" OFF)
@@ -62,6 +62,7 @@ target_include_directories(VoxelFrontier PRIVATE include ${miniaudio_SOURCE_DIR}
 target_link_libraries(VoxelFrontier PRIVATE glfw glad glm::glm OpenGL::GL Threads::Threads)
 
 if(WIN32)
+    target_link_libraries(VoxelFrontier PRIVATE windowscodecs ole32)
     set(VOXEL_RESOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/embedded")
     file(MAKE_DIRECTORY "${VOXEL_RESOURCE_DIR}")
     file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/packaging/VoxelFrontier.ico" VOXEL_ICON_RC_PATH)
@@ -69,6 +70,24 @@ if(WIN32)
                    "${VOXEL_RESOURCE_DIR}/VoxelVersion.rc" @ONLY)
     target_sources(VoxelFrontier PRIVATE "${VOXEL_RESOURCE_DIR}/VoxelVersion.rc")
 endif()
+
+file(GLOB VOXEL_SPRITE_FILES CONFIGURE_DEPENDS
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}/sprites" "${CMAKE_CURRENT_SOURCE_DIR}/sprites/*.png")
+list(SORT VOXEL_SPRITE_FILES)
+list(LENGTH VOXEL_SPRITE_FILES VOXEL_SPRITE_COUNT)
+if(NOT VOXEL_SPRITE_COUNT EQUAL 4)
+    message(FATAL_ERROR "Exactly four hostile mob PNG sprites are required")
+endif()
+file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/embedded")
+set(VOXEL_SPRITE_MANIFEST "${CMAKE_CURRENT_BINARY_DIR}/embedded/SpriteManifest.h")
+file(WRITE "${VOXEL_SPRITE_MANIFEST}" "#pragma once\nstruct SpriteAsset { const char* name; int id; };\ninline constexpr SpriteAsset SpriteAssets[] = {\n")
+set(VOXEL_SPRITE_ID 2000)
+foreach(VOXEL_SPRITE IN LISTS VOXEL_SPRITE_FILES)
+    file(APPEND "${VOXEL_SPRITE_MANIFEST}" "    {\"${VOXEL_SPRITE}\", ${VOXEL_SPRITE_ID}},\n")
+    math(EXPR VOXEL_SPRITE_ID "${VOXEL_SPRITE_ID} + 1")
+endforeach()
+file(APPEND "${VOXEL_SPRITE_MANIFEST}" "};\n")
+target_include_directories(VoxelFrontier PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded")
 
 if(VOXEL_STANDALONE)
     target_sources(VoxelFrontier PRIVATE src/UserData.cpp)
@@ -101,6 +120,14 @@ if(VOXEL_STANDALONE)
         math(EXPR VOXEL_SOUND_ID "${VOXEL_SOUND_ID} + 1")
     endforeach()
     file(APPEND "${VOXEL_HEADER}" "};\n")
+    set(VOXEL_SPRITE_ID 2000)
+    foreach(VOXEL_SPRITE IN LISTS VOXEL_SPRITE_FILES)
+        file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/sprites/${VOXEL_SPRITE}" VOXEL_SPRITE_PATH)
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+            "${CMAKE_CURRENT_SOURCE_DIR}/sprites/${VOXEL_SPRITE}")
+        file(APPEND "${VOXEL_RC}" "${VOXEL_SPRITE_ID} RCDATA \"${VOXEL_SPRITE_PATH}\"\n")
+        math(EXPR VOXEL_SPRITE_ID "${VOXEL_SPRITE_ID} + 1")
+    endforeach()
     target_sources(VoxelFrontier PRIVATE "${VOXEL_RC}")
     target_include_directories(VoxelFrontier PRIVATE "${VOXEL_RESOURCE_DIR}")
     target_compile_definitions(VoxelFrontier PRIVATE VOXEL_STANDALONE)
@@ -127,4 +154,8 @@ if(NOT VOXEL_STANDALONE)
         COMMAND ${CMAKE_COMMAND} -E copy_directory
                 ${CMAKE_CURRENT_SOURCE_DIR}/sounds
                 $<TARGET_FILE_DIR:VoxelFrontier>/sounds)
+    add_custom_command(TARGET VoxelFrontier POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                ${CMAKE_CURRENT_SOURCE_DIR}/sprites
+                $<TARGET_FILE_DIR:VoxelFrontier>/sprites)
 endif()

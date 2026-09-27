@@ -42,7 +42,8 @@ constexpr std::size_t MaximumVoices = 32;
 enum class AudioCategory { Sfx, PassiveMob, HostileMob };
 
 AudioCategory mobCategory(MobSoundType type) {
-    return type == MobSoundType::Pillager ? AudioCategory::HostileMob
+    return type == MobSoundType::Pillager || type == MobSoundType::BillboardHostile
+               ? AudioCategory::HostileMob
                                           : AudioCategory::PassiveMob;
 }
 
@@ -542,6 +543,10 @@ void SoundSystem::playMobHurt(MobSoundType type, const glm::vec3& position) {
         impl_->play(folder + "hurt", .78f, 6, &position, .06f, mobCategory(type));
 }
 void SoundSystem::playMobDeath(MobSoundType type, const glm::vec3& position) {
+    if (type == MobSoundType::BillboardHostile) {
+        impl_->play("boowomp", .80f, 7, &position, .06f, AudioCategory::HostileMob);
+        return;
+    }
     const std::string folder = mobFolder(type);
     if (folder.empty()) return;
     if (impl_->groups.count(folder + "death"))
@@ -562,6 +567,7 @@ bool SoundSystem::verifyLibrary() {
              "dig/stone", "dig/wood", "dig/grass", "dig/gravel",
              "dig/sand", "dig/snow", "wooden_door/open",
              "wooden_door/close", "chest/open", "chest/close",
+             "boowomp",
              "cow/say", "cow/hurt", "cow/step", "pig/say",
              "pig/step", "pig/death", "sheep/say", "sheep/step"}) {
         const auto found = impl_->groups.find(group);

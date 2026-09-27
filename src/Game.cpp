@@ -288,13 +288,21 @@ void Game::parseArguments(int argc, char** argv) {
                 smokeTest_.worldgenEnabled = true;
             } else if (argument == "--spectator-smoke") {
                 smokeTest_.spectatorEnabled = true;
+            } else if (argument == "--billboard-preview") {
+                smokeTest_.billboardPreview = true;
+            } else if (argument.rfind("--preview-brightness=", 0) == 0) {
+                smokeTest_.previewBrightness = std::clamp(
+                    std::stof(argument.substr(21)) / 100.0f, 0.0f, 1.0f);
             }
         } catch (...) {
             // Preserve the previous valid seed when a command-line value is malformed.
         }
     }
 
-    if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
+    if (smokeTest_.uiEnabled || smokeTest_.survivalEnabled || smokeTest_.resetEnabled ||
+        smokeTest_.worldgenEnabled || smokeTest_.spectatorEnabled || smokeTest_.billboardPreview)
+        saveOnExit_ = false;
+    if (Persistence::enabled() && saveOnExit_)
         saveWorldMetadata();
 }
 
@@ -378,6 +386,14 @@ void Game::createWorldAndSystems() {
     if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
         survival_->load(MobSavePath, seed_);
     survival_->setSoundSystem(sounds_.get());
+    if (smokeTest_.billboardPreview) {
+        saveOnExit_ = false;
+        creativeMode_ = true;
+        player_->setCreativeMode(true);
+        timing_.worldTime = DayNightCycleSeconds * .75f;
+        settings_.brightness = smokeTest_.previewBrightness;
+        survival_->spawnBillboardPreview(player_->position(), player_->lookDirection());
+    }
     farming_ = std::make_unique<FarmingSystem>();
 
     input_.attach(window_);
@@ -657,7 +673,7 @@ void Game::handleGlobalInput() {
 
     if (smokeTest_.uiEnabled || smokeTest_.survivalEnabled ||
         smokeTest_.resetEnabled || smokeTest_.worldgenEnabled ||
-        smokeTest_.spectatorEnabled) {
+        smokeTest_.spectatorEnabled || smokeTest_.billboardPreview) {
         saveOnExit_ = false;
     }
 
@@ -747,7 +763,7 @@ void Game::updatePauseInterface() {
             saveSettings();
         }
         if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) &&
-            ((hit >= 0 && hit < 4) || hit == 11) &&
+            ((hit >= 0 && hit < 4) || hit == 5 || hit == 12) &&
             cursor.x >= panelX + 180.0f && cursor.x <= panelX + 350.0f) {
             activeSettingsSlider_ = hit;
             sounds_->playClick();
@@ -772,7 +788,10 @@ void Game::updatePauseInterface() {
                 settings_.mouseSensitivity = 0.03f + slider * 0.27f;
                 player_->setMouseSensitivity(settings_.mouseSensitivity);
                 break;
-            case 11:
+            case 5:
+                settings_.brightness = slider;
+                break;
+            case 12:
                 settings_.entityDistance = static_cast<int>(std::round(2.0f + slider * 62.0f));
                 break;
             default:
@@ -872,27 +891,27 @@ void Game::updatePauseInterface() {
     case 4:
         ui_.openAudioSettings();
         return;
-    case 5:
+    case 6:
         settings_.antiAliasingSamples = settings_.antiAliasingSamples == 0
                                             ? 2
                                             : (settings_.antiAliasingSamples == 2 ? 4 : 0);
         destroyRenderTarget();
         break;
-    case 6:
+    case 7:
         settings_.fullscreen = !settings_.fullscreen;
         applyFullscreenSetting();
         break;
-    case 7:
+    case 8:
         settings_.vsync = !settings_.vsync;
         glfwSwapInterval(settings_.vsync ? 1 : 0);
         break;
-    case 8:
+    case 9:
         settings_.showFps = !settings_.showFps;
         break;
-    case 9:
+    case 10:
         settings_.showCoordinates = !settings_.showCoordinates;
         break;
-    case 10:
+    case 11:
         settings_.applyPreset(settings_.graphicsPreset == GraphicsPreset::Low
                                   ? GraphicsPreset::Medium
                                   : settings_.graphicsPreset == GraphicsPreset::Medium
@@ -904,7 +923,7 @@ void Game::updatePauseInterface() {
         renderer_->setEffectQuality(settings_.effectQuality);
         destroyRenderTarget();
         break;
-    case 12:
+    case 13:
         settings_.frameLimit = settings_.frameLimit == 0
                                    ? 30
                                    : (settings_.frameLimit == 30
@@ -912,16 +931,16 @@ void Game::updatePauseInterface() {
                                           : (settings_.frameLimit == 60 ? 120 : 0));
         settings_.graphicsPreset = GraphicsPreset::Custom;
         break;
-    case 13:
+    case 14:
         ui_.openControls();
         break;
-    case 14:
+    case 15:
         ui_.openPauseMenu();
         break;
     default:
         break;
     }
-    if (hit >= 5 && hit <= 9)
+    if (hit >= 6 && hit <= 10)
         settings_.graphicsPreset = GraphicsPreset::Custom;
     saveSettings();
 }
@@ -1519,6 +1538,7 @@ void Game::renderFrame(float deltaTime) {
                            projection,
                            player_->cameraPosition(),
                            timing_.worldTime,
+                           settings_.brightness,
                            fullbright_,
                            underwater,
                            spectatorMode_ && isSolid(world_->getBlock(
@@ -1528,6 +1548,8 @@ void Game::renderFrame(float deltaTime) {
     const float entityDistance = static_cast<float>(settings_.entityDistance * CHUNK_SIZE);
     renderer_->renderEntities(
         survival_->renderCuboids(), view, projection, timing_.worldTime, entityDistance);
+    renderer_->renderBillboards(survival_->renderBillboards(), *world_, view, projection,
+                                timing_.worldTime, settings_.brightness, fullbright_, entityDistance);
     renderer_->renderItemSprites(
         survival_->renderItemSprites(), view, projection, timing_.worldTime, entityDistance);
     renderer_->renderParticles(view, projection, entityDistance);
@@ -1650,6 +1672,8 @@ void Game::renderFrame(float deltaTime) {
         if (elapsed > 5.0)
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
     }
+    if (smokeTest_.billboardPreview && glfwGetTime() - smokeTest_.startTime > 8.0)
+        glfwSetWindowShouldClose(window_, GLFW_TRUE);
 }
 
 bool Game::zoomActive() const {
@@ -1926,20 +1950,20 @@ void Game::runSurvivalSmokeTest() {
     settingsUi.openSettings();
     const float settingsPanelX = uiWidth * 0.5f - 220.0f;
     const float settingsPanelY = uiHeight * 0.5f - 350.0f;
-    for (int row = 0; row < 13; ++row) {
+    for (int row = 0; row < 14; ++row) {
         uiLayoutPassed = uiLayoutPassed &&
             settingsUi.hoveredMenuItem(
-                {settingsPanelX + 80.0f, settingsPanelY + 84.0f + row * 40.0f},
+                {settingsPanelX + 80.0f, settingsPanelY + 82.0f + row * 37.0f},
                 uiWidth, uiHeight) == row;
     }
     uiLayoutPassed = uiLayoutPassed &&
         settingsUi.hoveredMenuItem(
             {settingsPanelX + 200.0f, settingsPanelY + 655.0f},
-            uiWidth, uiHeight) == 14;
+            uiWidth, uiHeight) == 15;
     uiLayoutPassed = uiLayoutPassed &&
         settingsUi.hoveredMenuItem(
             {settingsPanelX + 200.0f, settingsPanelY + 605.0f},
-            uiWidth, uiHeight) == 13;
+            uiWidth, uiHeight) == 14;
     settingsUi.openControls();
     uiLayoutPassed = uiLayoutPassed &&
         settingsUi.hoveredMenuItem(
@@ -2059,6 +2083,7 @@ void Game::runSurvivalSmokeTest() {
     testSettings.sfxVolume = .25f;
     testSettings.passiveMobVolume = .75f;
     testSettings.hostileMobVolume = 0.0f;
+    testSettings.brightness = .75f;
     GameSettings reloadedSettings;
     distancePassed = distancePassed && testSettings.save(settingsTestPath) &&
                      reloadedSettings.load(settingsTestPath) &&
@@ -2070,7 +2095,8 @@ void Game::runSurvivalSmokeTest() {
                      reloadedSettings.musicVolume == .5f &&
                      reloadedSettings.sfxVolume == .25f &&
                      reloadedSettings.passiveMobVolume == .75f &&
-                     reloadedSettings.hostileMobVolume == 0.0f;
+                     reloadedSettings.hostileMobVolume == 0.0f &&
+                     reloadedSettings.brightness == .75f;
     std::filesystem::remove(settingsTestPath);
 
     GameSettings presetSettings;

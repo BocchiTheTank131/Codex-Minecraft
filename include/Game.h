@@ -69,6 +69,8 @@ private:
         bool resetEnabled = false;
         bool worldgenEnabled = false;
         bool spectatorEnabled = false;
+        bool billboardPreview = false;
+        float previewBrightness = 1.0f;
         bool worldgenScreenshotTaken = false;
         bool checksPassed = true;
         double startTime = 0.0;

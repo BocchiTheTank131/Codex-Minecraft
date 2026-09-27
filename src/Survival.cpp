@@ -10,10 +10,12 @@
 #include <cmath>
 #include <cstring>
 #include <fstream>
+#include <filesystem>
 #include <functional>
 #include <limits>
 #include <random>
 #include <sstream>
+#include <thread>
 
 namespace {
 constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '4', '\0', '\0'};
@@ -52,6 +54,38 @@ bool raySphere(const glm::vec3& o,
     glm::vec3 d = glm::normalize(direction), delta = center - o;
     along = glm::dot(delta, d);
     return along >= 0 && along <= reach && glm::length(delta - d * along) <= radius;
+}
+bool rayBox(const glm::vec3& origin, const glm::vec3& direction,
+            const glm::vec3& minimum, const glm::vec3& maximum,
+            float reach, float& along) {
+    const glm::vec3 ray = glm::normalize(direction);
+    float nearT = 0.0f, farT = reach;
+    for (int axis = 0; axis < 3; ++axis) {
+        if (std::abs(ray[axis]) < 0.00001f) {
+            if (origin[axis] < minimum[axis] || origin[axis] > maximum[axis]) return false;
+            continue;
+        }
+        float first = (minimum[axis] - origin[axis]) / ray[axis];
+        float second = (maximum[axis] - origin[axis]) / ray[axis];
+        if (first > second) std::swap(first, second);
+        nearT = std::max(nearT, first);
+        farT = std::min(farT, second);
+        if (farT < nearT) return false;
+    }
+    along = nearT;
+    return true;
+}
+bool billboardTouchesSolid(const World& world, const glm::vec3& feet) {
+    for (float dx : {-0.305f, 0.305f})
+        for (float dz : {-0.305f, 0.305f})
+            for (float dy : {0.02f, 1.48f}) {
+                const Block block = world.getBlock(
+                    static_cast<int>(std::floor(feet.x + dx)),
+                    static_cast<int>(std::floor(feet.y + dy)),
+                    static_cast<int>(std::floor(feet.z + dz)));
+                if (isSolid(block) && !isDoorOpen(block)) return true;
+            }
+    return false;
 }
 
 using Recipe = RecipeInfo;
@@ -1498,6 +1532,25 @@ void SurvivalWorld::spawnStructureMob(const glm::ivec3& position, bool hostile) 
     animal.thinkTimer = 0.5f;
     animals_.push_back(animal);
 }
+void SurvivalWorld::spawnBillboardPreview(const glm::vec3& origin,
+                                          const glm::vec3& forward) {
+    glm::vec2 horizontal(forward.x, forward.z);
+    if (glm::dot(horizontal, horizontal) < .01f) horizontal = {0.0f, -1.0f};
+    horizontal = glm::normalize(horizontal);
+    const glm::vec2 side(-horizontal.y, horizontal.x);
+    for (int index = 0; index < 4; ++index) {
+        Animal mob;
+        mob.type = AnimalType::BillboardHostile;
+        mob.spriteVariant = static_cast<std::uint8_t>(index);
+        mob.position = origin + glm::vec3(horizontal.x * 6.0f + side.x * (index - 1.5f) * 1.4f,
+                                          0.0f,
+                                          horizontal.y * 6.0f + side.y * (index - 1.5f) * 1.4f);
+        mob.home = mob.position;
+        mob.health = 20.0f;
+        mob.thinkTimer = 8.0f;
+        animals_.push_back(mob);
+    }
+}
 void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosition,
                                        float daylight) {
     // One bounded batch every five seconds; no loaded-chunk sweep is needed.
@@ -1512,7 +1565,7 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
     for (const Animal& animal : animals_) {
         if (animal.deathTimer > 0)
             continue;
-        (animal.type == AnimalType::Wolf || animal.type == AnimalType::Pillager
+        (animal.type == AnimalType::BillboardHostile || animal.type == AnimalType::Pillager
             ? hostileCount : passiveCount)++;
     }
     spawnAttemptsLastTick_ = 0;
@@ -1528,18 +1581,17 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         if (!world.simulationActiveAt(static_cast<float>(x), static_cast<float>(z)))
             continue;
         const bool hostile = unit(random) < 0.52f;
+        if (hostile && daylight > 0.01f)
+            continue;
         if (hostile ? hostileCount >= HostileMobCap
                     : passiveCount >= PassiveMobCap || passiveSpawnCooldown_ > 0.0f ||
                       passiveSpawned >= 3)
             continue;
         const int terrainY = world.terrainHeight(x, z);
         int feetY = terrainY + 1;
-        if (hostile && terrainY > 18 && unit(random) < 0.45f)
-            feetY = 9 + static_cast<int>(unit(random) * (terrainY - 15));
         if (feetY < 3 || feetY >= WORLD_HEIGHT - 2)
             continue;
-        // A cave candidate may start in rock; only a tiny local vertical probe
-        // is allowed, not a scan of the whole column.
+        // Check the terrain surface and a few blocks below it without scanning the column.
         bool valid = false;
         Block ground = Block::Air;
         for (int probe = 0; probe < 4; ++probe) {
@@ -1578,10 +1630,13 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         }
         Animal animal;
         animal.position = {x + .5f, feetY + .01f, z + .5f};
-        animal.type = hostile ? AnimalType::Wolf
+        animal.type = hostile ? AnimalType::BillboardHostile
                       : static_cast<AnimalType>(static_cast<int>(unit(random) * 3.0f));
-        animal.health = animal.type == AnimalType::Wolf ? 12.0f
+        animal.health = animal.type == AnimalType::BillboardHostile ? 20.0f
                         : animal.type == AnimalType::Cow ? 10.0f : 8.0f;
+        if (hostile)
+            animal.spriteVariant = static_cast<std::uint8_t>(
+                std::uniform_int_distribution<int>(0, 3)(random));
         animal.thinkTimer = unit(random) * 2.0f;
         animals_.push_back(animal);
         ++spawnSuccessesLastTick_;
@@ -1598,8 +1653,13 @@ int SurvivalWorld::targetedAnimal(const glm::vec3& o, const glm::vec3& d, float 
         if (a.deathTimer > 0)
             continue;
         float t;
-        if (raySphere(
-                o, d, a.position + glm::vec3(0, .55f, 0), reach, a.age < 0 ? .38f : .68f, t) &&
+        const bool billboard = a.type == AnimalType::BillboardHostile;
+        const bool hit = billboard
+            ? rayBox(o, d, a.position + glm::vec3(-.305f, 0, -.305f),
+                     a.position + glm::vec3(.305f, 1.5f, .305f), reach, t)
+            : raySphere(o, d, a.position + glm::vec3(0, .55f, 0),
+                        reach, a.age < 0 ? .38f : .68f, t);
+        if (hit &&
             t < bestT) {
             best = i;
             bestT = t;
@@ -1617,8 +1677,13 @@ MobTarget SurvivalWorld::raycastMob(const glm::vec3& o,
     if (i < 0)
         return result;
     float along = 0;
-    glm::vec3 center = animals_[i].position + glm::vec3(0, .55f, 0);
-    raySphere(o, d, center, reach, .7f, along);
+    const bool billboard = animals_[i].type == AnimalType::BillboardHostile;
+    glm::vec3 center = animals_[i].position + glm::vec3(0, billboard ? .75f : .55f, 0);
+    if (billboard)
+        rayBox(o, d, animals_[i].position + glm::vec3(-.305f, 0, -.305f),
+               animals_[i].position + glm::vec3(.305f, 1.5f, .305f), reach, along);
+    else
+        raySphere(o, d, center, reach, .7f, along);
     RayHit obstruction;
     if (w.raycast(o, d, along, obstruction) && obstruction.distance + 0.05f < along)
         return result;
@@ -1636,7 +1701,7 @@ SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& a
     r.hit = true;
     r.critical = critical;
     r.damage = attackDamage(held) * (critical ? 1.5f : 1.f);
-    r.position = a.position + glm::vec3(0, .55f, 0);
+    r.position = a.position + glm::vec3(0, a.type == AnimalType::BillboardHostile ? .75f : .55f, 0);
     a.health -= r.damage;
     a.hurtCooldown = .34f;
     a.hurtFlash = .22f;
@@ -1648,7 +1713,7 @@ SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& a
         push = glm::normalize(push);
     a.velocity += push * (critical ? 6.f : 4.4f);
     a.velocity.y = critical ? 4.2f : 3.f;
-    if (a.type == AnimalType::Wolf || a.type == AnimalType::Pillager) {
+    if (a.type == AnimalType::BillboardHostile || a.type == AnimalType::Pillager) {
         a.angerTimer = 18.0f;
         a.rememberedTarget = attacker;
         a.memoryTimer = 6.0f;
@@ -1688,6 +1753,8 @@ RenderCuboid SurvivalWorld::mobOutline(int i) const {
     if (i < 0 || i >= static_cast<int>(animals_.size()))
         return {};
     const Animal& a = animals_[i];
+    if (a.type == AnimalType::BillboardHostile)
+        return {a.position + glm::vec3(0, .75f, 0), glm::vec3(.61f, 1.5f, .61f), {1, 1, 1}};
     float baby = a.age < 0 ? .55f : 1;
     return {
         a.position + glm::vec3(0, .53f * baby, 0), glm::vec3(1.08f, .95f, .66f) * baby, {1, 1, 1}};
@@ -1699,10 +1766,7 @@ bool SurvivalWorld::feedAnimal(const glm::vec3& o, const glm::vec3& d, Item food
     Animal& a = animals_[i];
     bool ok = (a.type == AnimalType::Cow || a.type == AnimalType::Sheep)
                   ? food == Item::Wheat
-                  : (a.type == AnimalType::Pig ? food == Item::Seeds
-                                               : (food == Item::RawMeat || food == Item::RawBeef ||
-                                                  food == Item::RawPork ||
-                                                  food == Item::RawMutton));
+                  : a.type == AnimalType::Pig && food == Item::Seeds;
     if (!ok || a.breedingCooldown > 0 || a.age < 0)
         return false;
     a.loveTimer = 12;
@@ -1715,8 +1779,7 @@ bool SurvivalWorld::feedAnimal(const glm::vec3& o, const glm::vec3& d, Item food
             baby.age = -60;
             baby.loveTimer = 0;
             baby.breedingCooldown = 0;
-            baby.health =
-                a.type == AnimalType::Wolf ? 12.f : (a.type == AnimalType::Cow ? 10.f : 8.f);
+            baby.health = a.type == AnimalType::Cow ? 10.f : 8.f;
             baby.persistent = true;
             animals_[j].loveTimer = 0;
             animals_[j].breedingCooldown = 45;
@@ -1760,8 +1823,27 @@ bool SurvivalWorld::canNavigateTo(const Animal& animal, const World& world,
     const int x = static_cast<int>(std::floor(target.x));
     const int z = static_cast<int>(std::floor(target.y));
     const int currentFeet = static_cast<int>(std::floor(animal.position.y + 0.05f));
+    const bool billboard = animal.type == AnimalType::BillboardHostile;
     for (int rise : {0, 1, -1}) {
         const int feetY = currentFeet + rise;
+        if (billboard) {
+            bool clear = true;
+            for (float dx : {-0.305f, 0.305f})
+                for (float dz : {-0.305f, 0.305f}) {
+                    const int cornerX = static_cast<int>(std::floor(target.x + dx));
+                    const int cornerZ = static_cast<int>(std::floor(target.y + dz));
+                    const Block ground = world.getBlock(cornerX, feetY - 1, cornerZ);
+                    const Block feet = world.getBlock(cornerX, feetY, cornerZ);
+                    const Block head = world.getBlock(cornerX, feetY + 1, cornerZ);
+                    clear = clear && isSolid(ground) && !blockDefinition(ground).transparent &&
+                            blockGeometry(ground).shape == BlockShape::Cube &&
+                            ground != Block::Cactus &&
+                            (!isSolid(feet) || isDoorOpen(feet)) && !isWater(feet) &&
+                            (!isSolid(head) || isDoorOpen(head)) && !isWater(head);
+                }
+            if (clear) return true;
+            continue;
+        }
         const Block ground = world.getBlock(x, feetY - 1, z);
         const BlockGeometryProperties shape = blockGeometry(ground);
         if (!isSolid(ground) || shape.shape != BlockShape::Cube ||
@@ -1806,6 +1888,7 @@ glm::vec2 SurvivalWorld::chooseNavigationHeading(Animal& animal, World& world,
 }
 void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
                                  const Inventory& inventory, float daylight) {
+    (void)daylight;
     a.attackCooldown = std::max(0.f, a.attackCooldown - dt);
     a.hurtCooldown = std::max(0.f, a.hurtCooldown - dt);
     a.hurtFlash = std::max(0.f, a.hurtFlash - dt);
@@ -1844,24 +1927,15 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
             a.stepSoundTimer = .43f;
         }
     }
-    const int blockX = static_cast<int>(std::floor(a.position.x));
-    const int blockY = static_cast<int>(std::floor(a.position.y + 1.0f));
-    const int blockZ = static_cast<int>(std::floor(a.position.z));
-    const float localLight = std::max(
-        static_cast<float>(w.blockLightAt(blockX, blockY, blockZ)),
-        static_cast<float>(w.sunlightAt(blockX, blockY, blockZ)) * daylight);
     const bool hostile = !player.isCreative() && !player.isSpectator() &&
         (a.type == AnimalType::Pillager ||
-         (a.type == AnimalType::Wolf &&
-          (localLight < 7.0f || a.angerTimer > 0.0f)));
+         a.type == AnimalType::BillboardHostile);
     const Item heldFood = inventory.selectedItem();
     const bool preferredFood = !player.isSpectator() &&
         (a.type == AnimalType::Cow || a.type == AnimalType::Sheep
                                    ? heldFood == Item::Wheat
                                : a.type == AnimalType::Pig ? heldFood == Item::Seeds
-                               : a.type == AnimalType::Wolf &&
-                                 (heldFood == Item::RawMeat || heldFood == Item::RawBeef ||
-                                  heldFood == Item::RawPork || heldFood == Item::RawMutton));
+                               : false);
     if (a.thinkTimer <= 0.0f) {
         const bool visible = distance < (hostile ? 14.0f : 8.0f) &&
                              canSeePlayer(a, w, player);
@@ -1869,7 +1943,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         bool active = false;
         if (a.type == AnimalType::Villager) {
             for (const Animal& nearby : animals_) {
-                if ((nearby.type != AnimalType::Wolf &&
+                if ((nearby.type != AnimalType::BillboardHostile &&
                      nearby.type != AnimalType::Pillager) || nearby.deathTimer > 0.0f)
                     continue;
                 const glm::vec2 threat(nearby.position.x - a.position.x,
@@ -1924,7 +1998,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     if (hostile && distance < 1.5f && a.attackCooldown <= 0.0f &&
         canSeePlayer(a, w, player)) {
         player.damage(2.0f);
-        a.attackCooldown = 1.25f;
+        a.attackCooldown = a.type == AnimalType::BillboardHostile ? 1.0f : 1.25f;
     }
     const float speed = a.fleeTimer > 0.0f ? 2.65f
                         : hostile && a.memoryTimer > 0.0f ? 2.35f
@@ -1965,9 +2039,16 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         a.grounded = true;
     } else
         a.grounded = false;
+    if (a.type == AnimalType::BillboardHostile && billboardTouchesSolid(w, next)) {
+        next.x = a.position.x;
+        next.z = a.position.z;
+        a.thinkTimer = 0.0f;
+    }
     a.position = next;
-    const glm::vec3 mobMinimum = a.position + glm::vec3(-0.38f, 0.0f, -0.38f);
-    const glm::vec3 mobMaximum = a.position + glm::vec3(0.38f, 1.15f, 0.38f);
+    const bool billboard = a.type == AnimalType::BillboardHostile;
+    const float halfWidth = billboard ? .305f : .38f;
+    const glm::vec3 mobMinimum = a.position + glm::vec3(-halfWidth, 0.0f, -halfWidth);
+    const glm::vec3 mobMaximum = a.position + glm::vec3(halfWidth, billboard ? 1.5f : 1.15f, halfWidth);
     if (a.hurtCooldown <= 0.0f && w.aabbTouchesBlock(mobMinimum, mobMaximum, Block::Cactus)) {
         a.health -= 1.0f;
         a.hurtCooldown = 0.65f;
@@ -2037,7 +2118,7 @@ void SurvivalWorld::update(float dt, World& w, Player& p, Inventory& i, float da
                                           return false;
                                       const glm::vec2 delta(animal.position.x - despawnReference.x,
                                                             animal.position.z - despawnReference.z);
-                                      const float limit = animal.type == AnimalType::Wolf ||
+                                      const float limit = animal.type == AnimalType::BillboardHostile ||
                                                           animal.type == AnimalType::Pillager
                                                               ? despawnDistance
                                                               : despawnDistance + 48.0f;
@@ -2116,7 +2197,7 @@ SurvivalWorld::MobDiagnostics SurvivalWorld::diagnostics(
     for (const Animal& animal : animals_) {
         if (animal.deathTimer > 0)
             continue;
-        (animal.type == AnimalType::Wolf || animal.type == AnimalType::Pillager
+        (animal.type == AnimalType::BillboardHostile || animal.type == AnimalType::Pillager
             ? result.hostile : result.passive)++;
     }
     return result;
@@ -2125,6 +2206,8 @@ std::vector<RenderCuboid> SurvivalWorld::renderCuboids() const {
     std::vector<RenderCuboid> out;
     out.reserve(animals_.size() * 6 + experienceOrbs_.size());
     for (const auto& a : animals_) {
+        if (a.type == AnimalType::BillboardHostile)
+            continue;
         float baby = a.age < 0 ? .55f : 1,
               death = a.deathTimer > 0 ? std::max(.1f, a.deathTimer / .65f) : 1;
         glm::vec3 c =
@@ -2155,6 +2238,14 @@ std::vector<RenderCuboid> SurvivalWorld::renderCuboids() const {
         out.push_back({o.position, glm::vec3(.14f), {.35f, 1, .08f}});
     return out;
 }
+std::vector<RenderBillboard> SurvivalWorld::renderBillboards() const {
+    std::vector<RenderBillboard> out;
+    for (const Animal& a : animals_)
+        if (a.type == AnimalType::BillboardHostile && a.deathTimer >= 0.0f)
+            out.push_back({a.position, a.spriteVariant, a.hurtFlash,
+                           a.deathTimer > 0.0f ? std::clamp(a.deathTimer / .65f, 0.0f, 1.0f) : 1.0f});
+    return out;
+}
 std::vector<RenderItemSprite> SurvivalWorld::renderItemSprites() const {
     std::vector<RenderItemSprite> out;
     out.reserve(drops_.size());
@@ -2176,9 +2267,9 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
             case AnimalType::Cow: type = 0; break;
             case AnimalType::Pig: type = 1; break;
             case AnimalType::Sheep: type = 2; break;
-            case AnimalType::Wolf: type = 3; break;
             case AnimalType::Villager: type = 4; break;
             case AnimalType::Pillager: type = 5; break;
+            case AnimalType::BillboardHostile: type = 6; break;
             }
             wr(f, type);
             wr(f, a.position);
@@ -2190,6 +2281,12 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     wr(f, markerCount);
     for (std::uint64_t id : spawnedStructureMarkers_)
         wr(f, id);
+    // Optional tail keeps the original MOB1 records and marker section readable.
+    f.write("VAR1", 4);
+    wr(f, n);
+    for (const Animal& a : animals_)
+        if (a.deathTimer <= 0)
+            wr(f, a.spriteVariant);
     return !!f;
     });
 }
@@ -2203,6 +2300,7 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
     if (std::memcmp(m, MobMagic, 8) || !rd(f, stored) || stored != seed || !rd(f, n) || n > 5000)
         return false;
     std::vector<Animal> loaded;
+    std::vector<std::uint32_t> recordIndices;
     decltype(spawnedChunks_) loadedSpawnedChunks;
     decltype(spawnedStructureMarkers_) loadedMarkers;
     for (std::uint32_t k = 0; k < n; ++k) {
@@ -2214,16 +2312,18 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
         case 0: a.type = AnimalType::Cow; break;
         case 1: a.type = AnimalType::Pig; break;
         case 2: a.type = AnimalType::Sheep; break;
-        case 3: a.type = AnimalType::Wolf; break;
+        case 3: continue; // Retired Wolf from an older save.
         case 4: a.type = AnimalType::Villager; break;
         case 5: a.type = AnimalType::Pillager; break;
+        case 6: a.type = AnimalType::BillboardHostile; break;
         default: return false;
         }
         a.health = std::clamp(a.health, .1f, 20.f);
         a.home = a.position;
         a.persistent = true;
+        recordIndices.push_back(k);
         loaded.push_back(a);
-        if (a.type != AnimalType::Wolf && a.type != AnimalType::Pillager) {
+        if (a.type != AnimalType::BillboardHostile && a.type != AnimalType::Pillager) {
             loadedSpawnedChunks.insert(
                 chunkKey(static_cast<int>(std::floor(a.position.x / CHUNK_SIZE)),
                          static_cast<int>(std::floor(a.position.z / CHUNK_SIZE))));
@@ -2240,14 +2340,36 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
             if (!rd(f, id)) return false;
             loadedMarkers.insert(id);
         }
+        if (f.peek() != std::char_traits<char>::eof()) {
+            char variantMagic[4]{};
+            std::uint32_t variantCount = 0;
+            f.read(variantMagic, 4);
+            if (std::memcmp(variantMagic, "VAR1", 4) || !rd(f, variantCount) ||
+                variantCount != n)
+                return false;
+            std::size_t loadedIndex = 0;
+            for (std::uint32_t record = 0; record < n; ++record) {
+                std::uint8_t variant = 0;
+                if (!rd(f, variant)) return false;
+                if (loadedIndex < recordIndices.size() && recordIndices[loadedIndex] == record)
+                    loaded[loadedIndex++].spriteVariant = variant < 4 ? variant : 0;
+            }
+        }
     }
     animals_ = std::move(loaded);
     spawnedChunks_ = std::move(loadedSpawnedChunks);
     spawnedStructureMarkers_ = std::move(loadedMarkers);
     return true;
 }
-bool SurvivalWorld::runCombatSelfTest(World& w, Player& p, Inventory& i, std::string& report) {
+bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& i, std::string& report) {
+    (void)sourceWorld;
     (void)p;
+    (void)i;
+    Inventory combatInventory;
+    combatInventory.clear();
+    World w(seed_);
+    w.generate(4, glm::vec3(.5f, 80.0f, .5f));
+    w.setSimulationDistance(4);
     Player testPlayer(w.findSafeSpawnNear(0, 0));
     auto oldAnimals = animals_;
     auto oldDrops = drops_;
@@ -2257,33 +2379,50 @@ bool SurvivalWorld::runCombatSelfTest(World& w, Player& p, Inventory& i, std::st
     drops_.clear();
     experienceOrbs_.clear();
     bool ok = true;
+    std::string firstFailure;
+    float hitDistance = 0.0f;
+    const glm::vec3 boxMin(-.305f, 0.0f, -.305f), boxMax(.305f, 1.5f, .305f);
+    ok &= rayBox({0, 1.49f, -2}, {0, 0, 1}, boxMin, boxMax, 5, hitDistance) &&
+          !rayBox({0, 1.51f, -2}, {0, 0, 1}, boxMin, boxMax, 5, hitDistance) &&
+          !rayBox({.31f, .75f, -2}, {0, 0, 1}, boxMin, boxMax, 5, hitDistance);
+    if (!ok) firstFailure = "billboard hitbox dimensions";
     std::array<AnimalType, 4> types{
-        AnimalType::Cow, AnimalType::Pig, AnimalType::Sheep, AnimalType::Wolf};
+        AnimalType::Cow, AnimalType::Pig, AnimalType::Sheep, AnimalType::BillboardHostile};
     std::array<Item, 4> expected{Item::RawBeef, Item::RawPork, Item::Wool, Item::None};
     glm::vec3 origin = testPlayer.cameraPosition(), dir = testPlayer.lookDirection();
     for (int k = 0; k < 4; ++k) {
         Animal a;
         a.type = types[k];
-        a.position = origin + dir * 3.f - glm::vec3(0, .55f, 0);
-        a.health = types[k] == AnimalType::Wolf ? 12.f : (types[k] == AnimalType::Cow ? 10.f : 8.f);
+        a.position = origin + dir * 3.f - glm::vec3(0,
+            a.type == AnimalType::BillboardHostile ? .75f : .55f, 0);
+        a.health = types[k] == AnimalType::BillboardHostile ? 20.f : (types[k] == AnimalType::Cow ? 10.f : 8.f);
         animals_.push_back(a);
         MobTarget target = raycastMob(origin, dir, 5, w, 5);
+        if (!target.valid() && firstFailure.empty())
+            firstFailure = "ray target variant " + std::to_string(k);
         ok &= target.valid();
         while (target.valid() && animals_[target.index].deathTimer <= 0) {
             animals_[target.index].hurtCooldown = 0;
             attackMob(target.index, Item::IronAxe, false, testPlayer.position());
+            if (k == 3 && animals_[target.index].deathTimer <= 0)
+                ok &= animals_[target.index].hurtFlash > 0.0f;
         }
         if (expected[k] != Item::None) {
-            ok &= std::any_of(drops_.begin(), drops_.end(), [&](const Drop& d) {
+            const bool dropped = std::any_of(drops_.begin(), drops_.end(), [&](const Drop& d) {
                 return d.stack.item == expected[k];
             });
-            int before = i.count(expected[k]);
+            if (!dropped && firstFailure.empty()) firstFailure = "drop variant " + std::to_string(k);
+            ok &= dropped;
+            int before = combatInventory.count(expected[k]);
             for (auto& drop : drops_)
                 drop.position = testPlayer.position() + glm::vec3(0, .8f, 0);
-            update(0, w, testPlayer, i, 1);
-            ok &= i.count(expected[k]) > before;
+            update(0, w, testPlayer, combatInventory, 1);
+            const bool picked = combatInventory.count(expected[k]) > before;
+            if (!picked && firstFailure.empty()) firstFailure = "pickup variant " + std::to_string(k);
+            ok &= picked;
         } else
             ok &= drops_.empty();
+        if (!ok && firstFailure.empty()) firstFailure = "target, death, or drops variant " + std::to_string(k);
         animals_.clear();
         drops_.clear();
         experienceOrbs_.clear();
@@ -2293,15 +2432,30 @@ bool SurvivalWorld::runCombatSelfTest(World& w, Player& p, Inventory& i, std::st
     blocked.position = origin + dir * 3.f - glm::vec3(0, .55f, 0);
     animals_.push_back(blocked);
     ok &= !raycastMob(origin, dir, 5, w, 1.5f).valid();
+    if (!ok && firstFailure.empty()) firstFailure = "ray occlusion";
     animals_.clear();
     Animal hunter;
-    hunter.type = AnimalType::Wolf;
+    hunter.type = AnimalType::BillboardHostile;
     hunter.position = testPlayer.position() + glm::vec3(1.f, 0, 0);
     hunter.health = 12;
     animals_.push_back(hunter);
     float healthBefore = testPlayer.health();
-    updateAnimal(animals_.front(), .02f, w, testPlayer, i, 0);
-    ok &= testPlayer.health() < healthBefore;
+    updateAnimal(animals_.front(), .02f, w, testPlayer, combatInventory, 0);
+    ok &= std::abs((healthBefore - testPlayer.health()) - 2.0f) < .001f;
+    const float healthAfterHit = testPlayer.health();
+    updateAnimal(animals_.front(), .02f, w, testPlayer, combatInventory, 0);
+    ok &= testPlayer.health() == healthAfterHit;
+    testPlayer.setCreativeMode(true);
+    const float hunterCreativeHealth = testPlayer.health();
+    animals_.front().attackCooldown = 0.0f;
+    updateAnimal(animals_.front(), .02f, w, testPlayer, combatInventory, 0);
+    ok &= testPlayer.health() == hunterCreativeHealth;
+    testPlayer.setCreativeMode(false);
+    testPlayer.setSpectatorMode(true);
+    const float spectatorHealth = testPlayer.health();
+    updateAnimal(animals_.front(), .02f, w, testPlayer, combatInventory, 0);
+    ok &= testPlayer.health() == spectatorHealth;
+    if (!ok && firstFailure.empty()) firstFailure = "hostile melee";
     animals_.clear();
     Player pillagerVictim(w.findSafeSpawnNear(0, 0));
     Animal pillager;
@@ -2311,41 +2465,104 @@ bool SurvivalWorld::runCombatSelfTest(World& w, Player& p, Inventory& i, std::st
     pillager.health = 14.0f;
     animals_.push_back(pillager);
     const float pillagerVictimHealth = pillagerVictim.health();
-    updateAnimal(animals_.front(), .02f, w, pillagerVictim, i, 1.0f);
+    updateAnimal(animals_.front(), .02f, w, pillagerVictim, combatInventory, 1.0f);
     ok &= pillagerVictim.health() < pillagerVictimHealth;
     pillagerVictim.setCreativeMode(true);
     const float creativeHealth = pillagerVictim.health();
     animals_.front().attackCooldown = 0.0f;
-    updateAnimal(animals_.front(), .02f, w, pillagerVictim, i, 1.0f);
+    updateAnimal(animals_.front(), .02f, w, pillagerVictim, combatInventory, 1.0f);
     ok &= pillagerVictim.health() == creativeHealth;
+    if (!ok && firstFailure.empty()) firstFailure = "pillager or creative";
 
     animals_.clear();
     drops_.clear();
     spawnedChunks_.clear();
     Inventory pickupInventory;
     pickupInventory.clear();
-    spawnDrop(testPlayer.position() + glm::vec3(0.0f, 0.8f, 0.0f),
+    Player pickupPlayer(testPlayer.position());
+    spawnDrop(pickupPlayer.position() + glm::vec3(0.0f, 0.8f, 0.0f),
               Item::DiamondPickaxe,
               1,
               321,
               glm::vec3(0.0f),
               1.0f);
-    update(0.2f, w, testPlayer, pickupInventory, 1.0f);
+    update(0.2f, w, pickupPlayer, pickupInventory, 1.0f);
     ok &= pickupInventory.count(Item::DiamondPickaxe) == 0 && drops_.size() == 1 &&
           drops_.front().stack.durability == 321;
     if (!drops_.empty()) {
         drops_.front().age = 1.1f;
-        drops_.front().position = testPlayer.position() + glm::vec3(0.0f, 0.8f, 0.0f);
+        drops_.front().position = pickupPlayer.position() + glm::vec3(0.0f, 0.8f, 0.0f);
         drops_.front().velocity = glm::vec3(0.0f);
     }
-    update(0.0f, w, testPlayer, pickupInventory, 1.0f);
+    update(0.0f, w, pickupPlayer, pickupInventory, 1.0f);
     ok &= pickupInventory.count(Item::DiamondPickaxe) == 1 &&
           pickupInventory.selectedStack().durability == 321;
+    if (!ok && firstFailure.empty()) firstFailure = "item pickup";
+    animals_.clear();
+    Animal variant;
+    variant.type = AnimalType::BillboardHostile;
+    variant.spriteVariant = 3;
+    variant.position = testPlayer.position() + glm::vec3(2.0f, 0.0f, 0.0f);
+    animals_.push_back(variant);
+    const std::string variantPath = "voxel_billboard_variant_smoke.vxm";
+    SurvivalWorld reloaded(seed_);
+    ok &= save(variantPath, seed_) && reloaded.load(variantPath, seed_);
+    const auto billboards = reloaded.renderBillboards();
+    ok &= billboards.size() == 1 && billboards.front().variant == 3;
+    if (!ok && firstFailure.empty()) firstFailure = "variant save/load";
+    std::filesystem::remove(variantPath);
+    const std::string legacyPath = "voxel_legacy_wolf_smoke.vxm";
+    ok &= SaveFile::write(legacyPath, std::ios::binary, [&](std::ofstream& output) {
+        output.write(MobMagic, 8);
+        const std::uint32_t count = 1;
+        const std::uint8_t retiredWolfId = 3;
+        const float health = 12.0f, age = 0.0f;
+        const std::uint32_t markers = 0;
+        return wr(output, seed_) && wr(output, count) && wr(output, retiredWolfId) &&
+               wr(output, variant.position) && wr(output, health) && wr(output, age) &&
+               wr(output, markers);
+    });
+    SurvivalWorld legacy(seed_);
+    ok &= legacy.load(legacyPath, seed_) && legacy.renderBillboards().empty() &&
+          legacy.diagnostics(testPlayer.position()).passive == 0 &&
+          legacy.diagnostics(testPlayer.position()).hostile == 0;
+    if (!ok && firstFailure.empty()) firstFailure = "legacy wolf load";
+    std::filesystem::remove(legacyPath);
+    SurvivalWorld spawnProbe(seed_);
+    const auto spawnWaitStart = std::chrono::steady_clock::now();
+    while (w.loadedChunkCount() < 25 &&
+           std::chrono::steady_clock::now() - spawnWaitStart < std::chrono::seconds(5)) {
+        w.updateStreaming(testPlayer.position(), 0);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    for (int attempt = 0; attempt < 20; ++attempt)
+        spawnProbe.spawnNearbyAnimals(w, testPlayer.position(), 1.0f);
+    ok &= spawnProbe.diagnostics(testPlayer.position()).hostile == 0;
+    if (!ok && firstFailure.empty()) firstFailure = "daytime hostile spawn";
+    spawnProbe.animals_.clear();
+    std::uint8_t variantMask = 0;
+    bool sawNightSpawn = false;
+    for (int attempt = 0; attempt < 100 && variantMask != 15; ++attempt) {
+        spawnProbe.spawnNearbyAnimals(w, testPlayer.position(), 0.0f);
+        for (const Animal& spawned : spawnProbe.animals_)
+            if (spawned.type == AnimalType::BillboardHostile) {
+                sawNightSpawn = true;
+                variantMask |= static_cast<std::uint8_t>(1U << spawned.spriteVariant);
+            }
+        if (spawnProbe.animals_.size() >= HostileMobCap)
+            spawnProbe.animals_.clear();
+    }
+    ok &= sawNightSpawn && variantMask == 15;
+    if (!ok && firstFailure.empty()) firstFailure = "night spawn or sprite distribution (spawn=" +
+        std::to_string(sawNightSpawn) + ", mask=" + std::to_string(variantMask) +
+        ", x=" + std::to_string(testPlayer.position().x) +
+        ", z=" + std::to_string(testPlayer.position().z) +
+        ", chunks=" + std::to_string(w.loadedChunkCount()) + ")";
     animals_ = std::move(oldAnimals);
     drops_ = std::move(oldDrops);
     experienceOrbs_ = std::move(oldOrbs);
     spawnedChunks_ = std::move(oldSpawned);
-    report = ok ? "mob combat, drops, durable pickup, wolf/pillager attack, Creative immunity, and occlusion passed"
-                : "combat regression";
+    report = ok ? "mob combat, 1.5-block hitbox, night-only spawning, four variants, old Wolf saves, drops, hostile/pillager attacks, and Creative immunity passed"
+                : "combat regression: " + firstFailure;
     return ok;
 }

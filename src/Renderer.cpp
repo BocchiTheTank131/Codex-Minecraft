@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Definitions.h"
+#include "SpriteManifest.h"
 
 #include "World.h"
 
@@ -14,6 +15,8 @@
 #include <cmath>
 #include <cstdint>
 #include <fstream>
+#include <filesystem>
+#include <iterator>
 #include <iostream>
 #include <random>
 #include <sstream>
@@ -22,6 +25,8 @@
 #include <unordered_map>
 #ifdef VOXEL_STANDALONE
 #include "EmbeddedResources.h"
+#endif
+#ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -29,6 +34,7 @@
 #undef APIENTRY
 #endif
 #include <windows.h>
+#include <wincodec.h>
 #endif
 
 namespace {
@@ -65,6 +71,85 @@ struct EntityVisibility {
         return true;
     }
 };
+
+#ifdef _WIN32
+GLuint loadHostileSprite(const char* name, int resourceId, int& width, int& height) {
+    std::vector<std::uint8_t> ownedBytes;
+    const void* source = nullptr;
+    std::size_t length = 0;
+#ifdef VOXEL_STANDALONE
+    const HRSRC resource = FindResourceW(nullptr, MAKEINTRESOURCEW(resourceId), MAKEINTRESOURCEW(10));
+    const HGLOBAL loaded = resource ? LoadResource(nullptr, resource) : nullptr;
+    source = loaded ? LockResource(loaded) : nullptr;
+    length = resource ? SizeofResource(nullptr, resource) : 0;
+#else
+    (void)resourceId;
+    wchar_t executable[MAX_PATH]{};
+    const DWORD pathLength = GetModuleFileNameW(nullptr, executable, MAX_PATH);
+    const auto spritePath = pathLength > 0 && pathLength < MAX_PATH
+        ? std::filesystem::path(executable).parent_path() / "sprites" / name
+        : std::filesystem::path("sprites") / name;
+    std::ifstream input(spritePath, std::ios::binary);
+    if (input)
+        ownedBytes.assign(std::istreambuf_iterator<char>(input), {});
+    if (ownedBytes.empty()) {
+        std::ifstream fallback(std::filesystem::path("sprites") / name, std::ios::binary);
+        if (fallback) ownedBytes.assign(std::istreambuf_iterator<char>(fallback), {});
+    }
+    source = ownedBytes.data();
+    length = ownedBytes.size();
+#endif
+    if (!source || length == 0 || length > UINT32_MAX)
+        throw std::runtime_error(std::string("Missing hostile sprite: ") + name);
+    const HRESULT comResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    IWICImagingFactory* factory = nullptr;
+    IWICStream* stream = nullptr;
+    IWICBitmapDecoder* decoder = nullptr;
+    IWICBitmapFrameDecode* frame = nullptr;
+    IWICFormatConverter* converter = nullptr;
+    std::vector<std::uint8_t> pixels;
+    UINT imageWidth = 0, imageHeight = 0;
+    HRESULT result = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER,
+                                      IID_PPV_ARGS(&factory));
+    if (SUCCEEDED(result)) result = factory->CreateStream(&stream);
+    if (SUCCEEDED(result)) result = stream->InitializeFromMemory(
+        const_cast<BYTE*>(static_cast<const BYTE*>(source)), static_cast<DWORD>(length));
+    if (SUCCEEDED(result)) result = factory->CreateDecoderFromStream(stream, nullptr,
+                                           WICDecodeMetadataCacheOnLoad, &decoder);
+    if (SUCCEEDED(result)) result = decoder->GetFrame(0, &frame);
+    if (SUCCEEDED(result)) result = frame->GetSize(&imageWidth, &imageHeight);
+    if (SUCCEEDED(result) && (imageWidth == 0 || imageHeight == 0 ||
+                              imageWidth > 4096 || imageHeight > 4096)) result = E_FAIL;
+    if (SUCCEEDED(result)) result = factory->CreateFormatConverter(&converter);
+    if (SUCCEEDED(result)) result = converter->Initialize(frame, GUID_WICPixelFormat32bppBGRA,
+        WICBitmapDitherTypeNone, nullptr, 0.0, WICBitmapPaletteTypeCustom);
+    if (SUCCEEDED(result)) {
+        pixels.resize(static_cast<std::size_t>(imageWidth) * imageHeight * 4);
+        result = converter->CopyPixels(nullptr, imageWidth * 4,
+                                       static_cast<UINT>(pixels.size()), pixels.data());
+    }
+    if (converter) converter->Release();
+    if (frame) frame->Release();
+    if (decoder) decoder->Release();
+    if (stream) stream->Release();
+    if (factory) factory->Release();
+    if (SUCCEEDED(comResult)) CoUninitialize();
+    if (FAILED(result))
+        throw std::runtime_error(std::string("Cannot decode hostile sprite: ") + name);
+    GLuint texture = 0;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, imageWidth, imageHeight, 0,
+                 GL_BGRA, GL_UNSIGNED_BYTE, pixels.data());
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    width = static_cast<int>(imageWidth);
+    height = static_cast<int>(imageHeight);
+    return texture;
+}
+#endif
 
 constexpr const char* WorldVertexShader = R"GLSL(
 #version 330 core
@@ -112,6 +197,7 @@ uniform vec3 uSkyColor;
 uniform vec3 uCameraPosition;
 uniform float uDaylight;
 uniform float uTime;
+uniform float uBrightness;
 uniform bool uWaterPass;
 uniform bool uFullbright;
 uniform bool uUnderwater;
@@ -138,8 +224,11 @@ void main() {
     float sunContribution = vSunLight * sunDiffuse * mix(0.0, 0.54, day);
     float moonContribution = vSunLight * moonDiffuse * (1.0-day) * 0.17;
     float emittedContribution = vBlockLight * 0.90;
-    float brightness = 0.024 + (uEffectQuality == 0 ? 1.0 : vAo) * faceShade *
+    float ambient = mix(0.008, 0.024, clamp(uBrightness * 2.0, 0.0, 1.0));
+    float brightness = ambient + (uEffectQuality == 0 ? 1.0 : vAo) * faceShade *
         (skyContribution + sunContribution + moonContribution + emittedContribution);
+    brightness += max(0.0, uBrightness - 0.5) * 0.34 *
+                  (1.0 - exp(-max(brightness, 0.0) * 2.0));
     vec3 sunTint = mix(vec3(1.0,0.48,0.20), vec3(1.0,0.93,0.76),
                        smoothstep(-0.02,0.42,uSunDirection.y));
     vec3 naturalLight = mix(vec3(0.56,0.66,0.88), sunTint, day);
@@ -292,6 +381,21 @@ constexpr const char* ItemFragmentShader = R"GLSL(
 #version 330 core
 in vec2 vUv; uniform sampler2D uItemAtlas; out vec4 fragColor;
 void main(){vec4 c=texture(uItemAtlas,vUv);if(c.a<0.12)discard;fragColor=vec4(c.rgb,c.a);}
+)GLSL";
+constexpr const char* BillboardFragmentShader = R"GLSL(
+#version 330 core
+in vec2 vUv;
+uniform sampler2D uSprite;
+uniform float uLight;
+uniform float uHurt;
+uniform float uOpacity;
+out vec4 fragColor;
+void main(){
+    vec4 pixel=texture(uSprite,vUv);
+    if(pixel.a<0.10) discard;
+    vec3 color=mix(pixel.rgb*uLight,vec3(1.0,0.07,0.05),clamp(uHurt,0.0,1.0)*0.72);
+    fragColor=vec4(color,pixel.a*uOpacity);
+}
 )GLSL";
 constexpr const char* ParticleVertexShader = R"GLSL(
 #version 330 core
@@ -515,10 +619,19 @@ Renderer::Renderer() {
     particleProgram_ = makeProgram(ParticleVertexShader, ParticleFragmentShader);
     entityProgram_ = makeProgram(EntityVertexShader, EntityFragmentShader);
     itemProgram_ = makeProgram(ItemVertexShader, ItemFragmentShader);
+    billboardProgram_ = makeProgram(ItemVertexShader, BillboardFragmentShader);
     uiItemAtlasUniform_ = glGetUniformLocation(uiProgram_, "uItemAtlas");
     itemAtlasUniform_ = glGetUniformLocation(itemProgram_, "uItemAtlas");
     atlasTexture_ = createAtlasTexture();
     itemTexture_ = loadItemTexture("assets/item_icons_expansion.rgba");
+#ifdef _WIN32
+    for (std::size_t index = 0; index < hostileTextures_.size(); ++index) {
+        int imageWidth = 0, imageHeight = 0;
+        hostileTextures_[index] = loadHostileSprite(SpriteAssets[index].name,
+            SpriteAssets[index].id, imageWidth, imageHeight);
+        hostileAspectRatios_[index] = static_cast<float>(imageWidth) / imageHeight;
+    }
+#endif
     glGenVertexArrays(1, &skyVao_);
     glGenVertexArrays(1, &uiVao_);
     glGenBuffers(1, &uiVbo_);
@@ -620,6 +733,9 @@ Renderer::Renderer() {
 }
 
 Renderer::~Renderer() {
+    glDeleteTextures(static_cast<GLsizei>(hostileTextures_.size()), hostileTextures_.data());
+    if (billboardProgram_)
+        glDeleteProgram(billboardProgram_);
     if (itemVbo_)
         glDeleteBuffers(1, &itemVbo_);
     if (itemVao_)
@@ -1071,6 +1187,7 @@ void Renderer::renderWorld(const World& world,
                            const glm::mat4& projection,
                            const glm::vec3& camera,
                            float worldTime,
+                           float brightness,
                            bool fullbright,
                            bool underwater,
                            bool spectatorInsideBlock) const {
@@ -1093,6 +1210,7 @@ void Renderer::renderWorld(const World& world,
                  glm::value_ptr(camera));
     glUniform1f(glGetUniformLocation(worldProgram_, "uDaylight"), state.daylight);
     glUniform1f(glGetUniformLocation(worldProgram_, "uTime"), worldTime);
+    glUniform1f(glGetUniformLocation(worldProgram_, "uBrightness"), brightness);
     glUniform1i(glGetUniformLocation(worldProgram_, "uEffectQuality"), effectQuality_);
     glUniform1i(glGetUniformLocation(worldProgram_, "uFullbright"),
                 fullbright ? GL_TRUE : GL_FALSE);
@@ -1218,6 +1336,80 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
     glBindVertexArray(0);
+}
+void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
+                                const World& world, const glm::mat4& view,
+                                const glm::mat4& projection, float worldTime,
+                                float brightness, bool fullbright,
+                                float maximumDistance) const {
+    if (billboards.empty()) return;
+    const EntityVisibility visibility(view, projection, maximumDistance);
+    const glm::mat4 inverseView = glm::inverse(view);
+    const glm::vec3 cameraRight = glm::normalize(glm::vec3(
+        inverseView[0][0], 0.0f, inverseView[0][2]));
+    const float daylight = celestial(worldTime).daylight;
+    std::vector<const RenderBillboard*> visible;
+    visible.reserve(billboards.size());
+    for (const RenderBillboard& sprite : billboards)
+        if (visibility.visible(sprite.feet + glm::vec3(0, .75f, 0), .9f))
+            visible.push_back(&sprite);
+    std::sort(visible.begin(), visible.end(), [&](const auto* left, const auto* right) {
+        const glm::vec3 leftDelta = left->feet - visibility.camera;
+        const glm::vec3 rightDelta = right->feet - visibility.camera;
+        return glm::dot(leftDelta, leftDelta) > glm::dot(rightDelta, rightDelta);
+    });
+    glUseProgram(billboardProgram_);
+    glUniformMatrix4fv(glGetUniformLocation(billboardProgram_, "uView"), 1,
+                       GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(glGetUniformLocation(billboardProgram_, "uProjection"), 1,
+                       GL_FALSE, glm::value_ptr(projection));
+    glUniform1i(glGetUniformLocation(billboardProgram_, "uSprite"), 0);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glDepthMask(GL_FALSE);
+    glDisable(GL_CULL_FACE);
+    glBindVertexArray(itemVao_);
+    for (const RenderBillboard* sprite : visible) {
+        const std::size_t variant = sprite->variant % hostileTextures_.size();
+        if (!hostileTextures_[variant]) continue;
+        const float halfWidth = .75f * hostileAspectRatios_[variant];
+        const glm::vec3 left = sprite->feet - cameraRight * halfWidth;
+        const glm::vec3 right = sprite->feet + cameraRight * halfWidth;
+        const glm::vec3 up(0.0f, 1.5f, 0.0f);
+        const glm::vec3 positions[6] = {left + up, left, right,
+                                         left + up, right, right + up};
+        const glm::vec2 uv[6] = {{0,0},{0,1},{1,1},{0,0},{1,1},{1,0}};
+        float vertices[30]{};
+        for (int i = 0; i < 6; ++i) {
+            vertices[i*5+0] = positions[i].x;
+            vertices[i*5+1] = positions[i].y;
+            vertices[i*5+2] = positions[i].z;
+            vertices[i*5+3] = uv[i].x;
+            vertices[i*5+4] = uv[i].y;
+        }
+        glBindBuffer(GL_ARRAY_BUFFER, itemVbo_);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STREAM_DRAW);
+        const int x = static_cast<int>(std::floor(sprite->feet.x));
+        const int y = static_cast<int>(std::floor(sprite->feet.y + .8f));
+        const int z = static_cast<int>(std::floor(sprite->feet.z));
+        const float sky = world.sunlightAt(x, y, z) / 15.0f * daylight;
+        const float block = world.blockLightAt(x, y, z) / 15.0f;
+        const float ambient = 0.16f + std::max(sky * .70f, block * .75f);
+        const float adjusted = ambient + (brightness - .5f) * .20f;
+        glUniform1f(glGetUniformLocation(billboardProgram_, "uLight"),
+                    fullbright ? 1.0f : std::clamp(adjusted, .08f, 1.0f));
+        glUniform1f(glGetUniformLocation(billboardProgram_, "uHurt"),
+                    std::clamp(sprite->hurt * 4.5f, 0.0f, 1.0f));
+        glUniform1f(glGetUniformLocation(billboardProgram_, "uOpacity"), sprite->opacity);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, hostileTextures_[variant]);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+        ++visibleEntityCount_;
+    }
+    glBindVertexArray(0);
+    glDepthMask(GL_TRUE);
+    glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
 }
 void Renderer::renderHud(int width,
                          int height,
@@ -1625,12 +1817,13 @@ void Renderer::renderMenu(int width,
         const std::string frameLimit = settings.frameLimit == 0
                                            ? "UNLIMITED"
                                            : std::to_string(settings.frameLimit);
-        const std::array<std::string, 13> labels{
+        const std::array<std::string, 14> labels{
             "RENDER DISTANCE",
             "SIMULATION DISTANCE",
             "FOV",
             "MOUSE SENSITIVITY",
             "AUDIO SETTINGS",
+            "BRIGHTNESS",
             std::string("ANTI ALIASING  ") + antiAliasing,
             std::string("FULLSCREEN  ") + (settings.fullscreen ? "ON" : "OFF"),
             std::string("VSYNC  ") + (settings.vsync ? "ON" : "OFF"),
@@ -1640,38 +1833,40 @@ void Renderer::renderMenu(int width,
             std::string("GRAPHICS PRESET  ") + preset,
             "ENTITY DISTANCE",
             std::string("FRAME LIMIT  ") + frameLimit};
-        const std::array<std::string, 6> sliderValues{
+        const std::array<std::string, 7> sliderValues{
             std::to_string(settings.renderDistance),
             std::to_string(settings.simulationDistance),
             std::to_string(static_cast<int>(std::round(settings.fov))),
             std::to_string(static_cast<int>(std::round(settings.mouseSensitivity * 100.0f))),
+            std::to_string(static_cast<int>(std::round(settings.brightness * 100.0f))) + "%",
             std::to_string(static_cast<int>(std::round(settings.masterVolume * 100.0f))),
             std::to_string(settings.entityDistance)};
-        const std::array<float, 6> sliderPositions{
+        const std::array<float, 7> sliderPositions{
             (settings.renderDistance - 2.0f) / 62.0f,
             (settings.simulationDistance - 2.0f) / 30.0f,
             (settings.fov - 55.0f) / 50.0f,
             (settings.mouseSensitivity - 0.03f) / 0.27f,
+            settings.brightness,
             settings.masterVolume,
             (settings.entityDistance - 2.0f) / 62.0f};
         for (int index = 0; index < static_cast<int>(labels.size()); ++index) {
-            const float y = panelY + 65.0f + index * 40.0f;
+            const float y = panelY + 65.0f + index * 37.0f;
             addRect(vertices,
                     panelX + 24.0f,
                     y,
                     392.0f,
-                    38.0f,
+                    35.0f,
                     index == hovered ? glm::vec4(.35f, .44f, .29f, 1)
                                      : glm::vec4(.19f, .19f, .22f, 1),
                     width,
                     height);
             drawText(labels[static_cast<std::size_t>(index)],
                      panelX + 38.0f,
-                     y + (index < 5 || index == 11 ? 7.0f : 12.0f),
-                     index < 5 || index == 11 ? 1.15f : 1.4f,
+                     y + (index < 4 || index == 5 || index == 12 ? 7.0f : 10.0f),
+                     index < 4 || index == 5 || index == 12 ? 1.15f : 1.4f,
                      {1, 1, 1, 1});
-            if (index < 4 || index == 11) {
-                const std::size_t sliderIndex = index == 11 ? 5 : static_cast<std::size_t>(index);
+            if (index < 4 || index == 5 || index == 12) {
+                const std::size_t sliderIndex = index == 12 ? 6 : static_cast<std::size_t>(index);
                 constexpr float sliderXOffset = 190.0f;
                 constexpr float sliderWidth = 150.0f;
                 addRect(vertices,
@@ -1709,7 +1904,7 @@ void Renderer::renderMenu(int width,
         }
         const float controlsY = panelY + 585.0f;
         addRect(vertices, panelX + 95.0f, controlsY, 250.0f, 42.0f,
-                hovered == 13 ? glm::vec4(.38f, .48f, .30f, 1)
+                hovered == 14 ? glm::vec4(.38f, .48f, .30f, 1)
                               : glm::vec4(.20f, .20f, .23f, 1), width, height);
         drawText("CONTROLS", panelX + 155.0f, controlsY + 13.0f,
                  2.0f, {1, 1, 1, 1});
@@ -1719,7 +1914,7 @@ void Renderer::renderMenu(int width,
                 y,
                 250.0f,
                 42.0f,
-                hovered == 14 ? glm::vec4(.38f, .48f, .30f, 1)
+                hovered == 15 ? glm::vec4(.38f, .48f, .30f, 1)
                              : glm::vec4(.20f, .20f, .23f, 1),
                 width,
                 height);

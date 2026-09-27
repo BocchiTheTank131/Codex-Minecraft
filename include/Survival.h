@@ -234,6 +234,12 @@ struct RenderCuboid {
     glm::vec3 size{1};
     glm::vec3 color{1};
 };
+struct RenderBillboard {
+    glm::vec3 feet{0};
+    std::uint8_t variant = 0;
+    float hurt = 0;
+    float opacity = 1;
+};
 struct MobTarget {
     int index = -1;
     float distance = 0;
@@ -272,6 +278,7 @@ public:
                    float pickupDelay = 0.0f);
     void spawnExperience(const glm::vec3& position, int amount);
     void spawnStructureMob(const glm::ivec3& position, bool hostile);
+    void spawnBillboardPreview(const glm::vec3& origin, const glm::vec3& forward);
     bool feedAnimal(const glm::vec3& origin, const glm::vec3& direction, Item food);
     MobTarget raycastMob(const glm::vec3& origin,
                          const glm::vec3& direction,
@@ -282,6 +289,7 @@ public:
     attackMob(int index, Item heldItem, bool critical, const glm::vec3& attackerPosition);
     RenderCuboid mobOutline(int index) const;
     std::vector<RenderCuboid> renderCuboids() const;
+    std::vector<RenderBillboard> renderBillboards() const;
     std::vector<RenderItemSprite> renderItemSprites() const;
     bool save(const std::string& path, std::uint32_t seed) const;
     bool load(const std::string& path, std::uint32_t seed);
@@ -289,7 +297,9 @@ public:
     MobDiagnostics diagnostics(const glm::vec3& playerPosition) const;
 
 private:
-    enum class AnimalType : std::uint8_t { Cow, Pig, Sheep, Wolf, Villager, Pillager };
+    // ID 3 is a retired Wolf ID in old save files. Never reuse it.
+    enum class AnimalType : std::uint8_t { Cow = 0, Pig = 1, Sheep = 2, Villager = 4,
+                                            Pillager = 5, BillboardHostile = 6 };
     struct Animal {
         AnimalType type = AnimalType::Cow;
         glm::vec3 position{0}, velocity{0}, home{0};
@@ -303,6 +313,7 @@ private:
               wanderPhase = 0;
         glm::vec3 rememberedTarget{0};
         bool persistent = false;
+        std::uint8_t spriteVariant = 0;
         bool grounded = false, dropsReleased = false;
     };
     struct Drop {

@@ -461,17 +461,17 @@ int UIManager::menuHit(
     if (state != GameState::Settings)
         return -1;
     const float settingsPanelY = height * 0.5f - 350.0f;
-    for (int index = 0; index < 13; ++index) {
-        const float y = settingsPanelY + 65.0f + index * 40.0f;
+    for (int index = 0; index < 14; ++index) {
+        const float y = settingsPanelY + 65.0f + index * 37.0f;
         if (mouseX >= panelX + 24.0f && mouseX < panelX + 416.0f && mouseY >= y &&
-            mouseY < y + 38.0f)
+            mouseY < y + 35.0f)
             return index;
     }
     if (mouseX >= panelX + 95.0f && mouseX < panelX + 345.0f &&
         mouseY >= settingsPanelY + 585.0f && mouseY < settingsPanelY + 627.0f)
-        return 13;
+        return 14;
     if (mouseX >= panelX + 95.0f && mouseX < panelX + 345.0f &&
         mouseY >= settingsPanelY + 635.0f && mouseY < settingsPanelY + 677.0f)
-        return 14;
+        return 15;
     return -1;
 }

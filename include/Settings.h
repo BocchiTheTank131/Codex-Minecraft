@@ -10,6 +10,7 @@ struct GameSettings {
     int simulationDistance = 7;
     float fov = 74.0f;
     float mouseSensitivity = 0.10f;
+    float brightness = 0.5f;
     float masterVolume = 1.0f;
     float musicVolume = 1.0f;
     float sfxVolume = 1.0f;

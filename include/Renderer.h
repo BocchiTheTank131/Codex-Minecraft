@@ -33,6 +33,7 @@ public:
                      const glm::mat4& projection,
                      const glm::vec3& cameraPosition,
                      float worldTime,
+                     float brightness = 0.5f,
                      bool fullbright = false,
                      bool underwater = false,
                      bool spectatorInsideBlock = false) const;
@@ -99,6 +100,11 @@ public:
                         const glm::mat4& projection,
                         float worldTime,
                         float maximumDistance) const;
+    void renderBillboards(const std::vector<RenderBillboard>& billboards,
+                          const World& world, const glm::mat4& view,
+                          const glm::mat4& projection, float worldTime,
+                          float brightness, bool fullbright,
+                          float maximumDistance) const;
     void renderItemSprites(const std::vector<RenderItemSprite>& sprites,
                            const glm::mat4& view,
                            const glm::mat4& projection,
@@ -126,10 +132,12 @@ private:
         float life;
     };
     GLuint worldProgram_ = 0, skyProgram_ = 0, uiProgram_ = 0, particleProgram_ = 0,
-           entityProgram_ = 0, itemProgram_ = 0;
+           entityProgram_ = 0, itemProgram_ = 0, billboardProgram_ = 0;
     GLuint atlasTexture_ = 0, itemTexture_ = 0, skyVao_ = 0, uiVao_ = 0, uiVbo_ = 0,
            particleVao_ = 0, particleVbo_ = 0;
     GLuint entityVao_ = 0, entityVbo_ = 0, itemVao_ = 0, itemVbo_ = 0;
+    std::array<GLuint, 4> hostileTextures_{};
+    std::array<float, 4> hostileAspectRatios_{};
     GLint uiItemAtlasUniform_ = -1;
     GLint itemAtlasUniform_ = -1;
     std::vector<Particle> particles_;

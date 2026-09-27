@@ -6,7 +6,8 @@
 #include <filesystem>
 #include <memory>
 
-enum class MobSoundType { Cow, Pig, Sheep, Wolf, Villager, Pillager };
+enum class MobSoundType { Cow = 0, Pig = 1, Sheep = 2, Villager = 4,
+                          Pillager = 5, BillboardHostile = 6 };
 
 class SoundSystem {
 public:
