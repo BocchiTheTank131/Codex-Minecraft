@@ -121,16 +121,39 @@ bool rayBox(const glm::vec3& origin, const glm::vec3& direction,
     return true;
 }
 bool billboardTouchesSolid(const World& world, const glm::vec3& feet) {
-    for (float dx : {-0.305f, 0.305f})
-        for (float dz : {-0.305f, 0.305f})
-            for (float dy : {0.02f, 1.48f}) {
-                const Block block = world.getBlock(
-                    static_cast<int>(std::floor(feet.x + dx)),
-                    static_cast<int>(std::floor(feet.y + dy)),
-                    static_cast<int>(std::floor(feet.z + dz)));
-                if (isSolid(block) && !isDoorOpen(block)) return true;
-            }
-    return false;
+    const glm::vec3 extent(BillboardMobHalfWidth - .01f, 0, BillboardMobHalfWidth - .01f);
+    return world.aabbIntersectsSolid(feet - extent + glm::vec3(0, .02f, 0),
+                                     feet + extent + glm::vec3(0, BillboardMobHeight - .01f, 0));
+}
+
+// Find a nearby collision surface that can support the mob's center and has
+// clearance for its entire body. This is shared by navigation and step jumps.
+bool billboardFooting(const World& world, const glm::vec2& center, float currentFeet,
+                      float minimumRise, float maximumRise, float& surface) {
+    const int x = static_cast<int>(std::floor(center.x));
+    const int z = static_cast<int>(std::floor(center.y));
+    bool found = false;
+    float best = -std::numeric_limits<float>::infinity();
+    for (int y = static_cast<int>(std::floor(currentFeet + minimumRise)) - 1;
+         y <= static_cast<int>(std::floor(currentFeet + maximumRise)); ++y) {
+        const Block block = world.getBlock(x, y, z);
+        const BlockGeometryProperties shape = blockGeometry(block);
+        if (!isSolid(block) || isWater(block) || block == Block::Cactus ||
+            (shape.shape != BlockShape::PartialCube &&
+             (shape.shape != BlockShape::Cube || blockDefinition(block).transparent))) continue;
+        glm::vec3 low, high;
+        if (!world.blockCollisionBounds({x, y, z}, low, high) ||
+            center.x <= low.x || center.x >= high.x ||
+            center.y <= low.z || center.y >= high.z) continue;
+        if (high.y < currentFeet + minimumRise - .02f ||
+            high.y > currentFeet + maximumRise + .02f || high.y <= best) continue;
+        const glm::vec3 candidate(center.x, high.y + .01f, center.y);
+        if (billboardTouchesSolid(world, candidate)) continue;
+        best = high.y;
+        found = true;
+    }
+    if (found) surface = best;
+    return found;
 }
 
 using Recipe = RecipeInfo;
@@ -1718,6 +1741,9 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         }
         if (!valid)
             continue;
+        if (hostile && billboardTouchesSolid(
+                world, {x + .5f, feetY + .01f, z + .5f}))
+            continue;
         if (!hostile) {
             if (ground != Block::Grass || feetY <= SEA_LEVEL ||
                 world.biomeNameAt(x, z) == "DESERT")
@@ -1760,8 +1786,9 @@ int SurvivalWorld::targetedAnimal(const glm::vec3& o, const glm::vec3& d, float 
         float t;
         const bool billboard = isBillboard(a.type);
         const bool hit = billboard
-            ? rayBox(o, d, a.position + glm::vec3(-.305f, 0, -.305f),
-                     a.position + glm::vec3(.305f, 1.5f, .305f), reach, t)
+            ? rayBox(o, d, a.position + glm::vec3(-BillboardMobHalfWidth, 0, -BillboardMobHalfWidth),
+                     a.position + glm::vec3(BillboardMobHalfWidth, BillboardMobHeight,
+                                            BillboardMobHalfWidth), reach, t)
             : raySphere(o, d, a.position + glm::vec3(0, .55f, 0),
                         reach, a.age < 0 ? .38f : .68f, t);
         if (hit &&
@@ -1783,10 +1810,14 @@ MobTarget SurvivalWorld::raycastMob(const glm::vec3& o,
         return result;
     float along = 0;
     const bool billboard = isBillboard(animals_[i].type);
-    glm::vec3 center = animals_[i].position + glm::vec3(0, billboard ? .75f : .55f, 0);
+    glm::vec3 center = animals_[i].position + glm::vec3(
+        0, billboard ? BillboardMobHeight * .5f : .55f, 0);
     if (billboard)
-        rayBox(o, d, animals_[i].position + glm::vec3(-.305f, 0, -.305f),
-               animals_[i].position + glm::vec3(.305f, 1.5f, .305f), reach, along);
+        rayBox(o, d, animals_[i].position +
+               glm::vec3(-BillboardMobHalfWidth, 0, -BillboardMobHalfWidth),
+               animals_[i].position +
+               glm::vec3(BillboardMobHalfWidth, BillboardMobHeight, BillboardMobHalfWidth),
+               reach, along);
     else
         raySphere(o, d, center, reach, .7f, along);
     RayHit obstruction;
@@ -1806,7 +1837,8 @@ SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& a
     r.hit = true;
     r.critical = critical;
     r.damage = attackDamage(held) * (critical ? 1.5f : 1.f);
-    r.position = a.position + glm::vec3(0, isBillboard(a.type) ? .75f : .55f, 0);
+    r.position = a.position + glm::vec3(
+        0, isBillboard(a.type) ? BillboardMobHeight * .5f : .55f, 0);
     a.health -= r.damage;
     a.hurtCooldown = .34f;
     a.hurtFlash = .22f;
@@ -1859,7 +1891,9 @@ RenderCuboid SurvivalWorld::mobOutline(int i) const {
         return {};
     const Animal& a = animals_[i];
     if (isBillboard(a.type))
-        return {a.position + glm::vec3(0, .75f, 0), glm::vec3(.61f, 1.5f, .61f), {1, 1, 1}};
+        return {a.position + glm::vec3(0, BillboardMobHeight * .5f, 0),
+                glm::vec3(BillboardMobHalfWidth * 2, BillboardMobHeight,
+                          BillboardMobHalfWidth * 2), {1, 1, 1}};
     float baby = a.age < 0 ? .55f : 1;
     return {
         a.position + glm::vec3(0, .53f * baby, 0), glm::vec3(1.08f, .95f, .66f) * baby, {1, 1, 1}};
@@ -1935,7 +1969,8 @@ void SurvivalWorld::detonate(const glm::vec3& center, World& world, Player& play
     }
     for (Animal& other : animals_) {
         if (other.deathTimer != 0.0f) continue;
-        const glm::vec3 target = other.position + glm::vec3(0, .75f, 0);
+        const glm::vec3 target = other.position + glm::vec3(
+            0, isBillboard(other.type) ? BillboardMobHeight * .5f : .75f, 0);
         const float separation = glm::length(target - center);
         if (separation >= blast.radius || separation < .01f) continue;
         const float damage = explosionDamage(
@@ -2022,26 +2057,12 @@ bool SurvivalWorld::canNavigateTo(const Animal& animal, const World& world,
     const int z = static_cast<int>(std::floor(target.y));
     const int currentFeet = static_cast<int>(std::floor(animal.position.y + 0.05f));
     const bool billboard = isBillboard(animal.type);
+    if (billboard) {
+        float surface = 0.0f;
+        return billboardFooting(world, target, animal.position.y, -1.05f, 1.02f, surface);
+    }
     for (int rise : {0, 1, -1}) {
         const int feetY = currentFeet + rise;
-        if (billboard) {
-            bool clear = true;
-            for (float dx : {-0.305f, 0.305f})
-                for (float dz : {-0.305f, 0.305f}) {
-                    const int cornerX = static_cast<int>(std::floor(target.x + dx));
-                    const int cornerZ = static_cast<int>(std::floor(target.y + dz));
-                    const Block ground = world.getBlock(cornerX, feetY - 1, cornerZ);
-                    const Block feet = world.getBlock(cornerX, feetY, cornerZ);
-                    const Block head = world.getBlock(cornerX, feetY + 1, cornerZ);
-                    clear = clear && isSolid(ground) && !blockDefinition(ground).transparent &&
-                            blockGeometry(ground).shape == BlockShape::Cube &&
-                            ground != Block::Cactus &&
-                            (!isSolid(feet) || isDoorOpen(feet)) && !isWater(feet) &&
-                            (!isSolid(head) || isDoorOpen(head)) && !isWater(head);
-                }
-            if (clear) return true;
-            continue;
-        }
         const Block ground = world.getBlock(x, feetY - 1, z);
         const BlockGeometryProperties shape = blockGeometry(ground);
         if (!isSolid(ground) || shape.shape != BlockShape::Cube ||
@@ -2106,6 +2127,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     a.memoryTimer = std::max(0.0f, a.memoryTimer - dt);
     a.idleTimer = std::max(0.0f, a.idleTimer - dt);
     a.lungeCooldown = std::max(0.0f, a.lungeCooldown - dt);
+    a.stepJumpCooldown = std::max(0.0f, a.stepJumpCooldown - dt);
     const glm::vec3 delta = player.position() - a.position;
     const float distance = glm::length(delta);
     const BillboardMobDefinition* definition = isBillboard(a.type)
@@ -2229,14 +2251,14 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
             a.hurtFlash = std::max(a.hurtFlash, .08f + .12f * a.fuseTimer / 1.5f);
         if (a.fuseTimer >= 1.5f) {
             a.deathTimer = -.001f;
-            detonate(a.position + glm::vec3(0, .75f, 0), w, player);
+            detonate(a.position + glm::vec3(0, BillboardMobHeight * .5f, 0), w, player);
             return;
         }
     }
     if (hostile && definition && definition->behavior == BillboardBehavior::RangedAttack &&
         distance < definition->detectionRange && a.attackCooldown <= 0.0f &&
         canSeePlayer(a, w, player, definition->detectionRange) && arrows_.size() < 64) {
-        const glm::vec3 origin = a.position + glm::vec3(0, 1.15f, 0);
+        const glm::vec3 origin = a.position + glm::vec3(0, BillboardMobHeight * .75f, 0);
         const float travel = distance / 17.0f;
         glm::vec3 aim = player.position() + glm::vec3(0, 1.05f, 0) +
                         player.velocity() * std::min(.35f, travel * .35f);
@@ -2284,6 +2306,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     glm::vec3 move(a.heading.x * speed * movementScale + a.velocity.x, 0,
                    a.heading.y * speed * movementScale + a.velocity.z);
     glm::vec3 next = a.position + move * dt;
+    const bool billboard = isBillboard(a.type);
     int fy = static_cast<int>(std::floor(a.position.y + .05f));
     if (a.grounded && glm::dot(a.heading, a.heading) > 0.01f &&
         !canNavigateTo(a, w, a.heading) &&
@@ -2293,7 +2316,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         a.thinkTimer = 0.0f;
     }
     int ax = static_cast<int>(std::floor(next.x)), az = static_cast<int>(std::floor(next.z));
-    if (w.isSolidAt(ax, fy, az) &&
+    if (!billboard && w.isSolidAt(ax, fy, az) &&
         !isDoorOpen(w.getBlock(ax, fy, az))) {
         if ((!w.isSolidAt(ax, fy + 1, az) ||
              isDoorOpen(w.getBlock(ax, fy + 1, az))) &&
@@ -2311,18 +2334,52 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     }
     a.velocity.x *= std::pow(.08f, dt);
     a.velocity.z *= std::pow(.08f, dt);
+    if (billboard && hostile && a.grounded && a.stepJumpCooldown <= 0.0f &&
+        a.memoryTimer > 0.0f && glm::dot(a.heading, a.heading) > .01f &&
+        billboardTouchesSolid(w, glm::vec3(next.x, a.position.y, next.z))) {
+        const glm::vec2 probe(a.position.x + a.heading.x * .95f,
+                              a.position.z + a.heading.y * .95f);
+        float stepSurface = 0.0f;
+        if (billboardFooting(w, probe, a.position.y, .08f, 1.02f, stepSurface) &&
+            !billboardTouchesSolid(w, a.position + glm::vec3(0, .25f, 0)) &&
+            !billboardTouchesSolid(w, a.position +
+                                   glm::vec3(0, stepSurface - a.position.y + .02f, 0))) {
+            a.velocity.y = std::max(a.velocity.y, 6.8f);
+            a.grounded = false;
+            a.stepJumpCooldown = .7f;
+        }
+    }
     a.velocity.y -= 18 * dt;
     next.y += a.velocity.y * dt;
-    int bx = static_cast<int>(std::floor(next.x)), bz = static_cast<int>(std::floor(next.z)),
-        below = static_cast<int>(std::floor(next.y - .08f));
-    if (w.isSolidAt(bx, below, bz) &&
-        !isDoorOpen(w.getBlock(bx, below, bz))) {
-        next.y = below + 1.01f;
-        a.velocity.y = 0;
-        a.grounded = true;
-    } else
-        a.grounded = false;
-    if (isBillboard(a.type) && billboardTouchesSolid(w, next)) {
+    if (billboard) {
+        if (a.velocity.y > 0.0f &&
+            billboardTouchesSolid(w, glm::vec3(a.position.x, next.y, a.position.z))) {
+            next.y = a.position.y;
+            a.velocity.y = 0.0f;
+        }
+        float support = 0.0f;
+        if (a.velocity.y <= 0.0f &&
+            billboardFooting(w, {next.x, next.z}, a.position.y, -1.05f, .05f, support) &&
+            next.y <= support + .02f) {
+            next.y = support + .01f;
+            a.velocity.y = 0.0f;
+            a.grounded = true;
+        } else {
+            a.grounded = false;
+        }
+    } else {
+        const int bx = static_cast<int>(std::floor(next.x));
+        const int bz = static_cast<int>(std::floor(next.z));
+        const int below = static_cast<int>(std::floor(next.y - .08f));
+        if (w.isSolidAt(bx, below, bz) && !isDoorOpen(w.getBlock(bx, below, bz))) {
+            next.y = below + 1.01f;
+            a.velocity.y = 0;
+            a.grounded = true;
+        } else {
+            a.grounded = false;
+        }
+    }
+    if (billboard && billboardTouchesSolid(w, next)) {
         if (definition && definition->behavior == BillboardBehavior::WallClimbLunge &&
             hostile && a.memoryTimer > 0.0f && glm::dot(a.heading, a.heading) > .01f &&
             !billboardTouchesSolid(w, a.position + glm::vec3(0, .12f, 0))) {
@@ -2333,13 +2390,24 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         }
         next.x = a.position.x;
         next.z = a.position.z;
+        // A blocked horizontal move returns to the previous X/Z. Resolve the
+        // landing there as well, or a stair can make the mob fall through the
+        // floor it was already standing on.
+        float support = 0.0f;
+        if (a.velocity.y <= 0.0f &&
+            billboardFooting(w, {next.x, next.z}, a.position.y, -1.05f, .05f, support) &&
+            next.y <= support + .02f) {
+            next.y = support + .01f;
+            a.velocity.y = 0.0f;
+            a.grounded = true;
+        }
         a.thinkTimer = 0.0f;
     }
     a.position = next;
-    const bool billboard = isBillboard(a.type);
-    const float halfWidth = billboard ? .305f : .38f;
+    const float halfWidth = billboard ? BillboardMobHalfWidth : .38f;
     const glm::vec3 mobMinimum = a.position + glm::vec3(-halfWidth, 0.0f, -halfWidth);
-    const glm::vec3 mobMaximum = a.position + glm::vec3(halfWidth, billboard ? 1.5f : 1.15f, halfWidth);
+    const glm::vec3 mobMaximum = a.position +
+        glm::vec3(halfWidth, billboard ? BillboardMobHeight : 1.15f, halfWidth);
     if (a.hurtCooldown <= 0.0f && w.aabbTouchesBlock(mobMinimum, mobMaximum, Block::Cactus)) {
         a.health -= 1.0f;
         a.hurtCooldown = 0.65f;
@@ -2707,10 +2775,14 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     bool ok = true;
     std::string firstFailure;
     float hitDistance = 0.0f;
-    const glm::vec3 boxMin(-.305f, 0.0f, -.305f), boxMax(.305f, 1.5f, .305f);
-    ok &= rayBox({0, 1.49f, -2}, {0, 0, 1}, boxMin, boxMax, 5, hitDistance) &&
-          !rayBox({0, 1.51f, -2}, {0, 0, 1}, boxMin, boxMax, 5, hitDistance) &&
-          !rayBox({.31f, .75f, -2}, {0, 0, 1}, boxMin, boxMax, 5, hitDistance);
+    const glm::vec3 boxMin(-BillboardMobHalfWidth, 0.0f, -BillboardMobHalfWidth);
+    const glm::vec3 boxMax(BillboardMobHalfWidth, BillboardMobHeight, BillboardMobHalfWidth);
+    ok &= rayBox({0, BillboardMobHeight - .01f, -2}, {0, 0, 1},
+                 boxMin, boxMax, 5, hitDistance) &&
+          !rayBox({0, BillboardMobHeight + .01f, -2}, {0, 0, 1},
+                  boxMin, boxMax, 5, hitDistance) &&
+          !rayBox({BillboardMobHalfWidth + .01f, .75f, -2}, {0, 0, 1},
+                  boxMin, boxMax, 5, hitDistance);
     if (!ok) firstFailure = "billboard hitbox dimensions";
     std::array<AnimalType, 4> types{
         AnimalType::Cow, AnimalType::Pig, AnimalType::Sheep, billboardType(0)};
@@ -2720,7 +2792,7 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
         Animal a;
         a.type = types[k];
         a.position = origin + dir * 3.f - glm::vec3(0,
-            isBillboard(a.type) ? .75f : .55f, 0);
+            isBillboard(a.type) ? BillboardMobHeight * .5f : .55f, 0);
         a.health = isBillboard(types[k])
             ? billboardMobDefinitions()[billboardIndex(types[k])].health
             : (types[k] == AnimalType::Cow ? 10.f : 8.f);
@@ -2932,6 +3004,112 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
         std::to_string(climbVelocity) + ")";
     animals_.clear();
 
+    // A walking path over a full-block rise must become an actual jump rather
+    // than a navigation heading that is canceled by collision each tick.
+    for (int x = 0; x <= 22; ++x)
+        for (int z = -2; z <= 2; ++z)
+            w.setBlock(x, 247, z, Block::Stone);
+    for (int x = 3; x <= 5; ++x)
+        for (int z = -2; z <= 2; ++z)
+            w.setBlock(x, 248, z, Block::Stone);
+    Player stepTarget({20.5f, 248.01f, .5f});
+    for (std::size_t role = 0; role < BillboardMobCount; ++role) {
+        Animal walker;
+        walker.type = billboardType(role);
+        walker.position = {1.5f, 248.01f, .5f};
+        walker.heading = {1, 0};
+        walker.grounded = true;
+        walker.memoryTimer = 12.0f;
+        walker.rememberedTarget = stepTarget.position();
+        animals_.push_back(walker);
+        bool reachedStep = false;
+        for (int tick = 0; tick < 150 && !reachedStep; ++tick) {
+            updateAnimal(animals_.back(), .04f, w, stepTarget, combatInventory, 0);
+            reachedStep = animals_.back().position.x > 3.4f &&
+                          animals_.back().position.y >= 248.95f;
+        }
+        if (!reachedStep && firstFailure.empty())
+            firstFailure = "one-block step for role " + std::to_string(role) +
+                " at " + std::to_string(animals_.back().position.x) + "," +
+                std::to_string(animals_.back().position.y);
+        ok &= reachedStep;
+        animals_.clear();
+    }
+    for (int z = -2; z <= 2; ++z) {
+        w.setBlock(4, 249, z, Block::Stone);
+        w.setBlock(5, 249, z, Block::Stone);
+        w.setBlock(5, 250, z, Block::Stone);
+    }
+    for (std::size_t role = 0; role < BillboardMobCount; ++role) {
+        Animal walker;
+        walker.type = billboardType(role);
+        walker.position = {1.5f, 248.01f, .5f};
+        walker.heading = {1, 0};
+        walker.grounded = true;
+        walker.memoryTimer = 16.0f;
+        walker.rememberedTarget = stepTarget.position();
+        animals_.push_back(walker);
+        bool climbedStairs = false;
+        for (int tick = 0; tick < 250 && !climbedStairs; ++tick) {
+            updateAnimal(animals_.back(), .04f, w, stepTarget, combatInventory, 0);
+            if (animals_.back().position.y < 247.0f) {
+                if (firstFailure.empty())
+                    firstFailure = "stair fall for role " + std::to_string(role) +
+                        " at " + std::to_string(animals_.back().position.x) + "," +
+                        std::to_string(animals_.back().position.y) + "," +
+                        std::to_string(animals_.back().position.z) +
+                        " tick " + std::to_string(tick);
+                break;
+            }
+            climbedStairs = animals_.back().position.x > 5.35f &&
+                            animals_.back().position.y >= 250.95f;
+        }
+        if (!climbedStairs && firstFailure.empty())
+            firstFailure = "stair climb for role " + std::to_string(role) +
+                " at " + std::to_string(animals_.back().position.x) + "," +
+                std::to_string(animals_.back().position.y) + "," +
+                std::to_string(animals_.back().position.z);
+        ok &= climbedStairs;
+        animals_.clear();
+    }
+    for (int z = -2; z <= 2; ++z) {
+        w.setBlock(4, 249, z, Block::Air);
+        w.setBlock(5, 249, z, Block::Air);
+        w.setBlock(5, 250, z, Block::Air);
+    }
+    // A roof one cell above the ledge lacks the 1.75-block headroom needed
+    // for either a jump or a standable destination.
+    for (int x = 1; x <= 5; ++x)
+        for (int z = -1; z <= 1; ++z)
+            w.setBlock(x, 250, z, Block::Stone);
+    float blockedSurface = 0.0f;
+    const bool lowRoofBlocked = !billboardFooting(
+        w, {3.5f, .5f}, 248.01f, .08f, 1.02f, blockedSurface);
+    for (int x = 1; x <= 5; ++x)
+        for (int z = -1; z <= 1; ++z)
+            w.setBlock(x, 250, z, Block::Air);
+    for (int z = -2; z <= 2; ++z)
+        w.setBlock(3, 249, z, Block::Stone);
+    const bool tallWallBlocked = !billboardFooting(
+        w, {3.5f, .5f}, 248.01f, .08f, 1.02f, blockedSurface);
+    for (int z = -2; z <= 2; ++z)
+        w.setBlock(3, 249, z, Block::Air);
+    w.setBlock(3, 248, 0, Block::WoodenSlab);
+    const bool slabPassable = billboardFooting(
+        w, {3.5f, .5f}, 248.01f, .08f, 1.02f, blockedSurface) &&
+        std::abs(blockedSurface - 248.5f) < .02f;
+    w.setBlock(3, 248, 0, Block::Snow);
+    const bool snowPassable = !billboardTouchesSolid(w, {3.5f, 248.01f, .5f}) &&
+        billboardFooting(w, {3.5f, .5f}, 248.01f, -.05f, .05f, blockedSurface) &&
+        std::abs(blockedSurface - 248.0f) < .02f;
+    w.setBlock(3, 248, 0, Block::Stone);
+    if (!(lowRoofBlocked && tallWallBlocked && slabPassable && snowPassable) &&
+        firstFailure.empty()) firstFailure = "step clearance or partial-block navigation (roof " +
+            std::to_string(lowRoofBlocked) + ", wall " + std::to_string(tallWallBlocked) +
+            ", slab " + std::to_string(slabPassable) + ", snow " +
+            std::to_string(snowPassable) + ")";
+    ok &= lowRoofBlocked && tallWallBlocked && slabPassable && snowPassable;
+
     animals_.clear();
     drops_.clear();
     spawnedChunks_.clear();
@@ -3043,7 +3221,7 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     arrows_ = std::move(oldArrows);
     explosionEffects_ = std::move(oldEffects);
     spawnedChunks_ = std::move(oldSpawned);
-    report = ok ? "mob combat, 1.5-block hitbox, night-only spawning, four named roles, explosive fuse/terrain/cover, arrows, lunge, old billboard/Wolf saves, drops, and Creative immunity passed"
+    report = ok ? "mob combat, 1.75-block hitbox, one-block steps/stairs and headroom, night-only spawning, four named roles, explosive fuse/terrain/cover, arrows, lunge, old billboard/Wolf saves, drops, and Creative immunity passed"
                 : "combat regression: " + firstFailure;
     return ok;
 }

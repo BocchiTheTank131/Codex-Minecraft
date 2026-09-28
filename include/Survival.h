@@ -241,6 +241,8 @@ struct RenderBillboard {
     float hurt = 0;
     float opacity = 1;
 };
+inline constexpr float BillboardMobHeight = 1.75f;
+inline constexpr float BillboardMobHalfWidth = 0.355f;
 struct MobTarget {
     int index = -1;
     float distance = 0;
@@ -319,6 +321,7 @@ private:
         float stepSoundTimer = 0.0f;
         float fuseTimer = 0.0f;
         float lungeCooldown = 0.0f;
+        float stepJumpCooldown = 0.0f;
         float fleeTimer = 0, angerTimer = 0, memoryTimer = 0, idleTimer = 0,
               wanderPhase = 0;
         glm::vec3 rememberedTarget{0};

@@ -1386,7 +1386,8 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
     std::vector<const RenderBillboard*> visible;
     visible.reserve(billboards.size());
     for (const RenderBillboard& sprite : billboards)
-        if (visibility.visible(sprite.feet + glm::vec3(0, .75f, 0), .9f))
+        if (visibility.visible(sprite.feet + glm::vec3(0, BillboardMobHeight * .5f, 0),
+                               BillboardMobHeight * .55f))
             visible.push_back(&sprite);
     std::sort(visible.begin(), visible.end(), [&](const auto* left, const auto* right) {
         const glm::vec3 leftDelta = left->feet - visibility.camera;
@@ -1407,10 +1408,10 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
     for (const RenderBillboard* sprite : visible) {
         const std::size_t variant = sprite->variant % hostileTextures_.size();
         if (!hostileTextures_[variant]) continue;
-        const float halfWidth = .75f * hostileAspectRatios_[variant];
+        const float halfWidth = BillboardMobHeight * .5f * hostileAspectRatios_[variant];
         const glm::vec3 left = sprite->feet - cameraRight * halfWidth;
         const glm::vec3 right = sprite->feet + cameraRight * halfWidth;
-        const glm::vec3 up(0.0f, 1.5f, 0.0f);
+        const glm::vec3 up(0.0f, BillboardMobHeight, 0.0f);
         const glm::vec3 positions[6] = {left + up, left, right,
                                          left + up, right, right + up};
         const glm::vec2 uv[6] = {{0,0},{0,1},{1,1},{0,0},{1,1},{1,0}};
@@ -1425,7 +1426,7 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
         glBindBuffer(GL_ARRAY_BUFFER, itemVbo_);
         glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STREAM_DRAW);
         const int x = static_cast<int>(std::floor(sprite->feet.x));
-        const int y = static_cast<int>(std::floor(sprite->feet.y + .8f));
+        const int y = static_cast<int>(std::floor(sprite->feet.y + BillboardMobHeight * .5f));
         const int z = static_cast<int>(std::floor(sprite->feet.z));
         const float sky = world.sunlightAt(x, y, z) / 15.0f * daylight;
         const float block = world.blockLightAt(x, y, z) / 15.0f;
