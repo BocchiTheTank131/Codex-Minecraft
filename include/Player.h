@@ -27,6 +27,7 @@ public:
         mouseSensitivity_ = value;
     }
     void damage(float amount);
+    void applyImpulse(const glm::vec3& impulse);
     void heal(float amount);
     void eat(float foodPoints);
     void addExperience(int amount);

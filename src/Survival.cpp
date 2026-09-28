@@ -6,6 +6,7 @@
 #include "Player.h"
 #include "World.h"
 #include "SpriteManifest.h"
+#include "Explosion.h"
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -25,12 +26,15 @@ constexpr char MobMagic[8] = {'V', 'X', 'M', 'O', 'B', '1', '\0', '\0'};
 constexpr int PassiveMobCap = 26;
 constexpr int HostileMobCap = 18;
 constexpr std::size_t BillboardMobCount = sizeof(SpriteAssets) / sizeof(SpriteAssets[0]);
+enum class BillboardBehavior { ExplosiveChase, MeleeChase, RangedAttack, WallClimbLunge };
 struct BillboardMobDefinition {
     std::string name;
+    BillboardBehavior behavior = BillboardBehavior::MeleeChase;
     float health = 20.0f;
     float chaseSpeed = 2.35f;
     float damage = 2.0f;
     float attackCooldown = 1.0f;
+    float detectionRange = 16.0f;
     float spawnWeight = 1.0f;
     MobSoundType sound = MobSoundType::BillboardHostile;
 };
@@ -40,6 +44,16 @@ const std::array<BillboardMobDefinition, BillboardMobCount>& billboardMobDefinit
         for (std::size_t index = 0; index < BillboardMobCount; ++index) {
             const std::string filename = SpriteAssets[index].name;
             result[index].name = filename.substr(0, filename.find_last_of('.'));
+            if (result[index].name == "HitoriGotoh") {
+                result[index].behavior = BillboardBehavior::ExplosiveChase;
+            } else if (result[index].name == "KitaIkuyo") {
+                result[index].behavior = BillboardBehavior::MeleeChase;
+                result[index].detectionRange = 35.0f;
+            } else if (result[index].name == "NijikaIjichi") {
+                result[index].behavior = BillboardBehavior::RangedAttack;
+            } else if (result[index].name == "RyoYamada") {
+                result[index].behavior = BillboardBehavior::WallClimbLunge;
+            }
         }
         return result;
     }();
@@ -1848,12 +1862,12 @@ bool SurvivalWorld::feedAnimal(const glm::vec3& o, const glm::vec3& d, Item food
 }
 
 bool SurvivalWorld::canSeePlayer(const Animal& animal, const World& world,
-                                  const Player& player) const {
+                                  const Player& player, float maximumDistance) const {
     const glm::vec3 from = animal.position + glm::vec3(0.0f, 0.8f, 0.0f);
     const glm::vec3 to = player.position() + glm::vec3(0.0f, 1.0f, 0.0f);
     const glm::vec3 delta = to - from;
     const float distance = glm::length(delta);
-    if (distance > 16.0f || distance < 0.001f)
+    if (distance > maximumDistance || distance < 0.001f)
         return false;
     const glm::vec3 step = delta / distance * 0.28f;
     glm::vec3 point = from;
@@ -1867,6 +1881,99 @@ bool SurvivalWorld::canSeePlayer(const Animal& animal, const World& world,
             return false;
     }
     return true;
+}
+
+void SurvivalWorld::detonate(const glm::vec3& center, World& world, Player& player) {
+    const Explosion blast{center, 3.0f, 3.0f, 12.0f, true};
+    const glm::vec3 playerCenter = player.position() + glm::vec3(0, .9f, 0);
+    const glm::vec3 delta = playerCenter - center;
+    const float distance = glm::length(delta);
+    if (!player.isCreative() && !player.isSpectator() && distance < blast.radius) {
+        const float exposure = explosionExposure(world, center, playerCenter);
+        const float damage = explosionDamage(blast, distance, exposure);
+        if (damage > 0.0f) {
+            player.damage(damage);
+            player.applyImpulse(glm::normalize(delta + glm::vec3(0, .25f, 0)) *
+                                std::min(8.0f, damage * .8f));
+        }
+    }
+    for (Animal& other : animals_) {
+        if (other.deathTimer != 0.0f) continue;
+        const glm::vec3 target = other.position + glm::vec3(0, .75f, 0);
+        const float separation = glm::length(target - center);
+        if (separation >= blast.radius || separation < .01f) continue;
+        const float damage = explosionDamage(
+            blast, separation, explosionExposure(world, center, target));
+        if (damage <= 0.0f) continue;
+        other.health -= damage;
+        other.velocity += glm::normalize(target - center) * std::min(6.0f, damage);
+        other.hurtFlash = .22f;
+        if (other.health <= 0.0f) {
+            other.deathTimer = .65f;
+            releaseDrops(other);
+            if (sounds_)
+                sounds_->playMobDeath(mobSoundType(static_cast<std::uint8_t>(other.type)),
+                                      other.position);
+        }
+    }
+    int releasedDrops = 0;
+    damageExplosionTerrain(world, blast, [&](const glm::ivec3& cell, Block block) {
+        const glm::vec3 dropPosition = glm::vec3(cell) + glm::vec3(.5f);
+        for (const ItemStack& stack : world.takeBlockEntityContents(cell))
+            if (stack.item != Item::None && stack.count > 0)
+                spawnDrop(dropPosition, stack.item, stack.count, stack.durability);
+        const Item item = blockDefinition(block).drop;
+        if (item != Item::None && (!isDoorUpper(block)) && releasedDrops < 64) {
+            spawnDrop(dropPosition, item);
+            ++releasedDrops;
+        }
+    });
+    explosionEffects_.push_back(center);
+}
+
+void SurvivalWorld::updateArrows(float dt, World& world, Player& player) {
+    for (Arrow& arrow : arrows_) {
+        if (!arrow.active) continue;
+        arrow.age += dt;
+        if (arrow.age > 8.0f || !world.simulationActiveAt(arrow.position.x, arrow.position.z) ||
+            glm::distance(arrow.position, player.position()) > 110.0f) {
+            arrow.active = false;
+            continue;
+        }
+        const int steps = std::max(1, static_cast<int>(std::ceil(dt / .025f)));
+        const float step = dt / steps;
+        for (int index = 0; index < steps && arrow.active; ++index) {
+            const glm::vec3 movement = arrow.velocity * step;
+            const float length = glm::length(movement);
+            RayHit obstacle;
+            if (length > .0001f &&
+                world.raycast(arrow.position, movement / length, length, obstacle)) {
+                arrow.active = false;
+                break;
+            }
+            if (!player.isCreative() && !player.isSpectator() && !player.isDead() &&
+                length > .0001f) {
+                float hitDistance = 0.0f;
+                if (rayBox(arrow.position, movement / length, player.aabbMinimum(),
+                           player.aabbMaximum(), length, hitDistance)) {
+                    player.damage(3.0f);
+                    player.applyImpulse(glm::normalize(movement) * 1.8f);
+                    arrow.active = false;
+                    break;
+                }
+            }
+            arrow.position += movement;
+            arrow.velocity.y -= 8.0f * step;
+        }
+    }
+    arrows_.erase(std::remove_if(arrows_.begin(), arrows_.end(),
+        [](const Arrow& arrow) { return !arrow.active; }), arrows_.end());
+}
+
+std::vector<glm::vec3> SurvivalWorld::takeExplosionEffects() {
+    std::vector<glm::vec3> result;
+    result.swap(explosionEffects_);
+    return result;
 }
 
 bool SurvivalWorld::canNavigateTo(const Animal& animal, const World& world,
@@ -1962,9 +2069,14 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     a.angerTimer = std::max(0.0f, a.angerTimer - dt);
     a.memoryTimer = std::max(0.0f, a.memoryTimer - dt);
     a.idleTimer = std::max(0.0f, a.idleTimer - dt);
+    a.lungeCooldown = std::max(0.0f, a.lungeCooldown - dt);
     const glm::vec3 delta = player.position() - a.position;
     const float distance = glm::length(delta);
-    if (sounds_ && distance < 25.0f) {
+    const BillboardMobDefinition* definition = isBillboard(a.type)
+        ? &billboardMobDefinitions()[billboardIndex(a.type)] : nullptr;
+    const bool silentExploder = definition &&
+        definition->behavior == BillboardBehavior::ExplosiveChase;
+    if (sounds_ && distance < 25.0f && !silentExploder) {
         if (a.ambientSoundTimer == 3.0f) {
             a.ambientSoundTimer +=
                 std::abs(std::sin(a.position.x * 7.13f + a.position.z * 13.61f)) * 7.0f;
@@ -1992,8 +2104,10 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
                                : a.type == AnimalType::Pig ? heldFood == Item::Seeds
                                : false);
     if (a.thinkTimer <= 0.0f) {
-        const bool visible = distance < (hostile ? 14.0f : 8.0f) &&
-                             canSeePlayer(a, w, player);
+        const float detectionRange = definition ? definition->detectionRange :
+                                     hostile ? 14.0f : 8.0f;
+        const bool visible = distance < detectionRange &&
+                             canSeePlayer(a, w, player, detectionRange);
         glm::vec2 desired(0.0f);
         bool active = false;
         if (a.type == AnimalType::Villager) {
@@ -2012,7 +2126,8 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         }
         if (hostile && visible) {
             a.rememberedTarget = player.position();
-            a.memoryTimer = 5.0f;
+            a.memoryTimer = definition &&
+                definition->behavior == BillboardBehavior::MeleeChase ? 4.0f : 3.0f;
         }
         if (a.fleeTimer > 0.0f) {
             desired = glm::vec2(a.position.x - a.rememberedTarget.x,
@@ -2021,6 +2136,11 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         } else if (hostile && a.memoryTimer > 0.0f) {
             desired = glm::vec2(a.rememberedTarget.x - a.position.x,
                                 a.rememberedTarget.z - a.position.z);
+            if (definition && definition->behavior == BillboardBehavior::RangedAttack &&
+                visible) {
+                if (distance < 5.0f) desired = -desired;
+                else if (distance < 12.0f) desired = glm::vec2(0);
+            }
             active = true;
         } else if (!hostile && preferredFood && visible) {
             desired = glm::vec2(delta.x, delta.z);
@@ -2047,13 +2167,74 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
             a.heading = chooseNavigationHeading(a, w, desired);
         else
             a.heading = {0.0f, 0.0f};
+        if (definition && definition->behavior == BillboardBehavior::WallClimbLunge &&
+            hostile && a.memoryTimer > 0.0f &&
+            glm::dot(a.heading, a.heading) < .01f &&
+            glm::dot(desired, desired) > .01f) {
+            const glm::vec2 direction = glm::normalize(desired);
+            const glm::vec3 ahead = a.position +
+                glm::vec3(direction.x * .45f, 0, direction.y * .45f);
+            const bool supported = w.isSolidAt(
+                static_cast<int>(std::floor(a.position.x)),
+                static_cast<int>(std::floor(a.position.y - .1f)),
+                static_cast<int>(std::floor(a.position.z)));
+            if (supported && billboardTouchesSolid(w, ahead))
+                a.heading = direction;
+        }
         a.thinkTimer = hostile && a.memoryTimer > 0.0f ? 0.28f
                      : active ? 0.65f : 1.8f;
     }
+    if (hostile && silentExploder) {
+        if (distance < 3.0f && canSeePlayer(a, w, player, 4.0f))
+            a.fuseTimer += dt;
+        else
+            a.fuseTimer = std::max(0.0f, a.fuseTimer - dt * 2.0f);
+        if (a.fuseTimer > 0.0f)
+            a.hurtFlash = std::max(a.hurtFlash, .08f + .12f * a.fuseTimer / 1.5f);
+        if (a.fuseTimer >= 1.5f) {
+            a.deathTimer = -.001f;
+            detonate(a.position + glm::vec3(0, .75f, 0), w, player);
+            return;
+        }
+    }
+    if (hostile && definition && definition->behavior == BillboardBehavior::RangedAttack &&
+        distance < definition->detectionRange && a.attackCooldown <= 0.0f &&
+        canSeePlayer(a, w, player, definition->detectionRange) && arrows_.size() < 64) {
+        const glm::vec3 origin = a.position + glm::vec3(0, 1.15f, 0);
+        const float travel = distance / 17.0f;
+        glm::vec3 aim = player.position() + glm::vec3(0, 1.05f, 0) +
+                        player.velocity() * std::min(.35f, travel * .35f);
+        aim.y += 4.0f * travel * travel;
+        const float spread = .02f + distance * .004f;
+        a.wanderPhase += 1.0f;
+        aim.x += std::sin(a.position.x * 7.1f + a.wanderPhase * 3.7f) * spread;
+        aim.z += std::cos(a.position.z * 9.3f + a.wanderPhase * 2.1f) * spread;
+        arrows_.push_back({origin, glm::normalize(aim - origin) * 17.0f,
+                           0.0f, true, static_cast<std::uint8_t>(a.type)});
+        a.attackCooldown = 2.4f;
+    }
+    if (hostile && definition && definition->behavior == BillboardBehavior::WallClimbLunge &&
+        a.grounded && a.lungeCooldown <= 0.0f && distance >= 2.5f && distance <= 5.0f &&
+        canSeePlayer(a, w, player, 5.5f)) {
+        glm::vec2 toward(delta.x, delta.z);
+        if (glm::dot(toward, toward) > .01f) {
+            toward = glm::normalize(toward);
+            a.velocity.x += toward.x * 5.0f;
+            a.velocity.z += toward.y * 5.0f;
+            a.velocity.y = 6.0f;
+            a.grounded = false;
+            a.lungeCooldown = 2.2f;
+        }
+    }
     if (hostile && distance < 1.5f && a.attackCooldown <= 0.0f &&
+        (!definition || (definition->behavior != BillboardBehavior::ExplosiveChase &&
+                         definition->behavior != BillboardBehavior::RangedAttack)) &&
         canSeePlayer(a, w, player)) {
+        const float previousHealth = player.health();
         player.damage(isBillboard(a.type)
                           ? billboardMobDefinitions()[billboardIndex(a.type)].damage : 2.0f);
+        if (definition && player.health() < previousHealth && distance > .01f)
+            player.applyImpulse(glm::normalize(delta + glm::vec3(0, .15f, 0)) * 1.6f);
         a.attackCooldown = isBillboard(a.type)
             ? billboardMobDefinitions()[billboardIndex(a.type)].attackCooldown : 1.25f;
     }
@@ -2063,11 +2244,14 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
                                    ? billboardMobDefinitions()[billboardIndex(a.type)].chaseSpeed
                                    : 2.35f)
                         : preferredFood && distance < 8.0f ? 1.15f : 0.75f;
-    glm::vec3 move(a.heading.x * speed + a.velocity.x, 0, a.heading.y * speed + a.velocity.z);
+    const float movementScale = a.fuseTimer > 0.0f ? .12f : 1.0f;
+    glm::vec3 move(a.heading.x * speed * movementScale + a.velocity.x, 0,
+                   a.heading.y * speed * movementScale + a.velocity.z);
     glm::vec3 next = a.position + move * dt;
     int fy = static_cast<int>(std::floor(a.position.y + .05f));
     if (a.grounded && glm::dot(a.heading, a.heading) > 0.01f &&
-        !canNavigateTo(a, w, a.heading)) {
+        !canNavigateTo(a, w, a.heading) &&
+        !(definition && definition->behavior == BillboardBehavior::WallClimbLunge && hostile)) {
         next.x = a.position.x;
         next.z = a.position.z;
         a.thinkTimer = 0.0f;
@@ -2081,8 +2265,11 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
              isDoorOpen(w.getBlock(ax, fy + 2, az))))
             next.y += 1;
         else {
-            next.x = a.position.x;
-            next.z = a.position.z;
+            if (!(definition && definition->behavior == BillboardBehavior::WallClimbLunge &&
+                  hostile)) {
+                next.x = a.position.x;
+                next.z = a.position.z;
+            }
             a.thinkTimer = 0.0f;
         }
     }
@@ -2100,6 +2287,14 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     } else
         a.grounded = false;
     if (isBillboard(a.type) && billboardTouchesSolid(w, next)) {
+        if (definition && definition->behavior == BillboardBehavior::WallClimbLunge &&
+            hostile && a.memoryTimer > 0.0f && glm::dot(a.heading, a.heading) > .01f &&
+            !billboardTouchesSolid(w, a.position + glm::vec3(0, .12f, 0))) {
+            a.velocity.y = std::max(a.velocity.y, 3.2f);
+            next.y = a.position.y + a.velocity.y * dt;
+            if (billboardTouchesSolid(w, glm::vec3(a.position.x, next.y, a.position.z)))
+                next.y = a.position.y;
+        }
         next.x = a.position.x;
         next.z = a.position.z;
         a.thinkTimer = 0.0f;
@@ -2163,6 +2358,7 @@ void SurvivalWorld::update(float dt, World& w, Player& p, Inventory& i, float da
             a.simulationAccumulator = 0.0f;
         }
     }
+    updateArrows(dt, w, p);
     aiMilliseconds_ = std::chrono::duration<float, std::milli>(
         std::chrono::steady_clock::now() - aiStart).count();
     // Natural populations stay local even when the simulation radius is large.
@@ -2254,6 +2450,7 @@ SurvivalWorld::MobDiagnostics SurvivalWorld::diagnostics(
     result.spawnSuccesses = spawnSuccessesLastTick_;
     result.navigationQueries = navigationQueriesLastTick_;
     result.aiMilliseconds = aiMilliseconds_;
+    result.arrows = static_cast<int>(arrows_.size());
     for (const Animal& animal : animals_) {
         if (animal.deathTimer > 0)
             continue;
@@ -2264,7 +2461,7 @@ SurvivalWorld::MobDiagnostics SurvivalWorld::diagnostics(
 }
 std::vector<RenderCuboid> SurvivalWorld::renderCuboids() const {
     std::vector<RenderCuboid> out;
-    out.reserve(animals_.size() * 6 + experienceOrbs_.size());
+    out.reserve(animals_.size() * 6 + experienceOrbs_.size() + arrows_.size());
     for (const auto& a : animals_) {
         if (isBillboard(a.type))
             continue;
@@ -2296,6 +2493,9 @@ std::vector<RenderCuboid> SurvivalWorld::renderCuboids() const {
     }
     for (const auto& o : experienceOrbs_)
         out.push_back({o.position, glm::vec3(.14f), {.35f, 1, .08f}});
+    for (const Arrow& arrow : arrows_)
+        out.push_back({arrow.position, glm::vec3(.055f, .48f, .055f),
+                       glm::vec3(.34f, .24f, .14f), arrow.velocity});
     return out;
 }
 std::vector<RenderBillboard> SurvivalWorld::renderBillboards() const {
@@ -2443,6 +2643,8 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
         }
     }
     animals_ = std::move(loaded);
+    arrows_.clear();
+    explosionEffects_.clear();
     spawnedChunks_ = std::move(loadedSpawnedChunks);
     spawnedStructureMarkers_ = std::move(loadedMarkers);
     return true;
@@ -2460,6 +2662,8 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     auto oldAnimals = animals_;
     auto oldDrops = drops_;
     auto oldOrbs = experienceOrbs_;
+    auto oldArrows = arrows_;
+    auto oldEffects = explosionEffects_;
     auto oldSpawned = spawnedChunks_;
     animals_.clear();
     drops_.clear();
@@ -2523,7 +2727,7 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     if (!ok && firstFailure.empty()) firstFailure = "ray occlusion";
     animals_.clear();
     Animal hunter;
-    hunter.type = billboardType(0);
+    hunter.type = billboardType(1); // KitaIkuyo is the melee hunter.
     hunter.position = testPlayer.position() + glm::vec3(1.f, 0, 0);
     hunter.health = 12;
     animals_.push_back(hunter);
@@ -2561,6 +2765,136 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     updateAnimal(animals_.front(), .02f, w, pillagerVictim, combatInventory, 1.0f);
     ok &= pillagerVictim.health() == creativeHealth;
     if (!ok && firstFailure.empty()) firstFailure = "pillager or creative";
+
+    // Exercise each role against a clear high-altitude test lane. The terrain
+    // checks below remain local to this temporary smoke-test world.
+    const glm::vec3 lane(0.5f, 248.0f, 0.5f);
+    for (std::size_t index = 0; index < BillboardMobCount; ++index) {
+        const auto& definition = billboardMobDefinitions()[index];
+        const BillboardBehavior expectedBehavior = index == 0
+            ? BillboardBehavior::ExplosiveChase : index == 1
+            ? BillboardBehavior::MeleeChase : index == 2
+            ? BillboardBehavior::RangedAttack : BillboardBehavior::WallClimbLunge;
+        ok &= definition.behavior == expectedBehavior;
+    }
+    if (!ok && firstFailure.empty()) firstFailure = "billboard role definitions";
+    animals_.clear();
+    Player distantVictim(lane);
+    Animal longHunter;
+    longHunter.type = billboardType(1);
+    longHunter.position = lane + glm::vec3(30, 0, 0);
+    animals_.push_back(longHunter);
+    updateAnimal(animals_.front(), .02f, w, distantVictim, combatInventory, 0);
+    ok &= animals_.front().memoryTimer > 0.0f;
+    if (!ok && firstFailure.empty()) firstFailure = "35-block hunter detection";
+    animals_.clear();
+    arrows_.clear();
+    Player blastVictim(lane);
+    Animal exploder;
+    exploder.type = billboardType(0);
+    exploder.position = lane + glm::vec3(2, 0, 0);
+    exploder.thinkTimer = 4.0f;
+    animals_.push_back(exploder);
+    const float initialHealth = blastVictim.health();
+    updateAnimal(animals_.front(), .8f, w, blastVictim, combatInventory, 0);
+    ok &= blastVictim.health() == initialHealth && animals_.front().fuseTimer > .7f;
+    // Knockback/retreat cancels an unfinished fuse.
+    blastVictim.teleport(lane + glm::vec3(12, 0, 0));
+    updateAnimal(animals_.front(), .5f, w, blastVictim, combatInventory, 0);
+    ok &= animals_.front().fuseTimer == 0.0f;
+    blastVictim.teleport(lane);
+    animals_.front().position = lane + glm::vec3(2, 0, 0);
+    const glm::ivec3 softBlock(4, 248, 0);
+    w.setBlock(softBlock.x, softBlock.y, softBlock.z, Block::Dirt);
+    updateAnimal(animals_.front(), 1.6f, w, blastVictim, combatInventory, 0);
+    ok &= animals_.front().deathTimer < 0 && blastVictim.health() < initialHealth &&
+          !explosionEffects_.empty() && w.getBlock(softBlock.x, softBlock.y, softBlock.z) == Block::Air;
+    if (!ok && firstFailure.empty()) firstFailure = "explosive fuse, damage, or terrain";
+    Player creativeVictim(lane);
+    creativeVictim.setCreativeMode(true);
+    detonate(lane + glm::vec3(2, .75f, 0), w, creativeVictim);
+    ok &= creativeVictim.health() == 20.0f;
+    Player spectatorVictim(lane);
+    spectatorVictim.setSpectatorMode(true);
+    detonate(lane + glm::vec3(2, .75f, 0), w, spectatorVictim);
+    ok &= spectatorVictim.health() == 20.0f;
+    if (!ok && firstFailure.empty()) firstFailure = "explosion creative or spectator immunity";
+    animals_.clear();
+    explosionEffects_.clear();
+    const glm::vec3 shieldOrigin(10.5f, 248.5f, .5f);
+    const glm::vec3 shieldTarget(12.5f, 248.5f, .5f);
+    w.setBlock(11, 248, 0, Block::Stone);
+    ok &= explosionExposure(w, shieldOrigin, shieldTarget) < .5f;
+    w.setBlock(11, 248, 0, Block::Air);
+    if (!ok && firstFailure.empty()) firstFailure = "explosion obstruction";
+
+    Player rangedVictim(lane);
+    Animal archer;
+    archer.type = billboardType(2);
+    archer.position = lane + glm::vec3(0, 0, 8);
+    archer.thinkTimer = 4.0f;
+    animals_.push_back(archer);
+    updateAnimal(animals_.front(), .02f, w, rangedVictim, combatInventory, 0);
+    const bool shotSpawned = arrows_.size() == 1 && rangedVictim.health() == 20.0f;
+    const auto projectileModels = renderCuboids();
+    ok &= shotSpawned && !projectileModels.empty() &&
+          glm::length(projectileModels.back().direction) > 1.0f;
+    updateArrows(.6f, w, rangedVictim);
+    const bool shotHit = rangedVictim.health() < 20.0f && arrows_.empty();
+    ok &= shotHit;
+    arrows_.clear();
+    Player shieldedVictim(lane);
+    for (int y = 248; y <= 250; ++y)
+        w.setBlock(0, y, 4, Block::Stone);
+    arrows_.push_back({lane + glm::vec3(0, 1.1f, 8), glm::vec3(0, 0, -17)});
+    updateArrows(.6f, w, shieldedVictim);
+    const bool shotBlocked = shieldedVictim.health() == 20.0f && arrows_.empty();
+    ok &= shotBlocked;
+    for (int y = 248; y <= 250; ++y)
+        w.setBlock(0, y, 4, Block::Air);
+    if (!ok && firstFailure.empty()) firstFailure = "ranged projectile (spawn=" +
+        std::to_string(shotSpawned) + ", hit=" + std::to_string(shotHit) +
+        ", blocked=" + std::to_string(shotBlocked) + ")";
+    animals_.clear();
+    Player lungeVictim(lane);
+    Animal climber;
+    climber.type = billboardType(3);
+    climber.position = lane + glm::vec3(4, 0, 0);
+    climber.grounded = true;
+    climber.thinkTimer = 4.0f;
+    animals_.push_back(climber);
+    updateAnimal(animals_.front(), .02f, w, lungeVictim, combatInventory, 0);
+    ok &= animals_.front().lungeCooldown > 2.0f && animals_.front().velocity.y > 0.0f;
+    const float firstLungeCooldown = animals_.front().lungeCooldown;
+    updateAnimal(animals_.front(), .02f, w, lungeVictim, combatInventory, 0);
+    ok &= animals_.front().lungeCooldown < firstLungeCooldown;
+    if (!ok && firstFailure.empty()) firstFailure = "wall climber lunge";
+    animals_.clear();
+    Player climbTarget(lane + glm::vec3(4.0f, 0, 0));
+    climber = Animal{};
+    climber.type = billboardType(3);
+    climber.position = lane + glm::vec3(1.12f, 0, 0);
+    climber.grounded = true;
+    climber.memoryTimer = 3.0f;
+    climber.rememberedTarget = climbTarget.position();
+    w.setBlock(1, 247, 0, Block::Stone);
+    for (int y = 248; y <= 250; ++y)
+        w.setBlock(2, y, 0, Block::Stone);
+    animals_.push_back(climber);
+    updateAnimal(animals_.front(), .1f, w, climbTarget, combatInventory, 0);
+    const bool climbed = animals_.front().position.y > lane.y + .05f;
+    for (int y = 248; y <= 250; ++y)
+        w.setBlock(2, y, 0, Block::Air);
+    w.setBlock(1, 247, 0, Block::Air);
+    animals_.front().lungeCooldown = 2.0f;
+    const float climbVelocity = animals_.front().velocity.y;
+    updateAnimal(animals_.front(), .1f, w, climbTarget, combatInventory, 0);
+    ok &= climbed && animals_.front().velocity.y < climbVelocity;
+    if (!ok && firstFailure.empty()) firstFailure = "wall contact climbing (climbed=" +
+        std::to_string(climbed) + ", velocity=" +
+        std::to_string(animals_.front().velocity.y) + ", prior=" +
+        std::to_string(climbVelocity) + ")";
+    animals_.clear();
 
     animals_.clear();
     drops_.clear();
@@ -2670,8 +3004,10 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     animals_ = std::move(oldAnimals);
     drops_ = std::move(oldDrops);
     experienceOrbs_ = std::move(oldOrbs);
+    arrows_ = std::move(oldArrows);
+    explosionEffects_ = std::move(oldEffects);
     spawnedChunks_ = std::move(oldSpawned);
-    report = ok ? "mob combat, 1.5-block hitbox, night-only spawning, four named mob types, old billboard/Wolf saves, drops, hostile/pillager attacks, and Creative immunity passed"
+    report = ok ? "mob combat, 1.5-block hitbox, night-only spawning, four named roles, explosive fuse/terrain/cover, arrows, lunge, old billboard/Wolf saves, drops, and Creative immunity passed"
                 : "combat regression: " + firstFailure;
     return ok;
 }

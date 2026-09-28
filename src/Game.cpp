@@ -1481,6 +1481,8 @@ void Game::handleUseAction() {
 void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
     sounds_->setListener(player_->cameraPosition(), player_->lookDirection());
     survival_->update(deltaTime, *world_, *player_, *inventory_, daylight(timing_.worldTime));
+    for (const glm::vec3& center : survival_->takeExplosionEffects())
+        renderer_->spawnExplosionParticles(center);
 
     if (player_->health() < oldHealth) {
         if (player_->lastFallDamage() > 0.0f)
@@ -1844,6 +1846,7 @@ std::string Game::buildDebugText() const {
          << "ENTITIES " << renderer_->visibleEntityCount() << " VISIBLE\n"
          << "MOBS " << mobs.passive << "/" << mobs.passiveCap << " PASSIVE  "
          << mobs.hostile << "/" << mobs.hostileCap << " HOSTILE\n"
+         << (mobs.arrows > 0 ? "ARROWS " + std::to_string(mobs.arrows) + "\n" : "")
          << (interaction_.mobTarget.valid()
                  ? "TARGET " + survival_->mobName(interaction_.mobTarget.index) + "\n"
                  : "")

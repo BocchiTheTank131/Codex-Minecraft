@@ -118,6 +118,7 @@ public:
                           const glm::mat4& projection) const;
     void spawnBreakParticles(const glm::ivec3& blockPosition, Block block);
     void spawnHitParticles(const glm::vec3& position, bool critical);
+    void spawnExplosionParticles(const glm::vec3& position);
     void updateParticles(float deltaTime);
     void renderParticles(const glm::mat4& view,
                          const glm::mat4& projection,

@@ -56,6 +56,10 @@ void Player::damage(float a) {
         velocity_ = {0, 0, 0};
     }
 }
+void Player::applyImpulse(const glm::vec3& impulse) {
+    if (creativeMode_ || spectatorMode_ || dead_) return;
+    velocity_ += impulse;
+}
 void Player::heal(float a) {
     if (!dead_)
         health_ = std::min(20.f, health_ + a);

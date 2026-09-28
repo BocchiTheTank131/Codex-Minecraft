@@ -1265,6 +1265,22 @@ void Renderer::spawnHitParticles(const glm::vec3& position, bool critical) {
                               .48f + std::abs(random(rng)) * .28f});
     }
 }
+void Renderer::spawnExplosionParticles(const glm::vec3& position) {
+    static std::mt19937 rng(81721);
+    std::uniform_real_distribution<float> random(-1.0f, 1.0f);
+    const int count = 45 * particlePercent_ / 100;
+    for (int i = 0; i < count; ++i) {
+        glm::vec3 direction(random(rng), random(rng) * .8f + .3f, random(rng));
+        if (glm::dot(direction, direction) < .01f) direction.y = 1.0f;
+        direction = glm::normalize(direction);
+        const float speed = 2.0f + static_cast<float>(i % 5) * .6f;
+        const glm::vec3 color = i % 3 == 0 ? glm::vec3(.9f, .46f, .16f) :
+                                i % 3 == 1 ? glm::vec3(.44f, .42f, .39f) :
+                                             glm::vec3(.25f, .24f, .23f);
+        particles_.push_back({position, direction * speed, color, .6f +
+                              static_cast<float>(i % 4) * .13f});
+    }
+}
 void Renderer::updateParticles(float dt) {
     for (Particle& p : particles_) {
         p.life -= dt;
@@ -1334,6 +1350,14 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
             continue;
         ++visibleEntityCount_;
         glm::mat4 model = glm::translate(glm::mat4(1.0f), cuboid.center);
+        if (glm::dot(cuboid.direction, cuboid.direction) > .0001f) {
+            const glm::vec3 direction = glm::normalize(cuboid.direction);
+            const glm::vec3 up(0, 1, 0);
+            const float angle = std::acos(std::clamp(glm::dot(up, direction), -1.0f, 1.0f));
+            glm::vec3 axis = glm::cross(up, direction);
+            if (glm::dot(axis, axis) < .0001f) axis = glm::vec3(1, 0, 0);
+            model = glm::rotate(model, angle, glm::normalize(axis));
+        }
         model = glm::scale(model, cuboid.size);
         glUniformMatrix4fv(
             glGetUniformLocation(entityProgram_, "uModel"), 1, GL_FALSE, glm::value_ptr(model));

@@ -233,6 +233,7 @@ struct RenderCuboid {
     glm::vec3 center{0};
     glm::vec3 size{1};
     glm::vec3 color{1};
+    glm::vec3 direction{0};
 };
 struct RenderBillboard {
     glm::vec3 feet{0};
@@ -265,6 +266,7 @@ public:
         int spawnSuccesses = 0;
         int navigationQueries = 0;
         float aiMilliseconds = 0.0f;
+        int arrows = 0;
     };
     explicit SurvivalWorld(std::uint32_t seed);
     void setSoundSystem(SoundSystem* sounds) { sounds_ = sounds; }
@@ -292,6 +294,7 @@ public:
     std::vector<RenderBillboard> renderBillboards() const;
     std::string mobName(int index) const;
     std::vector<RenderItemSprite> renderItemSprites() const;
+    std::vector<glm::vec3> takeExplosionEffects();
     bool save(const std::string& path, std::uint32_t seed) const;
     bool load(const std::string& path, std::uint32_t seed);
     bool runCombatSelfTest(World& world, Player& player, Inventory& inventory, std::string& report);
@@ -313,6 +316,8 @@ private:
         float simulationAccumulator = 0;
         float ambientSoundTimer = 3.0f;
         float stepSoundTimer = 0.0f;
+        float fuseTimer = 0.0f;
+        float lungeCooldown = 0.0f;
         float fleeTimer = 0, angerTimer = 0, memoryTimer = 0, idleTimer = 0,
               wanderPhase = 0;
         glm::vec3 rememberedTarget{0};
@@ -332,11 +337,19 @@ private:
         float age = 0;
         float simulationAccumulator = 0;
     };
+    struct Arrow {
+        glm::vec3 position{0}, velocity{0};
+        float age = 0.0f;
+        bool active = true;
+        std::uint8_t sourceType = 0;
+    };
     std::uint32_t seed_ = 0;
     SoundSystem* sounds_ = nullptr;
     std::vector<Animal> animals_;
     std::vector<Drop> drops_;
     std::vector<ExperienceOrb> experienceOrbs_;
+    std::vector<Arrow> arrows_;
+    std::vector<glm::vec3> explosionEffects_;
     std::unordered_set<std::int64_t> spawnedChunks_;
     std::unordered_set<std::uint64_t> spawnedStructureMarkers_;
     float spawnAccumulator_ = 0.0f;
@@ -357,7 +370,9 @@ private:
     glm::vec2 chooseNavigationHeading(Animal& animal, World& world,
                                       const glm::vec2& desired);
     bool canSeePlayer(const Animal& animal, const World& world,
-                      const Player& player) const;
+                      const Player& player, float maximumDistance = 16.0f) const;
+    void detonate(const glm::vec3& center, World& world, Player& player);
+    void updateArrows(float deltaTime, World& world, Player& player);
     int targetedAnimal(const glm::vec3& origin, const glm::vec3& direction, float reach) const;
     void releaseDrops(Animal& animal);
     static std::int64_t chunkKey(int x, int z);
