@@ -1,4 +1,5 @@
 #include "World.h"
+#include "AmbientOcclusion.h"
 
 #include "Player.h"
 #include "SaveFile.h"
@@ -2827,6 +2828,41 @@ bool World::runAsyncMeshSmokeTest(std::string& report) {
     const MeshOutput greedyResult = buildMesh(greedyInput);
     const bool greedyPassed = greedyResult.opaque.size() == 36 &&
                               greedyResult.water.empty();
+    MeshInput aoInput;
+    aoInput.meshHeight = 8;
+    aoInput.blocks.assign(static_cast<std::size_t>(smokeSpan * smokeSpan * aoInput.meshHeight),
+                          Block::Air);
+    aoInput.packedLight.assign(aoInput.blocks.size(), 0xf0U);
+    const auto aoIndex = [&](int x, int y, int z) {
+        return static_cast<std::size_t>((y * smokeSpan + z + 3) * smokeSpan + x + 3);
+    };
+    aoInput.blocks[aoIndex(8, 4, 8)] = Block::Stone;
+    const auto sampledCorner = [&](Block neighbor) {
+        aoInput.blocks[aoIndex(9, 5, 8)] = neighbor;
+        const MeshOutput mesh = buildMesh(aoInput);
+        for (const VoxelVertex& vertex : mesh.opaque) {
+            if (std::abs(vertex.position.x - 9.0f) < 0.001f &&
+                std::abs(vertex.position.y - 5.0f) < 0.001f &&
+                std::abs(vertex.position.z - 9.0f) < 0.001f && vertex.normal.x > 0.9f)
+                return vertex.ao;
+        }
+        return -1.0f;
+    };
+    const float airAo = sampledCorner(Block::Air);
+    const float cubeAo = sampledCorner(Block::Stone);
+    const float lowerSlabAo = sampledCorner(Block::WoodenSlab);
+    const float upperSlabAo = sampledCorner(Block::WoodenSlabTop);
+    const float snowAo = sampledCorner(Block::Snow);
+    const float leavesAo = sampledCorner(Block::Leaves);
+    const float glassAo = sampledCorner(Block::Glass);
+    const float torchAo = sampledCorner(Block::Torch);
+    const float doorClosedAo = sampledCorner(doorBlock(0, false, false, false));
+    const float doorOpenAo = sampledCorner(doorBlock(0, false, false, true));
+    const bool aoMeshPassed = airAo == 1.0f && cubeAo < lowerSlabAo &&
+        lowerSlabAo < snowAo && snowAo < airAo &&
+        upperSlabAo == airAo && leavesAo < airAo &&
+        glassAo == airAo && torchAo == airAo &&
+        doorClosedAo == airAo && doorOpenAo < airAo;
     const auto shadedWall = [&](int roofDepth, bool enclosed,
                                 Block wallBlock, bool torch, int wallX = 8) {
         MeshInput lightingInput;
@@ -2947,7 +2983,7 @@ bool World::runAsyncMeshSmokeTest(std::string& report) {
         maximumEditMilliseconds =
             std::max(maximumEditMilliseconds, lastBlockEditMilliseconds_);
     }
-    bool passed = greedyPassed && shadePassed && waitForMeshes() &&
+    bool passed = greedyPassed && aoMeshPassed && shadePassed && waitForMeshes() &&
                   center->opaqueVertexCount == centerBase &&
                   getBlock(interiorX, y, z) == Block::Air;
     setBlock(boundaryX, y, z, Block::Stone);
@@ -2966,7 +3002,7 @@ bool World::runAsyncMeshSmokeTest(std::string& report) {
                        " ms max edit; 3456 to " +
                        std::to_string(greedyResult.opaque.size()) +
                        " vertices on a flat test platform; eave/porch/window/room/torch "
-                       "lighting and boundary daylight passed)"
+                       "lighting, geometry-aware AO, and boundary daylight passed)"
                  : "asynchronous mesh or stale-result regression (shade " +
                        std::to_string(shadePassed) + ", open " +
                        std::to_string(openSun) + ", eave " +
@@ -2975,7 +3011,8 @@ bool World::runAsyncMeshSmokeTest(std::string& report) {
                        std::to_string(windowSun) + ", boundary " +
                        std::to_string(boundarySun) + ", room " +
                        std::to_string(enclosedLight.first) + ", torch " +
-                       std::to_string(enclosedLight.second) + ')';
+                       std::to_string(enclosedLight.second) + ", AO " +
+                       std::to_string(aoMeshPassed) + ')';
     return passed;
 }
 
@@ -3595,6 +3632,35 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
         const std::size_t index = sample(x, y, z);
         return index < input.blocks.size() ? input.blocks[index] : Block::Air;
     };
+    const auto meshCornerAo = [&](int worldX, int y, int worldZ,
+                                  const glm::ivec3& normal, const glm::vec3& corner,
+                                  const BlockGeometryProperties& ownGeometry) {
+        glm::ivec3 base = normal;
+        int tangentAxes[2]{}, tangentCount = 0;
+        for (int axis = 0; axis < 3; ++axis) {
+            if (normal[axis] == 0) tangentAxes[tangentCount++] = axis;
+            else if ((normal[axis] > 0 && corner[axis] < 0.999f) ||
+                     (normal[axis] < 0 && corner[axis] > 0.001f))
+                base[axis] = 0; // The surface lies within a partial block's cell.
+        }
+        const int axisA = tangentAxes[0], axisB = tangentAxes[1];
+        const float middleA = (geometryMinimum(ownGeometry, axisA) +
+                               geometryMaximum(ownGeometry, axisA)) * 0.5f;
+        const float middleB = (geometryMinimum(ownGeometry, axisB) +
+                               geometryMaximum(ownGeometry, axisB)) * 0.5f;
+        glm::ivec3 sideA = base, sideB = base, diagonal = base;
+        sideA[axisA] += corner[axisA] > middleA ? 1 : -1;
+        sideB[axisB] += corner[axisB] > middleB ? 1 : -1;
+        diagonal[axisA] = sideA[axisA];
+        diagonal[axisB] = sideB[axisB];
+        const auto contribution = [&](const glm::ivec3& offset) {
+            return AmbientOcclusion::contribution(
+                meshBlock(worldX + offset.x, y + offset.y, worldZ + offset.z),
+                corner - glm::vec3(offset));
+        };
+        return AmbientOcclusion::cornerLevel(contribution(sideA),
+                                             contribution(sideB), contribution(diagonal));
+    };
     const auto meshSunlight = [&](int x, int y, int z) -> std::uint8_t {
         if (y >= input.meshHeight)
             return 15;
@@ -3690,8 +3756,9 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
                     continue;
                 }
 
+                const BlockGeometryProperties ownGeometry = blockGeometry(block);
                 if (isSlab(block) || isDoor(block)) {
-                    const BlockGeometryProperties geometry = blockGeometry(block);
+                    const BlockGeometryProperties& geometry = ownGeometry;
                     const glm::vec3 localMinimum(geometry.minX, geometry.minY, geometry.minZ);
                     const glm::vec3 localMaximum(geometry.maxX, geometry.maxY, geometry.maxZ);
 
@@ -3756,7 +3823,8 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
                                                       glm::vec3(normal),
                                                       faceSunlight,
                                                       blockLight,
-                                                      1.0f});
+                                                      meshCornerAo(worldX, y, worldZ, normal,
+                                                                   visibleFace[corner], geometry)});
                         }
                     }
                     continue;
@@ -3819,17 +3887,16 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
                         sideB[tangentAxes[1]] += signB;
                         diagonal[tangentAxes[0]] += signA;
                         diagonal[tangentAxes[1]] += signB;
-                        const auto occupied = [&](const glm::ivec3& offset) {
-                            return isSolid(
-                                meshBlock(worldX + offset.x, y + offset.y, worldZ + offset.z));
-                        };
                         if (!isWater(block)) {
-                            const bool a = occupied(sideA), b = occupied(sideB),
-                                       c = occupied(diagonal);
-                            const int ao = (a && b) ? 0
-                                                    : 3 - static_cast<int>(a) -
-                                                          static_cast<int>(b) - static_cast<int>(c);
-                            cornerAo[corner] = 0.76f + static_cast<float>(ao) * 0.08f;
+                            glm::vec3 actualCorner(cornerPosition[0], cornerPosition[1],
+                                                   cornerPosition[2]);
+                            if (normal.y == 0)
+                                actualCorner.y = cornerPosition[1] > 0.5f
+                                    ? visibleFaceTop : visibleFaceBottom;
+                            else if (normal.y > 0)
+                                actualCorner.y = geometryHeight;
+                            cornerAo[corner] = meshCornerAo(worldX, y, worldZ, normal,
+                                                             actualCorner, ownGeometry);
                         }
                         const std::array<glm::ivec3, 4> samples{{normal, sideA, sideB, diagonal}};
                         std::uint8_t sun = 0, emitted = 0;
@@ -3845,10 +3912,9 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
                             static_cast<float>(sun) / 15.0f, indirectDaylight);
                         cornerBlock[corner] = static_cast<float>(emitted) / 15.0f;
                     }
-                    const BlockGeometryProperties geometry = blockGeometry(block);
                     const bool ordinaryOpaqueCube =
-                        geometry.shape == BlockShape::Cube &&
-                        geometry.occludesNeighborFaces && !isWater(block) &&
+                        ownGeometry.shape == BlockShape::Cube &&
+                        ownGeometry.occludesNeighborFaces && !isWater(block) &&
                         block != Block::Cactus;
                     bool uniformLighting = ordinaryOpaqueCube;
                     for (int corner = 1; corner < 4 && uniformLighting; ++corner) {

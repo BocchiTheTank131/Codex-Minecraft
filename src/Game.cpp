@@ -1,6 +1,7 @@
 #include "Game.h"
 
 #include "Definitions.h"
+#include "AmbientOcclusion.h"
 #include "Farming.h"
 #include "Player.h"
 #include "Persistence.h"
@@ -2009,6 +2010,7 @@ void Game::runSurvivalSmokeTest() {
     const bool structuresPassed = StructureGenerator(seed_).runSelfTest(structureReport);
     std::string combatReport;
     std::string meshEditReport;
+    std::string aoReport;
     std::string fluidReport;
     const bool craftingPassed = Inventory::runCraftingSelfTest(craftingReport);
     std::string recipeBookReport;
@@ -2019,6 +2021,7 @@ void Game::runSurvivalSmokeTest() {
         survival_->runCombatSelfTest(*world_, *player_, *inventory_, combatReport);
     player_->setCreativeMode(selectedCreativeMode);
     const bool meshEditsPassed = world_->runMeshEditSmokeTest(meshEditReport);
+    const bool aoPassed = AmbientOcclusion::runSelfTest(aoReport);
     std::string asyncMeshReport;
     bool asyncMeshPassed = false;
     {
@@ -2028,7 +2031,7 @@ void Game::runSurvivalSmokeTest() {
     }
     const bool fluidsPassed = world_->runFluidSmokeTest(fluidReport);
     bool passed = recoilPassed && structuresPassed && craftingPassed && recipeBookPassed &&
-                  combatPassed && meshEditsPassed &&
+                  combatPassed && meshEditsPassed && aoPassed &&
                   asyncMeshPassed && fluidsPassed;
 
     constexpr int uiWidth = 1280;
@@ -2795,6 +2798,7 @@ void Game::runSurvivalSmokeTest() {
               << (metadataPassed ? "passed" : "FAILED") << '\n'
               << "Combat smoke: " << combatReport << '\n'
               << "Mesh edit smoke: " << meshEditReport << '\n'
+              << "Voxel AO smoke: " << aoReport << '\n'
               << "Async mesh smoke: " << asyncMeshReport << '\n'
               << "Fluid smoke: " << fluidReport << '\n'
               << "Distance/drop/MSAA smoke: saved limits, 2x/4x targets, and durable drops "

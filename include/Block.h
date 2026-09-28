@@ -242,6 +242,8 @@ struct BlockGeometryProperties {
     float maxZ = 1.0f;
     bool occludesNeighborFaces = true;
     bool mergeMatchingFaces = false;
+    // Fraction of full-cube contact occlusion. Independent of light emission.
+    float aoOcclusion = 1.0f;
 };
 
 // Describes the actual occupied bounds used by face occlusion. Rendering may use a
@@ -253,23 +255,28 @@ inline BlockGeometryProperties blockGeometry(Block block) {
         geometry.shape = BlockShape::Empty;
         geometry.maxX = geometry.maxY = geometry.maxZ = 0.0f;
         geometry.occludesNeighborFaces = false;
+        geometry.aoOcclusion = 0.0f;
     } else if (isWater(block)) {
         geometry.shape = BlockShape::Fluid;
         geometry.maxY = waterHeight(block);
         geometry.occludesNeighborFaces = false;
         geometry.mergeMatchingFaces = true;
+        geometry.aoOcclusion = 0.0f;
     } else if (block == Block::Snow) {
         geometry.shape = BlockShape::PartialCube;
         geometry.maxY = 0.125f;
+        geometry.aoOcclusion = 0.25f;
     } else if (isSlab(block)) {
         geometry.shape = BlockShape::PartialCube;
         geometry.minY = isTopSlab(block) ? 0.5f : 0.0f;
         geometry.maxY = isTopSlab(block) ? 1.0f : 0.5f;
+        geometry.aoOcclusion = 0.85f;
     } else if (isDoor(block)) {
         constexpr float thickness = 0.1875f;
         geometry.shape = BlockShape::Thin;
         geometry.occludesNeighborFaces = false;
         geometry.mergeMatchingFaces = true;
+        geometry.aoOcclusion = 0.65f;
         const int facing = doorFacing(block);
         const bool right = doorHingeRight(block);
         if (!isDoorOpen(block)) {
@@ -291,15 +298,24 @@ inline BlockGeometryProperties blockGeometry(Block block) {
     } else if (isLadder(block)) {
         geometry.shape = BlockShape::Thin;
         geometry.occludesNeighborFaces = false;
+        geometry.aoOcclusion = 0.0f;
     } else if (isPlant(block) || isCrop(block)) {
         geometry.shape = BlockShape::Crossed;
         geometry.occludesNeighborFaces = false;
+        geometry.aoOcclusion = 0.0f;
     } else if (block == Block::Torch) {
         geometry.shape = BlockShape::Thin;
         geometry.occludesNeighborFaces = false;
+        geometry.aoOcclusion = 0.0f;
     } else if (block == Block::Glass || block == Block::Ice || isLeaf(block)) {
         geometry.occludesNeighborFaces = false;
         geometry.mergeMatchingFaces = true;
+        geometry.aoOcclusion = isLeaf(block) ? 0.35f :
+                               block == Block::Ice ? 0.06f : 0.0f;
+    } else if (block == Block::Cactus) {
+        geometry.aoOcclusion = 0.45f;
+    } else if (block == Block::Farmland) {
+        geometry.aoOcclusion = 0.85f;
     }
     return geometry;
 }
