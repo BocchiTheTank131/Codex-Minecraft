@@ -71,7 +71,11 @@ std::string ChatUI::update(InputManager& input, GLFWwindow* window,
         input.keyPressed(GLFW_KEY_V)) {
         if (const char* clipboard = glfwGetClipboardString(window)) insert(clipboard);
     } else {
-        insert(input.consumeTypedCharacters());
+        std::string characters = input.consumeTypedCharacters();
+        // GLFW may deliver the character after the key event that opened chat.
+        if (input_ == "/" && caret_ == 1 && !characters.empty() && characters.front() == '/')
+            characters.erase(0, 1);
+        insert(characters);
     }
     suggestions_ = commands.suggest(input_);
     if (input.keyPressed(GLFW_KEY_TAB) && !suggestions_.empty()) {
