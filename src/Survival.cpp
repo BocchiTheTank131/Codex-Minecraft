@@ -11,6 +11,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cctype>
 #include <cstring>
 #include <fstream>
 #include <filesystem>
@@ -1598,6 +1599,41 @@ void SurvivalWorld::spawnStructureMob(const glm::ivec3& position, bool hostile) 
     animal.persistent = true;
     animal.thinkTimer = 0.5f;
     animals_.push_back(animal);
+}
+bool SurvivalWorld::summonMob(const std::string& name, const glm::vec3& position) {
+    std::string normalized = name;
+    std::transform(normalized.begin(), normalized.end(), normalized.begin(),
+                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    Animal mob;
+    if (normalized == "cow") mob.type = AnimalType::Cow;
+    else if (normalized == "pig") mob.type = AnimalType::Pig;
+    else if (normalized == "sheep") mob.type = AnimalType::Sheep;
+    else if (normalized == "villager") mob.type = AnimalType::Villager;
+    else if (normalized == "pillager") mob.type = AnimalType::Pillager;
+    else {
+        bool found = false;
+        const auto& definitions = billboardMobDefinitions();
+        for (std::size_t i = 0; i < definitions.size(); ++i) {
+            std::string candidate = definitions[i].name;
+            std::transform(candidate.begin(), candidate.end(), candidate.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            if (candidate == normalized) {
+                mob.type = billboardType(i);
+                mob.health = definitions[i].health;
+                found = true;
+                break;
+            }
+        }
+        if (!found) return false;
+    }
+    mob.position = position;
+    mob.home = position;
+    mob.persistent = true;
+    mob.thinkTimer = 0.5f;
+    if (mob.type == AnimalType::Villager) mob.health = 20.0f;
+    else if (mob.type == AnimalType::Pillager) mob.health = 14.0f;
+    animals_.push_back(mob);
+    return true;
 }
 void SurvivalWorld::spawnBillboardPreview(const glm::vec3& origin,
                                           const glm::vec3& forward) {

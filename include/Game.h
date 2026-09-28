@@ -6,6 +6,8 @@
 #include "GameMode.h"
 #include "UIManager.h"
 #include "World.h"
+#include "ChatUI.h"
+#include "CommandSystem.h"
 
 #include <glm/glm.hpp>
 
@@ -74,6 +76,8 @@ private:
         bool worldgenEnabled = false;
         bool spectatorEnabled = false;
         bool billboardPreview = false;
+        bool commandEnabled = false;
+        bool commandVisual = false;
         float previewBrightness = 1.0f;
         bool worldgenScreenshotTaken = false;
         bool checksPassed = true;
@@ -88,6 +92,8 @@ private:
     GameSettings settings_{};
     InputManager input_{};
     UIManager ui_{};
+    CommandSystem commands_{};
+    ChatUI chat_{};
 
     std::unique_ptr<Renderer> renderer_;
     std::unique_ptr<SoundSystem> sounds_;
@@ -163,6 +169,7 @@ private:
     bool playerIsWalking() const;
 
     void runSurvivalSmokeTest();
+    void runCommandSmokeTest();
     void runSpectatorSmokeTest();
     void runResetSmokeTest();
     void updateUiSmokeTest(double now);

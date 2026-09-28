@@ -4,6 +4,7 @@
 #include "Settings.h"
 #include "GameMode.h"
 #include "Survival.h"
+#include "ChatUI.h"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -46,6 +47,7 @@ public:
                    const std::string& debugText,
                    const std::string& statusText,
                    bool spectator = false) const;
+    void renderChat(int width, int height, const ChatUI& chat, double now) const;
     void renderSurvivalUi(int width,
                           int height,
                           const Inventory& inventory,

@@ -281,6 +281,7 @@ public:
     void spawnExperience(const glm::vec3& position, int amount);
     void spawnStructureMob(const glm::ivec3& position, bool hostile);
     void spawnBillboardPreview(const glm::vec3& origin, const glm::vec3& forward);
+    bool summonMob(const std::string& name, const glm::vec3& position);
     bool feedAnimal(const glm::vec3& origin, const glm::vec3& direction, Item food);
     MobTarget raycastMob(const glm::vec3& origin,
                          const glm::vec3& direction,

@@ -514,7 +514,12 @@ const std::array<std::uint8_t, 7>& glyph(char c) {
         {'8', {14, 17, 17, 14, 17, 17, 14}}, {'9', {14, 17, 17, 15, 1, 1, 14}},
         {'-', {0, 0, 0, 31, 0, 0, 0}},       {'.', {0, 0, 0, 0, 0, 12, 12}},
         {':', {0, 12, 12, 0, 12, 12, 0}},    {'/', {1, 2, 2, 4, 8, 8, 16}},
-        {'+', {0, 4, 4, 31, 4, 4, 0}},       {' ', {0, 0, 0, 0, 0, 0, 0}}};
+        {'+', {0, 4, 4, 31, 4, 4, 0}},       {' ', {0, 0, 0, 0, 0, 0, 0}},
+        {'_', {0, 0, 0, 0, 0, 0, 31}},       {'~', {0, 0, 9, 22, 0, 0, 0}},
+        {'@', {14, 17, 23, 21, 23, 16, 14}}, {'>', {16, 8, 4, 2, 4, 8, 16}},
+        {'<', {1, 2, 4, 8, 4, 2, 1}},      {'"', {10, 10, 10, 0, 0, 0, 0}},
+        {'%', {25, 26, 2, 4, 8, 11, 19}}, {'=', {0, 31, 0, 31, 0, 0, 0}},
+        {'?', {14, 17, 1, 2, 4, 0, 4}}};
     const auto found = font.find(c);
     return found == font.end() ? blank : found->second;
 }
@@ -1440,6 +1445,72 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
     glEnable(GL_CULL_FACE);
+}
+void Renderer::renderChat(int width, int height, const ChatUI& chat, double now) const {
+    if (!chat.isOpen() && chat.messages().empty()) return;
+    std::vector<UiVertex> vertices;
+    const float x = 12.0f, scale = 1.5f;
+    const float panelWidth = std::min(620.0f, static_cast<float>(width) - 24.0f);
+    const float inputY = static_cast<float>(height) - 93.0f;
+    auto drawText = [&](const std::string& value, float tx, float ty, glm::vec4 color) {
+        for (char raw : value) {
+            const auto& rows = glyph(static_cast<char>(std::toupper(static_cast<unsigned char>(raw))));
+            for (int row = 0; row < 7; ++row)
+                for (int column = 0; column < 5; ++column)
+                    if (rows[row] & (1 << (4 - column)))
+                        addRect(vertices, tx + column * scale, ty + row * scale,
+                                scale, scale, color, width, height);
+            tx += 6.0f * scale;
+        }
+    };
+    if (chat.isOpen()) {
+        addRect(vertices, x, inputY, panelWidth, 27.0f,
+                {0.02f, 0.02f, 0.025f, 0.78f}, width, height);
+        const std::size_t visibleChars = std::max<std::size_t>(1,
+            static_cast<std::size_t>((panelWidth - 20.0f) / (6.0f * scale)));
+        const std::size_t firstChar = chat.caret() >= visibleChars
+            ? chat.caret() - visibleChars + 1 : 0;
+        drawText(chat.input().substr(firstChar, visibleChars),
+                 x + 7, inputY + 8, {1, 1, 1, 1});
+        if (std::fmod(now, 1.0) < 0.5)
+            addRect(vertices, x + 7 + static_cast<float>(chat.caret() - firstChar) * 6.0f * scale,
+                    inputY + 7, 2.0f, 13.0f, {1, 1, 1, 1}, width, height);
+    }
+    int shown = 0;
+    for (auto it = chat.messages().rbegin(); it != chat.messages().rend(); ++it) {
+        if (shown >= (chat.isOpen() ? 8 : 4)) break;
+        if (!chat.isOpen() && now - it->time > 7.0) break;
+        const float y = inputY - 19.0f * (++shown);
+        addRect(vertices, x, y - 3, panelWidth, 18,
+                {0.02f, 0.02f, 0.025f, chat.isOpen() ? 0.67f : 0.49f}, width, height);
+        glm::vec4 color{0.87f, 0.87f, 0.87f, 1};
+        if (it->tone == ChatTone::Success) color = {0.55f, 0.98f, 0.57f, 1};
+        if (it->tone == ChatTone::Warning) color = {1.0f, 0.85f, 0.36f, 1};
+        if (it->tone == ChatTone::Error) color = {1.0f, 0.43f, 0.43f, 1};
+        drawText(it->text.substr(0, 65), x + 6, y, color);
+    }
+    if (chat.isOpen()) {
+        int i = 0;
+        for (const std::string& suggestion : chat.suggestions()) {
+            if (i >= 5) break;
+            const float y = inputY - 20.0f - 16.0f * i++;
+            addRect(vertices, x + panelWidth * .5f, y - 2, panelWidth * .5f, 16,
+                    {0.02f, 0.02f, 0.025f, 0.72f}, width, height);
+            drawText(suggestion, x + panelWidth * .5f + 6, y, {0.74f, 0.84f, 1, 1});
+        }
+    }
+    if (vertices.empty()) return;
+    glBindBuffer(GL_ARRAY_BUFFER, uiVbo_);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(UiVertex)),
+                 vertices.data(), GL_STREAM_DRAW);
+    glDisable(GL_DEPTH_TEST); glDisable(GL_CULL_FACE); glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glUseProgram(uiProgram_);
+    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D, itemTexture_);
+    glUniform1i(uiItemAtlasUniform_, 0);
+    glBindVertexArray(uiVao_);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
+    glBindVertexArray(0); glDisable(GL_BLEND); glEnable(GL_CULL_FACE); glEnable(GL_DEPTH_TEST);
 }
 void Renderer::renderHud(int width,
                          int height,

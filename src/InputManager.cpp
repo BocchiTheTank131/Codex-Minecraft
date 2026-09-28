@@ -43,6 +43,7 @@ void InputManager::attach(GLFWwindow* window) {
     glfwSetWindowUserPointer(window_, this);
     glfwSetCursorPosCallback(window_, cursorPositionCallback);
     glfwSetScrollCallback(window_, scrollCallback);
+    glfwSetCharCallback(window_, characterCallback);
     glfwSetFramebufferSizeCallback(window_, framebufferSizeCallback);
 }
 
@@ -51,6 +52,7 @@ void InputManager::pollEvents() {
     previousMouseButtons_ = mouseButtons_;
     mouseDelta_ = glm::dvec2(0.0);
     scrollDelta_ = 0.0;
+    typedCharacters_.clear();
 
     glfwPollEvents();
 
@@ -104,6 +106,18 @@ double InputManager::consumeScrollDelta() {
     const double result = scrollDelta_;
     scrollDelta_ = 0.0;
     return result;
+}
+
+std::string InputManager::consumeTypedCharacters() {
+    std::string result = std::move(typedCharacters_);
+    typedCharacters_.clear();
+    return result;
+}
+
+void InputManager::characterCallback(GLFWwindow* window, unsigned int codepoint) {
+    auto* input = static_cast<InputManager*>(glfwGetWindowUserPointer(window));
+    if (input && codepoint >= 32 && codepoint <= 126)
+        input->typedCharacters_.push_back(static_cast<char>(codepoint));
 }
 
 glm::dvec2 InputManager::framebufferCursorPosition() const {

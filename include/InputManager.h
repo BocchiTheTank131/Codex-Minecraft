@@ -35,6 +35,7 @@ public:
 
     glm::dvec2 consumeMouseDelta();
     double consumeScrollDelta();
+    std::string consumeTypedCharacters();
     glm::dvec2 framebufferCursorPosition() const;
     PlayerInput playerInput(bool enabled) const;
 
@@ -56,12 +57,14 @@ private:
     glm::dvec2 mouseDelta_{0.0};
     glm::dvec2 lastMousePosition_{0.0};
     double scrollDelta_ = 0.0;
+    std::string typedCharacters_;
     bool cursorCaptured_ = false;
     bool firstMouseSample_ = true;
     ControlBindings bindings_ = defaultControlBindings();
 
     static void cursorPositionCallback(GLFWwindow* window, double x, double y);
     static void scrollCallback(GLFWwindow* window, double xOffset, double yOffset);
+    static void characterCallback(GLFWwindow* window, unsigned int codepoint);
     static void framebufferSizeCallback(GLFWwindow* window, int width, int height);
 
     void onCursorPosition(double x, double y);

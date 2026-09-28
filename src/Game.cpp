@@ -160,16 +160,25 @@ bool Game::initialize(int argc, char** argv) {
         if (settings_.fullscreen) {
             applyFullscreenSetting();
         }
+        if (smokeTest_.commandVisual) {
+            chat_.open();
+            synchronizeCursorCapture();
+            screenshotRequested_ = true;
+            smokeTest_.startTime = glfwGetTime();
+        }
 
         std::cout << "WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, "
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
-                     "hold C zoom, F3 debug, 1-9 hotbar\n";
+                     "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
         if (smokeTest_.resetEnabled) {
             runResetSmokeTest();
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
         } else if (smokeTest_.survivalEnabled) {
             runSurvivalSmokeTest();
+            glfwSetWindowShouldClose(window_, GLFW_TRUE);
+        } else if (smokeTest_.commandEnabled) {
+            runCommandSmokeTest();
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
         } else if (smokeTest_.spectatorEnabled) {
             runSpectatorSmokeTest();
@@ -287,6 +296,10 @@ void Game::parseArguments(int argc, char** argv) {
                 smokeTest_.uiEnabled = true;
             } else if (argument == "--survival-smoke") {
                 smokeTest_.survivalEnabled = true;
+            } else if (argument == "--command-smoke") {
+                smokeTest_.commandEnabled = true;
+            } else if (argument == "--command-visual-smoke") {
+                smokeTest_.commandVisual = true;
             } else if (argument == "--reset-smoke") {
                 smokeTest_.resetEnabled = true;
             } else if (argument == "--worldgen-test") {
@@ -304,7 +317,8 @@ void Game::parseArguments(int argc, char** argv) {
         }
     }
 
-    if (smokeTest_.uiEnabled || smokeTest_.survivalEnabled || smokeTest_.resetEnabled ||
+    if (smokeTest_.uiEnabled || smokeTest_.survivalEnabled || smokeTest_.commandEnabled ||
+        smokeTest_.commandVisual || smokeTest_.resetEnabled ||
         smokeTest_.worldgenEnabled || smokeTest_.spectatorEnabled || smokeTest_.billboardPreview)
         saveOnExit_ = false;
     if (Persistence::enabled() && saveOnExit_)
@@ -416,7 +430,7 @@ void Game::createWorldAndSystems() {
 }
 
 void Game::synchronizeCursorCapture() {
-    input_.setCursorCaptured(ui_.cursorShouldBeCaptured());
+    input_.setCursorCaptured(ui_.cursorShouldBeCaptured() && !chat_.isOpen());
 }
 
 void Game::applyFullscreenSetting() {
@@ -625,6 +639,26 @@ float Game::beginFrame() {
 }
 
 void Game::handleGlobalInput() {
+    if (chat_.isOpen()) {
+        const std::string submitted = chat_.update(input_, window_, commands_);
+        if (!submitted.empty()) {
+            chat_.addMessage("> " + submitted, ChatTone::Normal, glfwGetTime());
+            CommandContext context{*world_, *player_, *inventory_, *survival_,
+                                   timing_.worldTime, seed_,
+                                   [this] { return gameMode(); },
+                                   [this](GameMode mode) { setGameMode(mode); }, true};
+            const CommandResult result = commands_.execute(submitted, context);
+            chat_.addMessage(result.text, result.tone, glfwGetTime());
+        }
+        synchronizeCursorCapture();
+        return;
+    }
+    if (ui_.state() == GameState::Playing && input_.keyPressed(GLFW_KEY_SLASH)) {
+        chat_.open();
+        input_.consumeTypedCharacters(); // GLFW also reports the opening slash as text.
+        synchronizeCursorCapture();
+        return;
+    }
     const bool chestWasOpen = ui_.state() == GameState::Chest;
     const glm::ivec3 chestPosition = ui_.openedContainerPosition();
     if (input_.cursorCaptured()) {
@@ -693,7 +727,8 @@ void Game::handleGlobalInput() {
         }
     }
 
-    if (smokeTest_.uiEnabled || smokeTest_.survivalEnabled ||
+    if (smokeTest_.uiEnabled || smokeTest_.survivalEnabled || smokeTest_.commandEnabled ||
+        smokeTest_.commandVisual ||
         smokeTest_.resetEnabled || smokeTest_.worldgenEnabled ||
         smokeTest_.spectatorEnabled || smokeTest_.billboardPreview) {
         saveOnExit_ = false;
@@ -1674,6 +1709,7 @@ void Game::renderFrame(float deltaTime) {
         }
     }
 
+    renderer_->renderChat(width, height, chat_, glfwGetTime());
     resolveRenderTarget(width, height);
     if (screenshotRequested_) {
         Screenshot::saveBmp(width, height);
@@ -1697,6 +1733,8 @@ void Game::renderFrame(float deltaTime) {
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
     }
     if (smokeTest_.billboardPreview && glfwGetTime() - smokeTest_.startTime > 8.0)
+        glfwSetWindowShouldClose(window_, GLFW_TRUE);
+    if (smokeTest_.commandVisual && glfwGetTime() - smokeTest_.startTime > 2.0)
         glfwSetWindowShouldClose(window_, GLFW_TRUE);
 }
 
@@ -1876,6 +1914,58 @@ bool Game::playerIsWalking() const {
            input_.actionDown(ControlAction::Left) ||
            input_.actionDown(ControlAction::Backward) ||
            input_.actionDown(ControlAction::Right);
+}
+
+void Game::runCommandSmokeTest() {
+    std::string report;
+    if (!CommandSystem::runSelfTest(report)) throw std::runtime_error("Command parser: " + report);
+    if (!ChatUI::runSelfTest(report)) throw std::runtime_error("Chat UI: " + report);
+    CommandContext context{*world_, *player_, *inventory_, *survival_, timing_.worldTime,
+                           seed_, [this] { return gameMode(); },
+                           [this](GameMode mode) { setGameMode(mode); }, true};
+    auto check = [&](const std::string& line, bool success) {
+        const CommandResult result = commands_.execute(line, context);
+        const bool actual = result.tone != ChatTone::Error;
+        if (actual != success) throw std::runtime_error(line + ": " + result.text);
+    };
+    check("/help", true);
+    check("/help gamemode", true);
+    check("/gamemode creative", true);
+    if (gameMode() != GameMode::Creative) throw std::runtime_error("creative mode");
+    check("/gamemode spectator", true);
+    check("/gamemode survival", true);
+    check("/time set day", true);
+    check("/time set night", true);
+    if (std::abs(timing_.worldTime - 245.0f) > 0.01f) throw std::runtime_error("time set");
+    check("/time add 30", true);
+    if (std::abs(timing_.worldTime - 275.0f) > 0.01f) throw std::runtime_error("time add");
+    inventory_->clear();
+    check("/give @s stone 64", true);
+    check("/give @s torch 1", true);
+    if (inventory_->count(Item::Stone) != 64 || inventory_->count(Item::Torch) != 1)
+        throw std::runtime_error("give inventory");
+    check("/clear stone 4", true);
+    if (inventory_->count(Item::Stone) != 60) throw std::runtime_error("clear count");
+    check("/clear", true);
+    if (inventory_->count(Item::Stone)) throw std::runtime_error("clear all");
+    check("/tp 10 70 -20", true);
+    check("/tp ~ ~10 ~", true);
+    if (std::abs(player_->position().y - 80.0f) > 0.01f) throw std::runtime_error("relative teleport");
+    check("/summon cow", true);
+    check("/summon HitoriGotoh", true);
+    check("/summon NijikaIjichi", true);
+    check("/seed", true);
+    check("/setblock 10 60 10 stone", true);
+    check("/fill 10 61 10 11 62 11 stone", true);
+    check("/banana", false);
+    check("/tp x y z", false);
+    check("/give @s nonexistent_item 999999999999", false);
+    check("/setblock 10 60 10 banana", false);
+    check("/summon banana", false);
+    check("/fill 0 60 0 100 100 100 stone", false);
+    context.cheatsEnabled = false;
+    check("/help", true); check("/seed", true); check("/give stone 1", false);
+    std::cout << "Command smoke: parser, chat, commands, permissions OK\n";
 }
 
 void Game::runSurvivalSmokeTest() {

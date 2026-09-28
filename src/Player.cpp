@@ -56,6 +56,13 @@ void Player::damage(float a) {
         velocity_ = {0, 0, 0};
     }
 }
+void Player::killByCommand() {
+    health_ = 0.0f;
+    dead_ = true;
+    respawnTimer_ = 2.0f;
+    velocity_ = glm::vec3(0.0f);
+    fallDistance_ = 0.0f;
+}
 void Player::applyImpulse(const glm::vec3& impulse) {
     if (creativeMode_ || spectatorMode_ || dead_) return;
     velocity_ += impulse;
@@ -212,6 +219,12 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
     damageInvulnerability_ = std::max(0.0f, damageInvulnerability_ - deltaTime);
     spaceTapTimer_ = std::max(0.0f, spaceTapTimer_ - deltaTime);
 
+    if (dead_) {
+        respawnTimer_ -= deltaTime;
+        if (respawnTimer_ <= 0.0f) respawn();
+        return;
+    }
+
     if (spectatorMode_) {
         const glm::vec3 forward = lookDirection();
         const glm::vec3 right = glm::normalize(
@@ -257,13 +270,6 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
         jumpWasDown_ = false;
     }
 
-    if (dead_) {
-        respawnTimer_ -= deltaTime;
-        if (respawnTimer_ <= 0.0f) {
-            respawn();
-        }
-        return;
-    }
     if (position_.y < -24.0f) {
         if (creativeMode_)
             respawn();

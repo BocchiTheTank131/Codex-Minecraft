@@ -3187,7 +3187,22 @@ void World::setBlock(int x, int y, int z, Block block) {
     setBlockInternal(x, y, z, block, true);
 }
 
-bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmediately) {
+bool World::hasLoadedChunkAt(int x, int z) const {
+    return findChunk(floorDiv(x, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE)) != nullptr;
+}
+
+int World::fillBlocks(const glm::ivec3& low, const glm::ivec3& high, Block block) {
+    int changed = 0;
+    for (int x = low.x; x <= high.x; ++x)
+        for (int z = low.z; z <= high.z; ++z)
+            for (int y = low.y; y <= high.y; ++y)
+                if (setBlockInternal(x, y, z, block, true, false)) ++changed;
+    if (changed && !synchronousMeshForSmokeTest_) dispatchMeshJobs(2);
+    return changed;
+}
+
+bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmediately,
+                             bool dispatchImmediately) {
     const auto editStart = std::chrono::steady_clock::now();
     if (y < 0 || y >= WORLD_HEIGHT)
         return false;
@@ -3241,7 +3256,7 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
         edits_[chunkKey(chunkX, chunkZ)][localIndex(localX, y, localZ)] = block;
     rebuildTouchedChunks(x, z, rebuildImmediately, rebuildImmediately,
                          nearbySkyChanged);
-    if (rebuildImmediately && !synchronousMeshForSmokeTest_)
+    if (rebuildImmediately && dispatchImmediately && !synchronousMeshForSmokeTest_)
         dispatchMeshJobs(2);
     queueFluidNeighborhood(x, y, z);
     if (rebuildImmediately && isDoor(previous) && !isDoorUpper(previous) &&

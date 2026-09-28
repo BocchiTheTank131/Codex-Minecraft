@@ -167,6 +167,8 @@ public:
 
     Block getBlock(int x, int y, int z) const;
     void setBlock(int x, int y, int z, Block block);
+    bool hasLoadedChunkAt(int x, int z) const;
+    int fillBlocks(const glm::ivec3& low, const glm::ivec3& high, Block block);
     bool isSolidAt(int x, int y, int z) const;
     std::uint8_t sunlightAt(int x, int y, int z) const;
     std::uint8_t blockLightAt(int x, int y, int z) const;
@@ -391,7 +393,8 @@ private:
     void rebuildTouchedChunks(
         int worldX, int worldZ, bool rebuildImmediately, bool highPriority = true,
         bool nearbySkyChanged = false);
-    bool setBlockInternal(int x, int y, int z, Block block, bool rebuildImmediately);
+    bool setBlockInternal(int x, int y, int z, Block block, bool rebuildImmediately,
+                          bool dispatchImmediately = true);
     void queueFluidUpdate(int x, int y, int z);
     void queueFluidNeighborhood(int x, int y, int z);
     void updateFluidCell(const FluidCell& cell);
