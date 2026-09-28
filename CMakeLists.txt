@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.5.1 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.5.2 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 option(VOXELFRONTIER_STANDALONE_DEMO "Build the stateless standalone demo" OFF)
@@ -62,7 +62,7 @@ target_include_directories(VoxelFrontier PRIVATE include ${miniaudio_SOURCE_DIR}
 target_link_libraries(VoxelFrontier PRIVATE glfw glad glm::glm OpenGL::GL Threads::Threads)
 
 if(WIN32)
-    target_link_libraries(VoxelFrontier PRIVATE windowscodecs ole32)
+    target_link_libraries(VoxelFrontier PRIVATE windowscodecs ole32 psapi)
     set(VOXEL_RESOURCE_DIR "${CMAKE_CURRENT_BINARY_DIR}/embedded")
     file(MAKE_DIRECTORY "${VOXEL_RESOURCE_DIR}")
     file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/packaging/VoxelFrontier.ico" VOXEL_ICON_RC_PATH)

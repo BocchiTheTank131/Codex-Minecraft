@@ -36,6 +36,7 @@
 #undef APIENTRY
 #endif
 #include <windows.h>
+#include <psapi.h>
 #endif
 
 namespace {
@@ -606,6 +607,18 @@ float Game::beginFrame() {
         timing_.framesInSample = 0;
         timing_.fpsSampleStart = now;
     }
+#ifdef _WIN32
+    if (showDebug_ && (timing_.lastMemorySample < 0.0 ||
+                       now - timing_.lastMemorySample >= 0.5)) {
+        PROCESS_MEMORY_COUNTERS counters{};
+        if (GetProcessMemoryInfo(GetCurrentProcess(), &counters, sizeof(counters))) {
+            timing_.workingSetBytes = counters.WorkingSetSize;
+            timing_.peakWorkingSetBytes = counters.PeakWorkingSetSize;
+            timing_.memorySampleAvailable = true;
+        }
+        timing_.lastMemorySample = now;
+    }
+#endif
 
     input_.pollEvents();
     return deltaTime;
@@ -1819,6 +1832,13 @@ std::string Game::buildDebugText() const {
          << "SIMULATION " << world_->simulationDistance() << '\n'
          << std::fixed << std::setprecision(2)
          << "FRAME " << timing_.frameMilliseconds << " MS\n"
+#ifdef _WIN32
+         << (timing_.memorySampleAvailable
+                 ? "RAM " + std::to_string(timing_.workingSetBytes / 1048576ULL) +
+                       " MB  PEAK " +
+                       std::to_string(timing_.peakWorkingSetBytes / 1048576ULL) + " MB\n"
+                 : "")
+#endif
          << "CHUNKS " << world_->renderedChunkCount() << " RENDERED / "
          << world_->loadedChunkCount() << " LOADED\n"
          << "ENTITIES " << renderer_->visibleEntityCount() << " VISIBLE\n"

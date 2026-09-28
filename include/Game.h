@@ -36,6 +36,10 @@ private:
         double previousFrame = 0.0;
         double fpsSampleStart = 0.0;
         double lastSave = 0.0;
+        double lastMemorySample = -1.0;
+        std::uint64_t workingSetBytes = 0;
+        std::uint64_t peakWorkingSetBytes = 0;
+        bool memorySampleAvailable = false;
         int framesInSample = 0;
         float fps = 0.0f;
         float worldTime = 35.0f;

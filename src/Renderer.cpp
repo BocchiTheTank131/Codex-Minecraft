@@ -224,16 +224,22 @@ void main() {
     float sunContribution = vSunLight * sunDiffuse * mix(0.0, 0.54, day);
     float moonContribution = vSunLight * moonDiffuse * (1.0-day) * 0.17;
     float emittedContribution = vBlockLight * 0.90;
-    float ambient = mix(0.008, 0.024, clamp(uBrightness * 2.0, 0.0, 1.0));
-    float brightness = ambient + (uEffectQuality == 0 ? 1.0 : vAo) * faceShade *
-        (skyContribution + sunContribution + moonContribution + emittedContribution);
-    brightness += max(0.0, uBrightness - 0.5) * 0.34 *
-                  (1.0 - exp(-max(brightness, 0.0) * 2.0));
+    float rawLight = clamp(max(skyContribution + sunContribution + moonContribution,
+                               emittedContribution), 0.0, 1.0);
+    // A low-light floor preserves texture detail. The curve lifts weak skylight
+    // near openings while keeping emitted light much stronger than unlit caves.
+    float ambientFloor = mix(0.025, 0.085, uBrightness);
+    float response = pow(rawLight, mix(1.0, 0.72, uBrightness));
+    float ao = uEffectQuality == 0 ? 1.0 :
+        mix(0.90, vAo, smoothstep(0.03, 0.30, rawLight));
+    float brightness = pow(clamp(ambientFloor +
+        (1.0 - ambientFloor) * response * faceShade * ao, 0.0, 1.0), 0.75);
     vec3 sunTint = mix(vec3(1.0,0.48,0.20), vec3(1.0,0.93,0.76),
                        smoothstep(-0.02,0.42,uSunDirection.y));
     vec3 naturalLight = mix(vec3(0.56,0.66,0.88), sunTint, day);
-    vec3 lit = uFullbright ? texel.rgb : texel.rgb * brightness * naturalLight +
-               vec3(1.0,0.50,0.16) * vBlockLight * 0.14;
+    vec3 lit = uFullbright ? texel.rgb :
+        texel.rgb * brightness * naturalLight +
+        vec3(1.0,0.50,0.16) * vBlockLight * 0.14;
     float alpha = texel.a;
     if (uWaterPass) {
         float topSurface = max(normal.y,0.0);
