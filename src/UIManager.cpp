@@ -127,6 +127,20 @@ bool UIManager::runRecipeBookSelfTest(std::string& report) {
     passed &= !ui.recipeBook_.entries.empty();
     for (int index : ui.recipeBook_.entries)
         passed &= craftingRecipes()[static_cast<std::size_t>(index)].category == RecipeCategory::Tools;
+    ui.recipeBook_.category = RecipeCategory::All;
+    for (Item item : {Item::Paper, Item::Book, Item::Bookshelf, Item::Clay, Item::Bricks,
+                     Item::SnowBlock, Item::CoalBlock, Item::HayBale, Item::Sandstone,
+                     Item::PolishedGranite, Item::MossyCobblestone}) {
+        ui.recipeBook_.search = itemDefinition(item).displayName;
+        std::transform(ui.recipeBook_.search.begin(), ui.recipeBook_.search.end(),
+                       ui.recipeBook_.search.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+        ui.recipeBook_.craftableOnly = false;
+        ui.refreshRecipeBook(inventory, true);
+        bool found = false;
+        for (int index : ui.recipeBook_.entries)
+            found |= craftingRecipes()[static_cast<std::size_t>(index)].output == item;
+        passed &= found;
+    }
     report = passed ? "grid filtering, craftable toggle, search, pagination, and autofill passed"
                     : "recipe book regression";
     return passed;
@@ -305,7 +319,7 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
             if (hit.kind == UiSlotKind::FurnaceFuel) {
                 if (shiftDown)
                     return inventory.moveExternalToInventory(furnace->fuel);
-                if (!inventory.cursorStack().empty() && inventory.cursorStack().item != Item::Coal)
+                if (!inventory.cursorStack().empty() && furnaceFuelSeconds(inventory.cursorStack().item) <= 0.0f)
                     return true;
                 return inventory.clickExternalSlot(furnace->fuel, rightClick);
             }
@@ -334,7 +348,7 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
             if (!furnace)
                 return false;
             const Item item = inventory.slot(playerSlot).item;
-            if (item == Item::Coal)
+            if (furnaceFuelSeconds(item) > 0.0f)
                 return inventory.movePlayerToExternal(playerSlot, &furnace->fuel, 1);
             if (smeltingResult(item) != Item::None)
                 return inventory.movePlayerToExternal(playerSlot, &furnace->input, 1);

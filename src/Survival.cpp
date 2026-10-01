@@ -245,7 +245,7 @@ const std::vector<Recipe>& recipes() {
                            Item::StoneBricks,
                            4,
                            false));
-        r.push_back(recipe(2, 2, {Item::Snow, Item::Snow, Item::Snow, Item::Snow}, Item::SnowBlock, 1, false));
+        r.push_back(recipe(2, 2, {Item::Snowball, Item::Snowball, Item::Snowball, Item::Snowball}, Item::SnowBlock, 1, false));
         r.push_back(recipe(2, 1, {Item::Diorite, Item::Cobblestone},
                            Item::Andesite, 2, false, false, true));
         r.push_back(recipe(3,
@@ -290,35 +290,11 @@ const std::vector<Recipe>& recipes() {
                            Item::Ladder,
                            3,
                            true));
-        r.push_back(recipe(2,
-                           2,
-                           {Item::Cobblestone,
-                            Item::TallGrass,
-                            Item::TallGrass,
-                            Item::Cobblestone},
-                           Item::MossyCobblestone,
-                           2,
-                           false, false, true));
-        r.push_back(recipe(2,
-                           2,
-                           {Item::StoneBricks,
-                            Item::TallGrass,
-                            Item::TallGrass,
-                            Item::StoneBricks},
-                           Item::MossyStoneBricks,
-                           2,
-                           false, false, true));
-        r.push_back(recipe(2,
-                           3,
-                           {IngredientGroup::Planks,
-                            IngredientGroup::Planks,
-                            IngredientGroup::Planks,
-                            IngredientGroup::Planks,
-                            IngredientGroup::Planks,
-                            IngredientGroup::Planks},
-                           Item::WoodenDoor,
-                           3,
-                           true));
+        r.push_back(recipe(2, 1, {Item::Cobblestone, Item::Vine}, Item::MossyCobblestone, 1, false, false, true));
+        r.push_back(recipe(2, 1, {Item::StoneBricks, Item::Vine}, Item::MossyStoneBricks, 1, false, false, true));
+        for (Item plank : {Item::Planks, Item::BirchPlanks})
+            r.push_back(recipe(2, 3, {plank, plank, plank, plank, plank, plank},
+                               Item::WoodenDoor, 3, true));
         r.push_back(recipe(3,
                            1,
                            {IngredientGroup::Planks, IngredientGroup::Planks,
@@ -332,6 +308,33 @@ const std::vector<Recipe>& recipes() {
                            Item::StoneSlab,
                            6,
                            true));
+        r.push_back(recipe(1, 2, {Item::Charcoal, Item::Stick}, Item::Torch, 4, false));
+        r.push_back(recipe(3, 1, {Item::SugarCane, Item::SugarCane, Item::SugarCane}, Item::Paper, 3, true));
+        r.push_back(recipe(2, 2, {Item::Paper, Item::Paper, Item::Paper, Item::Leather}, Item::Book, 1, false, false, true));
+        r.push_back(recipe(3, 3, {IngredientGroup::Planks, IngredientGroup::Planks, IngredientGroup::Planks,
+            Item::Book, Item::Book, Item::Book,
+            IngredientGroup::Planks, IngredientGroup::Planks, IngredientGroup::Planks}, Item::Bookshelf, 1, true));
+        r.push_back(recipe(2, 2, {Item::ClayBall, Item::ClayBall, Item::ClayBall, Item::ClayBall}, Item::Clay, 1, false));
+        r.push_back(recipe(2, 2, {Item::Brick, Item::Brick, Item::Brick, Item::Brick}, Item::Bricks, 1, false));
+        r.push_back(recipe(3, 1, {Item::SnowBlock, Item::SnowBlock, Item::SnowBlock}, Item::Snow, 6, true));
+        const std::pair<Item, Item> compression[] = {
+            {Item::Coal, Item::CoalBlock}, {Item::IronIngot, Item::IronBlock},
+            {Item::GoldIngot, Item::GoldBlock}, {Item::CopperIngot, Item::CopperBlock},
+            {Item::Diamond, Item::DiamondBlock}, {Item::Wheat, Item::HayBale}
+        };
+        for (const auto& entry : compression) {
+            const Item m = entry.first;
+            r.push_back(recipe(3, 3, {m,m,m,m,m,m,m,m,m}, entry.second, 1, true));
+            r.push_back(recipe(1, 1, {entry.second}, m, 9, false));
+        }
+        const std::pair<Item, Item> squares[] = {
+            {Item::Sand, Item::Sandstone}, {Item::Granite, Item::PolishedGranite},
+            {Item::Diorite, Item::PolishedDiorite}, {Item::Andesite, Item::PolishedAndesite}
+        };
+        for (const auto& entry : squares) {
+            const Item m = entry.first;
+            r.push_back(recipe(2, 2, {m,m,m,m}, entry.second, m == Item::Sand ? 1 : 4, false));
+        }
         return r;
     }();
     return all;
@@ -1059,12 +1062,9 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
              {{0, Item::Planks}, {1, Item::Planks}, {3, Item::Planks}, {4, Item::Planks}},
              Item::CraftingTable) &&
         test(false,
-             {{0, Item::StoneBricks},
-              {1, Item::TallGrass},
-              {3, Item::TallGrass},
-              {4, Item::StoneBricks}},
+             {{0, Item::StoneBricks}, {4, Item::Vine}},
              Item::MossyStoneBricks,
-             2) &&
+             1) &&
         test(true,
              {{0, Item::Planks},
               {1, Item::Planks},
@@ -1197,8 +1197,7 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
         Item::StoneSlab, 6);
     improved &= test(true, {{3,Item::BirchPlanks},{4,Item::Planks},
         {5,Item::BirchPlanks}}, Item::WoodenSlab, 6);
-    improved &= test(false, {{0,Item::TallGrass},{1,Item::Cobblestone},
-        {3,Item::Cobblestone},{4,Item::TallGrass}}, Item::MossyCobblestone, 2);
+    improved &= test(false, {{0,Item::Vine},{4,Item::Cobblestone}}, Item::MossyCobblestone, 1);
     improved &= test(false, {{0,Item::Cobblestone},{4,Item::Diorite}},
         Item::Andesite, 2);
     fastCraft.clear();
@@ -1266,6 +1265,51 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
                 smeltingResult(Item::RawBeef) == Item::CookedBeef &&
                 smeltingResult(Item::RawPork) == Item::CookedPork &&
                 smeltingResult(Item::RawMutton) == Item::CookedMutton;
+    // Every authoritative recipe must work manually and through book autofill,
+    // including repeated shapeless ingredients and compression output counts.
+    for (std::size_t index = 0; index < craftingRecipes().size(); ++index) {
+        const RecipeInfo& definition = craftingRecipes()[index];
+        Inventory manual;
+        Inventory book;
+        manual.clear(); book.clear();
+        for (int y = 0; y < definition.h; ++y) {
+            for (int x = 0; x < definition.w; ++x) {
+                const Ingredient ingredient = definition.cells[static_cast<std::size_t>(y * definition.w + x)];
+                if (ingredient.empty()) continue;
+                const Item item = ingredient.group == IngredientGroup::Planks
+                    ? ((x + y) % 2 ? Item::BirchPlanks : Item::Planks)
+                    : ingredient.group == IngredientGroup::Logs ? Item::Log : ingredient.item;
+                manual.crafting_[static_cast<std::size_t>(y * 3 + x)] = {item, 2, 0};
+                book.add(item, 2);
+            }
+        }
+        const ItemStack output = manual.craftingOutput(true);
+        bool recipePassed = output.item == definition.output && output.count == definition.count;
+        if (definition.w > 2 || definition.h > 2)
+            recipePassed &= manual.craftingOutput(false).item != definition.output &&
+                            !book.recipeCraftable(static_cast<int>(index), false);
+        else
+            recipePassed &= manual.craftingOutput(false).item == definition.output;
+        recipePassed &= book.recipeCraftable(static_cast<int>(index), true) &&
+                        book.fillRecipe(static_cast<int>(index), true, true);
+        recipePassed &= book.craftingOutput(true).item == definition.output &&
+                        book.craftingOutput(true).count == definition.count;
+        const int crafted = book.craftOutputToInventory(true);
+        recipePassed &= crafted == 2 && book.count(definition.output) == definition.count * 2;
+        if (!recipePassed) {
+            report = "recipe/book/batch regression: " + itemDefinition(definition.output).displayName +
+                " manual " + std::to_string(static_cast<int>(output.item)) + "/" + std::to_string(output.count) +
+                " crafted " + std::to_string(crafted) + " stored " + std::to_string(book.count(definition.output));
+            return false;
+        }
+    }
+    improved &= test(false, {{0,Item::Charcoal},{3,Item::Stick}}, Item::Torch, 4) &&
+                smeltingResult(Item::ClayBall) == Item::Brick &&
+                smeltingResult(Item::Log) == Item::Charcoal &&
+                smeltingResult(Item::BirchLog) == Item::Charcoal &&
+                smeltingResult(Item::RawMeat) == Item::CookedBeef &&
+                furnaceFuelSeconds(Item::Charcoal) == furnaceFuelSeconds(Item::Coal) &&
+                furnaceFuelSeconds(Item::CoalBlock) == 10 * furnaceFuelSeconds(Item::Coal);
     report = ok && improved
                  ? "2x2/3x3 recipes, shifted shapes, tools/mirrors, material groups, autofill, batch output, invalid ingredients, and full inventory passed"
                  : "crafting regression";
@@ -1284,100 +1328,7 @@ const std::vector<Item>& creativeCatalog() {
     }();
     return catalog;
 }
-Block itemToBlock(Item i) {
-    switch (i) {
-    case Item::Grass:
-        return Block::Grass;
-    case Item::Dirt:
-        return Block::Dirt;
-    case Item::Stone:
-        return Block::Stone;
-    case Item::Sand:
-        return Block::Sand;
-    case Item::Log:
-        return Block::Log;
-    case Item::Leaves:
-        return Block::Leaves;
-    case Item::Water:
-        return Block::Water;
-    case Item::CoalOre:
-        return Block::CoalOre;
-    case Item::IronOre:
-        return Block::IronOre;
-    case Item::GoldOre:
-        return Block::GoldOre;
-    case Item::CopperOre:
-        return Block::CopperOre;
-    case Item::DiamondOre:
-        return Block::DiamondOre;
-    case Item::Planks:
-        return Block::Planks;
-    case Item::CraftingTable:
-        return Block::CraftingTable;
-    case Item::Torch:
-        return Block::Torch;
-    case Item::Cobblestone:
-        return Block::Cobblestone;
-    case Item::StoneBricks:
-        return Block::StoneBricks;
-    case Item::Bricks:
-        return Block::Bricks;
-    case Item::Glass:
-        return Block::Glass;
-    case Item::Gravel:
-        return Block::Gravel;
-    case Item::Clay:
-        return Block::Clay;
-    case Item::Snow:
-        return Block::Snow;
-    case Item::SnowBlock:
-        return Block::SnowBlock;
-    case Item::BirchPlanks:
-        return Block::BirchPlanks;
-    case Item::BirchLog:
-        return Block::BirchLog;
-    case Item::BirchLeaves:
-        return Block::BirchLeaves;
-    case Item::Cactus:
-        return Block::Cactus;
-    case Item::Furnace:
-        return Block::Furnace;
-    case Item::Bookshelf:
-        return Block::Bookshelf;
-    case Item::WoodenDoor:
-        return Block::WoodenDoor;
-    case Item::WoodenSlab:
-        return Block::WoodenSlab;
-    case Item::StoneSlab:
-        return Block::StoneSlab;
-    case Item::Granite:
-        return Block::Granite;
-    case Item::Diorite:
-        return Block::Diorite;
-    case Item::Andesite:
-        return Block::Andesite;
-    case Item::MossyCobblestone:
-        return Block::MossyCobblestone;
-    case Item::MossyStoneBricks:
-        return Block::MossyStoneBricks;
-    case Item::Ice:
-        return Block::Ice;
-    case Item::Mud:
-        return Block::Mud;
-    case Item::TallGrass:
-        return Block::TallGrass;
-    case Item::RedFlower:
-        return Block::RedFlower;
-    case Item::YellowFlower:
-        return Block::YellowFlower;
-    case Item::Ladder:
-        return Block::LadderNorth;
-    case Item::Chest:
-        return Block::Chest;
-    default:
-        return Block::Air;
-    }
-}
+Block itemToBlock(Item i) { return itemDefinition(i).placedBlock; }
 Item blockToItem(Block b) {
     return blockDefinition(b).drop;
 }
@@ -1391,28 +1342,7 @@ bool canHarvestBlock(Item i, Block block) {
     const int requiredTier = blockDefinition(block).requiredHarvestTier;
     return requiredTier == 0 || (pick(i) && tier(i) >= requiredTier);
 }
-Item smeltingResult(Item item) {
-    switch (item) {
-    case Item::IronOre:
-        return Item::IronIngot;
-    case Item::GoldOre:
-        return Item::GoldIngot;
-    case Item::CopperOre:
-        return Item::CopperIngot;
-    case Item::RawBeef:
-        return Item::CookedBeef;
-    case Item::RawPork:
-        return Item::CookedPork;
-    case Item::RawMutton:
-        return Item::CookedMutton;
-    case Item::Sand:
-        return Item::Glass;
-    case Item::Cobblestone:
-        return Item::Stone;
-    default:
-        return Item::None;
-    }
-}
+Item smeltingResult(Item item) { return itemDefinition(item).smeltedItem; }
 bool isFood(Item i) {
     return itemDefinition(i).foodValue > 0.0f;
 }

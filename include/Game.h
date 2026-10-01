@@ -78,6 +78,7 @@ private:
         bool billboardPreview = false;
         bool commandEnabled = false;
         bool commandVisual = false;
+        bool craftingPreview = false;
         float previewBrightness = 1.0f;
         bool worldgenScreenshotTaken = false;
         bool checksPassed = true;
@@ -169,6 +170,8 @@ private:
     bool playerIsWalking() const;
 
     void runSurvivalSmokeTest();
+    void runCraftingContentSmokeTest();
+    void updateCraftingPreview(double now);
     void runCommandSmokeTest();
     void runSpectatorSmokeTest();
     void runResetSmokeTest();

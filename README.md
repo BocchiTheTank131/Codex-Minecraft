@@ -60,10 +60,88 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Bookshelves have no survival crafting recipe yet because Books are not implemented. Bricks
-likewise need brick items, which are not implemented. Glass and cooked food use the Furnace,
-not the crafting grid. Mossy blocks and Snow Blocks retain Voxel Frontier's existing adapted
-recipes because vines and snowballs are not implemented. The recipe set follows the
+Version **2.7.0** has **101 inventory items**, **55 placeable block families**, **110 block
+IDs/states including Air**, **61 crafting recipes**, and **13 furnace recipes**. Existing item
+and block IDs remain unchanged; all new IDs are appended.
+
+### Crafting expansion
+
+New materials: **Paper, Book, Clay Ball, Brick, Snowball, Charcoal, Sugar Cane, Vine**.
+New block families: **Coal Block, Iron Block, Gold Block, Copper Block, Diamond Block, Hay Bale,
+Sandstone, Polished Granite, Polished Diorite, Polished Andesite, Sugar Cane, Vine**.
+
+| Ingredients / layout | Output | Grid |
+|---|---|---|
+| One Log / Birch Log | 4 Planks / Birch Planks | 2×2 |
+| Two generic Planks vertically | 4 Sticks | 2×2 |
+| Four generic Planks in a square | Crafting Table | 2×2 |
+| Eight Cobblestone around an empty center | Furnace | 3×3 |
+| Eight generic Planks around an empty center | Chest | 3×3 |
+| Seven Sticks in an H pattern | 3 Ladders | 3×3 |
+| Six matching Planks in two columns | 3 Wooden Doors | 3×3 |
+| Three generic Planks / Stone horizontally | 6 Wooden Slabs / Stone Slabs | 3×3 |
+| Coal or Charcoal above a Stick | 4 Torches | 2×2 |
+| Three Sugar Cane horizontally | 3 Paper | 3×3 |
+| Three Paper + Leather, shapeless | Book | 2×2 |
+| Three Books between two rows of generic Planks | Bookshelf | 3×3 |
+| Four Clay Balls in a square | Clay block | 2×2 |
+| Four Bricks in a square | Bricks block | 2×2 |
+| Four Snowballs in a square | Snow Block | 2×2 |
+| Three Snow Blocks horizontally | 6 Snow layers | 3×3 |
+| Nine Coal / Iron Ingots / Gold Ingots / Copper Ingots / Diamonds / Wheat | Corresponding storage block / Hay Bale | 3×3 |
+| One storage block / Hay Bale | 9 of its original material | 2×2 |
+| Four Sand in a square | Sandstone | 2×2 |
+| Four Granite / Diorite / Andesite in a square | 4 matching polished blocks | 2×2 |
+| Four Stone in a square | 4 Stone Bricks | 2×2 |
+| Cobblestone + Vine, shapeless | Mossy Cobblestone | 2×2 |
+| Stone Bricks + Vine, shapeless | Mossy Stone Bricks | 2×2 |
+| Three Wheat horizontally | Bread | 3×3 |
+
+Generic plank ingredients accept default/oak and Birch, including mixed planks. Wooden Doors
+require six matching planks; both wood families produce the existing Wooden Door item.
+Manual recipes and Recipe Book previews/search/categories/autofill/batch crafting share one
+registry. Tool recipes and mirrored axes remain supported.
+
+### Furnace recipes and fuel
+
+| Input | Output |
+|---|---|
+| Cobblestone | Stone |
+| Sand | Glass |
+| Clay Ball | Brick |
+| Coal Ore | Coal |
+| Iron Ore | Iron Ingot |
+| Gold Ore | Gold Ingot |
+| Copper Ore | Copper Ingot |
+| Log / Birch Log | Charcoal |
+| Raw Beef / Raw Meat | Cooked Beef |
+| Raw Pork | Cooked Pork |
+| Raw Mutton | Cooked Mutton |
+
+Each smelt takes the existing **5 seconds**. Coal and Charcoal each burn for **40 seconds**
+(8 smelts); a Coal Block burns for **400 seconds** (80 smelts). Charcoal is a distinct item
+and also crafts Torches. Cooking and smelting remain separate from crafting.
+
+Breaking Clay in Survival drops **4 Clay Balls**; a Snow layer drops **1 Snowball**. Snow
+layers remain fixed-height. Proper Book, Brick, Snowball, and Vine chains replace the previous
+missing/adapted recipes. All new items are available in Creative and through `/give`.
+
+### Plants and original textures
+
+New generator-version-7 worlds contain deterministic Sugar Cane patches on Grass/Dirt/Sand
+shorelines beside water and Vines on some forest tree trunks. Cane can be placed on suitable
+ground adjacent to water or on another Cane block; it has no automatic growth in this release.
+Vines attach to four wall directions. Both plants drop their own item and have no player
+collision or voxel AO contribution. Existing worlds keep their saved generator version and
+terrain; start a new world to obtain the new natural plant generation.
+
+The expansion includes **20 original 16×16 textures**, including separate Hay Bale and
+Sandstone surfaces and transparent material/plant sprites. Legacy atlas slots are preserved.
+To regenerate these assets, install Pillow for development and run
+`python tools/generate_crafting_textures.py`. Pillow is not required to build or run the game;
+the generated runtime atlases are committed and embedded in release executables.
+
+The recipe set follows the
 [Minecraft Wiki crafting reference](https://minecraft.wiki/w/Crafting) where the game's
 ingredients exist.
 
@@ -71,10 +149,10 @@ ingredients exist.
 
 Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
 
-| v2.6.0 download | Purpose | Persistence |
+| v2.7.0 download | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.6.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.6.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.7.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.7.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -120,6 +198,25 @@ If using Visual Studio 2022, pass `-Generator 'Visual Studio 17 2022'`. The scri
 Release mode for both full and demo variants and writes the versioned standalone demo and
 Windows Setup executables plus `dist/SHA256SUMS.txt`. The installer contains the full game
 executable.
+
+### Content verification
+
+Run developer checks with a disposable user-data directory, outside the repository:
+
+```powershell
+$env:VOXEL_FRONTIER_DATA_DIR = Join-Path $env:TEMP 'VoxelFrontier-content-check'
+.\build\installed-release\Release\VoxelFrontier.exe --survival-smoke --seed=20260917
+.\build\installed-release\Release\VoxelFrontier.exe --command-smoke --seed=20260917
+.\build\installed-release\Release\VoxelFrontier.exe --crafting-preview --seed=20260917
+Remove-Item Env:\VOXEL_FRONTIER_DATA_DIR
+```
+
+Content checks cover all 61 recipes, mixed planks, grid size restrictions, Recipe Book
+search/autofill, batch crafting, stack limits, all 13 furnace inputs, fuel capacity, generated
+plant determinism, new block meshes/UVs, command lookup, and item/block save/reload. The
+opt-in preview exports four screenshots of world models, Creative inventory, player crafting,
+and a mixed-plank Bookshelf recipe. Tests never run during normal gameplay. Screenshots and
+logs are exports; the standalone demo still bypasses save/config persistence.
 
 ## Building from Source
 

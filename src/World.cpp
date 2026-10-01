@@ -25,7 +25,7 @@ constexpr float FaceCorners[6][4][3] = {{{1, 0, 0}, {1, 1, 0}, {1, 1, 1}, {1, 0,
                                         {{1, 0, 1}, {1, 1, 1}, {0, 1, 1}, {0, 0, 1}},
                                         {{0, 0, 0}, {0, 1, 0}, {1, 1, 0}, {1, 0, 0}}};
 constexpr int Indices[6] = {0, 1, 2, 0, 2, 3};
-constexpr int AtlasTiles = 45;
+constexpr int AtlasTiles = BlockAtlasTiles;
 
 struct FaceOcclusion {
     bool hidden = false;
@@ -1240,12 +1240,41 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                         }
                     }
                 }
+                if (generationVersion_ >= 7 && hash % 3U == 0U) {
+                    const int facing = static_cast<int>((hash >> 12U) & 3U);
+                    constexpr int dx[] = {0,0,-1,1};
+                    constexpr int dz[] = {1,-1,0,0};
+                    for (int level = 1; level <= 3; ++level)
+                        place(rootX + dx[facing], root.height + level, rootZ + dz[facing],
+                              static_cast<Block>(static_cast<int>(Block::VineNorth) + facing));
+                }
             } else {
                 const std::uint32_t choice = (hash >> 5U) % 100U;
                 const Block flower = choice == 12U ? Block::RedFlower
                                    : choice == 13U ? Block::YellowFlower
                                    : Block::TallGrass;
                 place(rootX, root.height + 1, rootZ, flower);
+            }
+        }
+    }
+    if (generationVersion_ >= 7) {
+        // Shore plants add decoration only; terrain/carving remains unchanged.
+        // The column halo makes water-edge decisions deterministic at seams.
+        for (int z = 0; z < CHUNK_SIZE; ++z) {
+            for (int x = 0; x < CHUNK_SIZE; ++x) {
+                const int y = column(x,z).height;
+                if (y < SEA_LEVEL || y >= WORLD_HEIGHT - 3) continue;
+                const Block ground = localBlock(x,y,z);
+                if (ground != Block::Grass && ground != Block::Dirt && ground != Block::Sand) continue;
+                const bool shoreline = column(x-1,z).height < SEA_LEVEL ||
+                    column(x+1,z).height < SEA_LEVEL || column(x,z-1).height < SEA_LEVEL ||
+                    column(x,z+1).height < SEA_LEVEL;
+                const std::uint32_t hash = positionHash(chunkX * CHUNK_SIZE + x,
+                                                        chunkZ * CHUNK_SIZE + z, seed_ ^ 0xca9eU);
+                if (!shoreline || y != SEA_LEVEL || hash % 5U > 1U) continue;
+                const int height = 1 + static_cast<int>((hash >> 9U) % 3U);
+                for (int level = 1; level <= height && localBlock(x,y+level,z) == Block::Air; ++level)
+                    localBlock(x,y+level,z) = Block::SugarCane;
             }
         }
     }
@@ -1257,6 +1286,55 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
             chunkX, chunkZ, result.blocks, result.loot, result.mobs, structureTerrain);
     }
     return result;
+}
+
+bool World::runCraftingContentSmokeTest(std::string& report) {
+    constexpr int span = CHUNK_SIZE + 6;
+    MeshInput input;
+    input.meshHeight = 8;
+    input.blocks.assign(static_cast<std::size_t>(span * span * 8), Block::Air);
+    input.packedLight.assign(input.blocks.size(), 0xf0U);
+    const std::size_t index = static_cast<std::size_t>((4 * span + 7) * span + 7);
+    for (int id = static_cast<int>(Block::CoalBlock); id < static_cast<int>(Block::Count); ++id) {
+        const Block block = static_cast<Block>(id);
+        input.blocks[index] = block;
+        const MeshOutput mesh = buildMesh(input);
+        const std::size_t expected = isVine(block) ? 12 : isPlant(block) ? 24 : 36;
+        if (mesh.opaque.size() != expected || !mesh.water.empty()) {
+            report = "new block mesh vertex count: " + std::to_string(id); return false;
+        }
+        for (const VoxelVertex& vertex : mesh.opaque)
+            if (vertex.uv.x < 0 || vertex.uv.x > 1 || vertex.uv.y < 0 || vertex.uv.y > 1 ||
+                (vertex.atlasTile >= 0 && vertex.atlasTile >= BlockAtlasTiles)) {
+                report = "new block atlas bounds"; return false;
+            }
+    }
+    int cane = 0, vines = 0, generated = 0;
+    for (int cz = -32; cz <= 32 && (cane == 0 || vines == 0); ++cz) {
+        for (int cx = -32; cx <= 32 && (cane == 0 || vines == 0); ++cx) {
+            // Only generate candidate shore/forest chunks, with a bounded budget.
+            bool shore = false, forest = false;
+            for (int z = 0; z < CHUNK_SIZE; ++z)
+                for (int x = 0; x < CHUNK_SIZE; ++x) {
+                    const TerrainSample sample = sampleTerrainModern(cx * CHUNK_SIZE+x, cz * CHUNK_SIZE+z);
+                    shore |= sample.height == SEA_LEVEL;
+                    forest |= sample.biome == Biome::Forest || sample.biome == Biome::BirchForest;
+                }
+            if ((!shore || cane > 0) && (!forest || vines > 0)) continue;
+            if (generated >= 128) continue;
+            ++generated;
+            const auto first = generateChunkDataModern(cx,cz);
+            const auto second = generateChunkDataModern(cx,cz);
+            if (first.blocks != second.blocks) { report = "plant generation nondeterministic"; return false; }
+            for (Block block : first.blocks) {
+                cane += block == Block::SugarCane ? 1 : 0;
+                vines += isVine(block) ? 1 : 0;
+            }
+        }
+    }
+    report = "new block meshes/UVs, deterministic Sugar Cane " + std::to_string(cane) +
+             ", Vines " + std::to_string(vines) + " in " + std::to_string(generated) + " candidate chunks";
+    return cane > 0 && vines > 0;
 }
 
 bool World::runGenerationSmokeTest(std::string& report) const {
@@ -2061,7 +2139,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         if (!input || (loadedGenerationVersion != 1U && loadedGenerationVersion != 2U &&
                        loadedGenerationVersion != 3U && loadedGenerationVersion != 4U &&
                        loadedGenerationVersion != 5U &&
-                       loadedGenerationVersion != 6U))
+                       loadedGenerationVersion != 6U && loadedGenerationVersion != 7U))
             return false;
     }
 
@@ -3224,6 +3302,25 @@ void World::setBlock(int x, int y, int z, Block block) {
     setBlockInternal(x, y, z, block, true);
 }
 
+bool World::canPlacePlant(const glm::ivec3& position, Block block) const {
+    if (position.y <= 0 || position.y >= WORLD_HEIGHT) return false;
+    if (isVine(block)) {
+        constexpr glm::ivec3 support[] = {{0,0,-1}, {0,0,1}, {1,0,0}, {-1,0,0}};
+        const glm::ivec3 wall = position + support[static_cast<int>(block) - static_cast<int>(Block::VineNorth)];
+        const Block backing = getBlock(wall.x, wall.y, wall.z);
+        return blockGeometry(backing).occludesNeighborFaces || isLeaf(backing);
+    }
+    if (block != Block::SugarCane) return true;
+    const Block below = getBlock(position.x, position.y - 1, position.z);
+    if (below == Block::SugarCane) return true;
+    if (below != Block::Grass && below != Block::Dirt && below != Block::Sand) return false;
+    for (const glm::ivec3& offset : {glm::ivec3(1,0,0), glm::ivec3(-1,0,0),
+                                    glm::ivec3(0,0,1), glm::ivec3(0,0,-1)})
+        if (isWater(getBlock(position.x + offset.x, position.y - 1, position.z + offset.z)))
+            return true;
+    return false;
+}
+
 bool World::hasLoadedChunkAt(int x, int z) const {
     return findChunk(floorDiv(x, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE)) != nullptr;
 }
@@ -3361,7 +3458,6 @@ void World::updateBlockEntities(float deltaTime) {
     deltaTime = blockEntityUpdateAccumulator_;
     blockEntityUpdateAccumulator_ = 0.0f;
     constexpr float SmeltSeconds = 5.0f;
-    constexpr float CoalBurnSeconds = 40.0f;
     for (auto& entry : furnaces_) {
         if (!simulationActiveAt(static_cast<float>(entry.first.x),
                                 static_cast<float>(entry.first.z)))
@@ -3376,13 +3472,14 @@ void World::updateBlockEntities(float deltaTime) {
             furnace.progress = 0.0f;
             continue;
         }
-        if (furnace.fuelRemaining <= 0.0f && furnace.fuel.item == Item::Coal &&
+        if (furnace.fuelRemaining <= 0.0f && furnaceFuelSeconds(furnace.fuel.item) > 0.0f &&
             furnace.fuel.count > 0) {
+            const float burnSeconds = furnaceFuelSeconds(furnace.fuel.item);
             --furnace.fuel.count;
             if (furnace.fuel.count <= 0)
                 furnace.fuel.clear();
-            furnace.fuelRemaining = CoalBurnSeconds;
-            furnace.fuelCapacity = CoalBurnSeconds;
+            furnace.fuelRemaining = burnSeconds;
+            furnace.fuelCapacity = burnSeconds;
         }
         if (furnace.fuelRemaining <= 0.0f)
             continue;
@@ -3699,7 +3796,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
                 const Block block = meshBlock(worldX, y, worldZ);
                 if (!isRenderable(block))
                     continue;
-                if (isPlant(block) || isLadder(block)) {
+                if (isPlant(block) || isWallAttachment(block)) {
                     const float sun = static_cast<float>(meshSunlight(worldX, y, worldZ)) / 15.0f;
                     const float emitted =
                         static_cast<float>(meshBlockLight(worldX, y, worldZ)) / 15.0f;
@@ -3736,15 +3833,15 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
                                 glm::normalize(glm::vec3(1, 0, 1)));
                     } else {
                         constexpr float inset = .035f;
-                        if (block == Block::LadderNorth)
+                        if (block == Block::LadderNorth || block == Block::VineNorth)
                             addQuad({{{x, y, z + inset}, {x, y + 1, z + inset},
                                       {x + 1, y + 1, z + inset}, {x + 1, y, z + inset}}},
                                     {0, 0, 1});
-                        else if (block == Block::LadderSouth)
+                        else if (block == Block::LadderSouth || block == Block::VineSouth)
                             addQuad({{{x + 1, y, z + 1 - inset}, {x + 1, y + 1, z + 1 - inset},
                                       {x, y + 1, z + 1 - inset}, {x, y, z + 1 - inset}}},
                                     {0, 0, -1});
-                        else if (block == Block::LadderEast)
+                        else if (block == Block::LadderEast || block == Block::VineEast)
                             addQuad({{{x + 1 - inset, y, z}, {x + 1 - inset, y + 1, z},
                                       {x + 1 - inset, y + 1, z + 1}, {x + 1 - inset, y, z + 1}}},
                                     {-1, 0, 0});
@@ -3757,7 +3854,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
                 }
 
                 const BlockGeometryProperties ownGeometry = blockGeometry(block);
-                if (isSlab(block) || isDoor(block)) {
+                if (isSlab(block) || isDoor(block) || isTorch(block)) {
                     const BlockGeometryProperties& geometry = ownGeometry;
                     const glm::vec3 localMinimum(geometry.minX, geometry.minY, geometry.minZ);
                     const glm::vec3 localMaximum(geometry.maxX, geometry.maxY, geometry.maxZ);
@@ -3804,8 +3901,22 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
                         if (occlusion.hidden)
                             continue;
 
-                        const auto uvs =
+                        auto uvs =
                             tileUvs(atlasTile(block, face), face != 2 && face != 3);
+                        if (isTorch(block)) {
+                            // Crop a two-pixel shaft from the existing 16px tile.
+                            // Twelve vertical texels cover the .75-block model;
+                            // the existing flame pixels remain at its upper end.
+                            const float left = (atlasTile(block, face) + 7.0f / 16.0f) / AtlasTiles;
+                            const float right = (atlasTile(block, face) + 9.0f / 16.0f) / AtlasTiles;
+                            constexpr float inset = 0.0005f;
+                            const float top = (face == 3 ? 14.0f : 4.0f) / 16.0f + inset;
+                            const float bottom = (face == 2 ? 6.0f : 16.0f) / 16.0f - inset;
+                            if (face == 2 || face == 3)
+                                uvs = {{{left, top}, {right, top}, {right, bottom}, {left, bottom}}};
+                            else
+                                uvs = {{{left, bottom}, {left, top}, {right, top}, {right, bottom}}};
+                        }
                         const float faceSunlight = std::max(
                             sunlight, sideDaylight(worldX, y, worldZ, normal));
                         auto visibleFace = faces[static_cast<std::size_t>(face)];
@@ -4113,7 +4224,7 @@ bool World::raycast(const glm::vec3& origin,
     while (travelled <= maxDistance) {
         const Block block = getBlock(cell.x, cell.y, cell.z);
         if (isRenderable(block) && !isWater(block)) {
-            if (isDoor(block)) {
+            if (isDoor(block) || isTorch(block)) {
                 const BlockGeometryProperties bounds = blockGeometry(block);
                 const glm::vec3 lower = glm::vec3(cell) +
                     glm::vec3(bounds.minX, bounds.minY, bounds.minZ);

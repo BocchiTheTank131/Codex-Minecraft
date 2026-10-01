@@ -18,6 +18,9 @@ struct ItemDefinition {
     float foodValue = 0.0f;
     float attackDamage = 1.0f;
     float attackCooldown = 0.42f;
+    Block placedBlock = Block::Air;
+    Item smeltedItem = Item::None;
+    float fuelSeconds = 0.0f;
 };
 
 struct BlockDefinition {
@@ -29,6 +32,7 @@ struct BlockDefinition {
     ToolKind correctTool = ToolKind::None;
     int requiredHarvestTier = 0;
     Item drop = Item::None;
+    int dropCount = 1;
     bool solid = false;
     bool transparent = false;
     BlockGeometryProperties geometry{};
@@ -41,6 +45,8 @@ const BlockDefinition& blockDefinition(Block block);
 bool itemFromSaveId(std::uint8_t id, Item& item);
 bool blockFromSaveId(std::uint8_t id, Block& block);
 int blockTexture(Block block, int faceIndex);
+inline constexpr int BlockAtlasTiles = 59;
+float furnaceFuelSeconds(Item item);
 
 struct ItemAtlasLayout {
     int width = 640;

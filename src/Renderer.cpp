@@ -192,6 +192,7 @@ in float vDistance;
 in vec3 vWorldPosition;
 in float vAtlasTile;
 uniform sampler2D uAtlas;
+uniform float uAtlasTiles;
 uniform vec3 uSunDirection;
 uniform vec3 uSkyColor;
 uniform vec3 uCameraPosition;
@@ -211,7 +212,7 @@ void main() {
     vec2 atlasUv = vUv;
     if (vAtlasTile >= 0.0) {
         vec2 repeatUv = clamp(fract(vUv), vec2(0.03125), vec2(0.96875));
-        atlasUv = vec2((vAtlasTile + repeatUv.x) / 45.0, repeatUv.y);
+        atlasUv = vec2((vAtlasTile + repeatUv.x) / uAtlasTiles, repeatUv.y);
     }
     vec4 texel = texture(uAtlas, atlasUv);
     if (texel.a < 0.20) discard;
@@ -818,7 +819,7 @@ GLuint Renderer::linkProgram(GLuint v, GLuint f) {
 }
 
 GLuint Renderer::createAtlasTexture() {
-    constexpr int s = 16, count = 45, width = s * count;
+    constexpr int s = 16, count = BlockAtlasTiles, width = s * count;
     std::vector<std::uint8_t> p(static_cast<std::size_t>(width * s * 4));
     for (int y = 0; y < s; ++y)
         for (int x = 0; x < s; ++x) {
@@ -1096,6 +1097,29 @@ GLuint Renderer::createAtlasTexture() {
                      chestLatch ? 171 : (chestBand ? 46 : 91 + d / 8),
                      chestLatch ? 72 : (chestBand ? 22 : 36 + d / 10));
         }
+    // Append the original crafting textures without moving legacy tile slots.
+#ifdef VOXEL_STANDALONE
+    const HRSRC resource = FindResourceW(nullptr, MAKEINTRESOURCEW(101), MAKEINTRESOURCEW(10));
+    const HGLOBAL loaded = resource ? LoadResource(nullptr, resource) : nullptr;
+    const void* bytes = loaded ? LockResource(loaded) : nullptr;
+    const DWORD length = resource ? SizeofResource(nullptr, resource) : 0;
+    if (!bytes || length == 0) throw std::runtime_error("Missing embedded crafting block atlas");
+    std::istringstream input(std::string(static_cast<const char*>(bytes), length),
+                             std::ios::in | std::ios::binary);
+#else
+    std::ifstream input("assets/crafting_blocks.rgba", std::ios::binary);
+#endif
+    std::int32_t extraWidth = 0, extraHeight = 0;
+    input.read(reinterpret_cast<char*>(&extraWidth), 4);
+    input.read(reinterpret_cast<char*>(&extraHeight), 4);
+    if (!input || extraWidth != (count - 45) * s || extraHeight != s)
+        throw std::runtime_error("Invalid crafting block atlas dimensions");
+    std::vector<std::uint8_t> extra(static_cast<std::size_t>(extraWidth * s * 4));
+    input.read(reinterpret_cast<char*>(extra.data()), static_cast<std::streamsize>(extra.size()));
+    if (!input) throw std::runtime_error("Truncated crafting block atlas");
+    for (int row = 0; row < s; ++row)
+        std::copy_n(extra.data() + row * extraWidth * 4, extraWidth * 4,
+                    p.data() + (row * width + 45 * s) * 4);
     GLuint t = 0;
     glGenTextures(1, &t);
     glBindTexture(GL_TEXTURE_2D, t);
@@ -1232,6 +1256,7 @@ void Renderer::renderWorld(const World& world,
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, atlasTexture_);
     glUniform1i(glGetUniformLocation(worldProgram_, "uAtlas"), 0);
+    glUniform1f(glGetUniformLocation(worldProgram_, "uAtlasTiles"), static_cast<float>(BlockAtlasTiles));
     glUniform1i(glGetUniformLocation(worldProgram_, "uWaterPass"), GL_FALSE);
     world.drawOpaque(vp);
     glEnable(GL_BLEND);

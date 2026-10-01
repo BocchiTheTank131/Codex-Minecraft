@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cctype>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
@@ -167,6 +168,10 @@ bool Game::initialize(int argc, char** argv) {
             screenshotRequested_ = true;
             smokeTest_.startTime = glfwGetTime();
         }
+        if (smokeTest_.craftingPreview) {
+            smokeTest_.startTime = glfwGetTime();
+            updateCraftingPreview(smokeTest_.startTime);
+        }
 
         std::cout << "WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, "
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
@@ -309,6 +314,8 @@ void Game::parseArguments(int argc, char** argv) {
                 smokeTest_.spectatorEnabled = true;
             } else if (argument == "--billboard-preview") {
                 smokeTest_.billboardPreview = true;
+            } else if (argument == "--crafting-preview") {
+                smokeTest_.craftingPreview = true;
             } else if (argument.rfind("--preview-brightness=", 0) == 0) {
                 smokeTest_.previewBrightness = std::clamp(
                     std::stof(argument.substr(21)) / 100.0f, 0.0f, 1.0f);
@@ -320,7 +327,7 @@ void Game::parseArguments(int argc, char** argv) {
 
     if (smokeTest_.uiEnabled || smokeTest_.survivalEnabled || smokeTest_.commandEnabled ||
         smokeTest_.commandVisual || smokeTest_.resetEnabled ||
-        smokeTest_.worldgenEnabled || smokeTest_.spectatorEnabled || smokeTest_.billboardPreview)
+        smokeTest_.worldgenEnabled || smokeTest_.spectatorEnabled || smokeTest_.billboardPreview || smokeTest_.craftingPreview)
         saveOnExit_ = false;
     if (Persistence::enabled() && saveOnExit_)
         saveWorldMetadata();
@@ -738,6 +745,7 @@ void Game::handleGlobalInput() {
     if (smokeTest_.uiEnabled) {
         updateUiSmokeTest(glfwGetTime());
     }
+    if (smokeTest_.craftingPreview) updateCraftingPreview(glfwGetTime());
     synchronizeCursorCapture();
 }
 
@@ -1218,10 +1226,11 @@ void Game::updateMining(float deltaTime) {
         } else if (isCrop(block)) {
             survival_->spawnDrop(dropPosition, Item::Seeds, 1);
         } else {
-            const bool valuableOre = isOre(block);
+            const bool valuableOre = isOre(block) || blockDefinition(block).requiredHarvestTier > 0;
             if (!valuableOre || canHarvestBlock(inventory_->selectedItem(), block)) {
                 survival_->spawnDrop(dropPosition,
-                                     block == Block::Farmland ? Item::Dirt : blockToItem(block));
+                                     block == Block::Farmland ? Item::Dirt : blockToItem(block),
+                                     blockDefinition(block).dropCount);
             }
             if (block == Block::Leaves) {
                 const std::uint32_t appleHash =
@@ -1390,6 +1399,17 @@ void Game::handleUseAction() {
                 else
                     placedBlock = Block::LadderEast;
             }
+            if (heldItem == Item::Vine) {
+                const glm::ivec3 normal = interaction_.blockTarget.normal;
+                if (normal.y != 0) placedBlock = Block::Air;
+                else if (normal.z > 0) placedBlock = Block::VineNorth;
+                else if (normal.z < 0) placedBlock = Block::VineSouth;
+                else if (normal.x > 0) placedBlock = Block::VineWest;
+                else placedBlock = Block::VineEast;
+            }
+            if ((placedBlock == Block::SugarCane || isVine(placedBlock)) &&
+                !world_->canPlacePlant(adjacentPosition, placedBlock))
+                placedBlock = Block::Air;
             if (isSlab(placedBlock)) {
                 const bool placeTop = interaction_.blockTarget.normal.y < 0 ||
                                       (interaction_.blockTarget.normal.y == 0 &&
@@ -1737,6 +1757,8 @@ void Game::renderFrame(float deltaTime) {
         glfwSetWindowShouldClose(window_, GLFW_TRUE);
     if (smokeTest_.commandVisual && glfwGetTime() - smokeTest_.startTime > 2.0)
         glfwSetWindowShouldClose(window_, GLFW_TRUE);
+    if (smokeTest_.craftingPreview && glfwGetTime() - smokeTest_.startTime > 16.0)
+        glfwSetWindowShouldClose(window_, GLFW_TRUE);
 }
 
 bool Game::zoomActive() const {
@@ -1918,12 +1940,15 @@ bool Game::playerIsWalking() const {
 }
 
 void Game::runCommandSmokeTest() {
+    runCraftingContentSmokeTest();
     std::string report;
     if (!CommandSystem::runSelfTest(report)) throw std::runtime_error("Command parser: " + report);
     if (!ChatUI::runSelfTest(report)) throw std::runtime_error("Chat UI: " + report);
     CommandContext context{*world_, *player_, *inventory_, *survival_, timing_.worldTime,
                            seed_, [this] { return gameMode(); },
                            [this](GameMode mode) { setGameMode(mode); }, true};
+    // The fixture edits the origin even when an existing profile loads far away.
+    world_->generate(2, glm::vec3(10.0f,70.0f,10.0f));
     auto check = [&](const std::string& line, bool success) {
         const CommandResult result = commands_.execute(line, context);
         const bool actual = result.tone != ChatTone::Error;
@@ -1949,6 +1974,18 @@ void Game::runCommandSmokeTest() {
     if (inventory_->count(Item::Stone) != 60) throw std::runtime_error("clear count");
     check("/clear", true);
     if (inventory_->count(Item::Stone)) throw std::runtime_error("clear all");
+    for (int id = static_cast<int>(Item::Paper); id < static_cast<int>(Item::Count); ++id) {
+        const Item item = static_cast<Item>(id);
+        std::string name = itemDefinition(item).displayName;
+        for (char& c : name) c = c == ' ' ? '_' : static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        check("/give @s " + name + " 1", true);
+        if (inventory_->count(item) != 1) throw std::runtime_error("new command item lookup");
+        if (itemToBlock(item) != Block::Air)
+            check("/setblock 10 60 10 " + name, true);
+        const auto suggestions = commands_.suggest("/give @s " + name);
+        if (suggestions.empty()) throw std::runtime_error("new command item autocomplete");
+    }
+    check("/clear", true);
     check("/tp 10 70 -20", true);
     check("/tp ~ ~10 ~", true);
     if (std::abs(player_->position().y - 80.0f) > 0.01f) throw std::runtime_error("relative teleport");
@@ -1970,6 +2007,7 @@ void Game::runCommandSmokeTest() {
 }
 
 void Game::runSurvivalSmokeTest() {
+    runCraftingContentSmokeTest();
     const bool audioPassed = sounds_->verifyLibrary() && sounds_->verifyMusic() &&
         blockDefinition(Block::Snow).soundMaterial == SoundMaterial::Snow &&
         blockDefinition(Block::Sand).soundMaterial == SoundMaterial::Sand &&
@@ -2131,8 +2169,8 @@ void Game::runSurvivalSmokeTest() {
     std::array<bool, 256> seenItemIds{};
     std::array<bool, 256> seenBlockIds{};
     const ItemAtlasLayout atlas = itemAtlasLayout();
-    metadataPassed = metadataPassed && atlas.width == 640 && atlas.height == 640 &&
-                     atlas.tilePixels == 64 && atlas.columns == 10 && atlas.rows == 10;
+    metadataPassed = metadataPassed && atlas.width == 640 && atlas.height == 704 &&
+                     atlas.tilePixels == 64 && atlas.columns == 10 && atlas.rows == 11;
     for (int value = 0; value < static_cast<int>(Item::Count); ++value) {
         const Item item = static_cast<Item>(value);
         const ItemDefinition& definition = itemDefinition(item);
@@ -2556,8 +2594,6 @@ void Game::runSurvivalSmokeTest() {
         {Block::Bricks, Item::Bricks},
         {Block::Glass, Item::Glass},
         {Block::Gravel, Item::Gravel},
-        {Block::Clay, Item::Clay},
-        {Block::Snow, Item::Snow},
         {Block::SnowBlock, Item::SnowBlock},
         {Block::BirchPlanks, Item::BirchPlanks},
         {Block::BirchLog, Item::BirchLog},
@@ -2585,7 +2621,9 @@ void Game::runSurvivalSmokeTest() {
         creativePassed = creativePassed && itemToBlock(mapping.second) == mapping.first &&
                          blockToItem(mapping.first) == mapping.second;
     }
-    creativePassed = creativePassed && blockToItem(Block::CoalOre) == Item::Coal &&
+    creativePassed = creativePassed && blockToItem(Block::Clay) == Item::ClayBall &&
+                     blockToItem(Block::Snow) == Item::Snowball &&
+                     blockToItem(Block::CoalOre) == Item::Coal &&
                      blockToItem(Block::IronOre) == Item::IronOre &&
                      blockToItem(Block::GoldOre) == Item::GoldOre &&
                      blockToItem(Block::CopperOre) == Item::CopperOre &&

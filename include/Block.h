@@ -97,6 +97,21 @@ enum class Block : std::uint8_t {
     DoorRightOpenEastUpper,
     DoorRightOpenWestLower,
     DoorRightOpenWestUpper,
+    CoalBlock,
+    IronBlock,
+    GoldBlock,
+    CopperBlock,
+    DiamondBlock,
+    HayBale,
+    Sandstone,
+    PolishedGranite,
+    PolishedDiorite,
+    PolishedAndesite,
+    SugarCane,
+    VineNorth,
+    VineSouth,
+    VineEast,
+    VineWest,
     Count
 };
 
@@ -138,14 +153,21 @@ inline bool isLeaf(Block b) {
     return b == Block::Leaves || b == Block::BirchLeaves;
 }
 inline bool isPlant(Block b) {
-    return b == Block::TallGrass || b == Block::RedFlower || b == Block::YellowFlower;
+    return b == Block::TallGrass || b == Block::RedFlower || b == Block::YellowFlower ||
+           b == Block::SugarCane;
 }
+
+inline bool isVine(Block b) {
+    return b >= Block::VineNorth && b <= Block::VineWest;
+}
+
 inline bool isLadder(Block b) {
     return b >= Block::LadderNorth && b <= Block::LadderWest;
 }
+inline bool isWallAttachment(Block b) { return isLadder(b) || isVine(b); }
 inline bool isTransparentBlock(Block b) {
     return isWater(b) || b == Block::Glass || b == Block::Ice || isLeaf(b) || isPlant(b) ||
-           isLadder(b);
+           isWallAttachment(b);
 }
 inline bool isSlab(Block b) {
     return b == Block::WoodenSlab || b == Block::StoneSlab || b == Block::WoodenSlabTop ||
@@ -213,7 +235,7 @@ inline float blockCollisionHeight(Block b) {
 }
 inline bool isSolid(Block b) {
     return b != Block::Air && !isWater(b) && b != Block::Torch && !isCrop(b) &&
-           b != Block::Snow && !isPlant(b) && !isLadder(b);
+           b != Block::Snow && !isPlant(b) && !isWallAttachment(b);
 }
 inline bool isRenderable(Block b) {
     return b != Block::Air;
@@ -295,7 +317,7 @@ inline BlockGeometryProperties blockGeometry(Block block) {
                 else geometry.maxZ = thickness;
             }
         }
-    } else if (isLadder(block)) {
+    } else if (isWallAttachment(block)) {
         geometry.shape = BlockShape::Thin;
         geometry.occludesNeighborFaces = false;
         geometry.aoOcclusion = 0.0f;
@@ -304,6 +326,9 @@ inline BlockGeometryProperties blockGeometry(Block block) {
         geometry.occludesNeighborFaces = false;
         geometry.aoOcclusion = 0.0f;
     } else if (block == Block::Torch) {
+        geometry.minX = geometry.minZ = 0.4375f;
+        geometry.maxX = geometry.maxZ = 0.5625f;
+        geometry.maxY = 0.75f;
         geometry.shape = BlockShape::Thin;
         geometry.occludesNeighborFaces = false;
         geometry.aoOcclusion = 0.0f;

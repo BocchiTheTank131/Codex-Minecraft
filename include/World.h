@@ -168,6 +168,7 @@ public:
     Block getBlock(int x, int y, int z) const;
     void setBlock(int x, int y, int z, Block block);
     bool hasLoadedChunkAt(int x, int z) const;
+    bool canPlacePlant(const glm::ivec3& position, Block block) const;
     int fillBlocks(const glm::ivec3& low, const glm::ivec3& high, Block block);
     bool isSolidAt(int x, int y, int z) const;
     std::uint8_t sunlightAt(int x, int y, int z) const;
@@ -220,6 +221,7 @@ public:
     bool runAsyncMeshSmokeTest(std::string& report);
     bool runFluidSmokeTest(std::string& report);
     bool runGenerationSmokeTest(std::string& report) const;
+    bool runCraftingContentSmokeTest(std::string& report);
     WorldgenSurvey runWorldgenSurvey() const;
     bool runStructureGenerationSmokeTest(std::string& report,
                                          glm::ivec3* representativeChest = nullptr) const;
@@ -305,7 +307,7 @@ private:
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 6;
+    std::uint32_t generationVersion_ = 7;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;

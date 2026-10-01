@@ -109,6 +109,72 @@ const Items& items() {
         put(Item::IronSword, 81, 81, "IronSword");
         put(Item::GoldSword, 82, 82, "GoldSword");
         put(Item::DiamondSword, 83, 83, "DiamondSword");
+        put(Item::Paper, 84, 84, "Paper");
+        put(Item::Book, 85, 85, "Book");
+        put(Item::ClayBall, 86, 86, "ClayBall");
+        put(Item::Brick, 87, 87, "Brick");
+        put(Item::Snowball, 88, 88, "Snowball");
+        put(Item::Charcoal, 89, 89, "Charcoal");
+        put(Item::SugarCane, 90, 90, "SugarCane");
+        put(Item::Vine, 91, 91, "Vine");
+        put(Item::CoalBlock, 92, 92, "CoalBlock");
+        put(Item::IronBlock, 93, 93, "IronBlock");
+        put(Item::GoldBlock, 94, 94, "GoldBlock");
+        put(Item::CopperBlock, 95, 95, "CopperBlock");
+        put(Item::DiamondBlock, 96, 96, "DiamondBlock");
+        put(Item::HayBale, 97, 97, "HayBale");
+        put(Item::Sandstone, 98, 98, "Sandstone");
+        put(Item::PolishedGranite, 99, 99, "PolishedGranite");
+        put(Item::PolishedDiorite, 100, 100, "PolishedDiorite");
+        put(Item::PolishedAndesite, 101, 101, "PolishedAndesite");
+        // Placement and furnace behavior share the authoritative item registry.
+        const std::pair<Item, Block> placements[] = {
+            {Item::Grass, Block::Grass}, {Item::Dirt, Block::Dirt},
+            {Item::Stone, Block::Stone}, {Item::Sand, Block::Sand},
+            {Item::Log, Block::Log}, {Item::Leaves, Block::Leaves},
+            {Item::Water, Block::Water}, {Item::CoalOre, Block::CoalOre},
+            {Item::IronOre, Block::IronOre}, {Item::GoldOre, Block::GoldOre},
+            {Item::CopperOre, Block::CopperOre}, {Item::DiamondOre, Block::DiamondOre},
+            {Item::Planks, Block::Planks}, {Item::CraftingTable, Block::CraftingTable},
+            {Item::Torch, Block::Torch}, {Item::Cobblestone, Block::Cobblestone},
+            {Item::StoneBricks, Block::StoneBricks}, {Item::Bricks, Block::Bricks},
+            {Item::Glass, Block::Glass}, {Item::Gravel, Block::Gravel},
+            {Item::Clay, Block::Clay}, {Item::Snow, Block::Snow},
+            {Item::SnowBlock, Block::SnowBlock}, {Item::BirchPlanks, Block::BirchPlanks},
+            {Item::BirchLog, Block::BirchLog}, {Item::BirchLeaves, Block::BirchLeaves},
+            {Item::Cactus, Block::Cactus}, {Item::Furnace, Block::Furnace},
+            {Item::Bookshelf, Block::Bookshelf}, {Item::WoodenDoor, Block::WoodenDoor},
+            {Item::WoodenSlab, Block::WoodenSlab}, {Item::StoneSlab, Block::StoneSlab},
+            {Item::Granite, Block::Granite}, {Item::Diorite, Block::Diorite},
+            {Item::Andesite, Block::Andesite}, {Item::MossyCobblestone, Block::MossyCobblestone},
+            {Item::MossyStoneBricks, Block::MossyStoneBricks}, {Item::Ice, Block::Ice},
+            {Item::Mud, Block::Mud}, {Item::TallGrass, Block::TallGrass},
+            {Item::RedFlower, Block::RedFlower}, {Item::YellowFlower, Block::YellowFlower},
+            {Item::Ladder, Block::LadderNorth}, {Item::Chest, Block::Chest},
+            {Item::SugarCane, Block::SugarCane}, {Item::Vine, Block::VineNorth},
+            {Item::CoalBlock, Block::CoalBlock}, {Item::IronBlock, Block::IronBlock},
+            {Item::GoldBlock, Block::GoldBlock}, {Item::CopperBlock, Block::CopperBlock},
+            {Item::DiamondBlock, Block::DiamondBlock}, {Item::HayBale, Block::HayBale},
+            {Item::Sandstone, Block::Sandstone}, {Item::PolishedGranite, Block::PolishedGranite},
+            {Item::PolishedDiorite, Block::PolishedDiorite},
+            {Item::PolishedAndesite, Block::PolishedAndesite}
+        };
+        for (const auto& entry : placements)
+            result[static_cast<std::size_t>(entry.first)].placedBlock = entry.second;
+        const std::pair<Item, Item> smelts[] = {
+            {Item::IronOre, Item::IronIngot}, {Item::GoldOre, Item::GoldIngot},
+            {Item::CopperOre, Item::CopperIngot}, {Item::CoalOre, Item::Coal},
+            {Item::RawBeef, Item::CookedBeef}, {Item::RawPork, Item::CookedPork},
+            {Item::RawMutton, Item::CookedMutton}, {Item::RawMeat, Item::CookedBeef},
+            {Item::Sand, Item::Glass}, {Item::Cobblestone, Item::Stone},
+            {Item::ClayBall, Item::Brick}, {Item::Log, Item::Charcoal},
+            {Item::BirchLog, Item::Charcoal}
+        };
+        for (const auto& entry : smelts)
+            result[static_cast<std::size_t>(entry.first)].smeltedItem = entry.second;
+        result[static_cast<std::size_t>(Item::Coal)].fuelSeconds = 40.0f;
+        result[static_cast<std::size_t>(Item::Charcoal)].fuelSeconds = 40.0f;
+        result[static_cast<std::size_t>(Item::CoalBlock)].fuelSeconds = 400.0f;
         auto tool = [&](Item item, ToolKind kind, int tier, int durability, float damage,
                         float cooldown) {
             ItemDefinition& definition = result[static_cast<std::size_t>(item)];
@@ -260,6 +326,23 @@ const Blocks& blocks() {
             put(state, static_cast<std::uint8_t>(79 + offset),
                 32, 32, 32, Item::WoodenDoor);
         }
+        put(Block::CoalBlock, 95, 45, 45, 45, Item::CoalBlock);
+        put(Block::IronBlock, 96, 46, 46, 46, Item::IronBlock);
+        put(Block::GoldBlock, 97, 47, 47, 47, Item::GoldBlock);
+        put(Block::CopperBlock, 98, 48, 48, 48, Item::CopperBlock);
+        put(Block::DiamondBlock, 99, 49, 49, 49, Item::DiamondBlock);
+        put(Block::HayBale, 100, 51, 50, 51, Item::HayBale);
+        put(Block::Sandstone, 101, 53, 52, 53, Item::Sandstone);
+        put(Block::PolishedGranite, 102, 54, 54, 54, Item::PolishedGranite);
+        put(Block::PolishedDiorite, 103, 55, 55, 55, Item::PolishedDiorite);
+        put(Block::PolishedAndesite, 104, 56, 56, 56, Item::PolishedAndesite);
+        put(Block::SugarCane, 105, 57, 57, 57, Item::SugarCane);
+        for (int offset = 0; offset < 4; ++offset)
+            put(static_cast<Block>(static_cast<int>(Block::VineNorth) + offset),
+                static_cast<std::uint8_t>(106 + offset), 58, 58, 58, Item::Vine);
+        result[static_cast<std::size_t>(Block::Clay)].drop = Item::ClayBall;
+        result[static_cast<std::size_t>(Block::Clay)].dropCount = 4;
+        result[static_cast<std::size_t>(Block::Snow)].drop = Item::Snowball;
         auto configure = [&](Block block, float hardness, ToolKind tool = ToolKind::None,
                              int harvestTier = 0) {
             BlockDefinition& definition = result[static_cast<std::size_t>(block)];
@@ -293,7 +376,7 @@ const Blocks& blocks() {
         configure(Block::GoldOre, 3.0f, ToolKind::Pickaxe, 3);
         configure(Block::DiamondOre, 4.0f, ToolKind::Pickaxe, 3);
         for (int id = static_cast<int>(Block::DoorClosedNorthLower);
-             id < static_cast<int>(Block::Count); ++id)
+             id <= static_cast<int>(Block::DoorRightOpenWestUpper); ++id)
             configure(static_cast<Block>(id), .9f, ToolKind::Axe);
         auto material = [&](SoundMaterial sound, std::initializer_list<Block> blocks) {
             for (Block block : blocks)
@@ -306,7 +389,7 @@ const Blocks& blocks() {
                   Block::LadderNorth, Block::LadderSouth, Block::LadderEast,
                   Block::LadderWest, Block::Torch});
         for (int id = static_cast<int>(Block::DoorClosedNorthLower);
-             id < static_cast<int>(Block::Count); ++id)
+             id <= static_cast<int>(Block::DoorRightOpenWestUpper); ++id)
             result[static_cast<std::size_t>(id)].soundMaterial = SoundMaterial::Wood;
         material(SoundMaterial::Grass,
                  {Block::Grass, Block::Dirt, Block::Farmland, Block::Mud,
@@ -322,6 +405,21 @@ const Blocks& blocks() {
                             Block::WaterFlow6, Block::WaterFlow7, Block::WaterFalling})
             result[static_cast<std::size_t>(block)].drop = Item::None;
         result[static_cast<std::size_t>(Block::Torch)].emittedLight = 15;
+        for (Block block : {Block::CoalBlock, Block::IronBlock, Block::GoldBlock,
+                            Block::CopperBlock, Block::DiamondBlock})
+            configure(block, 3.0f, ToolKind::Pickaxe,
+                      block == Block::GoldBlock || block == Block::DiamondBlock ? 3 :
+                      block == Block::CoalBlock ? 1 : 2);
+        for (Block block : {Block::Sandstone, Block::PolishedGranite,
+                            Block::PolishedDiorite, Block::PolishedAndesite})
+            configure(block, 1.5f, ToolKind::Pickaxe);
+        configure(Block::HayBale, .5f);
+        material(SoundMaterial::Grass, {Block::HayBale, Block::SugarCane,
+                 Block::VineNorth, Block::VineSouth, Block::VineEast, Block::VineWest});
+        material(SoundMaterial::Sand, {Block::Sandstone});
+        for (Block block : {Block::SugarCane, Block::VineNorth, Block::VineSouth,
+                            Block::VineEast, Block::VineWest})
+            configure(block, .15f);
         return result;
     }();
     return definitions;
@@ -363,6 +461,7 @@ int blockTexture(Block block, int faceIndex) {
     return faceIndex == 2 ? definition.topTexture
          : faceIndex == 3 ? definition.bottomTexture : definition.sideTexture;
 }
+float furnaceFuelSeconds(Item item) { return itemDefinition(item).fuelSeconds; }
 ItemAtlasLayout& itemAtlasLayout() {
     static ItemAtlasLayout layout;
     return layout;

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.6.0 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.7.0 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 option(VOXELFRONTIER_STANDALONE_DEMO "Build the stateless standalone demo" OFF)
@@ -44,6 +44,7 @@ add_executable(VoxelFrontier
     src/InputManager.cpp
     src/ChatUI.cpp
     src/CommandSystem.cpp
+    src/ContentValidation.cpp
     src/AmbientOcclusion.cpp
     src/Screenshot.cpp
     src/UIManager.cpp
@@ -113,6 +114,10 @@ if(VOXEL_STANDALONE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/item_icons_expansion.rgba")
     file(WRITE "${VOXEL_RC}" "100 RCDATA \"${VOXEL_ATLAS_PATH}\"\n")
+    file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/assets/crafting_blocks.rgba" VOXEL_BLOCK_ATLAS_PATH)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/crafting_blocks.rgba")
+    file(APPEND "${VOXEL_RC}" "101 RCDATA \"${VOXEL_BLOCK_ATLAS_PATH}\"\n")
     file(WRITE "${VOXEL_HEADER}" "#pragma once\nstruct EmbeddedSound { const char* name; int id; };\ninline constexpr int EmbeddedItemAtlasId = 100;\ninline constexpr EmbeddedSound EmbeddedSounds[] = {\n")
     set(VOXEL_SOUND_ID 1000)
     foreach(VOXEL_SOUND IN LISTS VOXEL_SOUND_FILES)
