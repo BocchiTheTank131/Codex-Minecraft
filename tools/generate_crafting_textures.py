@@ -1,6 +1,7 @@
 """Author original deterministic 16px crafting textures; Pillow is build-time only.
 
-Existing item slots 0..83 remain byte-identical. Run from any directory.
+Authors world materials only. Run generate_inventory_textures.py afterwards
+to refresh inventory art from the placed-block textures. Run from any directory.
 """
 from pathlib import Path
 import random
@@ -100,16 +101,4 @@ for index, image in enumerate(blocks):
 block_atlas.save(ASSETS / "crafting_blocks.png")
 (ASSETS / "crafting_blocks.rgba").write_bytes(struct.pack("<ii", *block_atlas.size) + block_atlas.tobytes())
 
-names = ["paper","book","clay_ball","brick","snowball","charcoal","sugar_cane","vine",
-         "coal_block","iron_block","gold_block","copper_block","diamond_block","hay_bale",
-         "sandstone","polished_granite","polished_diorite","polished_andesite"]
-raw = (ASSETS / "item_icons_expansion.rgba").read_bytes()
-width,height = struct.unpack("<ii",raw[:8])
-base = Image.frombytes("RGBA",(width,height),raw[8:])
-atlas = Image.new("RGBA", (640,704))
-atlas.paste(base.crop((0,0,640,640)), (0,0))
-for index,name in enumerate(names,84):
-    atlas.paste(items[name].resize((64,64), Image.Resampling.NEAREST), ((index%10)*64,(index//10)*64))
-atlas.save(ASSETS / "item_icons_expansion.png")
-(ASSETS / "item_icons_expansion.rgba").write_bytes(struct.pack("<ii", *atlas.size) + atlas.tobytes())
-print("Generated 20 original 16x16 textures, 14 block tiles, and 18 inventory sprites")
+print("Generated 20 original 16x16 material textures and 14 world block tiles")

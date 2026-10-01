@@ -30,6 +30,11 @@ void Game::updateCraftingPreview(double now) {
             player_->addMouseMovement(0,-150);
             showDebug_ = false;
         } else if (stage == 1) {
+            inventory_->clear();
+            for (Item item : {Item::Stone, Item::CoalOre, Item::Log, Item::IronBlock,
+                              Item::Glass, Item::Bread, Item::Paper,
+                              Item::DiamondPickaxe, Item::IronSword})
+                inventory_->add(item, isTool(item) ? 1 : 16);
             ui_.openInventory();
         } else if (stage == 2) {
             ui_.closeGameplayInterface(*inventory_);

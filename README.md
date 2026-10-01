@@ -60,7 +60,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.7.0** has **101 inventory items**, **55 placeable block families**, **110 block
+Version **2.7.1** has **101 inventory items**, **55 placeable block families**, **110 block
 IDs/states including Air**, **61 crafting recipes**, and **13 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -141,6 +141,23 @@ To regenerate these assets, install Pillow for development and run
 `python tools/generate_crafting_textures.py`. Pillow is not required to build or run the game;
 the generated runtime atlases are committed and embedded in release executables.
 
+### v2.7.1 texture refresh
+
+All **101 inventory icons** have been regenerated as original **16×16 pixel art**:
+56 block/plant icons and 45 other item sprites. Full blocks share one isometric projection
+and lighting direction, sampling the actual placed-block materials. Tools and swords share
+consistent silhouettes across their material variants. Clean binary transparency, a native-pixel
+transparent border, nearest-neighbor scaling, and an inward UV inset prevent fringe and
+neighboring-cell artifacts. Glass remains readable on light and dark backgrounds.
+
+The native atlas is `assets/inventory_atlas_16.png` (160×176); the runtime atlas remains
+640×704 with 64×64 cells. Every existing sprite registration is preserved. Individual native
+icons are in `assets/inventory/`. Regenerate the full set with
+`python tools/generate_inventory_textures.py` (development-only Pillow and a C++17 compiler;
+`--compiler` defaults to `g++`). Run it after regenerating world materials. This visual update
+does not change recipes, world textures, IDs, save formats, or full/demo persistence behavior;
+v2.7.0 saves remain compatible.
+
 The recipe set follows the
 [Minecraft Wiki crafting reference](https://minecraft.wiki/w/Crafting) where the game's
 ingredients exist.
@@ -149,10 +166,10 @@ ingredients exist.
 
 Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
 
-| v2.7.0 download | Purpose | Persistence |
+| v2.7.1 download | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.7.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.7.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.7.1-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.7.1-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The

@@ -485,9 +485,13 @@ bool itemSpriteUv(Item item, ItemSpriteUv& uv) {
     const int row = index / layout.columns;
     // The .rgba file stores its top image row first. OpenGL uploads that row
     // at texture v=0, matching the UI's top vertices.
-    uv = {static_cast<float>(column) / layout.columns,
-          static_cast<float>(row) / layout.rows,
-          static_cast<float>(column + 1) / layout.columns,
-          static_cast<float>(row + 1) / layout.rows};
+    // Sample inside the cell; nearest filtering and transparent sprite gutters
+    // prevent adjacent inventory icons from appearing along scaled edges.
+    const float insetU = 0.5f / layout.width;
+    const float insetV = 0.5f / layout.height;
+    uv = {static_cast<float>(column) / layout.columns + insetU,
+          static_cast<float>(row) / layout.rows + insetV,
+          static_cast<float>(column + 1) / layout.columns - insetU,
+          static_cast<float>(row + 1) / layout.rows - insetV};
     return true;
 }
