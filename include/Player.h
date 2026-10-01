@@ -6,6 +6,8 @@
 
 class World;
 
+enum class PlayerDamageSource { General, Projectile };
+
 struct PlayerInput {
     bool enabled = false;
     bool moveForward = false;
@@ -26,7 +28,7 @@ public:
     void setMouseSensitivity(float value) {
         mouseSensitivity_ = value;
     }
-    void damage(float amount);
+    void damage(float amount, PlayerDamageSource source = PlayerDamageSource::General);
     void killByCommand();
     void applyImpulse(const glm::vec3& impulse);
     void heal(float amount);

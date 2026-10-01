@@ -42,11 +42,12 @@ void Player::addMouseMovement(double x, double y) {
     yaw_ += (float)x * mouseSensitivity_;
     pitch_ = std::clamp(pitch_ + (float)y * mouseSensitivity_, -89.f, 89.f);
 }
-void Player::damage(float a) {
+void Player::damage(float a, PlayerDamageSource source) {
     if (creativeMode_ || spectatorMode_ || dead_ || a <= 0 ||
-        damageInvulnerability_ > 0)
+        (source != PlayerDamageSource::Projectile && damageInvulnerability_ > 0))
         return;
-    damageInvulnerability_ = .65f;
+    if (source != PlayerDamageSource::Projectile)
+        damageInvulnerability_ = .65f;
     health_ = std::max(0.f, health_ - a);
     hurtFlash_ = .32f;
     regenTimer_ = 0;

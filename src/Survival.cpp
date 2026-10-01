@@ -26,6 +26,9 @@ constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '4', '\0', '\0'};
 constexpr char MobMagic[8] = {'V', 'X', 'M', 'O', 'B', '1', '\0', '\0'};
 constexpr int PassiveMobCap = 26;
 constexpr int HostileMobCap = 18;
+constexpr int NaturalSpawnCandidates = 16;
+constexpr int NightHostileBonusCandidates = 8;
+constexpr float HostileCandidateChance = .52f;
 constexpr std::size_t BillboardMobCount = sizeof(SpriteAssets) / sizeof(SpriteAssets[0]);
 enum class BillboardBehavior { ExplosiveChase, MeleeChase, RangedAttack, WallClimbLunge };
 struct BillboardMobDefinition {
@@ -1678,7 +1681,9 @@ void SurvivalWorld::spawnBillboardPreview(const glm::vec3& origin,
 }
 void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosition,
                                        float daylight) {
-    // One bounded batch every five seconds; no loaded-chunk sweep is needed.
+    // One bounded batch every five seconds; eight extra nighttime candidates
+    // use the same hostile roll as the base sixteen. Expected hostile attempts
+    // rise from 16*.52 to 24*.52 (1.5x), without changing passive attempts.
     const float maximumDistance = std::min(
         112.0f, static_cast<float>(world.simulationDistance() * CHUNK_SIZE - 5));
     if (maximumDistance <= 25.0f)
@@ -1701,7 +1706,10 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
     spawnAttemptsLastTick_ = 0;
     spawnSuccessesLastTick_ = 0;
     int passiveSpawned = 0;
-    for (int attempt = 0; attempt < 16; ++attempt) {
+    const bool night = daylight <= 0.01f;
+    const int candidates = NaturalSpawnCandidates +
+        (night ? NightHostileBonusCandidates : 0);
+    for (int attempt = 0; attempt < candidates; ++attempt) {
         ++spawnAttemptsLastTick_;
         const float angle = unit(random) * 6.2831853f;
         const float radius = std::sqrt(24.0f * 24.0f +
@@ -1710,7 +1718,9 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         const int z = static_cast<int>(std::floor(playerPosition.z + std::sin(angle) * radius));
         if (!world.simulationActiveAt(static_cast<float>(x), static_cast<float>(z)))
             continue;
-        const bool hostile = unit(random) < 0.52f;
+        const bool hostile = unit(random) < HostileCandidateChance;
+        if (attempt >= NaturalSpawnCandidates && !hostile)
+            continue; // Bonus candidates never replace passive spawns.
         if (hostile && daylight > 0.01f)
             continue;
         if (hostile ? hostileCount >= HostileMobCap
@@ -2017,21 +2027,22 @@ void SurvivalWorld::updateArrows(float dt, World& world, Player& player) {
             const glm::vec3 movement = arrow.velocity * step;
             const float length = glm::length(movement);
             RayHit obstacle;
-            if (length > .0001f &&
-                world.raycast(arrow.position, movement / length, length, obstacle)) {
+            const bool blockHit = length > .0001f &&
+                world.raycast(arrow.position, movement / length, length, obstacle);
+            float playerHitDistance = 0.0f;
+            const bool playerHit = !player.isCreative() && !player.isSpectator() &&
+                !player.isDead() && length > .0001f &&
+                rayBox(arrow.position, movement / length, player.aabbMinimum(),
+                       player.aabbMaximum(), length, playerHitDistance);
+            if (blockHit && (!playerHit || obstacle.distance <= playerHitDistance)) {
                 arrow.active = false;
                 break;
             }
-            if (!player.isCreative() && !player.isSpectator() && !player.isDead() &&
-                length > .0001f) {
-                float hitDistance = 0.0f;
-                if (rayBox(arrow.position, movement / length, player.aabbMinimum(),
-                           player.aabbMaximum(), length, hitDistance)) {
-                    player.damage(3.0f);
-                    player.applyImpulse(glm::normalize(movement) * 1.8f);
-                    arrow.active = false;
-                    break;
-                }
+            if (playerHit) {
+                player.damage(3.0f, PlayerDamageSource::Projectile);
+                player.applyImpulse(glm::normalize(movement) * 1.8f);
+                arrow.active = false;
+                break;
             }
             arrow.position += movement;
             arrow.velocity.y -= 8.0f * step;
@@ -2960,9 +2971,109 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     ok &= shotBlocked;
     for (int y = 248; y <= 250; ++y)
         w.setBlock(0, y, 4, Block::Air);
+    Player wallBehindVictim(lane);
+    w.setBlock(0, 249, -1, Block::Stone);
+    arrows_.push_back({lane + glm::vec3(0, 1.1f, .8f),
+                       glm::vec3(0, 0, -100.0f)});
+    updateArrows(.025f, w, wallBehindVictim);
+    const bool playerBeforeWall = wallBehindVictim.health() == 17.0f && arrows_.empty();
+    w.setBlock(0, 249, -1, Block::Air);
+    ok &= playerBeforeWall;
     if (!ok && firstFailure.empty()) firstFailure = "ranged projectile (spawn=" +
         std::to_string(shotSpawned) + ", hit=" + std::to_string(shotHit) +
-        ", blocked=" + std::to_string(shotBlocked) + ")";
+        ", blocked=" + std::to_string(shotBlocked) +
+        ", player-first=" + std::to_string(playerBeforeWall) + ")";
+    const auto queueSureHit = [&](int count) {
+        for (int shot = 0; shot < count; ++shot)
+            arrows_.push_back({lane + glm::vec3(0, 1.1f, 2.0f),
+                               glm::vec3(0, 0, -17.0f), 0.0f, true,
+                               static_cast<std::uint8_t>(billboardType(2))});
+    };
+    for (int count : {1, 2, 3, 5, 10}) {
+        arrows_.clear();
+        Player volleyVictim(lane);
+        queueSureHit(count);
+        updateArrows(.15f, w, volleyVictim);
+        const float expectedHealth = std::max(0.0f, 20.0f - count * 3.0f);
+        const bool volleyPassed = std::abs(volleyVictim.health() - expectedHealth) < .001f &&
+                                  volleyVictim.isDead() == (expectedHealth == 0.0f) &&
+                                  (count > 5 || arrows_.empty());
+        if (!volleyPassed && firstFailure.empty())
+            firstFailure = "projectile volley " + std::to_string(count) +
+                " dealt " + std::to_string(20.0f - volleyVictim.health());
+        ok &= volleyPassed;
+        if (count <= 5) {
+            const float afterHit = volleyVictim.health();
+            updateArrows(.15f, w, volleyVictim);
+            ok &= arrows_.empty() && volleyVictim.health() == afterHit;
+        }
+    }
+    arrows_.clear();
+    Player massVolleyVictim(lane);
+    queueSureHit(64); // The active projectile safety limit, with lethal damage.
+    updateArrows(.15f, w, massVolleyVictim);
+    ok &= massVolleyVictim.isDead() && massVolleyVictim.health() == 0.0f &&
+          arrows_.size() <= 64;
+    if (!ok && firstFailure.empty()) firstFailure = "mass projectile volley";
+    arrows_.clear();
+    Player twoArchersVictim(lane);
+    animals_.clear();
+    for (int offset : {7, 8}) {
+        Animal source;
+        source.type = billboardType(2);
+        source.position = lane + glm::vec3(0, 0, static_cast<float>(offset));
+        source.thinkTimer = 4.0f;
+        animals_.push_back(source);
+        updateAnimal(animals_.back(), .02f, w, twoArchersVictim, combatInventory, 0);
+    }
+    const bool twoSourcesFired = arrows_.size() == 2;
+    for (Arrow& shot : arrows_) {
+        shot.position = lane + glm::vec3(0, 1.1f, 2.0f);
+        shot.velocity = {0, 0, -17.0f};
+    }
+    updateArrows(.15f, w, twoArchersVictim);
+    ok &= twoSourcesFired && twoArchersVictim.health() == 14.0f;
+    if (!ok && firstFailure.empty()) firstFailure = "arrows from two NijikaIjichi";
+    animals_.clear();
+    arrows_.clear();
+    Player staggeredVictim(lane);
+    for (float interval : {.005f, .1f}) {
+        arrows_.push_back({lane + glm::vec3(0, 1.1f, .35f),
+                           glm::vec3(0, 0, -17.0f)});
+        updateArrows(interval, w, staggeredVictim);
+    }
+    ok &= std::abs(staggeredVictim.health() - 14.0f) < .001f;
+    if (!ok && firstFailure.empty()) firstFailure = "staggered projectile hits";
+    arrows_.clear();
+    Player immuneVictim(lane);
+    immuneVictim.setCreativeMode(true);
+    queueSureHit(3);
+    updateArrows(.15f, w, immuneVictim);
+    ok &= immuneVictim.health() == 20.0f;
+    arrows_.clear();
+    immuneVictim.setCreativeMode(false);
+    immuneVictim.setSpectatorMode(true);
+    queueSureHit(3);
+    updateArrows(.15f, w, immuneVictim);
+    ok &= immuneVictim.health() == 20.0f;
+    arrows_.clear();
+    Player cooldownVictim(lane);
+    cooldownVictim.damage(2.0f);
+    cooldownVictim.damage(2.0f); // Repeated contact remains protected.
+    cooldownVictim.damage(3.0f, PlayerDamageSource::Projectile);
+    cooldownVictim.damage(2.0f); // Projectile hits do not remove contact protection.
+    ok &= cooldownVictim.health() == 15.0f;
+    if (!ok && firstFailure.empty()) firstFailure = "projectile immunity or contact cooldown";
+    w.setBlock(0, 247, 0, Block::Stone);
+    Player fallingVictim(lane + glm::vec3(0, 6.0f, 0));
+    float fallDamage = 0.0f;
+    for (int tick = 0; tick < 80 && !fallingVictim.isGrounded(); ++tick) {
+        fallingVictim.update(.05f, PlayerInput{}, w);
+        fallDamage = std::max(fallDamage, fallingVictim.lastFallDamage());
+    }
+    ok &= fallDamage > 0.0f && fallingVictim.health() < 20.0f;
+    if (!ok && firstFailure.empty()) firstFailure = "fall damage after projectile hits";
+    w.setBlock(0, 247, 0, Block::Air);
     animals_.clear();
     Player lungeVictim(lane);
     Animal climber;
@@ -3194,7 +3305,8 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     }
     for (int attempt = 0; attempt < 20; ++attempt)
         spawnProbe.spawnNearbyAnimals(w, testPlayer.position(), 1.0f);
-    ok &= spawnProbe.diagnostics(testPlayer.position()).hostile == 0;
+    ok &= spawnProbe.diagnostics(testPlayer.position()).hostile == 0 &&
+          spawnProbe.spawnAttemptsLastTick_ == NaturalSpawnCandidates;
     if (!ok && firstFailure.empty()) firstFailure = "daytime hostile spawn";
     spawnProbe.animals_.clear();
     std::uint8_t variantMask = 0;
@@ -3209,9 +3321,26 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
         if (spawnProbe.animals_.size() >= HostileMobCap)
             spawnProbe.animals_.clear();
     }
-    ok &= sawNightSpawn && variantMask == 15;
+    const bool boundedNightBatch = spawnProbe.spawnAttemptsLastTick_ ==
+        NaturalSpawnCandidates + NightHostileBonusCandidates;
+    std::mt19937 rateRandom(0x2600U);
+    std::uniform_real_distribution<float> rateRoll(0.0f, 1.0f);
+    int oldHostileAttempts = 0, newHostileAttempts = 0;
+    for (int batch = 0; batch < 4096; ++batch)
+        for (int candidate = 0;
+             candidate < NaturalSpawnCandidates + NightHostileBonusCandidates; ++candidate) {
+            const bool hostile = rateRoll(rateRandom) < HostileCandidateChance;
+            if (candidate < NaturalSpawnCandidates)
+                oldHostileAttempts += static_cast<int>(hostile);
+            newHostileAttempts += static_cast<int>(hostile);
+        }
+    const float rateRatio = static_cast<float>(newHostileAttempts) /
+                            static_cast<float>(oldHostileAttempts);
+    ok &= sawNightSpawn && variantMask == 15 && boundedNightBatch &&
+          rateRatio > 1.48f && rateRatio < 1.52f;
     if (!ok && firstFailure.empty()) firstFailure = "night spawn or sprite distribution (spawn=" +
         std::to_string(sawNightSpawn) + ", mask=" + std::to_string(variantMask) +
+        ", rate=" + std::to_string(rateRatio) +
         ", x=" + std::to_string(testPlayer.position().x) +
         ", z=" + std::to_string(testPlayer.position().z) +
         ", chunks=" + std::to_string(w.loadedChunkCount()) + ")";
@@ -3221,7 +3350,8 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     arrows_ = std::move(oldArrows);
     explosionEffects_ = std::move(oldEffects);
     spawnedChunks_ = std::move(oldSpawned);
-    report = ok ? "mob combat, 1.75-block hitbox, one-block steps/stairs and headroom, night-only spawning, four named roles, explosive fuse/terrain/cover, arrows, lunge, old billboard/Wolf saves, drops, and Creative immunity passed"
+    report = ok ? "mob combat, 1.75-block hitbox, one-block steps/stairs and headroom, night-only spawning (hostile candidate rate " +
+                  std::to_string(rateRatio) + "x), exact stacked arrow volleys, two archer sources, projectile immunity, fall damage, melee/explosion cooldowns, four named roles, old billboard/Wolf saves, and Creative immunity passed"
                 : "combat regression: " + firstFailure;
     return ok;
 }
