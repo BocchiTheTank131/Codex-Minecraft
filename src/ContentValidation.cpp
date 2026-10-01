@@ -1,4 +1,7 @@
 #include "Game.h"
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+#include "InventoryTooltip.h"
 #include "Definitions.h"
 #include "Persistence.h"
 #include "Survival.h"
@@ -55,6 +58,30 @@ void Game::updateCraftingPreview(double now) {
             const auto& recipes=craftingRecipes();
             for (int index=0;index<static_cast<int>(recipes.size());++index)
                 if (recipes[index].output==Item::Bookshelf) inventory_->fillRecipe(index,true,false);
+        } else if (stage == 4 || stage == 5) {
+            ui_.closeGameplayInterface(*inventory_);
+            const glm::ivec3 container(1,240,6);
+            world_->setBlock(container.x,container.y,container.z,stage==4?Block::Chest:Block::Furnace);
+            if(stage==4) {
+                world_->chestAt(container,true)->slots[0]={Item::Diamond,5,0};
+                ui_.openChest(container);
+            } else {
+                auto* furnace=world_->furnaceAt(container,true);
+                furnace->input={Item::IronOre,10,0};furnace->fuel={Item::Coal,10,0};
+                furnace->output={Item::IronIngot,3,0};
+                ui_.openFurnace(container);
+            }
+        }
+        if(stage>=1 && stage<=5) {
+            synchronizeCursorCapture();
+            int W=0,H=0;glfwGetFramebufferSize(window_,&W,&H);
+            const auto b=stage==1 ? UiLayout::creativeItem(0,W,H) :
+                stage==2 ? UiLayout::playerSlot(UiMode::Inventory,3,W,H) :
+                stage==3 ? UiLayout::craftingOutput(W,H) :
+                stage==4 ? UiLayout::chestSlot(0,W,H) :
+                           UiLayout::furnaceSlot(UiSlotKind::FurnaceOutput,W,H);
+            int ww=0,wh=0;glfwGetWindowSize(window_,&ww,&wh);
+            glfwSetCursorPos(window_,(b.x+10)*ww/W,(b.y+10)*wh/H);
         }
     }
     if (!smokeTest_.worldgenScreenshotTaken && elapsed-stage*4.0>2.0) {
@@ -146,4 +173,73 @@ void Game::runCraftingContentSmokeTest() {
     }
     std::cout << "Crafting expansion: all 18 item IDs/icons, 15 block states, support, furnace fuels, "
               << (Persistence::enabled() ? "save/reload" : "demo persistence bypass") << " passed\n";
+}
+
+void Game::runPatch272SmokeTest() {
+    std::string report;
+    if(!world_->runPatch272SelfTest(report))throw std::runtime_error(report);
+    std::cout << report << '\n';
+    World origin(seed_);
+    const glm::vec3 spawn=origin.findSafeSpawnNear(0,0);
+    origin.generate(2,spawn);
+    origin.prepareSpawnTerrain(spawn);
+    // Every cause enters the common death/respawn path. Exercise the physical
+    // origins that formerly leaked into respawn, including Creative flight.
+    const glm::vec3 origins[]={{12000,240,9000},{0,240,0},{3000,8,-4000},
+        {0,25,0},{-7000,200,7000},{1000,100,1000},{0,-25,0},{0,60,0}};
+    for(int n=0;n<8;++n) {
+        Player player(origins[n]);
+        if(n==0){player.setCreativeMode(true);player.setFlying(true);player.setCreativeMode(false);}
+        player.applyImpulse({5,-50,8});
+        if(n==7)player.killByCommand();else player.damage(100.0f,
+            n==5 ? PlayerDamageSource::Projectile : PlayerDamageSource::General);
+        player.update(2.1f,PlayerInput{},origin);
+        if(player.isDead() || glm::distance(player.position(),spawn)>.01f ||
+           glm::length(player.velocity())>.01f || player.isFlying() || player.isSwimming() ||
+           player.isSprinting() || player.isFalling())throw std::runtime_error("respawn state reset failed");
+        player.damage(3,PlayerDamageSource::Projectile);
+        if(player.health()!=20)throw std::runtime_error("respawn safety failed");
+        for(int frame=0;frame<240;++frame)player.update(1.0f/60,PlayerInput{},origin);
+        if(player.isDead() || player.health()!=20 || !player.isGrounded() || player.lastFallDamage()!=0)
+            throw std::runtime_error("respawn death loop");
+    }
+    std::cout << "Respawn: eight death origins/causes, original world spawn, reset physics and safety passed\n";
+    World distant(seed_);
+    distant.generate(2,origins[0]);
+    Player away(origins[0]);away.killByCommand();away.update(2.1f,PlayerInput{},distant);
+    distant.prepareSpawnTerrain(away.position());
+    for(int frame=0;frame<240;++frame)away.update(1.0f/60,PlayerInput{},distant);
+    if(away.isDead() || !away.isGrounded() || away.health()!=20 || glm::distance(away.position(),spawn)>.05f)
+        throw std::runtime_error("unloaded world-spawn respawn failed");
+    std::cout << "Respawn: distant streamed world restores origin collision terrain before physics passed\n";
+    Inventory inv;inv.clear();inv.add(Item::Sand,1);
+    RecipeBookView book;book.entries={0};
+    FurnaceData furnace;furnace.input={Item::IronOre,1,0};furnace.fuel={Item::Coal,1,0};furnace.output={Item::IronIngot,1,0};
+    ChestData chest;chest.slots[0]={Item::Diamond,1,0};
+    const auto check=[&](UiMode mode,UiRect bounds,Item expected,const RecipeBookView* b=nullptr,
+                         const FurnaceData* f=nullptr,const ChestData* c=nullptr) {
+        if(InventoryTooltip::hoveredItem(mode,1280,720,bounds.x+10,bounds.y+10,inv,b,f,c)!=expected)
+            throw std::runtime_error("tooltip slot mapping failed");
+    };
+    check(UiMode::Inventory,UiLayout::playerSlot(UiMode::Inventory,0,1280,720),Item::Sand);
+    check(UiMode::Inventory,UiLayout::playerSlot(UiMode::Inventory,1,1280,720),Item::None);
+    check(UiMode::Creative,UiLayout::creativeItem(0,1280,720),creativeCatalog()[0]);
+    check(UiMode::Inventory,UiLayout::recipeItem(0,1280,720),craftingRecipes()[0].output,&book);
+    inv.add(Item::Planks,4);
+    for(int i=0;i<static_cast<int>(craftingRecipes().size());++i)
+        if(craftingRecipes()[i].output==Item::CraftingTable)inv.fillRecipe(i,false,false);
+    check(UiMode::Inventory,UiLayout::craftingSlot(1,1280,720),Item::Planks);
+    check(UiMode::Inventory,UiLayout::craftingOutput(1280,720),Item::CraftingTable);
+    book.entries.assign(10,0);book.page=1;
+    check(UiMode::CraftingTable,UiLayout::recipeItem(1,1280,720),craftingRecipes()[0].output,&book);
+    check(UiMode::Chest,UiLayout::chestSlot(0,1280,720),Item::Diamond,nullptr,nullptr,&chest);
+    for(auto kind:{UiSlotKind::FurnaceInput,UiSlotKind::FurnaceFuel,UiSlotKind::FurnaceOutput})
+        check(UiMode::Furnace,UiLayout::furnaceSlot(kind,1280,720),
+              kind==UiSlotKind::FurnaceInput?Item::IronOre:kind==UiSlotKind::FurnaceFuel?Item::Coal:Item::IronIngot,
+              nullptr,&furnace);
+    for(auto point:{glm::vec2(0),glm::vec2(1279,719),glm::vec2(640,360)}) {
+        auto b=InventoryTooltip::bounds(1280,720,point.x,point.y,220);
+        if(b.x<0||b.y<0||b.x+b.width>1280||b.y+b.height>720)throw std::runtime_error("tooltip edge bounds");
+    }
+    std::cout << "Tooltips: occupied/empty inventory, Creative, recipes, chest, furnace and screen edges passed\n";
 }

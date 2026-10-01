@@ -180,6 +180,8 @@ public:
     std::vector<ItemStack> takeBlockEntityContents(const glm::ivec3& position);
     int terrainHeight(int worldX, int worldZ) const;
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
+    void prepareSpawnTerrain(const glm::vec3& position);
+    bool runPatch272SelfTest(std::string& report) const;
     std::string biomeNameAt(int worldX, int worldZ) const;
     WorldGenerationDebug generationDebugAt(int worldX, int worldZ,
                                            int worldY = SEA_LEVEL,
@@ -307,7 +309,7 @@ private:
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 7;
+    std::uint32_t generationVersion_ = 8;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;

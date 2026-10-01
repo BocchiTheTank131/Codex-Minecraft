@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.7.1 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.7.2 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 option(VOXELFRONTIER_STANDALONE_DEMO "Build the stateless standalone demo" OFF)
@@ -62,6 +62,7 @@ add_executable(VoxelFrontier
     src/Structure.cpp
     src/CanyonCarver.cpp
     src/World.cpp
+    src/WorldValidation.cpp
 )
 target_include_directories(VoxelFrontier PRIVATE include ${miniaudio_SOURCE_DIR})
 target_link_libraries(VoxelFrontier PRIVATE glfw glad glm::glm OpenGL::GL Threads::Threads)

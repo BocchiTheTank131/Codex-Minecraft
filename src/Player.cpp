@@ -19,7 +19,7 @@ template <class T> bool rd(std::ifstream& f, T& v) {
     return !!f;
 }
 } // namespace
-Player::Player(const glm::vec3& s) : position_(s), spawnPosition_(s) {}
+Player::Player(const glm::vec3& s) : position_(s) {}
 glm::vec3 Player::lookDirection() const {
     float y = glm::radians(yaw_), p = glm::radians(pitch_);
     return glm::normalize(
@@ -43,7 +43,7 @@ void Player::addMouseMovement(double x, double y) {
     pitch_ = std::clamp(pitch_ + (float)y * mouseSensitivity_, -89.f, 89.f);
 }
 void Player::damage(float a, PlayerDamageSource source) {
-    if (creativeMode_ || spectatorMode_ || dead_ || a <= 0 ||
+    if (creativeMode_ || spectatorMode_ || dead_ || respawnProtection_ > 0 || a <= 0 ||
         (source != PlayerDamageSource::Projectile && damageInvulnerability_ > 0))
         return;
     if (source != PlayerDamageSource::Projectile)
@@ -98,17 +98,17 @@ void Player::addExperience(int a) {
         return;
     experience_ = std::max(0, experience_ + a);
 }
-void Player::respawn() {
-    position_ = spawnPosition_;
-    velocity_ = {0, 0, 0};
-    health_ = 20;
-    hunger_ = 20;
-    fallDistance_ = 0;
-    dead_ = false;
-    grounded_ = false;
-    flying_ = false;
-    hurtFlash_ = 0;
-    damageInvulnerability_ = 0;
+void Player::respawn(const World& world) {
+    // The loaded player position is not a world spawn point. Resolve current
+    // terrain and saved edits around the original origin on every respawn.
+    position_ = world.findSafeSpawnNear(0, 0);
+    velocity_ = glm::vec3(0.0f);
+    health_ = hunger_ = 20.0f;
+    fallDistance_ = lastFallDamage_ = exhaustion_ = regenTimer_ = 0.0f;
+    respawnTimer_ = hurtFlash_ = damageInvulnerability_ = spaceTapTimer_ = 0.0f;
+    dead_ = inWater_ = flying_ = sprinting_ = sneaking_ = jumpWasDown_ = false;
+    grounded_ = true;
+    respawnProtection_ = 2.0f;
 }
 
 void Player::setCreativeMode(bool enabled) {
@@ -216,13 +216,14 @@ void Player::applyShoreClimbAssist(const PlayerInput& input,
 }
 void Player::update(float deltaTime, const PlayerInput& input, const World& world) {
     lastFallDamage_ = 0.0f;
+    respawnProtection_ = std::max(0.0f, respawnProtection_ - deltaTime);
     hurtFlash_ = std::max(0.0f, hurtFlash_ - deltaTime);
     damageInvulnerability_ = std::max(0.0f, damageInvulnerability_ - deltaTime);
     spaceTapTimer_ = std::max(0.0f, spaceTapTimer_ - deltaTime);
 
     if (dead_) {
         respawnTimer_ -= deltaTime;
-        if (respawnTimer_ <= 0.0f) respawn();
+        if (respawnTimer_ <= 0.0f) respawn(world);
         return;
     }
 
@@ -273,7 +274,7 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
 
     if (position_.y < -24.0f) {
         if (creativeMode_)
-            respawn();
+            respawn(world);
         else
             damage(100.0f);
         return;

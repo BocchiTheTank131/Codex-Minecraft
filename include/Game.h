@@ -79,6 +79,8 @@ private:
         bool commandEnabled = false;
         bool commandVisual = false;
         bool craftingPreview = false;
+        bool patch272 = false;
+        float previewX = 0, previewZ = 0;
         float previewBrightness = 1.0f;
         bool worldgenScreenshotTaken = false;
         bool checksPassed = true;
@@ -171,6 +173,7 @@ private:
 
     void runSurvivalSmokeTest();
     void runCraftingContentSmokeTest();
+    void runPatch272SmokeTest();
     void updateCraftingPreview(double now);
     void runCommandSmokeTest();
     void runSpectatorSmokeTest();

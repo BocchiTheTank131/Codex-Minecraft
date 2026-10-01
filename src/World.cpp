@@ -405,8 +405,9 @@ World::TerrainSample World::sampleTerrainModern(int worldX, int worldZ) const {
     // amplitude of hills and ridges; it is never simply added to elevation.
     const float inland = smoothRange(-0.24f, 0.02f, sample.continentalness);
     const float mountainRegion =
-        smoothRange(0.04f, 0.32f, sample.continentalness) *
-        smoothRange(0.055f, 0.34f, std::abs(sample.weirdness));
+        smoothRange(0.04f, generationVersion_ >= 8 ? 0.27f : 0.32f, sample.continentalness) *
+        smoothRange(generationVersion_ >= 8 ? 0.035f : 0.055f,
+                    generationVersion_ >= 8 ? 0.27f : 0.34f, std::abs(sample.weirdness));
     sample.peakValley = std::clamp(
         2.0f * smoothRange(0.035f, 0.39f, std::abs(sample.weirdness)) - 1.0f,
         -1.0f, 1.0f);
@@ -421,7 +422,23 @@ World::TerrainSample World::sampleTerrainModern(int worldX, int worldZ) const {
     const float ruggedness = 1.0f - sample.erosion;
     float height = 51.0f + sample.continentalness *
         (generationVersion_ >= 4 ? 64.0f : 72.0f);
-    if (generationVersion_ >= 4) {
+    if (generationVersion_ >= 8) {
+        // Preserve lowlands and coasts; build regional landforms before detail.
+        // Reuse existing noise samples, with erosion smoothing some ranges and
+        // retaining sharp ridgelines and basins in rugged regions.
+        const float valley = 1.0f - smoothRange(0.035f, 0.20f, std::abs(sample.weirdness));
+        height -= inland * valley * (6.0f + 9.0f * ruggedness);
+        height += inland * rolling * glm::mix(4.0f, 12.0f, ruggedness);
+        height += mountainRegion * glm::mix(13.0f, 26.0f, ruggedness);
+        height += mountainRegion * mountainRegion * glm::mix(36.0f, 72.0f, ruggedness);
+        const float ridgeProfile = smoothRange(0.40f, 0.96f, ridge);
+        height += mountainRegion * mountainRegion * ridgeProfile *
+                  glm::mix(25.0f, 100.0f, ruggedness);
+        // Valleys between ridges prevent a uniform high plateau. Stronger
+        // erosion lowers their relief without applying a global height scale.
+        height -= mountainRegion * (1.0f-ridgeProfile) * ruggedness * 17.0f;
+        height += inland * smallDetail * glm::mix(0.5f, 1.5f, ruggedness);
+    } else if (generationVersion_ >= 4) {
         // Broad low-relief plains and wide valleys precede the gradually
         // strengthening foothill/ridge terms. Erosion controls their amplitude.
         const float valley = 1.0f - smoothRange(0.045f, 0.23f,
@@ -445,7 +462,7 @@ World::TerrainSample World::sampleTerrainModern(int worldX, int worldZ) const {
     const float cliffBand = 1.0f - std::abs(ridgeNoise_.noise(
         x * 0.0065f + 13.391f, 0.0f, z * 0.0065f - 31.537f));
     height += std::pow(mountainRegion, 3.0f) * std::pow(cliffBand, 8.0f) *
-              ruggedness * 13.0f;
+              ruggedness * (generationVersion_ >= 8 ? 8.0f : 13.0f);
 
     // A domain-warped zero contour forms continuous, gently curving river
     // paths. The elevation/continental masks keep deep cuts out of peaks.
@@ -610,78 +627,98 @@ StructureTerrain World::structureTerrainAt(int worldX, int worldZ) const {
 }
 
 glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
-    const int centerChunkX = floorDiv(worldX, CHUNK_SIZE);
-    const int centerChunkZ = floorDiv(worldZ, CHUNK_SIZE);
-    glm::vec3 best(static_cast<float>(worldX) + 0.5f,
-                   static_cast<float>(terrainHeight(worldX, worldZ)) + 2.01f,
-                   static_cast<float>(worldZ) + 0.5f);
-
-    for (int ring = 0; ring <= 3; ++ring) {
-        float bestScore = std::numeric_limits<float>::max();
-        bool found = false;
-        for (int dz = -ring; dz <= ring; ++dz) {
-            for (int dx = -ring; dx <= ring; ++dx) {
-                if (ring > 0 && std::max(std::abs(dx), std::abs(dz)) != ring)
-                    continue;
-                const int chunkX = centerChunkX + dx;
-                const int chunkZ = centerChunkZ + dz;
-                GeneratedChunk generated = generateChunkData(chunkX, chunkZ);
-                const auto changed = edits_.find(chunkKey(chunkX, chunkZ));
-                if (changed != edits_.end()) {
-                    for (const auto& edit : changed->second)
-                        generated.blocks[edit.first] = edit.second;
+    std::unordered_map<std::int64_t, GeneratedChunk> cache;
+    const auto blockAt = [&](int x, int y, int z) {
+        if (y < 0 || y >= WORLD_HEIGHT) return Block::Air;
+        const int cx = floorDiv(x, CHUNK_SIZE), cz = floorDiv(z, CHUNK_SIZE);
+        if (const Chunk* loaded = findChunk(cx, cz))
+            return loaded->getLocal(floorMod(x, CHUNK_SIZE), y, floorMod(z, CHUNK_SIZE));
+        const auto key = chunkKey(cx, cz);
+        auto it = cache.find(key);
+        if (it == cache.end()) {
+            auto generated = generateChunkData(cx, cz);
+            const auto changed = edits_.find(key);
+            if (changed != edits_.end())
+                for (const auto& edit : changed->second) generated.blocks[edit.first] = edit.second;
+            it = cache.emplace(key, std::move(generated)).first;
+        }
+        return it->second.blocks[localIndex(floorMod(x, CHUNK_SIZE), y, floorMod(z, CHUNK_SIZE))];
+    };
+    const auto safeGround = [](Block b) {
+        const auto g = blockGeometry(b);
+        return isSolid(b) && !isWater(b) && !isLeaf(b) && b != Block::Cactus &&
+               b != Block::Log && b != Block::BirchLog &&
+               g.shape == BlockShape::Cube && g.minY == 0 && g.maxY == 1;
+    };
+    for (int radius = 0; radius <= 48; ++radius) {
+        glm::vec3 best(0.0f);
+        int bestDistance = std::numeric_limits<int>::max();
+        for (int dz = -radius; dz <= radius; ++dz) {
+            for (int dx = -radius; dx <= radius; ++dx) {
+                if (std::max(std::abs(dx), std::abs(dz)) != radius) continue;
+                const int x = worldX + dx, z = worldZ + dz;
+                int y = WORLD_HEIGHT - 3;
+                for (; y > 2; --y) {
+                    const Block b = blockAt(x,y,z);
+                    if (isSolid(b) || isWater(b)) break;
                 }
-
-                for (int localZ = 0; localZ < CHUNK_SIZE; ++localZ) {
-                    for (int localX = 0; localX < CHUNK_SIZE; ++localX) {
-                        int surfaceY = -1;
-                        Block surface = Block::Air;
-                        for (int y = WORLD_HEIGHT - 3; y >= 1; --y) {
-                            const Block block = generated.blocks[localIndex(localX, y, localZ)];
-                            if (block == Block::Air || block == Block::Torch || block == Block::Snow ||
-                                isCrop(block))
-                                continue;
-                            surfaceY = y;
-                            surface = block;
-                            break;
+                if (y <= 2 || !safeGround(blockAt(x,y,z)) ||
+                    !safeGround(blockAt(x,y-1,z))) continue;
+                bool safe = true;
+                // A clear body and a supported neighborhood avoid cliff edges,
+                // water, cactus and dangerous immediate sideways steps.
+                for (int oz = -1; oz <= 1 && safe; ++oz)
+                    for (int ox = -1; ox <= 1 && safe; ++ox) {
+                        bool footing = false;
+                        for (int drop = 0; drop <= 2; ++drop) {
+                            const Block support=blockAt(x+ox,y-drop,z+oz);
+                            if (isSolid(support) || isWater(support)) {
+                                footing=safeGround(support);
+                                break;
+                            }
                         }
-                        if (surfaceY < 0 || isWater(surface) || isLeaf(surface) ||
-                            surface == Block::Log || surface == Block::BirchLog ||
-                            surface == Block::Cactus || !isSolid(surface))
-                            continue;
-                        if (surfaceY < 3 ||
-                            !isSolid(generated.blocks[localIndex(localX, surfaceY - 1, localZ)]) ||
-                            !isSolid(generated.blocks[localIndex(localX, surfaceY - 2, localZ)]))
-                            continue;
-                        const Block feet =
-                            generated.blocks[localIndex(localX, surfaceY + 1, localZ)];
-                        const Block head =
-                            generated.blocks[localIndex(localX, surfaceY + 2, localZ)];
-                        if (isSolid(feet) || isWater(feet) || isSolid(head) || isWater(head))
-                            continue;
-
-                        const int candidateX = chunkX * CHUNK_SIZE + localX;
-                        const int candidateZ = chunkZ * CHUNK_SIZE + localZ;
-                        const float offsetX = static_cast<float>(candidateX - worldX);
-                        const float offsetZ = static_cast<float>(candidateZ - worldZ);
-                        const float naturalPenalty =
-                            (surface == Block::Grass || surface == Block::Sand) ? 0.0f : 96.0f;
-                        const float score = offsetX * offsetX + offsetZ * offsetZ + naturalPenalty;
-                        if (score < bestScore) {
-                            bestScore = score;
-                            best = {static_cast<float>(candidateX) + 0.5f,
-                                    static_cast<float>(surfaceY) + 1.01f,
-                                    static_cast<float>(candidateZ) + 0.5f};
-                            found = true;
-                        }
+                        const Block feet = blockAt(x+ox,y+1,z+oz);
+                        const Block head = blockAt(x+ox,y+2,z+oz);
+                        safe = footing && !isSolid(feet) && !isWater(feet) &&
+                               !isSolid(head) && !isWater(head);
                     }
+                const int distance = dx*dx + dz*dz;
+                if (safe && distance < bestDistance) {
+                    bestDistance = distance;
+                    best = {x + .5f, y + 1.01f, z + .5f};
                 }
             }
         }
-        if (found)
-            return best;
+        if (bestDistance != std::numeric_limits<int>::max()) return best;
     }
-    return best;
+    // Never silently return an airborne/embedded fallback.
+    throw std::runtime_error("No safe spawn surface within 48 blocks of world spawn");
+}
+
+void World::prepareSpawnTerrain(const glm::vec3& position) {
+    // Synchronously make only the local safety footprint collidable. Normal
+    // streaming and all mesh builds remain asynchronous.
+    const int x = static_cast<int>(std::floor(position.x));
+    const int z = static_cast<int>(std::floor(position.z));
+    for (int cz = floorDiv(z-1,CHUNK_SIZE); cz <= floorDiv(z+1,CHUNK_SIZE); ++cz)
+        for (int cx = floorDiv(x-1,CHUNK_SIZE); cx <= floorDiv(x+1,CHUNK_SIZE); ++cx) {
+            if (findChunk(cx,cz)) continue;
+            auto generated = generateChunkData(cx,cz);
+            const auto changed = edits_.find(chunkKey(cx,cz));
+            if (changed != edits_.end())
+                for (const auto& edit : changed->second) generated.blocks[edit.first] = edit.second;
+            initializeGeneratedLoot(generated);
+            queueGeneratedMobs(generated);
+            auto chunk = std::make_unique<Chunk>(cx,cz,std::move(generated.blocks));
+            chunk->meshIdentity = nextMeshIdentity_++;
+            computeSunlight(*chunk);
+            chunks_.emplace(chunkKey(cx,cz),std::move(chunk));
+            queueLightingUpdate(cx,cz,false);
+            scheduleFluidBoundaryUpdates(cx,cz);
+            markDirty(cx,cz,true);
+            markDirty(cx-1,cz); markDirty(cx+1,cz);
+            markDirty(cx,cz-1); markDirty(cx,cz+1);
+        }
 }
 
 std::string World::biomeNameAt(int worldX, int worldZ) const {
@@ -1257,7 +1294,7 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
             }
         }
     }
-    if (generationVersion_ >= 7) {
+    if (generationVersion_ == 7) {
         // Shore plants add decoration only; terrain/carving remains unchanged.
         // The column halo makes water-edge decisions deterministic at seams.
         for (int z = 0; z < CHUNK_SIZE; ++z) {
@@ -1285,6 +1322,57 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
         result.hasStructure = structures_.applyToChunk(
             chunkX, chunkZ, result.blocks, result.loot, result.mobs, structureTerrain);
     }
+    if (generationVersion_ >= 8) {
+        std::vector<StructurePlan> shoreStructures;
+        bool shoreStructuresReady=false;
+        // Decorate after trees and structures. Plants never overwrite geometry.
+        // World-space patch anchors plus the terrain halo are identical on both
+        // sides of a chunk border; each chunk writes only its own columns.
+        for (int z=0; z<CHUNK_SIZE; ++z) for (int x=0; x<CHUNK_SIZE; ++x) {
+            const int wx=chunkX*CHUNK_SIZE+x, wz=chunkZ*CHUNK_SIZE+z;
+            const int y=column(x,z).height;
+            if (y<SEA_LEVEL || y>=WORLD_HEIGHT-4) continue;
+            const Block ground=localBlock(x,y,z);
+            if (ground!=Block::Grass && ground!=Block::Dirt && ground!=Block::Sand) continue;
+            if (!isSolid(localBlock(x,y-1,z))) continue;
+            const auto waterNeighbor=[&](int nx,int nz) {
+                const int h=column(nx,nz).height;
+                if (nx>=0 && nx<CHUNK_SIZE && nz>=0 && nz<CHUNK_SIZE)
+                    return isWater(localBlock(nx,y,nz)) && localBlock(nx,y+1,nz)==Block::Air;
+                // An exposed natural water edge at base-ground level, using the
+                // exact pre-decoration terrain profile of the neighboring chunk.
+                return h<y && y<=SEA_LEVEL;
+            };
+            if (!(waterNeighbor(x-1,z)||waterNeighbor(x+1,z)||
+                  waterNeighbor(x,z-1)||waterNeighbor(x,z+1))) continue;
+            bool inPatch=false;
+            const int cellX=floorDiv(wx,4), cellZ=floorDiv(wz,4);
+            for(int dz=-1; dz<=1; ++dz) for(int dx=-1; dx<=1; ++dx) {
+                const auto h=positionHash(cellX+dx,cellZ+dz,seed_^0xca9eU);
+                if(h%3U!=0) continue;
+                const int ax=(cellX+dx)*4+static_cast<int>((h>>5U)%4U);
+                const int az=(cellZ+dz)*4+static_cast<int>((h>>9U)%4U);
+                const int distance=std::abs(wx-ax)+std::abs(wz-az);
+                inPatch |= distance<=1; // At most five irregular shoreline bases.
+            }
+            const auto h=positionHash(wx,wz,seed_^0xcafeU);
+            if(!inPatch || h%7U==0) continue;
+            const int plantHeight=1+static_cast<int>((h>>9U)%3U);
+            bool clear=true;
+            for(int level=1;level<=plantHeight;++level)
+                clear &= localBlock(x,y+level,z)==Block::Air;
+            // Keep out of structure footprints, including flat roofs/paths.
+            if(clear && !shoreStructuresReady) {
+                shoreStructures=structures_.plansForChunk(chunkX,chunkZ,
+                    [&](int x,int z) { return structureTerrainAt(x,z); });
+                shoreStructuresReady=true;
+            }
+            for(const auto& plan : shoreStructures)
+                if(plan.bounds.intersectsXZ(wx-1,wz-1,wx+1,wz+1)) clear=false;
+            if(clear) for(int level=1;level<=plantHeight;++level)
+                localBlock(x,y+level,z)=Block::SugarCane;
+        }
+    }
     return result;
 }
 
@@ -1310,14 +1398,19 @@ bool World::runCraftingContentSmokeTest(std::string& report) {
             }
     }
     int cane = 0, vines = 0, generated = 0;
-    for (int cz = -32; cz <= 32 && (cane == 0 || vines == 0); ++cz) {
-        for (int cx = -32; cx <= 32 && (cane == 0 || vines == 0); ++cx) {
+    const int plantSurveyRadius = generationVersion_ >= 8 ? 128 : 32;
+    for (int cz = -plantSurveyRadius; cz <= plantSurveyRadius && (cane == 0 || vines == 0) && generated < 128; ++cz) {
+        for (int cx = -plantSurveyRadius; cx <= plantSurveyRadius && (cane == 0 || vines == 0) && generated < 128; ++cx) {
             // Only generate candidate shore/forest chunks, with a bounded budget.
             bool shore = false, forest = false;
             for (int z = 0; z < CHUNK_SIZE; ++z)
                 for (int x = 0; x < CHUNK_SIZE; ++x) {
                     const TerrainSample sample = sampleTerrainModern(cx * CHUNK_SIZE+x, cz * CHUNK_SIZE+z);
-                    shore |= sample.height == SEA_LEVEL;
+                    if (sample.height == SEA_LEVEL && (generationVersion_ < 8 ||
+                        terrainHeight(cx*CHUNK_SIZE+x-1,cz*CHUNK_SIZE+z)<SEA_LEVEL ||
+                        terrainHeight(cx*CHUNK_SIZE+x+1,cz*CHUNK_SIZE+z)<SEA_LEVEL ||
+                        terrainHeight(cx*CHUNK_SIZE+x,cz*CHUNK_SIZE+z-1)<SEA_LEVEL ||
+                        terrainHeight(cx*CHUNK_SIZE+x,cz*CHUNK_SIZE+z+1)<SEA_LEVEL)) shore=true;
                     forest |= sample.biome == Biome::Forest || sample.biome == Biome::BirchForest;
                 }
             if ((!shore || cane > 0) && (!forest || vines > 0)) continue;
@@ -2139,7 +2232,8 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         if (!input || (loadedGenerationVersion != 1U && loadedGenerationVersion != 2U &&
                        loadedGenerationVersion != 3U && loadedGenerationVersion != 4U &&
                        loadedGenerationVersion != 5U &&
-                       loadedGenerationVersion != 6U && loadedGenerationVersion != 7U))
+                       loadedGenerationVersion != 6U && loadedGenerationVersion != 7U &&
+                       loadedGenerationVersion != 8U))
             return false;
     }
 

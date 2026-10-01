@@ -177,7 +177,10 @@ bool Game::initialize(int argc, char** argv) {
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
                      "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
-        if (smokeTest_.resetEnabled) {
+        if (smokeTest_.patch272) {
+            runPatch272SmokeTest();
+            glfwSetWindowShouldClose(window_, GLFW_TRUE);
+        } else if (smokeTest_.resetEnabled) {
             runResetSmokeTest();
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
         } else if (smokeTest_.survivalEnabled) {
@@ -314,6 +317,12 @@ void Game::parseArguments(int argc, char** argv) {
                 smokeTest_.spectatorEnabled = true;
             } else if (argument == "--billboard-preview") {
                 smokeTest_.billboardPreview = true;
+            } else if (argument == "--patch272-smoke") {
+                smokeTest_.patch272 = true;
+            } else if (argument.rfind("--preview-x=",0)==0) {
+                smokeTest_.previewX = std::stof(argument.substr(12));
+            } else if (argument.rfind("--preview-z=",0)==0) {
+                smokeTest_.previewZ = std::stof(argument.substr(12));
             } else if (argument == "--crafting-preview") {
                 smokeTest_.craftingPreview = true;
             } else if (argument.rfind("--preview-brightness=", 0) == 0) {
@@ -327,7 +336,7 @@ void Game::parseArguments(int argc, char** argv) {
 
     if (smokeTest_.uiEnabled || smokeTest_.survivalEnabled || smokeTest_.commandEnabled ||
         smokeTest_.commandVisual || smokeTest_.resetEnabled ||
-        smokeTest_.worldgenEnabled || smokeTest_.spectatorEnabled || smokeTest_.billboardPreview || smokeTest_.craftingPreview)
+        smokeTest_.worldgenEnabled || smokeTest_.spectatorEnabled || smokeTest_.billboardPreview || smokeTest_.craftingPreview || smokeTest_.patch272)
         saveOnExit_ = false;
     if (Persistence::enabled() && saveOnExit_)
         saveWorldMetadata();
@@ -387,8 +396,11 @@ void Game::createWorldAndSystems() {
         spawnPosition = safeSpawn;
     }
     if (smokeTest_.worldgenEnabled) {
-        spawnPosition.y = std::min(static_cast<float>(WORLD_HEIGHT - 12),
-                                   safeSpawn.y + 110.0f);
+        spawnPosition = {smokeTest_.previewX + .5f,
+            static_cast<float>(world_->terrainHeight(static_cast<int>(smokeTest_.previewX),
+                                                     static_cast<int>(smokeTest_.previewZ))),
+            smokeTest_.previewZ + .5f};
+        spawnPosition.y += 85.0f;
         creativeMode_ = true;
         spectatorMode_ = false;
         saveOnExit_ = false;
@@ -405,7 +417,7 @@ void Game::createWorldAndSystems() {
     if (smokeTest_.worldgenEnabled) {
         player_->setFlying(true);
         player_->addMouseMovement(0.0,
-            -65.0 / std::max(0.01f, settings_.mouseSensitivity));
+            -30.0 / std::max(0.01f, settings_.mouseSensitivity));
     }
 
     inventory_ = std::make_unique<Inventory>();
@@ -1038,7 +1050,11 @@ void Game::updateSimulation(float deltaTime) {
     world_->updateBlockEntities(deltaTime);
     const bool playerInputEnabled =
         ui_.state() == GameState::Playing && input_.cursorCaptured();
+    const bool wasDead = player_->isDead();
+    const bool wasBelowWorld = player_->position().y < -24.0f;
     player_->update(deltaTime, input_.playerInput(playerInputEnabled), *world_);
+    if ((wasDead || wasBelowWorld) && !player_->isDead() && player_->position().y >= 0.0f)
+        world_->prepareSpawnTerrain(player_->position());
     farming_->update(deltaTime, *world_, player_->position());
 
     if (ui_.gameplayInterfaceOpen()) {
@@ -1757,7 +1773,7 @@ void Game::renderFrame(float deltaTime) {
         glfwSetWindowShouldClose(window_, GLFW_TRUE);
     if (smokeTest_.commandVisual && glfwGetTime() - smokeTest_.startTime > 2.0)
         glfwSetWindowShouldClose(window_, GLFW_TRUE);
-    if (smokeTest_.craftingPreview && glfwGetTime() - smokeTest_.startTime > 16.0)
+    if (smokeTest_.craftingPreview && glfwGetTime() - smokeTest_.startTime > 24.0)
         glfwSetWindowShouldClose(window_, GLFW_TRUE);
 }
 
@@ -2365,7 +2381,10 @@ void Game::runSurvivalSmokeTest() {
     }
     terrainPassed = terrainPassed && maximumSampledHeight >= 125 &&
                     maximumSampledHeight - minimumSampledHeight >= 60 &&
-                    maximumEightBlockRise <= 32 && maximumBiomeBoundaryRise <= 32;
+                    // v8 intentionally permits steeper mountain slopes. Keep a
+                    // bounded coarse slope and the unchanged biome-seam limit;
+                    // adjacent chunk borders are checked separately below.
+                    maximumEightBlockRise <= 40 && maximumBiomeBoundaryRise <= 32;
     std::string generationReport;
     std::string realStructureReport;
     glm::ivec3 structureChestPosition(0);

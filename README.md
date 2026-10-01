@@ -60,7 +60,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.7.1** has **101 inventory items**, **55 placeable block families**, **110 block
+Version **2.7.2** has **101 inventory items**, **55 placeable block families**, **110 block
 IDs/states including Air**, **61 crafting recipes**, and **13 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -128,8 +128,10 @@ missing/adapted recipes. All new items are available in Creative and through `/g
 
 ### Plants and original textures
 
-New generator-version-7 worlds contain deterministic Sugar Cane patches on Grass/Dirt/Sand
-shorelines beside water and Vines on some forest tree trunks. Cane can be placed on suitable
+New generator-version-8 worlds contain deterministic Sugar Cane patches on Grass/Dirt/Sand
+shorelines with cardinally adjacent exposed water at the ground level. Each patch anchor selects
+up to five base positions and plants one to three blocks high, subject to actual air clearance,
+solid footing and structure exclusion. Vines still appear on some forest tree trunks. Cane can be placed on suitable
 ground adjacent to water or on another Cane block; it has no automatic growth in this release.
 Vines attach to four wall directions. Both plants drop their own item and have no player
 collision or voxel AO contribution. Existing worlds keep their saved generator version and
@@ -162,14 +164,36 @@ The recipe set follows the
 [Minecraft Wiki crafting reference](https://minecraft.wiki/w/Crafting) where the game's
 ingredients exist.
 
+### v2.7.2 world generation and gameplay fixes
+
+- Hovering occupied inventory, Creative, crafting/Recipe Book, chest and furnace slots
+  shows only the item's display name in a small pixel-font tooltip. Inventory hotbar slots
+  are included; tooltips stay within the window and empty slots show nothing.
+- Death respawns near the original world origin rather than the last loaded player position.
+  A bounded 48-block outward search finds a solid, clear surface with safe neighboring footing,
+  accounting for world edits. Velocity, fall/swim/flight/sprint and death state are reset;
+  a two-second respawn protection period prevents immediate combat deaths. Local collision
+  terrain is made available before physics resumes, with normal asynchronous mesh/streaming.
+- **Terrain generator v8** gives new worlds stronger regional mountain ranges, ridgelines,
+  basins and valleys. Erosion controls relief; lowlands, coastlines and existing river masks
+  remain useful. Column noise is reused and async generation is retained.
+- Existing v2.7.1 and older saves retain their stored generator version, including unexplored
+  chunks. No item/block IDs, recipes, world-save layout or full/demo persistence rules changed.
+
+Developer validation: `--patch272-smoke` checks eight seeds (including `123456789`),
+compares v7/v8 CPU chunk-generation time, validates shoreline Cane and old-world generation,
+and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in that explicit
+validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
+terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
+
 ## Windows Release
 
 Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
 
-| v2.7.1 download | Purpose | Persistence |
+| v2.7.2 download | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.7.1-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.7.1-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.7.2-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.7.2-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The

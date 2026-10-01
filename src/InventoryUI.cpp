@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Definitions.h"
+#include "InventoryTooltip.h"
 #include "UiLayout.h"
 #include "World.h"
 #include "UIManager.h"
@@ -133,6 +134,19 @@ void slot(std::vector<V>& v,
     rect(v, x, y, z, z, {.08f, .08f, .10f, .96f}, W, H);
     rect(v, x + 3, y + 3, z - 6, z - 6, {.30f, .30f, .33f, .96f}, W, H);
     icon(v, s, x, y, z, W, H);
+}
+void tooltip(std::vector<V>& vertices, UiMode mode, int W, int H,
+             const Inventory& inventory, double mouseX, double mouseY,
+             const RecipeBookView* book = nullptr, const FurnaceData* furnace = nullptr,
+             const ChestData* chest = nullptr) {
+    const Item item = InventoryTooltip::hoveredItem(mode,W,H,mouseX,mouseY,inventory,book,furnace,chest);
+    if (item == Item::None) return;
+    const std::string& name = itemDefinition(item).displayName;
+    const float scale = std::min(1.5f, (W-24.0f)/std::max(1.0f,name.size()*6.0f));
+    const UiRect b = InventoryTooltip::bounds(W,H,mouseX,mouseY,name.size()*6.0f*scale);
+    rect(vertices,b.x,b.y,b.width,b.height,{.29f,.23f,.35f,.98f},W,H);
+    rect(vertices,b.x+2,b.y+2,b.width-4,b.height-4,{.055f,.045f,.07f,.97f},W,H);
+    text(vertices,name,b.x+8,b.y+7,scale,{1,1,1,1},W,H);
 }
 void flush(std::vector<V>& vertices, GLuint vbo, GLuint vao, GLuint program, GLuint texture,
            GLint atlasUniform) {
@@ -283,6 +297,7 @@ void Renderer::renderInventory(
                 std::to_string(std::max(1, (static_cast<int>(recipeBook.entries.size()) + 7) / 8)),
          px + 475, py + 252, 1.0f, {1, 1, 1, 1}, W, H);
     icon(v, inv.cursorStack(), static_cast<float>(mx) - 22, static_cast<float>(my) - 22, 44, W, H);
+    tooltip(v,mode,W,H,inv,mx,my,&recipeBook);
     flush(v, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 void Renderer::renderCreativeInventory(
@@ -327,6 +342,7 @@ void Renderer::renderCreativeInventory(
          44.0f,
          W,
          H);
+    tooltip(vertices,UiMode::Creative,W,H,inv,mouseX,mouseY);
     flush(vertices, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 
@@ -388,6 +404,7 @@ void Renderer::renderFurnace(int W,
          44,
          W,
          H);
+    tooltip(vertices,UiMode::Furnace,W,H,inv,mouseX,mouseY,nullptr,&furnace);
     flush(vertices, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 
@@ -427,6 +444,7 @@ void Renderer::renderChest(int W,
          44,
          W,
          H);
+    tooltip(vertices,UiMode::Chest,W,H,inv,mouseX,mouseY,nullptr,nullptr,&chest);
     flush(vertices, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 void Renderer::renderHeldItem(int W, int H, const ItemStack& stack, float swing) const {

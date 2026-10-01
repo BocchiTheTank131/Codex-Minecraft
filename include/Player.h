@@ -34,7 +34,7 @@ public:
     void heal(float amount);
     void eat(float foodPoints);
     void addExperience(int amount);
-    void respawn();
+    void respawn(const World& world);
     void setCreativeMode(bool enabled);
     void setSpectatorMode(bool enabled);
     void adjustSpectatorSpeed(double scrollSteps);
@@ -97,12 +97,13 @@ public:
     float xpProgress() const;
 
 private:
-    glm::vec3 position_, spawnPosition_, velocity_{0.f};
+    glm::vec3 position_, velocity_{0.f};
     float yaw_ = -90.f, pitch_ = -12.f, health_ = 20.f, hunger_ = 20.f, exhaustion_ = 0.f,
           regenTimer_ = 0.f;
     float fallDistance_ = 0.f, respawnTimer_ = 0.f, hurtFlash_ = 0.f, damageInvulnerability_ = 0.f,
           mouseSensitivity_ = 0.10f;
     float lastFallDamage_ = 0.0f;
+    float respawnProtection_ = 0.0f;
     int experience_ = 0;
     float spaceTapTimer_ = 0.0f;
     bool grounded_ = false, dead_ = false, inWater_ = false, sprinting_ = false, sneaking_ = false;
