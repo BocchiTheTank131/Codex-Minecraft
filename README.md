@@ -4,6 +4,20 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+## Contents
+
+- [Features](#features)
+- [Windows downloads](#windows-release)
+- [Controls](#controls)
+- [Commands](#commands)
+- [Mobs](#mobs)
+- [Crafting](#crafting)
+- [World seeds](#world-seeds) and [saves](#saves)
+- [Settings and audio](#settings)
+- [Rendering and performance](#rendering--performance)
+- [Building from source](#building-from-source)
+- [Source structure](#source-structure)
+
 ## About
 
 **Voxel Frontier** is a C++17 / OpenGL 3.3 voxel sandbox featuring Survival, Creative, and Spectator modes.
@@ -22,7 +36,7 @@ It includes procedural terrain, streamed chunks, caves, structures, mobs, crafti
 - Ambient occlusion and transparent water
 - Health, hunger, regeneration, starvation, fall damage, and respawning
 - Sprinting, sneaking, swimming, Creative flight, and Spectator noclip
-- Cows, pigs, sheep, wolves, villagers, and pillagers
+- Cows, pigs, sheep, villagers, pillagers, and four distinct billboard hostiles
 - Mob combat, knockback, drops, breeding, and experience
 - Farming with farmland, seeds, crops, wheat, bread, and food
 - Wooden through diamond tools and swords
@@ -33,6 +47,8 @@ It includes procedural terrain, streamed chunks, caves, structures, mobs, crafti
 - Recipe book with search, filters, autofill, and batch crafting
 - Furnaces with fuel, progress, recipes, and persistent contents
 - 27-slot persistent chests
+- In-game commands with history, autocomplete, relative coordinates, and bounded world edits
+- Streaming shuffle-bag background music and independent audio categories
 - Persistent world edits, mobs, inventory, player stats, furnaces, and chests
 
 ## Crafting
@@ -53,6 +69,14 @@ ingredients exist.
 
 ## Windows Release
 
+Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
+
+| v2.6.0 download | Purpose | Persistence |
+|---|---|---|
+| `VoxelFrontier-v2.6.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.6.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
+
 The Windows x64 release provides a stateless standalone demo and a full installer. The
 standalone download is one `VoxelFrontier-vX.Y.Z-Windows-Standalone.exe`: it starts a fresh
 session each time, ignores existing saves, and does not save worlds, player state, inventory,
@@ -60,8 +84,10 @@ mobs, seed, or settings. Its Save World button explains that saving is unavailab
 installer adds Start Menu and optional Desktop shortcuts and registers the full game in
 Windows Installed Apps.
 
-The executable embeds the item atlas and all OGG sound effects. Shaders are compiled into the
-program. It needs no external asset folder, sound folder, or Visual C++ Redistributable.
+Packaged executables embed the item atlas, four hostile PNG sprites, OGG sound effects, and
+background music. Shaders are compiled into the program. They need no external asset folder,
+sound folder, or Visual C++ Redistributable. Windows Release builds use the GUI subsystem and
+do not open a console; Debug builds may retain one for diagnostics.
 
 The installed game stores worlds, settings, seed metadata, and screenshots in
 `%LOCALAPPDATA%\VoxelFrontier\`. This location survives installer upgrades and uninstall.
@@ -125,7 +151,7 @@ cmake -S . -B build/standalone -G "Visual Studio 17 2022" -A x64 -DVOXEL_STANDAL
 cmake --build build/standalone --config Release
 ```
 
-The ordinary CMake build above still copies `assets/` and `sounds/` beside its executable and
+The ordinary CMake build above still copies `assets/`, `sounds/`, and `sprites/` beside its executable and
 uses its working directory for saves. The standalone build embeds those runtime assets and uses
 the Windows user-data directory.
 
@@ -167,6 +193,7 @@ cmake --build build -j
 | `Q` | Drop one item |
 | `Ctrl + Q` | Drop entire stack |
 | `E` | Open inventory |
+| `/` | Open command input with `/` already entered |
 | `Esc` | Pause / close interface |
 | `G` | Toggle Fullbright |
 | Hold `C` | Smooth zoom |
@@ -181,6 +208,94 @@ While holding `C`, use the mouse wheel to adjust zoom strength.
 Keybindings can be changed from:
 
 **Pause Menu → Settings → Controls**
+
+## Commands
+
+Press `/` during gameplay to open the command overlay. **Enter** executes and closes input;
+**Escape** cancels. The world keeps simulating while you type, but movement, hotbar selection,
+and gameplay shortcuts are suppressed. Commands work in Survival, Creative, and Spectator.
+
+| Input while typing | Action |
+|---|---|
+| Up / Down | Browse the last 100 session commands |
+| Tab | Complete the first matching suggestion |
+| Left / Right, Home / End | Move the caret |
+| Backspace / Delete | Remove text |
+| Ctrl + V | Paste clipboard text |
+
+Input is limited to 256 characters. Feedback and history are session-only. Command, item,
+block, and mob names are case-insensitive. Multiword item names accept underscores such as
+`stone_bricks` or quoted text such as `"stone bricks"`.
+
+### Complete command reference
+
+Square brackets mean optional arguments; angle brackets mean required arguments. Do not type
+the brackets themselves.
+
+| Command | Effect | Example |
+|---|---|---|
+| `/help [command]` | List commands or show usage for one | `/help give` |
+| `/gamemode <survival\|creative\|spectator>` | Change mode; `s` and `c` are also accepted | `/gamemode creative` |
+| `/time set <day\|noon\|night\|midnight\|seconds>` | Set the cycle position | `/time set night` |
+| `/time add <seconds>` | Advance or offset world time | `/time add 30` |
+| `/give [@s] <item> [count]` | Add items, defaulting to one; report overflow | `/give @s torch 64` |
+| `/clear [item] [count]` | Clear all inventory or a selected item/quantity | `/clear cobblestone 16` |
+| `/tp <x> <y> <z>` | Teleport and reset movement/fall state | `/tp ~ ~10 ~` |
+| `/teleport <x> <y> <z>` | Alias for `/tp` | `/teleport 100 70 -250` |
+| `/kill [@s]` | Kill the current player, even when explicitly used in Creative/Spectator | `/kill` |
+| `/summon <mob> [x y z]` | Spawn a mob; defaults to three blocks along the player's look direction | `/summon NijikaIjichi` |
+| `/seed` | Show the current session seed | `/seed` |
+| `/setblock <x> <y> <z> <block>` | Replace one block in a loaded chunk | `/setblock ~ ~-1 ~ stone` |
+| `/fill <x1> <y1> <z1> <x2> <y2> <z2> <block>` | Fill an inclusive region, up to 4,096 blocks | `/fill 0 60 0 4 64 4 stone` |
+
+- `@s` and `@p` both select the single local player for `/give` and `/kill`. Other selectors,
+  including `@e`, are not implemented.
+- Coordinates accept decimals and relative offsets: `~` keeps that coordinate, `~10` adds 10.
+  Local `^` coordinates are not supported. Block coordinates are rounded down.
+- `/give` accepts counts from **1 to 2,304**, respects stack limits, and reports anything that
+  does not fit rather than silently discarding it.
+- `/setblock` and `/fill` require loaded chunks and valid world-height coordinates. `/fill`
+  rejects oversized or partly unloaded regions before editing. Use `air` to remove blocks.
+- Time uses **seconds**, not Minecraft ticks. The cycle wraps every **420 seconds**:
+  Day = 35, Noon = 105, Night = 245, Midnight = 315.
+- Gameplay-changing commands have an internal cheat permission check. Cheats currently default
+  to enabled; no world-creation permission toggle is exposed yet. `/help` and `/seed` remain
+  available if permission is disabled.
+- `/locate`, `/weather`, `/difficulty`, multiplayer selectors, and Minecraft's full command
+  catalog are not implemented.
+
+Installed-world changes use the normal save system. Demo commands affect only the current
+session. Command-summoned hostiles may appear in daytime; natural spawning remains night-only.
+
+## Mobs
+
+Voxel Frontier currently has **nine mob types**:
+
+| Mob | Role / behavior |
+|---|---|
+| Cow | Passive animal |
+| Pig | Passive animal |
+| Sheep | Passive animal |
+| Villager | Village-associated non-hostile mob |
+| Pillager | Separate hostile mob associated with outposts |
+| HitoriGotoh | Silent explosive hunter. Begins a roughly 1.5-second fuse near a visible Survival player; moving away can cancel it. Explosions damage entities and destructible terrain. |
+| KitaIkuyo | Melee hunter with 35-block detection and brief last-known-position memory. Attacks deal 2 HP / one heart with a cooldown. |
+| NijikaIjichi | Ranged enemy that keeps distance and fires gravity-driven arrows. Each hit deals 3 HP / 1.5 hearts before protection; independent arrow hits stack. |
+| RyoYamada | Wall-climbing melee enemy with velocity-based lunges and attack cooldowns. Melee hits deal 2 HP / one heart. |
+
+The four named hostiles have separate identities and PNG sprites, sharing common infrastructure.
+Their upright camera-facing sprites and hitboxes are **1.75 blocks tall**; sprites preserve the
+original aspect ratio. Walking hostiles navigate ordinary one-block terrain; RyoYamada also
+climbs walls. They target Survival players, not Creative or Spectator players.
+
+Natural billboard spawning is night-only, uses equal initial weights, and shares a hostile cap
+of **18**. Version 2.6.0 increases nighttime hostile candidate frequency by 1.5× without raising
+the cap. Existing mobs can remain after sunrise. Pillager structure spawning remains separate.
+Normally killing a billboard hostile plays `boowomp.ogg`; a successful HitoriGotoh detonation
+does not also play the normal death sound. Full-game saves preserve each mob's identity.
+
+**Wolves have been removed.** Old Wolf save entries are handled safely; Wolves cannot be summoned.
+Use `/summon cow`, `/summon Pillager`, or any of the four billboard names above.
 
 ## World Seeds
 
@@ -225,11 +340,15 @@ voxel_mobs.vxm
 ```
 
 They store world edits, player state, inventory, mobs, furnaces, chests, and other persistent data.
+The full game also restores the day/night cycle position rather than restarting it. Old saves
+without time metadata use the original 35-second starting point. Settings are stored separately
+in `voxel_settings.cfg`; seed/generation metadata uses `world_seed.txt`.
 
 The installed game autosaves every **12 seconds** and when it exits normally. The standalone
 demo never loads or writes these saves.
 
-Delete the save files to generate a fresh world using the configured seed.
+Back up the user-data folder before replacing saves or resetting a world. Use **Reset World**
+from the pause menu to start over deliberately.
 
 Older worlds retain their original terrain-generator version so newly generated chunks remain compatible with previously explored terrain.
 
@@ -256,6 +375,11 @@ Voxel Frontier uses a chunk-based rendering architecture designed for high rende
 - Block edits only rebuild affected and neighboring chunks
 - Lighting updates are localized
 - Sunlight and block light share compact packed storage
+- Greedy meshing merges only faces with compatible texture, lighting, and AO
+- Geometry-aware corner AO uses neighboring block bounds to handle partial geometry
+- Low effect quality disables AO; Medium/High retain baked voxel AO (no SSAO pass)
+- Brightness changes the low-light response through a uniform without remeshing chunks
+- Fullbright bypasses normal lighting/AO and remains separate from Brightness
 
 Render distance can be configured from **2 to 64 chunks**, while simulation distance can be configured independently from **2 to 32 chunks**.
 
@@ -277,7 +401,10 @@ The game includes:
 
 Normal distance fog is disabled so loaded terrain remains visible at long render distances.
 
-The F3 debug overlay can display FPS, coordinates, chunk information, biome, facing direction, world mode, seed, lighting, frame time, render distances, generation queues, and mesh statistics.
+The F3 overlay includes FPS, coordinates, chunk, biome, facing, mode, seed, lighting, frame time,
+render/simulation distances, entity/mob counts, spawn attempts, AI/navigation timings, queues,
+vertices/triangles, and build/upload/edit timings. On Windows it also reports current process
+RAM (working set) and peak usage, sampled periodically. F4 adds world-generation diagnostics.
 
 ## Settings
 
@@ -293,6 +420,9 @@ Available options include:
 - Simulation distance
 - Field of view
 - Mouse sensitivity
+- Brightness: 0–100%, with 50% as the normal midpoint; 100% is not Fullbright
+- Low / Medium / High graphics presets, plus Custom
+- Entity distance, particle density, effect quality, and frame limit
 - Audio submenu: Master, Music, SFX, Passive Mobs, and Hostile Mobs volume
 - Off / 2x / 4x MSAA
 - Fullscreen
@@ -320,7 +450,12 @@ The project is split into focused systems:
 - `Player` - movement and first-person physics
 - `SurvivalWorld` - survival mechanics and entities
 - `FarmingSystem` - crops and farming
-- `SoundSystem` - audio
+- `SoundSystem` - positional SFX, category gains, and streamed background music
+- `CommandSystem` - registry, parsing, validation, and autocomplete
+- `ChatUI` - session input, history, suggestions, and feedback
+- `Explosion` - reusable bounded blast damage and terrain effects
+- `AmbientOcclusion` - geometry-aware voxel corner AO
+- `Persistence` / `UserData` - demo capability checks and Windows data/log paths
 - `InputManager` - keyboard and mouse input
 - `UIManager` - inventory, crafting, pause menu, and settings
 - `StructureGenerator` - villages, outposts, pyramids, ruins, and loot
@@ -335,6 +470,8 @@ The project is split into focused systems:
 - **OpenGL Loader:** GLAD
 - **Math:** GLM
 - **Build System:** CMake
+- **Audio:** miniaudio / OGG decoding
+- **Windows Installer:** Inno Setup 7
 
 ---
 
