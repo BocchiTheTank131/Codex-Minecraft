@@ -24,8 +24,11 @@ Everything in this project was created entirely with Codex, including the game c
 
 It includes procedural terrain, streamed chunks, caves, structures, mobs, crafting, farming, lighting, persistent worlds, and first-person voxel interaction.
 
-Launch to the panorama main menu: **PLAY** loads your saved world (or starts a new one),
-**SETTINGS** opens the existing options with a **BACK** button, and **QUIT** closes the game.
+Launch to the moving panorama main menu: **PLAY** opens **Select World** in the installed
+game, **SETTINGS** opens Video, Audio, and Controls categories, and **QUIT** closes the game.
+Select a saved world and press PLAY (or double-click it), or choose **CREATE NEW WORLD**.
+New worlds have a name, an optional numeric seed, and Survival or Creative mode.
+The standalone demo skips world selection and starts a fresh temporary world.
 The world starts only after PLAY. From the pause menu, **SAVE & RETURN TO MENU** saves the
 installed game; the standalone demo's **RETURN TO MENU** discards its temporary world.
 Pressing PLAY again in the demo starts a fresh gameplay session.
@@ -66,7 +69,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.8.0** has **101 inventory items**, **55 placeable block families**, **110 block
+Version **2.9.0** has **101 inventory items**, **55 placeable block families**, **110 block
 IDs/states including Air**, **61 crafting recipes**, and **13 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -194,21 +197,24 @@ terrain preview; `--crafting-preview` exercises the actual inventory/container t
 
 ## Windows Release
 
-### v2.8.0 main menu
+### v2.9.0 menus and multiple worlds
 
-- Added a full-screen panorama menu with PLAY, SETTINGS, and QUIT.
-- The panorama preserves its aspect ratio and crops to fit the window.
-- World loading and generation wait until PLAY; Settings reuses the existing options.
-- Save & Return to Menu preserves the full game's saves. The standalone demo discards its
-  temporary world and starts fresh when PLAY is pressed again.
-- The panorama is embedded in both Windows builds; no external image folder is required.
+- Polished, responsive menu buttons with smooth hover feedback.
+- The embedded panorama pans slowly and wraps continuously behind menu pages.
+- Installed PLAY opens a paginated world list showing names, modes, seeds, and last-played times.
+- Create separate Survival or Creative worlds with an optional seed; blank seeds are randomized.
+- Each world keeps its own terrain, player, inventory, mobs, and day/night time.
+- Legacy single-world saves are safely imported as **Imported World**, preserving the original files.
+- Settings are organized into Video, Audio, and Controls; settings remain global.
+- Save & Return to Menu saves and unloads the full game. The standalone demo discards its
+  temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
 Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
 
-| v2.8.0 download | Purpose | Persistence |
+| v2.9.0 download | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.8.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.8.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.9.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.9.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -483,19 +489,30 @@ This generates an overhead development preview and exits automatically.
 
 ## Saves
 
-The installed game uses separate persistent save files:
+The installed game keeps separate worlds under `%LOCALAPPDATA%\VoxelFrontier\saves\`:
 
 ```text
-voxel_world.vxw
-voxel_inventory.vxi
-voxel_player.vps
-voxel_mobs.vxm
+saves/
+    world-<safe-generated-id>/
+        world.info
+        world_seed.txt
+        voxel_world.vxw
+        voxel_inventory.vxi
+        voxel_player.vps
+        voxel_mobs.vxm
 ```
 
-They store world edits, player state, inventory, mobs, furnaces, chests, and other persistent data.
-The full game also restores the day/night cycle position rather than restarting it. Old saves
-without time metadata use the original 35-second starting point. Settings are stored separately
-in `voxel_settings.cfg`; seed/generation metadata uses `world_seed.txt`.
+Visible names do not become folder paths, so duplicate names and filename characters are safe.
+`world.info` stores the name and last-played time. Existing gameplay save formats remain unchanged.
+World files store edits, player state, inventory, mobs, furnaces, chests, and other persistent data.
+Each world restores its own day/night cycle; older saves without time metadata use 35 seconds.
+Global settings stay in `%LOCALAPPDATA%\VoxelFrontier\voxel_settings.cfg`; screenshots and
+logs also remain outside world folders.
+
+On first launch, legacy files in the user-data root are copied and verified into **Imported World**.
+The import is published only after copying succeeds, and the original files remain untouched.
+Imported worlds retain their existing terrain-generator version. Back up the entire profile
+before resetting a world; Reset World affects only the current world.
 
 The installed game autosaves every **12 seconds** and when it exits normally. The standalone
 demo never loads or writes these saves.
@@ -567,6 +584,9 @@ Settings are saved to:
 voxel_settings.cfg
 ```
 
+Choose **VIDEO**, **AUDIO**, or **CONTROLS** from Settings, then use **BACK** to return.
+Mouse sensitivity and existing keybindings are under Controls.
+
 Available options include:
 
 - Render distance
@@ -599,6 +619,7 @@ The project is split into focused systems:
 - `main.cpp` - application entry point
 - `Game` - initialization, main loop, simulation, rendering, saves, and shutdown
 - `World` - chunks, terrain, blocks, lighting, and world data
+- `WorldLibrary` - saved-world listing, creation, metadata, and safe legacy import
 - `Renderer` - OpenGL rendering and mesh handling
 - `Player` - movement and first-person physics
 - `SurvivalWorld` - survival mechanics and entities

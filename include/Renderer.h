@@ -5,6 +5,7 @@
 #include "GameMode.h"
 #include "Survival.h"
 #include "ChatUI.h"
+#include "WorldLibrary.h"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -89,7 +90,13 @@ public:
                     bool showSaveWarning,
                     bool audioPage) const;
     void renderMainMenu(int width, int height, int hovered, bool pressed,
-                        bool buttonsVisible, bool standaloneDemo) const;
+                        bool buttonsVisible, bool standaloneDemo, double now) const;
+    void renderSettingsCategories(int width, int height, int hovered,
+                                  const GameSettings& settings, bool video) const;
+    void renderWorldMenu(int width, int height, int hovered, bool creating,
+                         const std::vector<SavedWorld>& worlds, int page, int selected,
+                         const std::string& name, const std::string& seed, GameMode mode,
+                         int field, const std::string& message, double now) const;
     void renderControlsMenu(int width, int height, int hovered,
                             const GameSettings& settings, int activeBinding) const;
     void renderResetMenu(int width,
@@ -146,6 +153,10 @@ private:
     std::array<float, 4> hostileAspectRatios_{};
     GLuint panoramaTexture_ = 0;
     float panoramaAspectRatio_ = 1.0f;
+    GLuint panoramaProgram_ = 0;
+    mutable std::array<float, 3> menuHover_{};
+    mutable double lastMenuDraw_ = 0.0;
+    void drawMenuVertices(const void* data, std::size_t count) const;
     GLint uiItemAtlasUniform_ = -1;
     GLint itemAtlasUniform_ = -1;
     std::vector<Particle> particles_;

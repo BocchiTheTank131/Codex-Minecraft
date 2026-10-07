@@ -1,6 +1,7 @@
 #include "Renderer.h"
 #include "Definitions.h"
 #include "UIManager.h"
+#include "MenuLayout.h"
 #include "SpriteManifest.h"
 
 #include "World.h"
@@ -15,6 +16,8 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <ctime>
+#include <iomanip>
 #include <fstream>
 #include <filesystem>
 #include <iterator>
@@ -379,6 +382,23 @@ in vec4 vColor; in vec2 vUv; in float vTextured; uniform sampler2D uItemAtlas; o
 void main(){ vec4 sprite=texture(uItemAtlas,vUv); fragColor=mix(vColor,sprite*vColor,clamp(vTextured,0.0,1.0)); if(fragColor.a<0.02)discard; }
 )GLSL";
 
+constexpr const char* PanoramaFragmentShader = R"GLSL(
+#version 330 core
+in vec4 vColor; in vec2 vUv; in float vTextured;
+uniform sampler2D uItemAtlas; out vec4 fragColor;
+void main() {
+    if(vTextured < 0.5) { fragColor=vColor; return; }
+    vec2 uv=vec2(fract(vUv.x),vUv.y);
+    vec4 pixel=texture(uItemAtlas,uv);
+    // The supplied artwork is not edge-matched. Blend a narrow wrapping seam
+    // at runtime, retaining the original asset and a continuous 360-degree pan.
+    float seam=smoothstep(0.0,0.025,min(uv.x,1.0-uv.x));
+    vec4 edge=(texture(uItemAtlas,vec2(0.001,uv.y))+
+               texture(uItemAtlas,vec2(0.999,uv.y)))*0.5;
+    fragColor=mix(edge,pixel,seam)*vColor;
+}
+)GLSL";
+
 constexpr const char* ItemVertexShader = R"GLSL(
 #version 330 core
 layout(location=0) in vec3 aPosition; layout(location=1) in vec2 aUv;
@@ -629,6 +649,7 @@ Renderer::Renderer() {
     worldProgram_ = makeProgram(WorldVertexShader, WorldFragmentShader);
     skyProgram_ = makeProgram(SkyVertexShader, SkyFragmentShader);
     uiProgram_ = makeProgram(UiVertexShader, UiFragmentShader);
+    panoramaProgram_ = makeProgram(UiVertexShader, PanoramaFragmentShader);
     particleProgram_ = makeProgram(ParticleVertexShader, ParticleFragmentShader);
     entityProgram_ = makeProgram(EntityVertexShader, EntityFragmentShader);
     itemProgram_ = makeProgram(ItemVertexShader, ItemFragmentShader);
@@ -648,6 +669,8 @@ Renderer::Renderer() {
     panoramaTexture_ = loadSpriteImage("panorama/panorama.jpg", 102,
                                        panoramaWidth, panoramaHeight);
     panoramaAspectRatio_ = static_cast<float>(panoramaWidth) / panoramaHeight;
+    glBindTexture(GL_TEXTURE_2D, panoramaTexture_);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 #endif
     glGenVertexArrays(1, &skyVao_);
     glGenVertexArrays(1, &uiVao_);
@@ -750,6 +773,7 @@ Renderer::Renderer() {
 }
 
 Renderer::~Renderer() {
+    if (panoramaProgram_) glDeleteProgram(panoramaProgram_);
     if (panoramaTexture_) glDeleteTextures(1, &panoramaTexture_);
     glDeleteTextures(static_cast<GLsizei>(hostileTextures_.size()), hostileTextures_.data());
     if (billboardProgram_)
@@ -1829,13 +1853,14 @@ void Renderer::renderMobOutline(const RenderCuboid& bounds,
     glEnable(GL_CULL_FACE);
 }
 void Renderer::renderMainMenu(int width, int height, int hovered, bool pressed,
-                              bool buttonsVisible, bool standaloneDemo) const {
+                              bool buttonsVisible, bool standaloneDemo, double now) const {
     std::vector<UiVertex> vertices;
     const float windowAspect = static_cast<float>(width) / height;
     // Cover the window: crop the longer image axis, never distort the image.
     const float uSpan = std::min(1.0f, windowAspect / panoramaAspectRatio_);
     const float vSpan = std::min(1.0f, panoramaAspectRatio_ / windowAspect);
-    const float u0 = (1.0f - uSpan) * .5f, u1 = u0 + uSpan;
+    const float rotation = static_cast<float>(std::fmod(now / 180.0, 1.0));
+    const float u0 = (1.0f - uSpan) * .5f + rotation, u1 = u0 + uSpan;
     const float v0 = (1.0f - vSpan) * .5f, v1 = v0 + vSpan;
     if (panoramaTexture_) {
         const glm::vec4 white(1.0f);
@@ -1860,21 +1885,26 @@ void Renderer::renderMainMenu(int width, int height, int hovered, bool pressed,
         }
     };
     if (buttonsVisible) {
+        const float blend = 1.0f - std::exp(-10.0f * static_cast<float>(std::clamp(now-lastMenuDraw_, 0.0, .1)));
+        lastMenuDraw_ = now;
         const float scale = std::min({1.0f, width / 520.0f, height / 440.0f});
         const std::string title = "VOXEL FRONTIER";
         const float titleScale = 4.0f * scale;
         const float titleX = (width - (title.size() * 6 - 1) * titleScale) * .5f;
-        const float titleY = height * .5f - 115.0f * scale;
+        const float titleY = height * .5f - 135.0f * scale;
         text(title, titleX + 3 * scale, titleY + 3 * scale, titleScale, {0, 0, 0, .8f});
         text(title, titleX, titleY, titleScale, {1, .94f, .75f, 1});
         const std::array<std::string, 3> labels{"PLAY", "SETTINGS", "QUIT"};
         for (int index = 0; index < 3; ++index) {
             const UiRect r = UIManager::mainMenuButton(index, width, height);
             const bool down = hovered == index && pressed;
+            menuHover_[index] = glm::mix(menuHover_[index], hovered == index ? 1.0f : 0.0f, blend);
+            addRect(vertices, r.x + 4*scale, r.y + 5*scale, r.width, r.height,
+                    {0,0,0,.35f}, width,height);
             addRect(vertices, r.x, r.y, r.width, r.height, {.09f, .10f, .10f, 1}, width, height);
             const glm::vec4 fill = down ? glm::vec4(.22f, .30f, .18f, 1)
-                : hovered == index ? glm::vec4(.38f, .48f, .30f, 1)
-                                   : glm::vec4(.18f, .20f, .22f, .96f);
+                : glm::mix(glm::vec4(.18f, .20f, .22f, .96f),
+                           glm::vec4(.38f, .48f, .30f, 1), menuHover_[index]);
             addRect(vertices, r.x + 2 * scale, r.y + 2 * scale, r.width - 4 * scale,
                     r.height - 4 * scale, fill, width, height);
             addRect(vertices, r.x + 2 * scale, r.y + 2 * scale, r.width - 4 * scale,
@@ -1900,10 +1930,10 @@ void Renderer::renderMainMenu(int width, int height, int hovered, bool pressed,
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glUseProgram(uiProgram_);
+    glUseProgram(panoramaProgram_);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, panoramaTexture_);
-    glUniform1i(uiItemAtlasUniform_, 0);
+    glUniform1i(glGetUniformLocation(panoramaProgram_, "uItemAtlas"), 0);
     glBindVertexArray(uiVao_);
     glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
     glBindVertexArray(0);
@@ -2201,8 +2231,16 @@ void Renderer::renderControlsMenu(int width, int height, int hovered,
                  index == activeBinding ? glm::vec4(1, .8f, .3f, 1)
                                         : glm::vec4(.78f, .93f, .75f, 1));
     }
+    const auto sensitivity = MenuLayout::sensitivity(width,height);
+    addRect(vertices,sensitivity.x,sensitivity.y,sensitivity.width,sensitivity.height,
+            hovered==ControlActionCount+2 ? glm::vec4(.3f,.4f,.25f,1) : glm::vec4(.19f,.19f,.22f,1),width,height);
+    drawText("MOUSE SENSITIVITY",sensitivity.x+10,sensitivity.y+12,1.2f,{1,1,1,1});
+    const float value=std::clamp((settings.mouseSensitivity-.03f)/.27f,0.0f,1.0f);
+    addRect(vertices,sensitivity.x+190,sensitivity.y+18,150,5,{.1f,.11f,.12f,1},width,height);
+    addRect(vertices,sensitivity.x+190+150*value-4,sensitivity.y+10,8,19,{.88f,.92f,.78f,1},width,height);
+    drawText(std::to_string(static_cast<int>(std::round(settings.mouseSensitivity*100))),sensitivity.x+345,sensitivity.y+12,1.2f,{1,.93f,.70f,1});
     for (int index = 0; index < 2; ++index) {
-        const float y = panelY + (index == 0 ? 552.0f : 604.0f);
+        const float y = panelY + (index == 0 ? 590.0f : 644.0f);
         addRect(vertices, panelX + 45.0f, y, 350.0f, 40.0f,
                 hovered == ControlActionCount + index
                     ? glm::vec4(.38f, .48f, .30f, 1)
@@ -2229,6 +2267,141 @@ void Renderer::renderControlsMenu(int width, int height, int hovered,
     glDisable(GL_BLEND);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
+}
+
+namespace {
+void menuText(std::vector<UiVertex>& vertices, const std::string& value,
+              float x, float y, float scale, glm::vec4 color, int width, int height) {
+    for (unsigned char raw : value) {
+        const auto& rows = glyph(static_cast<char>(std::toupper(raw)));
+        for (int row=0; row<7; ++row)
+            for (int column=0; column<5; ++column)
+                if (rows[row] & (1 << (4-column)))
+                    addRect(vertices,x+column*scale,y+row*scale,scale,scale,color,width,height);
+        x += 6*scale;
+    }
+}
+void menuButton(std::vector<UiVertex>& vertices, const UiRect& r, const std::string& label,
+                bool highlighted, int width, int height, float font=1.7f) {
+    addRect(vertices,r.x,r.y,r.width,r.height,{.07f,.08f,.09f,1},width,height);
+    addRect(vertices,r.x+2,r.y+2,r.width-4,r.height-4,
+            highlighted ? glm::vec4(.34f,.43f,.28f,1) : glm::vec4(.18f,.20f,.23f,1),width,height);
+    menuText(vertices,label,r.x+(r.width-(label.size()*6-1)*font)*.5f,
+             r.y+(r.height-7*font)*.5f,font,{1,1,1,1},width,height);
+}
+void menuPanel(std::vector<UiVertex>& vertices, const std::string& title, int width, int height) {
+    const auto p=MenuLayout::panel(width,height);
+    addRect(vertices,0,0,static_cast<float>(width),static_cast<float>(height),{0,0,0,.35f},width,height);
+    addRect(vertices,p.x,p.y,p.width,p.height,{.055f,.065f,.075f,.96f},width,height);
+    menuText(vertices,title,p.x+(p.width-(title.size()*6-1)*3)*.5f,p.y+24,3,
+             {1,.94f,.75f,1},width,height);
+}
+}
+
+void Renderer::drawMenuVertices(const void* data, std::size_t count) const {
+    glBindBuffer(GL_ARRAY_BUFFER,uiVbo_);
+    glBufferData(GL_ARRAY_BUFFER,static_cast<GLsizeiptr>(count*sizeof(UiVertex)),data,GL_STREAM_DRAW);
+    glDisable(GL_DEPTH_TEST); glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+    glUseProgram(uiProgram_);
+    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D,itemTexture_);
+    glUniform1i(uiItemAtlasUniform_,0);
+    glBindVertexArray(uiVao_); glDrawArrays(GL_TRIANGLES,0,static_cast<GLsizei>(count));
+    glBindVertexArray(0); glDisable(GL_BLEND); glEnable(GL_CULL_FACE); glEnable(GL_DEPTH_TEST);
+}
+
+void Renderer::renderSettingsCategories(int width, int height, int hovered,
+                                        const GameSettings& settings, bool video) const {
+    std::vector<UiVertex> vertices;
+    menuPanel(vertices,video ? "VIDEO SETTINGS" : "SETTINGS",width,height);
+    const std::array<std::string,4> categories{"VIDEO","AUDIO","CONTROLS","BACK"};
+    if (!video) {
+        for (int index=0; index<4; ++index)
+            menuButton(vertices,MenuLayout::hubRow(index,width,height),categories[index],hovered==30+index,width,height,2.2f);
+    } else {
+        for (int index=0; index<3; ++index)
+            menuButton(vertices,MenuLayout::tab(index,width,height),categories[index],index==0 || hovered==30+index,width,height);
+        const std::array<std::string,12> labels{"RENDER DISTANCE","SIMULATION DISTANCE","FOV","BRIGHTNESS",
+            "ANTI ALIASING","FULLSCREEN","VSYNC","FPS LIMIT","GRAPHICS PRESET","ENTITY DISTANCE","SHOW FPS","SHOW COORDINATES"};
+        const std::array<std::string,12> values{
+            std::to_string(settings.renderDistance),std::to_string(settings.simulationDistance),
+            std::to_string(static_cast<int>(std::round(settings.fov))),
+            std::to_string(static_cast<int>(std::round(settings.brightness*100)))+"%",
+            settings.antiAliasingSamples ? std::to_string(settings.antiAliasingSamples)+"X" : "OFF",
+            settings.fullscreen ? "ON" : "OFF",settings.vsync ? "ON" : "OFF",
+            settings.frameLimit ? std::to_string(settings.frameLimit) : "UNLIMITED",
+            settings.graphicsPreset==GraphicsPreset::Low ? "LOW" : settings.graphicsPreset==GraphicsPreset::Medium ? "MEDIUM" : settings.graphicsPreset==GraphicsPreset::High ? "HIGH" : "CUSTOM",
+            std::to_string(settings.entityDistance),settings.showFps ? "ON" : "OFF",settings.showCoordinates ? "ON" : "OFF"};
+        const std::array<float,12> positions{(settings.renderDistance-2)/62.0f,(settings.simulationDistance-2)/30.0f,
+            (settings.fov-55)/50.0f,settings.brightness,0,0,0,0,0,(settings.entityDistance-2)/62.0f,0,0};
+        for (int index=0; index<12; ++index) {
+            const auto r=MenuLayout::videoRow(index,width,height);
+            addRect(vertices,r.x,r.y,r.width,r.height,hovered==MenuLayout::VideoActions[index] ? glm::vec4(.27f,.32f,.25f,1) : glm::vec4(.15f,.17f,.19f,1),width,height);
+            menuText(vertices,labels[index],r.x+12,r.y+11,1.35f,{1,1,1,1},width,height);
+            if (index<4 || index==9) {
+                const float x=MenuLayout::panel(width,height).x+340;
+                const float normalized=std::clamp(positions[index],0.0f,1.0f);
+                addRect(vertices,x,r.y+15,170,5,{.07f,.08f,.09f,1},width,height);
+                addRect(vertices,x,r.y+15,170*normalized,5,{.48f,.70f,.34f,1},width,height);
+                addRect(vertices,x+170*normalized-4,r.y+8,8,19,{.88f,.92f,.78f,1},width,height);
+                menuText(vertices,values[index],x+185,r.y+11,1.2f,{1,.93f,.70f,1},width,height);
+            } else menuText(vertices,values[index],r.x+350,r.y+11,1.3f,{.85f,.93f,.78f,1},width,height);
+        }
+        menuButton(vertices,MenuLayout::back(width,height),"BACK",hovered==15,width,height);
+    }
+    drawMenuVertices(vertices.data(),vertices.size());
+}
+
+void Renderer::renderWorldMenu(int width, int height, int hovered, bool creating,
+                               const std::vector<SavedWorld>& worlds, int page, int selected,
+                               const std::string& name, const std::string& seed, GameMode mode,
+                               int field, const std::string& message, double now) const {
+    std::vector<UiVertex> vertices;
+    menuPanel(vertices,creating ? "CREATE NEW WORLD" : "SELECT WORLD",width,height);
+    const auto p=MenuLayout::panel(width,height);
+    if (creating) {
+        const std::array<std::string,3> labels{"WORLD NAME","SEED (OPTIONAL)","GAME MODE"};
+        const std::array<std::string,3> values{name,seed.empty()?"RANDOM":seed,gameModeName(mode)};
+        for (int index=0; index<3; ++index) {
+            const auto r=MenuLayout::creationField(index,width,height);
+            menuText(vertices,labels[index],r.x,r.y-24,1.6f,{.85f,.9f,.8f,1},width,height);
+            addRect(vertices,r.x,r.y,r.width,r.height,field==index || hovered==index ? glm::vec4(.3f,.4f,.25f,1) : glm::vec4(.16f,.18f,.20f,1),width,height);
+            auto value=values[index];
+            if (value.size()>39) value=value.substr(value.size()-39);
+            if (index==field && std::fmod(now,1.0)<.5) value+="_";
+            menuText(vertices,value,r.x+14,r.y+18,2,{1,1,1,1},width,height);
+        }
+        menuText(vertices,"TAB SWITCH FIELD   CTRL+A CLEAR",p.x+40,p.y+470,1.3f,{.65f,.72f,.75f,1},width,height);
+        menuButton(vertices,MenuLayout::creationButton(0,width,height),"CREATE WORLD",hovered==3,width,height);
+        menuButton(vertices,MenuLayout::creationButton(1,width,height),"BACK",hovered==4,width,height);
+    } else {
+        for (int row=0; row<6; ++row) {
+            const int index=page*6+row;
+            if (index>=static_cast<int>(worlds.size())) break;
+            const auto& world=worlds[index]; const auto r=MenuLayout::worldRow(row,width,height);
+            addRect(vertices,r.x,r.y,r.width,r.height,index==selected ? glm::vec4(.29f,.39f,.24f,1) : hovered==row ? glm::vec4(.24f,.28f,.24f,1) : glm::vec4(.15f,.17f,.19f,1),width,height);
+            menuText(vertices,world.name.substr(0,43),r.x+12,r.y+9,1.8f,{1,1,1,1},width,height);
+            std::string details=std::string(gameModeName(world.mode))+"  SEED "+std::to_string(world.seed);
+            if (world.lastPlayed>0) {
+                const auto stamp=static_cast<std::time_t>(world.lastPlayed); std::tm date{};
+#ifdef _WIN32
+                localtime_s(&date,&stamp);
+#else
+                localtime_r(&stamp,&date);
+#endif
+                std::ostringstream text; text<<std::put_time(&date,"%Y-%m-%d %H:%M"); details+="  "+text.str();
+            }
+            menuText(vertices,details,r.x+12,r.y+35,1.2f,{.72f,.80f,.68f,1},width,height);
+        }
+        if (worlds.empty()) menuText(vertices,"NO WORLDS YET. CREATE YOUR FIRST WORLD.",p.x+45,p.y+190,1.8f,{.85f,.90f,.82f,1},width,height);
+        menuButton(vertices,MenuLayout::pageButton(0,width,height),"PREV",hovered==13,width,height,1.3f);
+        menuButton(vertices,MenuLayout::pageButton(1,width,height),"NEXT",hovered==14,width,height,1.3f);
+        menuText(vertices,"PAGE "+std::to_string(page+1)+" / "+std::to_string(std::max(1,(static_cast<int>(worlds.size())+5)/6)),p.x+245,p.y+490,1.3f,{.8f,.85f,.75f,1},width,height);
+        const std::array<std::string,3> actions{"PLAY","CREATE NEW WORLD","BACK"};
+        for (int i=0; i<3; ++i) menuButton(vertices,MenuLayout::worldAction(i,width,height),actions[i],hovered==10+i,width,height,1.35f);
+    }
+    if (!message.empty()) menuText(vertices,message.substr(0,70),p.x+24,p.y+515,1.2f,{1,.65f,.5f,1},width,height);
+    drawMenuVertices(vertices.data(),vertices.size());
 }
 
 void Renderer::renderResetMenu(int width,

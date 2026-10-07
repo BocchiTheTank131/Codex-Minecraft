@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "MenuLayout.h"
 
 #include "Definitions.h"
 #include "AmbientOcclusion.h"
@@ -27,6 +28,8 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <random>
+#include <ctime>
 #include <sstream>
 #include <stdexcept>
 #include <thread>
@@ -281,7 +284,7 @@ void Game::shutdown() {
 
 void Game::parseArguments(int argc, char** argv) {
     if (Persistence::enabled()) {
-        std::ifstream seedFile(SeedPath);
+        std::ifstream seedFile(worldSavePath(SeedPath));
         std::uint64_t storedSeed = 0;
         if (seedFile >> storedSeed) {
             seed_ = static_cast<std::uint32_t>(storedSeed);
@@ -394,6 +397,10 @@ void Game::createPresentationSystems() {
 
     input_.attach(window_);
     input_.setBindings(settings_.controls);
+    if (Persistence::enabled() && saveOnExit_) {
+        try { WorldLibrary::importLegacy(); }
+        catch (const std::exception& error) { menuMessage_ = error.what(); std::cerr << error.what() << '\n'; }
+    }
     currentFov_ = settings_.fov;
     timing_.previousFrame = timing_.fpsSampleStart = glfwGetTime();
 }
@@ -403,7 +410,12 @@ void Game::createWorldAndSystems() {
     world_->setSimulationDistance(settings_.simulationDistance);
     glm::vec3 spawnPosition(0.5f, 0.0f, 0.5f);
     const bool loadedWorld = Persistence::enabled() && !smokeTest_.worldgenEnabled &&
-                             world_->loadWorld(WorldSavePath, spawnPosition);
+                             world_->loadWorld(worldSavePath(WorldSavePath), spawnPosition);
+    if (!loadedWorld && Persistence::enabled() && !activeWorld_.directory.empty() &&
+        std::filesystem::exists(worldSavePath(WorldSavePath))) {
+        world_.reset();
+        throw std::runtime_error("Cannot load this world. Original save files were preserved.");
+    }
     if (!loadedWorld)
         timing_.worldTime = 35.0f;
     const glm::vec3 safeSpawn = world_->findSafeSpawnNear(0, 0);
@@ -430,7 +442,7 @@ void Game::createWorldAndSystems() {
     player_ = std::make_unique<Player>(spawnPosition);
     player_->setMouseSensitivity(settings_.mouseSensitivity);
     if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
-        player_->load(PlayerSavePath, seed_);
+        player_->load(worldSavePath(PlayerSavePath), seed_);
     player_->setCreativeMode(creativeMode_);
     if (spectatorMode_)
         player_->setSpectatorMode(true);
@@ -442,10 +454,10 @@ void Game::createWorldAndSystems() {
 
     inventory_ = std::make_unique<Inventory>();
     if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
-        inventory_->load(InventorySavePath, seed_);
+        inventory_->load(worldSavePath(InventorySavePath), seed_);
     survival_ = std::make_unique<SurvivalWorld>(seed_);
     if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
-        survival_->load(MobSavePath, seed_);
+        survival_->load(worldSavePath(MobSavePath), seed_);
     survival_->setSoundSystem(sounds_.get());
     if (smokeTest_.billboardPreview) {
         saveOnExit_ = false;
@@ -490,17 +502,20 @@ void Game::applyFullscreenSetting() {
                          0);
 }
 
-void Game::saveAll() {
-    if (!Persistence::enabled() || !world_) return;
+bool Game::saveAll() {
+    if (!Persistence::enabled() || !world_) return true;
+    bool saved = true;
     if (!player_->isDead()) {
-        world_->saveWorld(WorldSavePath, player_->position());
+        saved &= world_->saveWorld(worldSavePath(WorldSavePath), player_->position());
     }
-    inventory_->save(InventorySavePath, seed_);
-    player_->save(PlayerSavePath, seed_);
-    survival_->save(MobSavePath, seed_);
-    settings_.save(SettingsPath);
-    saveWorldMetadata();
+    saved &= inventory_->save(worldSavePath(InventorySavePath), seed_);
+    saved &= player_->save(worldSavePath(PlayerSavePath), seed_);
+    saved &= survival_->save(worldSavePath(MobSavePath), seed_);
+    saved &= settings_.save(SettingsPath);
+    if (saved) saved &= saveWorldMetadata();
     timing_.lastSave = glfwGetTime();
+    if (!saved) std::cerr << "World save failed; current session retained\n" << std::flush;
+    return saved;
 }
 
 void Game::saveSettings() {
@@ -508,9 +523,9 @@ void Game::saveSettings() {
         settings_.save(SettingsPath);
 }
 
-void Game::saveWorldMetadata() const {
-    if (!Persistence::enabled()) return;
-    SaveFile::write(SeedPath, std::ios::out, [&](std::ofstream& output) {
+bool Game::saveWorldMetadata() const {
+    if (!Persistence::enabled()) return true;
+    bool saved = SaveFile::write(worldSavePath(SeedPath), std::ios::out, [&](std::ofstream& output) {
         const char* mode = spectatorMode_ ? "spectator"
                            : creativeMode_ ? "creative" : "survival";
         output << seed_ << '\n' << mode << '\n'
@@ -518,6 +533,65 @@ void Game::saveWorldMetadata() const {
                << std::fmod(std::max(0.0f, timing_.worldTime), DayNightCycleSeconds) << '\n';
         return static_cast<bool>(output);
     });
+    if (!activeWorld_.directory.empty()) {
+        auto info = activeWorld_;
+        info.lastPlayed = static_cast<std::int64_t>(std::time(nullptr));
+        saved &= WorldLibrary::writeMetadata(info);
+    }
+    return saved;
+}
+
+std::string Game::worldSavePath(const char* filename) const {
+    return activeWorld_.directory.empty() ? filename : (activeWorld_.directory / filename).string();
+}
+
+void Game::refreshWorlds() {
+    try {
+        savedWorlds_ = WorldLibrary::list();
+        selectedWorld_ = -1;
+        worldPage_ = 0;
+        lastWorldClickIndex_ = -1;
+    } catch (const std::exception& error) { menuMessage_ = error.what(); }
+}
+
+void Game::playSavedWorld(const SavedWorld& selected) {
+    if (!Persistence::enabled()) return;
+    activeWorld_ = selected;
+    seed_ = selected.seed;
+    timing_.worldTime = selected.time;
+    creativeMode_ = selected.mode == GameMode::Creative;
+    spectatorMode_ = selected.mode == GameMode::Spectator;
+    try {
+        createWorldAndSystems();
+        menuMessage_.clear();
+        ui_.resumeGame();
+        synchronizeCursorCapture();
+    } catch (const std::exception& error) {
+        farming_.reset(); survival_.reset(); inventory_.reset(); player_.reset(); world_.reset();
+        activeWorld_ = {};
+        menuMessage_ = error.what();
+        std::cerr << menuMessage_ << '\n' << std::flush;
+        ui_.openWorldSelection();
+        synchronizeCursorCapture();
+    }
+}
+
+void Game::createNamedWorld() {
+    if (!Persistence::enabled()) return;
+    try {
+        std::uint32_t newSeed = 0;
+        if (newWorldSeed_.empty()) newSeed = std::random_device{}();
+        else {
+            if (!std::all_of(newWorldSeed_.begin(),newWorldSeed_.end(),[](unsigned char c) { return c>='0' && c<='9'; }))
+                throw std::runtime_error("Seed must contain digits only");
+            const auto value = std::stoull(newWorldSeed_);
+            if (value > UINT32_MAX) throw std::runtime_error("Seed must be between 0 and 4294967295");
+            newSeed = static_cast<std::uint32_t>(value);
+        }
+        const auto created = WorldLibrary::create(newWorldName_, newSeed, newWorldMode_);
+        playSavedWorld(created);
+        if (world_) saveAll();
+    } catch (const std::exception& error) { menuMessage_ = error.what(); }
 }
 
 GameMode Game::gameMode() const {
@@ -613,7 +687,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     if (Persistence::enabled())
         for (const char* path : {WorldSavePath, InventorySavePath, PlayerSavePath, MobSavePath}) {
             error.clear();
-            std::filesystem::remove(path, error);
+            std::filesystem::remove(worldSavePath(path), error);
         }
 
     seed_ = newSeed;
@@ -742,12 +816,12 @@ void Game::handleGlobalInput() {
         if (ui_.state() == GameState::Controls && activeControlBinding_ >= 0) {
             activeControlBinding_ = -1;
         } else {
-            if (ui_.state() == GameState::Settings) {
+            if (ui_.state() == GameState::VideoSettings) {
                 world_->setRenderDistance(settings_.renderDistance);
                 world_->setSimulationDistance(settings_.simulationDistance);
                 saveSettings();
                 activeSettingsSlider_ = -1;
-            } else if (ui_.state() == GameState::AudioSettings) {
+            } else if (ui_.state() == GameState::AudioSettings || ui_.state() == GameState::Controls) {
                 saveSettings();
                 activeSettingsSlider_ = -1;
             }
@@ -826,8 +900,12 @@ void Game::updatePauseInterface() {
     int framebufferWidth = 0;
     int framebufferHeight = 0;
     glfwGetFramebufferSize(window_, &framebufferWidth, &framebufferHeight);
-    const glm::dvec2 cursor = input_.framebufferCursorPosition();
+    glm::dvec2 cursor = input_.framebufferCursorPosition();
     const int hit = ui_.hoveredMenuItem(cursor, framebufferWidth, framebufferHeight);
+    const float scale = ui_.state() == GameState::MainMenu ? 1.0f : UIManager::menuScale(framebufferWidth, framebufferHeight);
+    cursor /= scale;
+    framebufferWidth = static_cast<int>(framebufferWidth / scale);
+    framebufferHeight = static_cast<int>(framebufferHeight / scale);
 
     if (ui_.state() == GameState::AudioSettings) {
         const bool leftDown = input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
@@ -864,9 +942,9 @@ void Game::updatePauseInterface() {
         return;
     }
 
-    if (ui_.state() == GameState::Settings) {
+    if (ui_.state() == GameState::VideoSettings) {
         const bool leftDown = input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
-        const float panelX = framebufferWidth * 0.5f - 220.0f;
+        const float sliderX = MenuLayout::panel(framebufferWidth, framebufferHeight).x + 340.0f;
         if (!leftDown && activeSettingsSlider_ >= 0) {
             if (world_) {
                 world_->setRenderDistance(settings_.renderDistance);
@@ -876,14 +954,14 @@ void Game::updatePauseInterface() {
             saveSettings();
         }
         if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) &&
-            ((hit >= 0 && hit < 4) || hit == 5 || hit == 12) &&
-            cursor.x >= panelX + 180.0f && cursor.x <= panelX + 350.0f) {
+            ((hit >= 0 && hit < 3) || hit == 5 || hit == 12) &&
+            cursor.x >= sliderX - 10.0f && cursor.x <= sliderX + 180.0f) {
             activeSettingsSlider_ = hit;
             sounds_->playClick();
         }
         if (leftDown && activeSettingsSlider_ >= 0) {
-            const float sliderStart = panelX + 190.0f;
-            const float sliderWidth = 150.0f;
+            const float sliderStart = sliderX;
+            const float sliderWidth = 170.0f;
             const float slider = std::clamp(
                 static_cast<float>((cursor.x - sliderStart) / sliderWidth), 0.0f, 1.0f);
             switch (activeSettingsSlider_) {
@@ -916,6 +994,28 @@ void Game::updatePauseInterface() {
         }
     }
 
+    if (ui_.state() == GameState::Controls) {
+        const bool down = input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
+        if (!down && activeSettingsSlider_ >= 0) { activeSettingsSlider_ = -1; saveSettings(); }
+        if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) && hit == ControlActionCount + 2)
+            activeSettingsSlider_ = 3;
+        if (down && activeSettingsSlider_ == 3) {
+            const auto r = MenuLayout::sensitivity(framebufferWidth, framebufferHeight);
+            settings_.mouseSensitivity = .03f + .27f * std::clamp(static_cast<float>((cursor.x-r.x-190)/150),0.0f,1.0f);
+            if (player_) player_->setMouseSensitivity(settings_.mouseSensitivity);
+            return;
+        }
+    }
+    if (ui_.state() == GameState::CreateWorld) {
+        if (input_.keyPressed(GLFW_KEY_TAB)) worldNameField_ = 1 - worldNameField_;
+        auto& value = worldNameField_ == 0 ? newWorldName_ : newWorldSeed_;
+        if (input_.keyDown(GLFW_KEY_LEFT_CONTROL) && input_.keyPressed(GLFW_KEY_A)) value.clear();
+        if (input_.keyPressed(GLFW_KEY_BACKSPACE) && !value.empty()) value.pop_back();
+        for (unsigned char c : input_.consumeTypedCharacters())
+            if (value.size() < (worldNameField_ == 0 ? 48U : 10U) &&
+                (worldNameField_ == 0 ? c >= 32 && c < 127 : c >= '0' && c <= '9')) value.push_back(static_cast<char>(c));
+        if (input_.keyPressed(GLFW_KEY_ENTER)) { createNamedWorld(); return; }
+    }
     if (!input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT)) {
         return;
     }
@@ -926,8 +1026,13 @@ void Game::updatePauseInterface() {
 
     if (ui_.state() == GameState::MainMenu) {
         if (hit == 0) {
-            createWorldAndSystems();
-            ui_.resumeGame();
+            if (Persistence::enabled()) {
+                refreshWorlds();
+                ui_.openWorldSelection();
+            } else {
+                createWorldAndSystems();
+                ui_.resumeGame();
+            }
         } else if (hit == 1) {
             ui_.openSettings();
         } else if (hit == 2) {
@@ -937,6 +1042,39 @@ void Game::updatePauseInterface() {
         return;
     }
 
+    if (ui_.state() == GameState::WorldSelection) {
+        if (hit >= 0 && hit < 6) {
+            const int index = worldPage_ * 6 + hit;
+            if (index < static_cast<int>(savedWorlds_.size())) {
+                selectedWorld_ = index;
+                if (lastWorldClickIndex_ == index && glfwGetTime() - lastWorldClick_ < .35)
+                    playSavedWorld(savedWorlds_[index]);
+                lastWorldClickIndex_ = index;
+                lastWorldClick_ = glfwGetTime();
+            }
+        } else if (hit == 10 && selectedWorld_ >= 0) playSavedWorld(savedWorlds_[selectedWorld_]);
+        else if (hit == 11) { newWorldName_ = "New World"; newWorldSeed_.clear(); menuMessage_.clear(); worldNameField_ = 0; ui_.openCreateWorld(); }
+        else if (hit == 12) ui_.openMainMenu();
+        else if (hit == 13) worldPage_ = std::max(0, worldPage_-1);
+        else if (hit == 14) worldPage_ = std::min(std::max(0,(static_cast<int>(savedWorlds_.size())-1)/6),worldPage_+1);
+        return;
+    }
+    if (ui_.state() == GameState::CreateWorld) {
+        if (hit < 2) worldNameField_ = hit;
+        else if (hit == 2) newWorldMode_ = newWorldMode_ == GameMode::Survival ? GameMode::Creative : GameMode::Survival;
+        else if (hit == 3) createNamedWorld();
+        else if (hit == 4) { refreshWorlds(); ui_.openWorldSelection(); }
+        return;
+    }
+    if (hit >= 30 && hit <= 33) {
+        activeSettingsSlider_ = -1;
+        saveSettings();
+        if (hit == 30) ui_.openVideoSettings();
+        if (hit == 31) ui_.openAudioSettings();
+        if (hit == 32) ui_.openControls();
+        if (hit == 33) ui_.backFromSettings();
+        return;
+    }
     if (ui_.state() == GameState::Controls) {
         if (hit < ControlActionCount)
             activeControlBinding_ = hit;
@@ -1061,7 +1199,7 @@ void Game::updatePauseInterface() {
         ui_.openControls();
         break;
     case 15:
-        ui_.backFromSettings();
+        ui_.openSettings();
         break;
     default:
         break;
@@ -1656,7 +1794,7 @@ void Game::renderFrame(float deltaTime) {
         renderer_->renderMainMenu(width, height,
             ui_.hoveredMenuItem(cursor, width, height),
             input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT),
-            ui_.state() == GameState::MainMenu, !Persistence::enabled());
+            ui_.state() == GameState::MainMenu, !Persistence::enabled(), glfwGetTime());
         if (ui_.state() != GameState::MainMenu) renderMenuInterface(width, height);
         if (screenshotRequested_) {
             Screenshot::saveBmp(width, height);
@@ -2701,7 +2839,7 @@ void Game::runSurvivalSmokeTest() {
     passed = passed && creativePassed;
 
     int compatibleSaveFiles = 0;
-    auto checkExistingSave = [&](const char* path, const auto& loader) {
+    auto checkExistingSave = [&](const std::string& path, const auto& loader) {
         if (!std::filesystem::exists(path)) {
             return;
         }
@@ -2711,22 +2849,22 @@ void Game::runSurvivalSmokeTest() {
                   << '\n';
         passed = passed && loaded;
     };
-    checkExistingSave(WorldSavePath, [&] {
+    checkExistingSave(worldSavePath(WorldSavePath), [&] {
         World loadedWorld(seed_);
         glm::vec3 loadedPosition(0.0f);
-        return loadedWorld.loadWorld(WorldSavePath, loadedPosition);
+        return loadedWorld.loadWorld(worldSavePath(WorldSavePath), loadedPosition);
     });
-    checkExistingSave(InventorySavePath, [&] {
+    checkExistingSave(worldSavePath(InventorySavePath), [&] {
         Inventory loadedInventory;
-        return loadedInventory.load(InventorySavePath, seed_);
+        return loadedInventory.load(worldSavePath(InventorySavePath), seed_);
     });
-    checkExistingSave(PlayerSavePath, [&] {
+    checkExistingSave(worldSavePath(PlayerSavePath), [&] {
         Player loadedPlayer(player_->position());
-        return loadedPlayer.load(PlayerSavePath, seed_);
+        return loadedPlayer.load(worldSavePath(PlayerSavePath), seed_);
     });
-    checkExistingSave(MobSavePath, [&] {
+    checkExistingSave(worldSavePath(MobSavePath), [&] {
         SurvivalWorld loadedSurvival(seed_);
-        return loadedSurvival.load(MobSavePath, seed_);
+        return loadedSurvival.load(worldSavePath(MobSavePath), seed_);
     });
     checkExistingSave(SettingsPath, [&] {
         GameSettings loadedSettings;
@@ -3031,7 +3169,7 @@ void Game::runSpectatorSmokeTest() {
     passed = passed && player_->isSpectator() && !player_->isCreative();
     player_->teleport(testArea);
     saveAll();
-    std::ifstream modeInput(SeedPath);
+    std::ifstream modeInput(worldSavePath(SeedPath));
     std::uint32_t savedSeed = 0;
     std::string savedMode;
     modeInput >> savedSeed >> savedMode;
@@ -3039,7 +3177,7 @@ void Game::runSpectatorSmokeTest() {
     glm::vec3 loadedPosition(0.0f);
     World loadedWorld(seed_);
     passed = passed && savedSeed == seed_ && savedMode == "spectator" &&
-             loadedWorld.loadWorld(WorldSavePath, loadedPosition) &&
+             loadedWorld.loadWorld(worldSavePath(WorldSavePath), loadedPosition) &&
              glm::distance(loadedPosition, testArea) < 0.01f;
     setGameMode(GameMode::Survival);
     passed = passed && !player_->isSpectator() &&
@@ -3063,10 +3201,10 @@ void Game::runResetSmokeTest() {
 
     constexpr std::uint32_t ResetTestSeed = 13579;
     resetWorld(ResetTestSeed, GameMode::Creative);
-    const bool filesCreated = std::filesystem::exists(WorldSavePath) &&
-                              std::filesystem::exists(InventorySavePath) &&
-                              std::filesystem::exists(PlayerSavePath) &&
-                              std::filesystem::exists(MobSavePath);
+    const bool filesCreated = std::filesystem::exists(worldSavePath(WorldSavePath)) &&
+                              std::filesystem::exists(worldSavePath(InventorySavePath)) &&
+                              std::filesystem::exists(worldSavePath(PlayerSavePath)) &&
+                              std::filesystem::exists(worldSavePath(MobSavePath));
     const bool resetPassed = seed_ == ResetTestSeed && creativeMode_ && player_->isCreative() &&
                              inventory_->count(Item::Grass) == 0 && filesCreated;
     std::cout << "Reset smoke: fresh seed, Creative mode, player state, inventory, and saves "
@@ -3189,31 +3327,32 @@ void Game::updateUiSmokeTest(double now) {
 
 void Game::renderMenuInterface(int width, int height) {
     const auto cursor = input_.framebufferCursorPosition();
-    if (ui_.state() == GameState::ResetWorld) {
-        renderer_->renderResetMenu(width,
-                                   height,
-                                   ui_.hoveredMenuItem(cursor, width, height),
-                                   resetSeedText_,
-                                   resetMode_);
+    const int hover = ui_.hoveredMenuItem(cursor, width, height);
+    const float scale = UIManager::menuScale(width, height);
+    width = static_cast<int>(width / scale);
+    height = static_cast<int>(height / scale);
+    if (ui_.state() == GameState::WorldSelection || ui_.state() == GameState::CreateWorld) {
+        renderer_->renderWorldMenu(width,height,hover,ui_.state()==GameState::CreateWorld,
+            savedWorlds_,worldPage_,selectedWorld_,newWorldName_,newWorldSeed_,newWorldMode_,
+            worldNameField_,menuMessage_,glfwGetTime());
+    } else if (ui_.state() == GameState::Settings || ui_.state() == GameState::VideoSettings) {
+        renderer_->renderSettingsCategories(width,height,hover,settings_,ui_.state()==GameState::VideoSettings);
+    } else if (ui_.state() == GameState::ResetWorld) {
+        renderer_->renderResetMenu(width,height,hover,resetSeedText_,resetMode_);
     } else if (ui_.state() == GameState::Controls) {
-        renderer_->renderControlsMenu(width, height,
-                                      ui_.hoveredMenuItem(cursor, width, height),
-                                      settings_, activeControlBinding_);
+        renderer_->renderControlsMenu(width,height,hover,settings_,activeControlBinding_);
     } else {
-        renderer_->renderMenu(width,
-                              height,
-                              ui_.state() == GameState::Settings,
-                              ui_.hoveredMenuItem(cursor, width, height),
-                              settings_,
-                              gameMode(),
-                              !Persistence::enabled(),
-                              glfwGetTime() < saveWarningUntil_,
-                              ui_.state() == GameState::AudioSettings);
+        renderer_->renderMenu(width,height,false,hover,settings_,gameMode(),
+            !Persistence::enabled(),glfwGetTime()<saveWarningUntil_,ui_.state()==GameState::AudioSettings);
     }
 }
 
 void Game::returnToMainMenu() {
-    if (Persistence::enabled()) saveAll();
+    if (Persistence::enabled() && !saveAll()) {
+        menuMessage_ = "Save failed. Check disk space; world remains open.";
+        chat_.addMessage(menuMessage_, ChatTone::Error, glfwGetTime());
+        return;
+    }
     farming_.reset();
     survival_.reset();
     inventory_.reset();
@@ -3230,6 +3369,9 @@ void Game::returnToMainMenu() {
         timing_.worldTime = 35.0f;
         creativeMode_ = spectatorMode_ = false;
     }
+    activeWorld_ = {};
+    timing_.bobTime = 0;
+    timing_.stepTimer = 0;
     ui_.openMainMenu();
     synchronizeCursorCapture();
 }
@@ -3251,12 +3393,34 @@ void Game::runMainMenuSmokeTest() {
     glfwSetWindowSize(window_, 800, 900);
     capture();
     glfwSetWindowSize(window_, 1280, 720);
+    glfwPollEvents();
+    for (const auto& sample : std::array<std::pair<double,const char*>,4>{{
+             {0,"panorama-start"},{90,"panorama-half"},{179.99,"panorama-before-wrap"},{180.01,"panorama-after-wrap"}}}) {
+        int width=0,height=0;
+        glfwGetFramebufferSize(window_,&width,&height);
+        glViewport(0,0,width,height);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        renderer_->renderMainMenu(width,height,-1,false,false,!Persistence::enabled(),sample.first);
+        check(Screenshot::saveBmp(width,height,sample.second),"Panorama capture failed");
+    }
     ui_.openSettings();
     capture();
+    ui_.openVideoSettings();
+    for (const auto size : std::array<glm::ivec2,3>{{{1280,720},{800,600},{480,360}}}) {
+        const float scale=UIManager::menuScale(size.x,size.y);
+        const auto row=MenuLayout::videoRow(3,static_cast<int>(size.x/scale),static_cast<int>(size.y/scale));
+        check(ui_.hoveredMenuItem({(row.x+row.width*.5)*scale,(row.y+row.height*.5)*scale},size.x,size.y)==5,
+              "Responsive Video slider hit area");
+    }
+    capture();
+    ui_.handleEscape(nullptr);
+    check(ui_.state() == GameState::Settings, "Video Back destination");
     ui_.openAudioSettings();
+    capture();
     ui_.handleEscape(nullptr);
     check(ui_.state() == GameState::Settings, "Audio Back destination");
     ui_.openControls();
+    capture();
     ui_.handleEscape(nullptr);
     ui_.backFromSettings();
     check(ui_.state() == GameState::MainMenu, "Settings Back destination");
@@ -3265,9 +3429,18 @@ void Game::runMainMenuSmokeTest() {
         check(ui_.hoveredMenuItem({rect.x + rect.width * .5f, rect.y + rect.height * .5f},
                                  1280, 720) == index, "Main menu button hit area");
     }
-    createWorldAndSystems();
-    ui_.resumeGame();
-    synchronizeCursorCapture();
+    SavedWorld testWorld;
+    if (Persistence::enabled()) {
+        refreshWorlds();
+        ui_.openWorldSelection();
+        capture();
+        ui_.openCreateWorld();
+        capture();
+        testWorld = savedWorlds_.empty() ? WorldLibrary::create("Menu Test", seed_, gameMode()) : savedWorlds_.front();
+        playSavedWorld(testWorld);
+    } else {
+        createWorldAndSystems(); ui_.resumeGame(); synchronizeCursorCapture();
+    }
     check(world_ && player_ && inventory_ && survival_ && input_.cursorCaptured(), "PLAY startup");
     const auto position = player_->position();
     const int initialDiamonds = inventory_->count(Item::Diamond);
@@ -3276,9 +3449,13 @@ void Game::runMainMenuSmokeTest() {
     returnToMainMenu();
     capture();
     check(!world_ && !input_.cursorCaptured(), "Return-to-menu teardown");
-    createWorldAndSystems();
-    ui_.resumeGame();
-    synchronizeCursorCapture();
+    if (Persistence::enabled()) {
+        refreshWorlds();
+        for (const auto& entry : savedWorlds_) if (entry.directory == testWorld.directory) testWorld = entry;
+        playSavedWorld(testWorld);
+    } else {
+        createWorldAndSystems(); ui_.resumeGame(); synchronizeCursorCapture();
+    }
     if (Persistence::enabled()) {
         check(glm::distance(player_->position(), position) < .01f &&
               std::abs(timing_.worldTime - 290.0f) < .01f &&
@@ -3291,5 +3468,45 @@ void Game::runMainMenuSmokeTest() {
     ui_.openPauseMenu();
     capture();
     returnToMainMenu();
+    if (Persistence::enabled()) {
+        std::array<SavedWorld,3> separate;
+        std::array<glm::vec3,3> positions;
+        const glm::ivec3 edit(0,240,0);
+        for (int index=0; index<3; ++index) {
+            newWorldName_ = "World / CON " + std::to_string(index);
+            newWorldSeed_ = std::to_string(123456U+index);
+            newWorldMode_ = index==1 ? GameMode::Creative : GameMode::Survival;
+            createNamedWorld();
+            separate[index] = activeWorld_;
+            check(world_ != nullptr, "Create separate world failed");
+            world_->prepareSpawnTerrain({.5f,240,.5f});
+            world_->setBlock(edit.x,edit.y,edit.z,index==1 ? Block::GoldBlock : Block::DiamondBlock);
+            inventory_->clear(); inventory_->add(Item::Diamond,index+2);
+            positions[index] = player_->position() + glm::vec3(index+1.0f,2,0);
+            player_->teleport(positions[index]);
+            check(survival_->summonMob(index==1 ? "NijikaIjichi" : "cow",positions[index]+glm::vec3(2,0,0)), "Mob initialization");
+            timing_.worldTime = 100.0f+index*50;
+            returnToMainMenu();
+            check(!world_, "Separate world teardown failed");
+        }
+        refreshWorlds();
+        ui_.openWorldSelection(); capture();
+        for (int index=0; index<3; ++index) {
+            for (const auto& entry : savedWorlds_) if (entry.directory==separate[index].directory) separate[index]=entry;
+            playSavedWorld(separate[index]);
+            check(world_ && world_->seed()==123456U+index && inventory_->count(Item::Diamond)==index+2 &&
+                  glm::distance(player_->position(),positions[index])<.01f &&
+                  std::abs(timing_.worldTime-(100.0f+index*50))<.01f &&
+                  gameMode()==(index==1 ? GameMode::Creative : GameMode::Survival),"World state mixed across saves");
+            world_->prepareSpawnTerrain({.5f,240,.5f});
+            check(world_->getBlock(edit.x,edit.y,edit.z)==(index==1 ? Block::GoldBlock : Block::DiamondBlock),"Terrain edit did not persist");
+            if (index==1) {
+                const auto mobs = survival_->renderBillboards();
+                check(mobs.size()==1 && mobs[0].variant==2,"Billboard mob identity did not persist");
+            } else check(!survival_->renderCuboids().empty() && survival_->renderBillboards().empty(),"Passive mob did not persist independently");
+            returnToMainMenu();
+        }
+        std::cout << "Three independent worlds: seed, mode, terrain, player, inventory, mobs and time passed\n";
+    } else check(!std::filesystem::exists("saves"),"Demo created saved-world directories");
     std::cout << "Main menu smoke passed: panorama resize, settings/back, PLAY, return, reload\n" << std::flush;
 }

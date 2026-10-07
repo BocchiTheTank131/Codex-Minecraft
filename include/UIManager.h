@@ -14,6 +14,8 @@ class World;
 
 enum class GameState {
     MainMenu,
+    WorldSelection,
+    CreateWorld,
     Playing,
     Inventory,
     CraftingTable,
@@ -21,6 +23,7 @@ enum class GameState {
     Chest,
     PauseMenu,
     Settings,
+    VideoSettings,
     AudioSettings,
     Controls,
     ResetWorld,
@@ -59,6 +62,9 @@ public:
     void closeGameplayInterface(Inventory& inventory);
     void openPauseMenu();
     void openMainMenu();
+    void openWorldSelection() { state_ = GameState::WorldSelection; }
+    void openCreateWorld() { state_ = GameState::CreateWorld; }
+    void openVideoSettings() { state_ = GameState::VideoSettings; }
     void backFromSettings();
     void openSettings();
     void openAudioSettings();
@@ -68,6 +74,7 @@ public:
     void handleEscape(Inventory* inventory);
     void handleEscape(Inventory& inventory) { handleEscape(&inventory); }
     static UiRect mainMenuButton(int index, int width, int height);
+    static float menuScale(int width, int height);
 
     bool validateOpenBlock(const World& world, const Player& player, Inventory& inventory);
     void updateInventoryInteraction(const InputManager& input,

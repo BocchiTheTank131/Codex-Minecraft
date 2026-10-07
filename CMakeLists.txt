@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.8.0 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.9.0 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 option(VOXELFRONTIER_STANDALONE_DEMO "Build the stateless standalone demo" OFF)
@@ -48,6 +48,7 @@ add_executable(VoxelFrontier
     src/AmbientOcclusion.cpp
     src/Screenshot.cpp
     src/UIManager.cpp
+    src/WorldLibrary.cpp
     src/Noise.cpp
     src/Definitions.cpp
     src/Explosion.cpp

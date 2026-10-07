@@ -5,13 +5,16 @@
 #include "Survival.h"
 #include "World.h"
 #include "Definitions.h"
+#include "MenuLayout.h"
 
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cctype>
 
 bool UIManager::simulationPaused() const {
-    return state_ == GameState::MainMenu || state_ == GameState::PauseMenu || state_ == GameState::Settings ||
+    return state_ == GameState::MainMenu || state_ == GameState::WorldSelection ||
+           state_ == GameState::CreateWorld || state_ == GameState::VideoSettings ||
+           state_ == GameState::PauseMenu || state_ == GameState::Settings ||
            state_ == GameState::AudioSettings ||
            state_ == GameState::Controls || state_ == GameState::ResetWorld;
 }
@@ -194,7 +197,14 @@ void UIManager::handleEscape(Inventory* inventory) {
         break;
     case GameState::Controls:
     case GameState::AudioSettings:
+    case GameState::VideoSettings:
         state_ = GameState::Settings;
+        break;
+    case GameState::WorldSelection:
+        openMainMenu();
+        break;
+    case GameState::CreateWorld:
+        openWorldSelection();
         break;
     case GameState::PauseMenu:
         state_ = GameState::Playing;
@@ -423,7 +433,9 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
 }
 
 int UIManager::hoveredMenuItem(const glm::dvec2& cursor, int width, int height) const {
-    return menuHit(cursor.x, cursor.y, width, height, state_);
+    const float scale = state_ == GameState::MainMenu ? 1.0f : menuScale(width, height);
+    return menuHit(cursor.x / scale, cursor.y / scale,
+                   static_cast<int>(width / scale), static_cast<int>(height / scale), state_);
 }
 
 
@@ -434,6 +446,26 @@ int UIManager::menuHit(
         for (int index = 0; index < 3; ++index)
             if (mainMenuButton(index, width, height).contains(mouseX, mouseY)) return index;
         return -1;
+    }
+    if (state == GameState::WorldSelection) {
+        for (int i=0; i<6; ++i) if (MenuLayout::worldRow(i,width,height).contains(mouseX,mouseY)) return i;
+        for (int i=0; i<3; ++i) if (MenuLayout::worldAction(i,width,height).contains(mouseX,mouseY)) return 10+i;
+        for (int i=0; i<2; ++i) if (MenuLayout::pageButton(i,width,height).contains(mouseX,mouseY)) return 13+i;
+        return -1;
+    }
+    if (state == GameState::CreateWorld) {
+        for (int i=0; i<3; ++i) if (MenuLayout::creationField(i,width,height).contains(mouseX,mouseY)) return i;
+        for (int i=0; i<2; ++i) if (MenuLayout::creationButton(i,width,height).contains(mouseX,mouseY)) return 3+i;
+        return -1;
+    }
+    if (state == GameState::Settings) {
+        for (int i=0; i<4; ++i) if (MenuLayout::hubRow(i,width,height).contains(mouseX,mouseY)) return 30+i;
+        return -1;
+    }
+    if (state == GameState::VideoSettings) {
+        for (int i=0; i<3; ++i) if (MenuLayout::tab(i,width,height).contains(mouseX,mouseY)) return 30+i;
+        for (int i=0; i<12; ++i) if (MenuLayout::videoRow(i,width,height).contains(mouseX,mouseY)) return MenuLayout::VideoActions[i];
+        return MenuLayout::back(width,height).contains(mouseX,mouseY) ? 15 : -1;
     }
     const float panelX = width * 0.5f - 220.0f;
     const float panelY = height * 0.5f - 300.0f;
@@ -461,6 +493,7 @@ int UIManager::menuHit(
         return -1;
     }
     if (state == GameState::Controls) {
+        if (MenuLayout::sensitivity(width,height).contains(mouseX,mouseY)) return ControlActionCount+2;
         const float controlsY = height * 0.5f - 350.0f;
         for (int index = 0; index < ControlActionCount; ++index) {
             const float y = controlsY + 75.0f + index * 32.0f;
@@ -469,9 +502,9 @@ int UIManager::menuHit(
                 return index;
         }
         if (mouseX >= panelX + 45.0f && mouseX < panelX + 395.0f) {
-            if (mouseY >= controlsY + 552.0f && mouseY < controlsY + 592.0f)
+            if (mouseY >= controlsY + 590.0f && mouseY < controlsY + 630.0f)
                 return ControlActionCount;
-            if (mouseY >= controlsY + 604.0f && mouseY < controlsY + 644.0f)
+            if (mouseY >= controlsY + 644.0f && mouseY < controlsY + 684.0f)
                 return ControlActionCount + 1;
         }
         return -1;
@@ -489,27 +522,16 @@ int UIManager::menuHit(
             return 5;
         return -1;
     }
-    if (state != GameState::Settings)
-        return -1;
-    const float settingsPanelY = height * 0.5f - 350.0f;
-    for (int index = 0; index < 14; ++index) {
-        const float y = settingsPanelY + 65.0f + index * 37.0f;
-        if (mouseX >= panelX + 24.0f && mouseX < panelX + 416.0f && mouseY >= y &&
-            mouseY < y + 35.0f)
-            return index;
-    }
-    if (mouseX >= panelX + 95.0f && mouseX < panelX + 345.0f &&
-        mouseY >= settingsPanelY + 585.0f && mouseY < settingsPanelY + 627.0f)
-        return 14;
-    if (mouseX >= panelX + 95.0f && mouseX < panelX + 345.0f &&
-        mouseY >= settingsPanelY + 635.0f && mouseY < settingsPanelY + 677.0f)
-        return 15;
     return -1;
 }
 
 UiRect UIManager::mainMenuButton(int index, int width, int height) {
     const float scale = std::min({1.0f, width / 520.0f, height / 440.0f});
-    return {width * .5f - 180.0f * scale,
-            height * .5f + (-20.0f + index * 70.0f) * scale,
-            360.0f * scale, 52.0f * scale};
+    return {width * .5f - 195.0f * scale,
+            height * .5f + (-8.0f + index * 74.0f) * scale,
+            390.0f * scale, 54.0f * scale};
+}
+
+float UIManager::menuScale(int width, int height) {
+    return std::max(.1f, std::min({1.0f, width / 760.0f, height / 760.0f}));
 }

@@ -1,4 +1,5 @@
 #pragma once
+#include "WorldLibrary.h"
 
 #include "InputManager.h"
 #include "Settings.h"
@@ -137,6 +138,13 @@ private:
     int multisampleHeight_ = 0;
     int multisampleSamples_ = 0;
     std::string resetSeedText_;
+    SavedWorld activeWorld_{};
+    std::vector<SavedWorld> savedWorlds_;
+    int selectedWorld_ = -1, worldPage_ = 0, worldNameField_ = 0;
+    std::string newWorldName_ = "New World", newWorldSeed_, menuMessage_;
+    GameMode newWorldMode_ = GameMode::Survival;
+    double lastWorldClick_ = -1.0;
+    int lastWorldClickIndex_ = -1;
 
     void parseArguments(int argc, char** argv);
     bool createWindow();
@@ -147,9 +155,13 @@ private:
     void runMainMenuSmokeTest();
     void synchronizeCursorCapture();
     void applyFullscreenSetting();
-    void saveAll();
+    bool saveAll();
+    std::string worldSavePath(const char* filename) const;
+    void refreshWorlds();
+    void playSavedWorld(const SavedWorld& world);
+    void createNamedWorld();
     void saveSettings();
-    void saveWorldMetadata() const;
+    bool saveWorldMetadata() const;
     GameMode gameMode() const;
     void setGameMode(GameMode mode);
     glm::vec3 safeExitFromSpectator() const;
