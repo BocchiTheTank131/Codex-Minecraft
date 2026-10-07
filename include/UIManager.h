@@ -13,6 +13,7 @@ class SurvivalWorld;
 class World;
 
 enum class GameState {
+    MainMenu,
     Playing,
     Inventory,
     CraftingTable,
@@ -57,12 +58,16 @@ public:
     void openChest(const glm::ivec3& position);
     void closeGameplayInterface(Inventory& inventory);
     void openPauseMenu();
+    void openMainMenu();
+    void backFromSettings();
     void openSettings();
     void openAudioSettings();
     void openControls();
     void openResetWorld();
     void resumeGame();
-    void handleEscape(Inventory& inventory);
+    void handleEscape(Inventory* inventory);
+    void handleEscape(Inventory& inventory) { handleEscape(&inventory); }
+    static UiRect mainMenuButton(int index, int width, int height);
 
     bool validateOpenBlock(const World& world, const Player& player, Inventory& inventory);
     void updateInventoryInteraction(const InputManager& input,
@@ -83,6 +88,7 @@ public:
 
 private:
     GameState state_ = GameState::Playing;
+    bool settingsFromMainMenu_ = false;
     glm::ivec3 worldContainerPosition_{0};
     UiHit dragHit_{};
     RecipeBookView recipeBook_{};

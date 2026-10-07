@@ -157,7 +157,15 @@ bool Game::initialize(int argc, char** argv) {
     }
 
     try {
-        createWorldAndSystems();
+        createPresentationSystems();
+        // Developer previews/tests still enter their fixtures directly.
+        if (!saveOnExit_) {
+            createWorldAndSystems();
+            ui_.resumeGame();
+        } else {
+            ui_.openMainMenu();
+        }
+        synchronizeCursorCapture();
         initialized_ = true;
         if (settings_.fullscreen) {
             applyFullscreenSetting();
@@ -171,6 +179,10 @@ bool Game::initialize(int argc, char** argv) {
         if (smokeTest_.craftingPreview) {
             smokeTest_.startTime = glfwGetTime();
             updateCraftingPreview(smokeTest_.startTime);
+        }
+        if (smokeTest_.menuEnabled) {
+            runMainMenuSmokeTest();
+            glfwSetWindowShouldClose(window_, GLFW_TRUE);
         }
 
         std::cout << "WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, "
@@ -319,6 +331,8 @@ void Game::parseArguments(int argc, char** argv) {
                 smokeTest_.billboardPreview = true;
             } else if (argument == "--patch272-smoke") {
                 smokeTest_.patch272 = true;
+            } else if (argument == "--menu-smoke") {
+                smokeTest_.menuEnabled = true;
             } else if (argument.rfind("--preview-x=",0)==0) {
                 smokeTest_.previewX = std::stof(argument.substr(12));
             } else if (argument.rfind("--preview-z=",0)==0) {
@@ -338,8 +352,7 @@ void Game::parseArguments(int argc, char** argv) {
         smokeTest_.commandVisual || smokeTest_.resetEnabled ||
         smokeTest_.worldgenEnabled || smokeTest_.spectatorEnabled || smokeTest_.billboardPreview || smokeTest_.craftingPreview || smokeTest_.patch272)
         saveOnExit_ = false;
-    if (Persistence::enabled() && saveOnExit_)
-        saveWorldMetadata();
+
 }
 
 bool Game::createWindow() {
@@ -347,7 +360,7 @@ bool Game::createWindow() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
-    window_ = glfwCreateWindow(1280, 720, "Voxel Frontier: Survival", nullptr, nullptr);
+    window_ = glfwCreateWindow(1280, 720, "Voxel Frontier", nullptr, nullptr);
     if (window_ == nullptr) {
         return false;
     }
@@ -369,7 +382,7 @@ bool Game::createWindow() {
     return true;
 }
 
-void Game::createWorldAndSystems() {
+void Game::createPresentationSystems() {
     renderer_ = std::make_unique<Renderer>();
     renderer_->setParticlePercent(settings_.particlePercent);
     renderer_->setEffectQuality(settings_.effectQuality);
@@ -379,6 +392,13 @@ void Game::createWorldAndSystems() {
                                 settings_.passiveMobVolume, settings_.hostileMobVolume);
     sounds_->startMusic();
 
+    input_.attach(window_);
+    input_.setBindings(settings_.controls);
+    currentFov_ = settings_.fov;
+    timing_.previousFrame = timing_.fpsSampleStart = glfwGetTime();
+}
+
+void Game::createWorldAndSystems() {
     world_ = std::make_unique<World>(seed_);
     world_->setSimulationDistance(settings_.simulationDistance);
     glm::vec3 spawnPosition(0.5f, 0.0f, 0.5f);
@@ -437,8 +457,6 @@ void Game::createWorldAndSystems() {
     }
     farming_ = std::make_unique<FarmingSystem>();
 
-    input_.attach(window_);
-    input_.setBindings(settings_.controls);
     input_.setCursorCaptured(true);
     currentFov_ = settings_.fov;
 
@@ -473,7 +491,7 @@ void Game::applyFullscreenSetting() {
 }
 
 void Game::saveAll() {
-    if (!Persistence::enabled()) return;
+    if (!Persistence::enabled() || !world_) return;
     if (!player_->isDead()) {
         world_->saveWorld(WorldSavePath, player_->position());
     }
@@ -659,6 +677,21 @@ float Game::beginFrame() {
 }
 
 void Game::handleGlobalInput() {
+    if (!world_) {
+        if (ui_.state() != GameState::Controls && input_.actionPressed(ControlAction::Screenshot))
+            screenshotRequested_ = true;
+        if (input_.keyPressed(GLFW_KEY_ESCAPE)) {
+            if (ui_.state() == GameState::Controls && activeControlBinding_ >= 0)
+                activeControlBinding_ = -1;
+            else {
+                if (ui_.state() != GameState::MainMenu) saveSettings();
+                activeSettingsSlider_ = -1;
+                ui_.handleEscape(nullptr);
+            }
+        }
+        synchronizeCursorCapture();
+        return;
+    }
     if (chat_.isOpen()) {
         const std::string submitted = chat_.update(input_, window_, commands_);
         if (!submitted.empty()) {
@@ -835,8 +868,10 @@ void Game::updatePauseInterface() {
         const bool leftDown = input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
         const float panelX = framebufferWidth * 0.5f - 220.0f;
         if (!leftDown && activeSettingsSlider_ >= 0) {
-            world_->setRenderDistance(settings_.renderDistance);
-            world_->setSimulationDistance(settings_.simulationDistance);
+            if (world_) {
+                world_->setRenderDistance(settings_.renderDistance);
+                world_->setSimulationDistance(settings_.simulationDistance);
+            }
             activeSettingsSlider_ = -1;
             saveSettings();
         }
@@ -864,7 +899,7 @@ void Game::updatePauseInterface() {
                 break;
             case 3:
                 settings_.mouseSensitivity = 0.03f + slider * 0.27f;
-                player_->setMouseSensitivity(settings_.mouseSensitivity);
+                if (player_) player_->setMouseSensitivity(settings_.mouseSensitivity);
                 break;
             case 5:
                 settings_.brightness = slider;
@@ -888,6 +923,19 @@ void Game::updatePauseInterface() {
         return;
     }
     sounds_->playClick();
+
+    if (ui_.state() == GameState::MainMenu) {
+        if (hit == 0) {
+            createWorldAndSystems();
+            ui_.resumeGame();
+        } else if (hit == 1) {
+            ui_.openSettings();
+        } else if (hit == 2) {
+            glfwSetWindowShouldClose(window_, GLFW_TRUE);
+        }
+        synchronizeCursorCapture();
+        return;
+    }
 
     if (ui_.state() == GameState::Controls) {
         if (hit < ControlActionCount)
@@ -925,9 +973,7 @@ void Game::updatePauseInterface() {
                 saveWarningUntil_ = glfwGetTime() + 4.0;
             break;
         case 5:
-            if (Persistence::enabled())
-                saveAll();
-            glfwSetWindowShouldClose(window_, GLFW_TRUE);
+            returnToMainMenu();
             break;
         case 6:
             saveOnExit_ = false;
@@ -995,8 +1041,10 @@ void Game::updatePauseInterface() {
                                   : settings_.graphicsPreset == GraphicsPreset::Medium
                                         ? GraphicsPreset::High
                                         : GraphicsPreset::Low);
-        world_->setRenderDistance(settings_.renderDistance);
-        world_->setSimulationDistance(settings_.simulationDistance);
+        if (world_) {
+            world_->setRenderDistance(settings_.renderDistance);
+            world_->setSimulationDistance(settings_.simulationDistance);
+        }
         renderer_->setParticlePercent(settings_.particlePercent);
         renderer_->setEffectQuality(settings_.effectQuality);
         destroyRenderTarget();
@@ -1013,7 +1061,7 @@ void Game::updatePauseInterface() {
         ui_.openControls();
         break;
     case 15:
-        ui_.openPauseMenu();
+        ui_.backFromSettings();
         break;
     default:
         break;
@@ -1024,7 +1072,7 @@ void Game::updatePauseInterface() {
 }
 
 void Game::updateSimulation(float deltaTime) {
-    if (ui_.simulationPaused()) {
+    if (!world_ || ui_.simulationPaused()) {
         interaction_.hasBlockTarget = false;
         interaction_.mobTarget = {};
         return;
@@ -1600,6 +1648,23 @@ void Game::renderFrame(float deltaTime) {
         return;
     }
 
+    if (!world_) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, width, height);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        const auto cursor = input_.framebufferCursorPosition();
+        renderer_->renderMainMenu(width, height,
+            ui_.hoveredMenuItem(cursor, width, height),
+            input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT),
+            ui_.state() == GameState::MainMenu, !Persistence::enabled());
+        if (ui_.state() != GameState::MainMenu) renderMenuInterface(width, height);
+        if (screenshotRequested_) {
+            Screenshot::saveBmp(width, height);
+            screenshotRequested_ = false;
+        }
+        glfwSwapBuffers(window_);
+        return;
+    }
     const bool zooming = zoomActive();
     const float targetFov = zooming
                                 ? zoomFov_
@@ -1722,29 +1787,7 @@ void Game::renderFrame(float deltaTime) {
                 ui_.recipeBook(), cursor.x, cursor.y);
         }
     }
-    if (ui_.simulationPaused()) {
-        if (ui_.state() == GameState::ResetWorld) {
-            renderer_->renderResetMenu(width,
-                                       height,
-                                       ui_.hoveredMenuItem(cursor, width, height),
-                                       resetSeedText_,
-                                       resetMode_);
-        } else if (ui_.state() == GameState::Controls) {
-            renderer_->renderControlsMenu(width, height,
-                                          ui_.hoveredMenuItem(cursor, width, height),
-                                          settings_, activeControlBinding_);
-        } else {
-            renderer_->renderMenu(width,
-                                  height,
-                                  ui_.state() == GameState::Settings,
-                                  ui_.hoveredMenuItem(cursor, width, height),
-                                  settings_,
-                                  gameMode(),
-                                  !Persistence::enabled(),
-                                  glfwGetTime() < saveWarningUntil_,
-                                  ui_.state() == GameState::AudioSettings);
-        }
-    }
+    if (ui_.simulationPaused()) renderMenuInterface(width, height);
 
     renderer_->renderChat(width, height, chat_, glfwGetTime());
     resolveRenderTarget(width, height);
@@ -3142,4 +3185,111 @@ void Game::updateUiSmokeTest(double now) {
 
     synchronizeCursorCapture();
     screenshotRequested_ = true;
+}
+
+void Game::renderMenuInterface(int width, int height) {
+    const auto cursor = input_.framebufferCursorPosition();
+    if (ui_.state() == GameState::ResetWorld) {
+        renderer_->renderResetMenu(width,
+                                   height,
+                                   ui_.hoveredMenuItem(cursor, width, height),
+                                   resetSeedText_,
+                                   resetMode_);
+    } else if (ui_.state() == GameState::Controls) {
+        renderer_->renderControlsMenu(width, height,
+                                      ui_.hoveredMenuItem(cursor, width, height),
+                                      settings_, activeControlBinding_);
+    } else {
+        renderer_->renderMenu(width,
+                              height,
+                              ui_.state() == GameState::Settings,
+                              ui_.hoveredMenuItem(cursor, width, height),
+                              settings_,
+                              gameMode(),
+                              !Persistence::enabled(),
+                              glfwGetTime() < saveWarningUntil_,
+                              ui_.state() == GameState::AudioSettings);
+    }
+}
+
+void Game::returnToMainMenu() {
+    if (Persistence::enabled()) saveAll();
+    farming_.reset();
+    survival_.reset();
+    inventory_.reset();
+    player_.reset();
+    world_.reset();
+    interaction_ = {};
+    renderer_->clearParticles();
+    chat_ = {};
+    wasInWater_ = false;
+    fullbright_ = false;
+    activeSettingsSlider_ = activeControlBinding_ = -1;
+    saveWarningUntil_ = 0.0;
+    if (!Persistence::enabled()) {
+        timing_.worldTime = 35.0f;
+        creativeMode_ = spectatorMode_ = false;
+    }
+    ui_.openMainMenu();
+    synchronizeCursorCapture();
+}
+
+void Game::runMainMenuSmokeTest() {
+    const auto check = [](bool condition, const char* message) {
+        if (!condition) throw std::runtime_error(message);
+    };
+    check(!world_ && !player_ && !inventory_ && !survival_, "Menu created gameplay systems");
+    check(ui_.state() == GameState::MainMenu && !input_.cursorCaptured(), "Menu input state");
+    const auto capture = [this] {
+        glfwPollEvents();
+        screenshotRequested_ = true;
+        renderFrame(0.0f);
+    };
+    capture();
+    glfwSetWindowSize(window_, 1600, 600);
+    capture();
+    glfwSetWindowSize(window_, 800, 900);
+    capture();
+    glfwSetWindowSize(window_, 1280, 720);
+    ui_.openSettings();
+    capture();
+    ui_.openAudioSettings();
+    ui_.handleEscape(nullptr);
+    check(ui_.state() == GameState::Settings, "Audio Back destination");
+    ui_.openControls();
+    ui_.handleEscape(nullptr);
+    ui_.backFromSettings();
+    check(ui_.state() == GameState::MainMenu, "Settings Back destination");
+    for (int index = 0; index < 3; ++index) {
+        const auto rect = UIManager::mainMenuButton(index, 1280, 720);
+        check(ui_.hoveredMenuItem({rect.x + rect.width * .5f, rect.y + rect.height * .5f},
+                                 1280, 720) == index, "Main menu button hit area");
+    }
+    createWorldAndSystems();
+    ui_.resumeGame();
+    synchronizeCursorCapture();
+    check(world_ && player_ && inventory_ && survival_ && input_.cursorCaptured(), "PLAY startup");
+    const auto position = player_->position();
+    const int initialDiamonds = inventory_->count(Item::Diamond);
+    inventory_->add(Item::Diamond, 1);
+    timing_.worldTime = 290.0f;
+    returnToMainMenu();
+    capture();
+    check(!world_ && !input_.cursorCaptured(), "Return-to-menu teardown");
+    createWorldAndSystems();
+    ui_.resumeGame();
+    synchronizeCursorCapture();
+    if (Persistence::enabled()) {
+        check(glm::distance(player_->position(), position) < .01f &&
+              std::abs(timing_.worldTime - 290.0f) < .01f &&
+              inventory_->count(Item::Diamond) == initialDiamonds + 1, "Full game save/load");
+    } else {
+        check(timing_.worldTime == 35.0f && gameMode() == GameMode::Survival &&
+              inventory_->count(Item::Diamond) == initialDiamonds,
+              "Demo did not reset its session");
+    }
+    ui_.openPauseMenu();
+    capture();
+    returnToMainMenu();
+    std::cout << "Main menu smoke passed: panorama resize, settings/back, PLAY, return, reload\n" << std::flush;
 }

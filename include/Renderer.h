@@ -88,6 +88,8 @@ public:
                     bool standaloneDemo,
                     bool showSaveWarning,
                     bool audioPage) const;
+    void renderMainMenu(int width, int height, int hovered, bool pressed,
+                        bool buttonsVisible, bool standaloneDemo) const;
     void renderControlsMenu(int width, int height, int hovered,
                             const GameSettings& settings, int activeBinding) const;
     void renderResetMenu(int width,
@@ -122,6 +124,7 @@ public:
     void spawnHitParticles(const glm::vec3& position, bool critical);
     void spawnExplosionParticles(const glm::vec3& position);
     void updateParticles(float deltaTime);
+    void clearParticles() { particles_.clear(); }
     void renderParticles(const glm::mat4& view,
                          const glm::mat4& projection,
                          float maximumDistance) const;
@@ -141,6 +144,8 @@ private:
     GLuint entityVao_ = 0, entityVbo_ = 0, itemVao_ = 0, itemVbo_ = 0;
     std::array<GLuint, 4> hostileTextures_{};
     std::array<float, 4> hostileAspectRatios_{};
+    GLuint panoramaTexture_ = 0;
+    float panoramaAspectRatio_ = 1.0f;
     GLint uiItemAtlasUniform_ = -1;
     GLint itemAtlasUniform_ = -1;
     std::vector<Particle> particles_;

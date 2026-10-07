@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.7.2 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.8.0 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 option(VOXELFRONTIER_STANDALONE_DEMO "Build the stateless standalone demo" OFF)
@@ -65,6 +65,7 @@ add_executable(VoxelFrontier
     src/WorldValidation.cpp
 )
 target_include_directories(VoxelFrontier PRIVATE include ${miniaudio_SOURCE_DIR})
+target_compile_definitions(VoxelFrontier PRIVATE VOXELFRONTIER_VERSION="${PROJECT_VERSION}")
 target_link_libraries(VoxelFrontier PRIVATE glfw glad glm::glm OpenGL::GL Threads::Threads)
 
 if(WIN32)
@@ -119,6 +120,10 @@ if(VOXEL_STANDALONE)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/crafting_blocks.rgba")
     file(APPEND "${VOXEL_RC}" "101 RCDATA \"${VOXEL_BLOCK_ATLAS_PATH}\"\n")
+    file(TO_CMAKE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/sprites/panorama/panorama.jpg" VOXEL_PANORAMA_PATH)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/sprites/panorama/panorama.jpg")
+    file(APPEND "${VOXEL_RC}" "102 RCDATA \"${VOXEL_PANORAMA_PATH}\"\n")
     file(WRITE "${VOXEL_HEADER}" "#pragma once\nstruct EmbeddedSound { const char* name; int id; };\ninline constexpr int EmbeddedItemAtlasId = 100;\ninline constexpr EmbeddedSound EmbeddedSounds[] = {\n")
     set(VOXEL_SOUND_ID 1000)
     foreach(VOXEL_SOUND IN LISTS VOXEL_SOUND_FILES)

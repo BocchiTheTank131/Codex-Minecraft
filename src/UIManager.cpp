@@ -11,7 +11,7 @@
 #include <cctype>
 
 bool UIManager::simulationPaused() const {
-    return state_ == GameState::PauseMenu || state_ == GameState::Settings ||
+    return state_ == GameState::MainMenu || state_ == GameState::PauseMenu || state_ == GameState::Settings ||
            state_ == GameState::AudioSettings ||
            state_ == GameState::Controls || state_ == GameState::ResetWorld;
 }
@@ -147,7 +147,17 @@ bool UIManager::runRecipeBookSelfTest(std::string& report) {
 }
 
 void UIManager::openPauseMenu() {
+    settingsFromMainMenu_ = false;
     state_ = GameState::PauseMenu;
+}
+
+void UIManager::openMainMenu() {
+    state_ = GameState::MainMenu;
+    settingsFromMainMenu_ = true;
+}
+
+void UIManager::backFromSettings() {
+    state_ = settingsFromMainMenu_ ? GameState::MainMenu : GameState::PauseMenu;
 }
 
 void UIManager::openSettings() {
@@ -170,17 +180,17 @@ void UIManager::resumeGame() {
     state_ = GameState::Playing;
 }
 
-void UIManager::handleEscape(Inventory& inventory) {
+void UIManager::handleEscape(Inventory* inventory) {
     switch (state_) {
     case GameState::Inventory:
     case GameState::CraftingTable:
     case GameState::Furnace:
     case GameState::Chest:
-        closeGameplayInterface(inventory);
+        if (inventory) closeGameplayInterface(*inventory);
         break;
     case GameState::Settings:
     case GameState::ResetWorld:
-        state_ = GameState::PauseMenu;
+        backFromSettings();
         break;
     case GameState::Controls:
     case GameState::AudioSettings:
@@ -190,7 +200,9 @@ void UIManager::handleEscape(Inventory& inventory) {
         state_ = GameState::Playing;
         break;
     case GameState::Playing:
-        state_ = GameState::PauseMenu;
+        openPauseMenu();
+        break;
+    case GameState::MainMenu:
         break;
     }
 }
@@ -418,6 +430,11 @@ int UIManager::hoveredMenuItem(const glm::dvec2& cursor, int width, int height) 
 
 int UIManager::menuHit(
     double mouseX, double mouseY, int width, int height, GameState state) {
+    if (state == GameState::MainMenu) {
+        for (int index = 0; index < 3; ++index)
+            if (mainMenuButton(index, width, height).contains(mouseX, mouseY)) return index;
+        return -1;
+    }
     const float panelX = width * 0.5f - 220.0f;
     const float panelY = height * 0.5f - 300.0f;
     if (state == GameState::PauseMenu) {
@@ -488,4 +505,11 @@ int UIManager::menuHit(
         mouseY >= settingsPanelY + 635.0f && mouseY < settingsPanelY + 677.0f)
         return 15;
     return -1;
+}
+
+UiRect UIManager::mainMenuButton(int index, int width, int height) {
+    const float scale = std::min({1.0f, width / 520.0f, height / 440.0f});
+    return {width * .5f - 180.0f * scale,
+            height * .5f + (-20.0f + index * 70.0f) * scale,
+            360.0f * scale, 52.0f * scale};
 }

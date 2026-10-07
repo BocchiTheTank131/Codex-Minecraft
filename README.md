@@ -24,6 +24,12 @@ Everything in this project was created entirely with Codex, including the game c
 
 It includes procedural terrain, streamed chunks, caves, structures, mobs, crafting, farming, lighting, persistent worlds, and first-person voxel interaction.
 
+Launch to the panorama main menu: **PLAY** loads your saved world (or starts a new one),
+**SETTINGS** opens the existing options with a **BACK** button, and **QUIT** closes the game.
+The world starts only after PLAY. From the pause menu, **SAVE & RETURN TO MENU** saves the
+installed game; the standalone demo's **RETURN TO MENU** discards its temporary world.
+Pressing PLAY again in the demo starts a fresh gameplay session.
+
 ## Features
 
 - 256-block-tall procedurally generated worlds
@@ -60,7 +66,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.7.2** has **101 inventory items**, **55 placeable block families**, **110 block
+Version **2.8.0** has **101 inventory items**, **55 placeable block families**, **110 block
 IDs/states including Air**, **61 crafting recipes**, and **13 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -188,12 +194,21 @@ terrain preview; `--crafting-preview` exercises the actual inventory/container t
 
 ## Windows Release
 
+### v2.8.0 main menu
+
+- Added a full-screen panorama menu with PLAY, SETTINGS, and QUIT.
+- The panorama preserves its aspect ratio and crops to fit the window.
+- World loading and generation wait until PLAY; Settings reuses the existing options.
+- Save & Return to Menu preserves the full game's saves. The standalone demo discards its
+  temporary world and starts fresh when PLAY is pressed again.
+- The panorama is embedded in both Windows builds; no external image folder is required.
+
 Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
 
-| v2.7.2 download | Purpose | Persistence |
+| v2.8.0 download | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.7.2-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.7.2-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.8.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.8.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The

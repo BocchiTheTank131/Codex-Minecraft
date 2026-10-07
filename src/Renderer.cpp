@@ -1,5 +1,6 @@
 #include "Renderer.h"
 #include "Definitions.h"
+#include "UIManager.h"
 #include "SpriteManifest.h"
 
 #include "World.h"
@@ -73,7 +74,7 @@ struct EntityVisibility {
 };
 
 #ifdef _WIN32
-GLuint loadHostileSprite(const char* name, int resourceId, int& width, int& height) {
+GLuint loadSpriteImage(const char* name, int resourceId, int& width, int& height) {
     std::vector<std::uint8_t> ownedBytes;
     const void* source = nullptr;
     std::size_t length = 0;
@@ -100,7 +101,7 @@ GLuint loadHostileSprite(const char* name, int resourceId, int& width, int& heig
     length = ownedBytes.size();
 #endif
     if (!source || length == 0 || length > UINT32_MAX)
-        throw std::runtime_error(std::string("Missing hostile sprite: ") + name);
+        throw std::runtime_error(std::string("Missing sprite image: ") + name);
     const HRESULT comResult = CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     IWICImagingFactory* factory = nullptr;
     IWICStream* stream = nullptr;
@@ -135,7 +136,7 @@ GLuint loadHostileSprite(const char* name, int resourceId, int& width, int& heig
     if (factory) factory->Release();
     if (SUCCEEDED(comResult)) CoUninitialize();
     if (FAILED(result))
-        throw std::runtime_error(std::string("Cannot decode hostile sprite: ") + name);
+        throw std::runtime_error(std::string("Cannot decode sprite image: ") + name);
     GLuint texture = 0;
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
@@ -639,10 +640,14 @@ Renderer::Renderer() {
 #ifdef _WIN32
     for (std::size_t index = 0; index < hostileTextures_.size(); ++index) {
         int imageWidth = 0, imageHeight = 0;
-        hostileTextures_[index] = loadHostileSprite(SpriteAssets[index].name,
+        hostileTextures_[index] = loadSpriteImage(SpriteAssets[index].name,
             SpriteAssets[index].id, imageWidth, imageHeight);
         hostileAspectRatios_[index] = static_cast<float>(imageWidth) / imageHeight;
     }
+    int panoramaWidth = 0, panoramaHeight = 0;
+    panoramaTexture_ = loadSpriteImage("panorama/panorama.jpg", 102,
+                                       panoramaWidth, panoramaHeight);
+    panoramaAspectRatio_ = static_cast<float>(panoramaWidth) / panoramaHeight;
 #endif
     glGenVertexArrays(1, &skyVao_);
     glGenVertexArrays(1, &uiVao_);
@@ -745,6 +750,7 @@ Renderer::Renderer() {
 }
 
 Renderer::~Renderer() {
+    if (panoramaTexture_) glDeleteTextures(1, &panoramaTexture_);
     glDeleteTextures(static_cast<GLsizei>(hostileTextures_.size()), hostileTextures_.data());
     if (billboardProgram_)
         glDeleteProgram(billboardProgram_);
@@ -1822,6 +1828,90 @@ void Renderer::renderMobOutline(const RenderCuboid& bounds,
     glBindVertexArray(0);
     glEnable(GL_CULL_FACE);
 }
+void Renderer::renderMainMenu(int width, int height, int hovered, bool pressed,
+                              bool buttonsVisible, bool standaloneDemo) const {
+    std::vector<UiVertex> vertices;
+    const float windowAspect = static_cast<float>(width) / height;
+    // Cover the window: crop the longer image axis, never distort the image.
+    const float uSpan = std::min(1.0f, windowAspect / panoramaAspectRatio_);
+    const float vSpan = std::min(1.0f, panoramaAspectRatio_ / windowAspect);
+    const float u0 = (1.0f - uSpan) * .5f, u1 = u0 + uSpan;
+    const float v0 = (1.0f - vSpan) * .5f, v1 = v0 + vSpan;
+    if (panoramaTexture_) {
+        const glm::vec4 white(1.0f);
+        vertices = {{{-1, 1}, white, {u0, v0}, 1},
+                    {{1, 1}, white, {u1, v0}, 1},
+                    {{1, -1}, white, {u1, v1}, 1},
+                    {{-1, 1}, white, {u0, v0}, 1},
+                    {{1, -1}, white, {u1, v1}, 1},
+                    {{-1, -1}, white, {u0, v1}, 1}};
+    }
+    addRect(vertices, 0, 0, static_cast<float>(width), static_cast<float>(height),
+            {0.02f, .025f, .035f, panoramaTexture_ ? .30f : 1.0f}, width, height);
+    auto text = [&](const std::string& value, float x, float y, float scale, glm::vec4 color) {
+        for (char raw : value) {
+            const auto& rows = glyph(static_cast<char>(std::toupper(static_cast<unsigned char>(raw))));
+            for (int row = 0; row < 7; ++row)
+                for (int column = 0; column < 5; ++column)
+                    if (rows[row] & (1 << (4 - column)))
+                        addRect(vertices, x + column * scale, y + row * scale,
+                                scale, scale, color, width, height);
+            x += 6 * scale;
+        }
+    };
+    if (buttonsVisible) {
+        const float scale = std::min({1.0f, width / 520.0f, height / 440.0f});
+        const std::string title = "VOXEL FRONTIER";
+        const float titleScale = 4.0f * scale;
+        const float titleX = (width - (title.size() * 6 - 1) * titleScale) * .5f;
+        const float titleY = height * .5f - 115.0f * scale;
+        text(title, titleX + 3 * scale, titleY + 3 * scale, titleScale, {0, 0, 0, .8f});
+        text(title, titleX, titleY, titleScale, {1, .94f, .75f, 1});
+        const std::array<std::string, 3> labels{"PLAY", "SETTINGS", "QUIT"};
+        for (int index = 0; index < 3; ++index) {
+            const UiRect r = UIManager::mainMenuButton(index, width, height);
+            const bool down = hovered == index && pressed;
+            addRect(vertices, r.x, r.y, r.width, r.height, {.09f, .10f, .10f, 1}, width, height);
+            const glm::vec4 fill = down ? glm::vec4(.22f, .30f, .18f, 1)
+                : hovered == index ? glm::vec4(.38f, .48f, .30f, 1)
+                                   : glm::vec4(.18f, .20f, .22f, .96f);
+            addRect(vertices, r.x + 2 * scale, r.y + 2 * scale, r.width - 4 * scale,
+                    r.height - 4 * scale, fill, width, height);
+            addRect(vertices, r.x + 2 * scale, r.y + 2 * scale, r.width - 4 * scale,
+                    2 * scale, down ? glm::vec4(.15f, .20f, .13f, 1)
+                                   : glm::vec4(.52f, .56f, .46f, 1), width, height);
+            const float fontScale = 2.4f * scale;
+            const auto& label = labels[static_cast<std::size_t>(index)];
+            text(label, r.x + (r.width - (label.size() * 6 - 1) * fontScale) * .5f,
+                 r.y + (r.height - 7 * fontScale) * .5f + (down ? 2 * scale : 0),
+                 fontScale, {1, 1, 1, 1});
+        }
+        text(std::string("V") + VOXELFRONTIER_VERSION, 16, height - 25.0f, 1.5f, {.9f, .9f, .9f, 1});
+        if (standaloneDemo) {
+            const std::string demo = "STANDALONE DEMO";
+            text(demo, width - demo.size() * 9.0f - 16, height - 25.0f, 1.5f,
+                 {1, .85f, .52f, 1});
+        }
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, uiVbo_);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(vertices.size() * sizeof(UiVertex)),
+                 vertices.data(), GL_STREAM_DRAW);
+    glDisable(GL_DEPTH_TEST);
+    glDisable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glUseProgram(uiProgram_);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, panoramaTexture_);
+    glUniform1i(uiItemAtlasUniform_, 0);
+    glBindVertexArray(uiVao_);
+    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
+    glBindVertexArray(0);
+    glDisable(GL_BLEND);
+    glEnable(GL_CULL_FACE);
+    glEnable(GL_DEPTH_TEST);
+}
+
 void Renderer::renderMenu(int width,
                           int height,
                           bool settingsPage,
@@ -1903,7 +1993,7 @@ void Renderer::renderMenu(int width,
             std::string("MODE  ") + gameModeName(mode),
             "RESET WORLD",
             "SAVE WORLD",
-            standaloneDemo ? "QUIT TO DESKTOP" : "SAVE & QUIT",
+            standaloneDemo ? "RETURN TO MENU" : "SAVE & RETURN TO MENU",
             "EXIT GAME"};
         for (int index = 0; index < static_cast<int>(labels.size()); ++index) {
             const float y = panelY + 82.0f + index * 61.0f;

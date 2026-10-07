@@ -80,6 +80,7 @@ private:
         bool commandVisual = false;
         bool craftingPreview = false;
         bool patch272 = false;
+        bool menuEnabled = false;
         float previewX = 0, previewZ = 0;
         float previewBrightness = 1.0f;
         bool worldgenScreenshotTaken = false;
@@ -139,7 +140,11 @@ private:
 
     void parseArguments(int argc, char** argv);
     bool createWindow();
+    void createPresentationSystems();
     void createWorldAndSystems();
+    void returnToMainMenu();
+    void renderMenuInterface(int width, int height);
+    void runMainMenuSmokeTest();
     void synchronizeCursorCapture();
     void applyFullscreenSetting();
     void saveAll();
