@@ -2506,6 +2506,11 @@ SurvivalWorld::MobDiagnostics SurvivalWorld::diagnostics(
 }
 std::vector<RenderCuboid> SurvivalWorld::renderCuboids() const {
     std::vector<RenderCuboid> out;
+    renderCuboids(out);
+    return out;
+}
+void SurvivalWorld::renderCuboids(std::vector<RenderCuboid>& out) const {
+    out.clear();
     out.reserve(animals_.size() * 6 + experienceOrbs_.size() + arrows_.size());
     for (const auto& a : animals_) {
         if (isBillboard(a.type))
@@ -2541,22 +2546,32 @@ std::vector<RenderCuboid> SurvivalWorld::renderCuboids() const {
     for (const Arrow& arrow : arrows_)
         out.push_back({arrow.position, glm::vec3(.055f, .48f, .055f),
                        glm::vec3(.34f, .24f, .14f), arrow.velocity});
-    return out;
+
 }
 std::vector<RenderBillboard> SurvivalWorld::renderBillboards() const {
     std::vector<RenderBillboard> out;
+    renderBillboards(out);
+    return out;
+}
+void SurvivalWorld::renderBillboards(std::vector<RenderBillboard>& out) const {
+    out.clear();
     for (const Animal& a : animals_)
         if (isBillboard(a.type) && a.deathTimer >= 0.0f)
             out.push_back({a.position, static_cast<std::uint8_t>(billboardIndex(a.type)), a.hurtFlash,
                            a.deathTimer > 0.0f ? std::clamp(a.deathTimer / .65f, 0.0f, 1.0f) : 1.0f});
-    return out;
+
 }
 std::vector<RenderItemSprite> SurvivalWorld::renderItemSprites() const {
     std::vector<RenderItemSprite> out;
+    renderItemSprites(out);
+    return out;
+}
+void SurvivalWorld::renderItemSprites(std::vector<RenderItemSprite>& out) const {
+    out.clear();
     out.reserve(drops_.size());
     for (const auto& d : drops_)
         out.push_back({d.position, d.stack.item, .42f});
-    return out;
+
 }
 bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     return SaveFile::write(p, std::ios::binary, [&](std::ofstream& f) {

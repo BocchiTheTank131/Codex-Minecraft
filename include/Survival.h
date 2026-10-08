@@ -313,8 +313,11 @@ public:
     RenderCuboid mobOutline(int index) const;
     std::vector<RenderCuboid> renderCuboids() const;
     std::vector<RenderBillboard> renderBillboards() const;
+    void renderCuboids(std::vector<RenderCuboid>& out) const;
+    void renderBillboards(std::vector<RenderBillboard>& out) const;
     std::string mobName(int index) const;
     std::vector<RenderItemSprite> renderItemSprites() const;
+    void renderItemSprites(std::vector<RenderItemSprite>& out) const;
     std::vector<glm::vec3> takeExplosionEffects();
     bool save(const std::string& path, std::uint32_t seed) const;
     bool load(const std::string& path, std::uint32_t seed);

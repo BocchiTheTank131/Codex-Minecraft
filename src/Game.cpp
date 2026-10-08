@@ -9,6 +9,7 @@
 #include "Renderer.h"
 #include "SaveFile.h"
 #include "Screenshot.h"
+#include "RenderScratch.h"
 #include "Sound.h"
 #include "UiLayout.h"
 
@@ -1845,12 +1846,19 @@ void Game::renderFrame(float deltaTime) {
                                static_cast<int>(std::floor(player_->cameraPosition().y)),
                                static_cast<int>(std::floor(player_->cameraPosition().z)))));
     const float entityDistance = static_cast<float>(settings_.entityDistance * CHUNK_SIZE);
-    renderer_->renderEntities(
-        survival_->renderCuboids(), view, projection, timing_.worldTime, entityDistance);
-    renderer_->renderBillboards(survival_->renderBillboards(), *world_, view, projection,
+    thread_local std::vector<RenderCuboid> cuboidStorage;
+    thread_local std::vector<RenderBillboard> billboardStorage;
+    thread_local std::vector<RenderItemSprite> itemStorage;
+    RenderScratch<RenderCuboid> cuboids(cuboidStorage, 256 * 1024);
+    RenderScratch<RenderBillboard> billboards(billboardStorage, 256 * 1024);
+    RenderScratch<RenderItemSprite> items(itemStorage, 256 * 1024);
+    survival_->renderCuboids(cuboids.get());
+    survival_->renderBillboards(billboards.get());
+    survival_->renderItemSprites(items.get());
+    renderer_->renderEntities(cuboids.get(), view, projection, timing_.worldTime, entityDistance);
+    renderer_->renderBillboards(billboards.get(), *world_, view, projection,
                                 timing_.worldTime, settings_.brightness, fullbright_, entityDistance);
-    renderer_->renderItemSprites(
-        survival_->renderItemSprites(), view, projection, timing_.worldTime, entityDistance);
+    renderer_->renderItemSprites(items.get(), view, projection, timing_.worldTime, entityDistance);
     renderer_->renderParticles(view, projection, entityDistance);
 
     if (!zooming) {

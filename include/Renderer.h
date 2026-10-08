@@ -13,6 +13,7 @@
 #include <array>
 #include <cstdint>
 #include <string>
+#include <memory>
 #include <vector>
 
 class World;
@@ -140,6 +141,43 @@ public:
     int visibleEntityCount() const { return visibleEntityCount_; }
 
 private:
+    struct TextGeometryCache;
+    std::unique_ptr<TextGeometryCache> textGeometry_;
+    struct ProgramUniforms {
+        GLint atlas = -1;
+        GLint atlasTiles = -1;
+        GLint brightness = -1;
+        GLint cameraPosition = -1;
+        GLint color = -1;
+        GLint daylight = -1;
+        GLint effectQuality = -1;
+        GLint fullbright = -1;
+        GLint hurt = -1;
+        GLint inverseViewProjection = -1;
+        GLint itemAtlas = -1;
+        GLint light = -1;
+        GLint model = -1;
+        GLint opacity = -1;
+        GLint projection = -1;
+        GLint skyColor = -1;
+        GLint spectatorInsideBlock = -1;
+        GLint sprite = -1;
+        GLint sunDirection = -1;
+        GLint time = -1;
+        GLint underwater = -1;
+        GLint view = -1;
+        GLint waterPass = -1;
+    };
+    static ProgramUniforms cacheUniforms(GLuint program);
+    ProgramUniforms billboardUniforms_;
+    ProgramUniforms entityUniforms_;
+    ProgramUniforms itemUniforms_;
+    ProgramUniforms panoramaUniforms_;
+    ProgramUniforms particleUniforms_;
+    ProgramUniforms skyUniforms_;
+    ProgramUniforms uiUniforms_;
+    ProgramUniforms worldUniforms_;
+
     struct Particle {
         glm::vec3 position, velocity, color;
         float life;
@@ -149,6 +187,7 @@ private:
     GLuint atlasTexture_ = 0, itemTexture_ = 0, skyVao_ = 0, uiVao_ = 0, uiVbo_ = 0,
            particleVao_ = 0, particleVbo_ = 0;
     GLuint entityVao_ = 0, entityVbo_ = 0, itemVao_ = 0, itemVbo_ = 0;
+    GLuint hudVao_ = 0, hudVbo_ = 0;
     std::array<GLuint, 4> hostileTextures_{};
     std::array<float, 4> hostileAspectRatios_{};
     GLuint panoramaTexture_ = 0;

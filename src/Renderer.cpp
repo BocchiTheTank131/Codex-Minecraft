@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "RenderScratch.h"
 #include "Definitions.h"
 #include "UIManager.h"
 #include "MenuLayout.h"
@@ -16,6 +17,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <ctime>
 #include <iomanip>
 #include <fstream>
@@ -26,6 +28,7 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #ifdef VOXEL_STANDALONE
 #include "EmbeddedResources.h"
@@ -638,7 +641,115 @@ const std::array<std::uint8_t, 7>& uiGlyph(char character) {
     return glyph(character);
 }
 
+// Store the original normalized vertices, rather than transforming cached
+// vertices: this preserves the exact floating-point operations and pixel edges.
+struct Renderer::TextGeometryCache {
+    struct Entry {
+        std::string text;
+        float x = 0, y = 0, scale = 0;
+        glm::vec4 color{0};
+        int width = 0, height = 0;
+        std::uint64_t used = 0;
+        std::vector<UiVertex> vertices;
+    };
+    std::array<Entry, 64> entries{};
+    std::uint64_t clock = 0;
+    std::vector<UiVertex> uploadedHud;
+    static constexpr std::size_t MaximumBytes = 8 * 1024 * 1024;
+
+    void appendRun(std::vector<UiVertex>& out, std::string_view text,
+                   float x, float y, float scale, const glm::vec4& color,
+                   int width, int height) {
+        if (text.empty()) return;
+        Entry* oldest = &entries.front();
+        for (Entry& entry : entries) {
+            if (entry.used && entry.x == x && entry.y == y && entry.scale == scale &&
+                entry.color == color && entry.width == width && entry.height == height &&
+                std::string_view(entry.text) == text) {
+                entry.used = ++clock;
+                out.insert(out.end(), entry.vertices.begin(), entry.vertices.end());
+                return;
+            }
+            if (entry.used < oldest->used) oldest = &entry;
+        }
+        oldest->text.assign(text.data(), text.size());
+        oldest->x = x; oldest->y = y; oldest->scale = scale; oldest->color = color;
+        oldest->width = width; oldest->height = height; oldest->used = ++clock;
+        oldest->vertices.clear();
+        float px = x;
+        for (char raw : text) {
+            const auto& rows = glyph(static_cast<char>(std::toupper(static_cast<unsigned char>(raw))));
+            for (int row = 0; row < 7; ++row)
+                for (int col = 0; col < 5; ++col)
+                    if (rows[static_cast<std::size_t>(row)] & (1 << (4 - col)))
+                        addRect(oldest->vertices, px + col * scale, y + row * scale,
+                                scale, scale, color, width, height);
+            px += 6.0f * scale;
+        }
+        out.insert(out.end(), oldest->vertices.begin(), oldest->vertices.end());
+        std::size_t retained = 0;
+        for (const Entry& entry : entries) retained += entry.vertices.capacity() * sizeof(UiVertex);
+        while (retained > MaximumBytes) {
+            Entry* victim = nullptr;
+            for (Entry& entry : entries)
+                if (entry.used && (!victim || entry.used < victim->used)) victim = &entry;
+            if (!victim) break;
+            retained -= victim->vertices.capacity() * sizeof(UiVertex);
+            *victim = Entry{};
+        }
+    }
+
+    void append(std::vector<UiVertex>& out, const std::string& text,
+                float x, float y, float scale, const glm::vec4& color,
+                int width, int height) {
+        std::string_view remaining(text);
+        while (!remaining.empty()) {
+            const auto end = remaining.find('\n');
+            const auto line = remaining.substr(0, end);
+            // Keep fixed labels cached even when the adjacent live number changes.
+            const auto number = line.find_first_of("0123456789-");
+            const auto split = number == std::string_view::npos ? line.size() : number;
+            appendRun(out, line.substr(0, split), x, y, scale, color, width, height);
+            float valueX = x;
+            for (std::size_t i = 0; i < split; ++i) valueX += 6.0f * scale;
+            appendRun(out, line.substr(split), valueX, y, scale, color, width, height);
+            if (end == std::string_view::npos) break;
+            remaining.remove_prefix(end + 1);
+            y += 9.0f * scale;
+        }
+    }
+};
+
+Renderer::ProgramUniforms Renderer::cacheUniforms(GLuint program) {
+    ProgramUniforms locations;
+    locations.atlas = glGetUniformLocation(program, "uAtlas");
+    locations.atlasTiles = glGetUniformLocation(program, "uAtlasTiles");
+    locations.brightness = glGetUniformLocation(program, "uBrightness");
+    locations.cameraPosition = glGetUniformLocation(program, "uCameraPosition");
+    locations.color = glGetUniformLocation(program, "uColor");
+    locations.daylight = glGetUniformLocation(program, "uDaylight");
+    locations.effectQuality = glGetUniformLocation(program, "uEffectQuality");
+    locations.fullbright = glGetUniformLocation(program, "uFullbright");
+    locations.hurt = glGetUniformLocation(program, "uHurt");
+    locations.inverseViewProjection = glGetUniformLocation(program, "uInverseViewProjection");
+    locations.itemAtlas = glGetUniformLocation(program, "uItemAtlas");
+    locations.light = glGetUniformLocation(program, "uLight");
+    locations.model = glGetUniformLocation(program, "uModel");
+    locations.opacity = glGetUniformLocation(program, "uOpacity");
+    locations.projection = glGetUniformLocation(program, "uProjection");
+    locations.skyColor = glGetUniformLocation(program, "uSkyColor");
+    locations.spectatorInsideBlock = glGetUniformLocation(program, "uSpectatorInsideBlock");
+    locations.sprite = glGetUniformLocation(program, "uSprite");
+    locations.sunDirection = glGetUniformLocation(program, "uSunDirection");
+    locations.time = glGetUniformLocation(program, "uTime");
+    locations.underwater = glGetUniformLocation(program, "uUnderwater");
+    locations.view = glGetUniformLocation(program, "uView");
+    locations.waterPass = glGetUniformLocation(program, "uWaterPass");
+    return locations;
+}
+
 Renderer::Renderer() {
+    textGeometry_ = std::make_unique<TextGeometryCache>();
     auto makeProgram = [&](const char* vs, const char* fs) {
         GLuint v = compileShader(GL_VERTEX_SHADER, vs), f = compileShader(GL_FRAGMENT_SHADER, fs);
         GLuint p = linkProgram(v, f);
@@ -654,8 +765,16 @@ Renderer::Renderer() {
     entityProgram_ = makeProgram(EntityVertexShader, EntityFragmentShader);
     itemProgram_ = makeProgram(ItemVertexShader, ItemFragmentShader);
     billboardProgram_ = makeProgram(ItemVertexShader, BillboardFragmentShader);
-    uiItemAtlasUniform_ = glGetUniformLocation(uiProgram_, "uItemAtlas");
-    itemAtlasUniform_ = glGetUniformLocation(itemProgram_, "uItemAtlas");
+    billboardUniforms_ = cacheUniforms(billboardProgram_);
+    entityUniforms_ = cacheUniforms(entityProgram_);
+    itemUniforms_ = cacheUniforms(itemProgram_);
+    panoramaUniforms_ = cacheUniforms(panoramaProgram_);
+    particleUniforms_ = cacheUniforms(particleProgram_);
+    skyUniforms_ = cacheUniforms(skyProgram_);
+    uiUniforms_ = cacheUniforms(uiProgram_);
+    worldUniforms_ = cacheUniforms(worldProgram_);
+    uiItemAtlasUniform_ = uiUniforms_.itemAtlas;
+    itemAtlasUniform_ = itemUniforms_.itemAtlas;
     atlasTexture_ = createAtlasTexture();
     itemTexture_ = loadItemTexture("assets/item_icons_expansion.rgba");
 #ifdef _WIN32
@@ -677,6 +796,38 @@ Renderer::Renderer() {
     glGenBuffers(1, &uiVbo_);
     glBindVertexArray(uiVao_);
     glBindBuffer(GL_ARRAY_BUFFER, uiVbo_);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,
+                          2,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          sizeof(UiVertex),
+                          reinterpret_cast<void*>(offsetof(UiVertex, position)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1,
+                          4,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          sizeof(UiVertex),
+                          reinterpret_cast<void*>(offsetof(UiVertex, color)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribPointer(2,
+                          2,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          sizeof(UiVertex),
+                          reinterpret_cast<void*>(offsetof(UiVertex, uv)));
+    glEnableVertexAttribArray(3);
+    glVertexAttribPointer(3,
+                          1,
+                          GL_FLOAT,
+                          GL_FALSE,
+                          sizeof(UiVertex),
+                          reinterpret_cast<void*>(offsetof(UiVertex, textured)));
+    glGenVertexArrays(1, &hudVao_);
+    glGenBuffers(1, &hudVbo_);
+    glBindVertexArray(hudVao_);
+    glBindBuffer(GL_ARRAY_BUFFER, hudVbo_);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0,
                           2,
@@ -773,6 +924,8 @@ Renderer::Renderer() {
 }
 
 Renderer::~Renderer() {
+    if (hudVbo_) glDeleteBuffers(1, &hudVbo_);
+    if (hudVao_) glDeleteVertexArrays(1, &hudVao_);
     if (panoramaProgram_) glDeleteProgram(panoramaProgram_);
     if (panoramaTexture_) glDeleteTextures(1, &panoramaTexture_);
     glDeleteTextures(static_cast<GLsizei>(hostileTextures_.size()), hostileTextures_.data());
@@ -1233,15 +1386,15 @@ void Renderer::renderSky(const glm::mat4& view,
     glm::mat4 inverse = glm::inverse(projection * rotationView);
     glDisable(GL_DEPTH_TEST);
     glUseProgram(skyProgram_);
-    glUniformMatrix4fv(glGetUniformLocation(skyProgram_, "uInverseViewProjection"),
+    glUniformMatrix4fv(skyUniforms_.inverseViewProjection,
                        1,
                        GL_FALSE,
                        glm::value_ptr(inverse));
     glUniform3fv(
-        glGetUniformLocation(skyProgram_, "uSunDirection"), 1, glm::value_ptr(state.sunDirection));
-    glUniform1f(glGetUniformLocation(skyProgram_, "uDaylight"), state.daylight);
-    glUniform1f(glGetUniformLocation(skyProgram_, "uTime"), worldTime);
-    glUniform1i(glGetUniformLocation(skyProgram_, "uEffectQuality"), effectQuality_);
+        skyUniforms_.sunDirection, 1, glm::value_ptr(state.sunDirection));
+    glUniform1f(skyUniforms_.daylight, state.daylight);
+    glUniform1f(skyUniforms_.time, worldTime);
+    glUniform1i(skyUniforms_.effectQuality, effectQuality_);
     glBindVertexArray(skyVao_);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glEnable(GL_DEPTH_TEST);
@@ -1260,39 +1413,39 @@ void Renderer::renderWorld(const World& world,
     const glm::mat4 vp = projection * view;
     glUseProgram(worldProgram_);
     glUniformMatrix4fv(
-        glGetUniformLocation(worldProgram_, "uView"), 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(worldProgram_, "uProjection"),
+        worldUniforms_.view, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(worldUniforms_.projection,
                        1,
                        GL_FALSE,
                        glm::value_ptr(projection));
-    glUniform3fv(glGetUniformLocation(worldProgram_, "uSunDirection"),
+    glUniform3fv(worldUniforms_.sunDirection,
                  1,
                  glm::value_ptr(state.sunDirection));
     glUniform3fv(
-        glGetUniformLocation(worldProgram_, "uSkyColor"), 1, glm::value_ptr(state.skyColor));
-    glUniform3fv(glGetUniformLocation(worldProgram_, "uCameraPosition"),
+        worldUniforms_.skyColor, 1, glm::value_ptr(state.skyColor));
+    glUniform3fv(worldUniforms_.cameraPosition,
                  1,
                  glm::value_ptr(camera));
-    glUniform1f(glGetUniformLocation(worldProgram_, "uDaylight"), state.daylight);
-    glUniform1f(glGetUniformLocation(worldProgram_, "uTime"), worldTime);
-    glUniform1f(glGetUniformLocation(worldProgram_, "uBrightness"), brightness);
-    glUniform1i(glGetUniformLocation(worldProgram_, "uEffectQuality"), effectQuality_);
-    glUniform1i(glGetUniformLocation(worldProgram_, "uFullbright"),
+    glUniform1f(worldUniforms_.daylight, state.daylight);
+    glUniform1f(worldUniforms_.time, worldTime);
+    glUniform1f(worldUniforms_.brightness, brightness);
+    glUniform1i(worldUniforms_.effectQuality, effectQuality_);
+    glUniform1i(worldUniforms_.fullbright,
                 fullbright ? GL_TRUE : GL_FALSE);
-    glUniform1i(glGetUniformLocation(worldProgram_, "uUnderwater"),
+    glUniform1i(worldUniforms_.underwater,
                 underwater ? GL_TRUE : GL_FALSE);
-    glUniform1i(glGetUniformLocation(worldProgram_, "uSpectatorInsideBlock"),
+    glUniform1i(worldUniforms_.spectatorInsideBlock,
                 spectatorInsideBlock ? GL_TRUE : GL_FALSE);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, atlasTexture_);
-    glUniform1i(glGetUniformLocation(worldProgram_, "uAtlas"), 0);
-    glUniform1f(glGetUniformLocation(worldProgram_, "uAtlasTiles"), static_cast<float>(BlockAtlasTiles));
-    glUniform1i(glGetUniformLocation(worldProgram_, "uWaterPass"), GL_FALSE);
+    glUniform1i(worldUniforms_.atlas, 0);
+    glUniform1f(worldUniforms_.atlasTiles, static_cast<float>(BlockAtlasTiles));
+    glUniform1i(worldUniforms_.waterPass, GL_FALSE);
     world.drawOpaque(vp);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
-    glUniform1i(glGetUniformLocation(worldProgram_, "uWaterPass"), GL_TRUE);
+    glUniform1i(worldUniforms_.waterPass, GL_TRUE);
     world.drawWater(vp, camera);
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
@@ -1358,7 +1511,9 @@ void Renderer::renderParticles(const glm::mat4& view,
     if (particles_.empty())
         return;
     const EntityVisibility visibility(view, projection, maximumDistance);
-    std::vector<ParticleVertex> vertices;
+    thread_local std::vector<ParticleVertex> verticesStorage;
+    RenderScratch<ParticleVertex> verticesScratch(verticesStorage, 524288);
+    auto& vertices = verticesScratch.get();
     vertices.reserve(particles_.size());
     for (const Particle& p : particles_)
         if (visibility.visible(p.position, 0.2f))
@@ -1372,8 +1527,8 @@ void Renderer::renderParticles(const glm::mat4& view,
                  GL_STREAM_DRAW);
     glUseProgram(particleProgram_);
     glUniformMatrix4fv(
-        glGetUniformLocation(particleProgram_, "uView"), 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(particleProgram_, "uProjection"),
+        particleUniforms_.view, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(particleUniforms_.projection,
                        1,
                        GL_FALSE,
                        glm::value_ptr(projection));
@@ -1395,15 +1550,15 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
     const CelestialState state = celestial(worldTime);
     glUseProgram(entityProgram_);
     glUniformMatrix4fv(
-        glGetUniformLocation(entityProgram_, "uView"), 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(entityProgram_, "uProjection"),
+        entityUniforms_.view, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(entityUniforms_.projection,
                        1,
                        GL_FALSE,
                        glm::value_ptr(projection));
-    glUniform3fv(glGetUniformLocation(entityProgram_, "uSunDirection"),
+    glUniform3fv(entityUniforms_.sunDirection,
                  1,
                  glm::value_ptr(state.sunDirection));
-    glUniform1f(glGetUniformLocation(entityProgram_, "uDaylight"), state.daylight);
+    glUniform1f(entityUniforms_.daylight, state.daylight);
     glBindVertexArray(entityVao_);
     for (const RenderCuboid& cuboid : cuboids) {
         if (!visibility.visible(cuboid.center, glm::length(cuboid.size) * 0.5f))
@@ -1420,9 +1575,9 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
         }
         model = glm::scale(model, cuboid.size);
         glUniformMatrix4fv(
-            glGetUniformLocation(entityProgram_, "uModel"), 1, GL_FALSE, glm::value_ptr(model));
+            entityUniforms_.model, 1, GL_FALSE, glm::value_ptr(model));
         glUniform3fv(
-            glGetUniformLocation(entityProgram_, "uColor"), 1, glm::value_ptr(cuboid.color));
+            entityUniforms_.color, 1, glm::value_ptr(cuboid.color));
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
     glBindVertexArray(0);
@@ -1438,7 +1593,9 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
     const glm::vec3 cameraRight = glm::normalize(glm::vec3(
         inverseView[0][0], 0.0f, inverseView[0][2]));
     const float daylight = celestial(worldTime).daylight;
-    std::vector<const RenderBillboard*> visible;
+    thread_local std::vector<const RenderBillboard*> visibleStorage;
+    RenderScratch<const RenderBillboard*> visibleScratch(visibleStorage, 65536);
+    auto& visible = visibleScratch.get();
     visible.reserve(billboards.size());
     for (const RenderBillboard& sprite : billboards)
         if (visibility.visible(sprite.feet + glm::vec3(0, BillboardMobHeight * .5f, 0),
@@ -1450,11 +1607,11 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
         return glm::dot(leftDelta, leftDelta) > glm::dot(rightDelta, rightDelta);
     });
     glUseProgram(billboardProgram_);
-    glUniformMatrix4fv(glGetUniformLocation(billboardProgram_, "uView"), 1,
+    glUniformMatrix4fv(billboardUniforms_.view, 1,
                        GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(billboardProgram_, "uProjection"), 1,
+    glUniformMatrix4fv(billboardUniforms_.projection, 1,
                        GL_FALSE, glm::value_ptr(projection));
-    glUniform1i(glGetUniformLocation(billboardProgram_, "uSprite"), 0);
+    glUniform1i(billboardUniforms_.sprite, 0);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDepthMask(GL_FALSE);
@@ -1487,11 +1644,11 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
         const float block = world.blockLightAt(x, y, z) / 15.0f;
         const float ambient = 0.16f + std::max(sky * .70f, block * .75f);
         const float adjusted = ambient + (brightness - .5f) * .20f;
-        glUniform1f(glGetUniformLocation(billboardProgram_, "uLight"),
+        glUniform1f(billboardUniforms_.light,
                     fullbright ? 1.0f : std::clamp(adjusted, .08f, 1.0f));
-        glUniform1f(glGetUniformLocation(billboardProgram_, "uHurt"),
+        glUniform1f(billboardUniforms_.hurt,
                     std::clamp(sprite->hurt * 4.5f, 0.0f, 1.0f));
-        glUniform1f(glGetUniformLocation(billboardProgram_, "uOpacity"), sprite->opacity);
+        glUniform1f(billboardUniforms_.opacity, sprite->opacity);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, hostileTextures_[variant]);
         glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -1504,7 +1661,9 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
 }
 void Renderer::renderChat(int width, int height, const ChatUI& chat, double now) const {
     if (!chat.isOpen() && chat.messages().empty()) return;
-    std::vector<UiVertex> vertices;
+    thread_local std::vector<UiVertex> verticesStorage;
+    RenderScratch<UiVertex> verticesScratch(verticesStorage, 2097152);
+    auto& vertices = verticesScratch.get();
     const float x = 12.0f, scale = 1.5f;
     const float panelWidth = std::min(620.0f, static_cast<float>(width) - 24.0f);
     const float inputY = static_cast<float>(height) - 93.0f;
@@ -1577,34 +1736,15 @@ void Renderer::renderHud(int width,
                          const std::string& debugText,
                          const std::string& craftingText,
                          bool spectator) const {
-    std::vector<UiVertex> vertices;
+    thread_local std::vector<UiVertex> verticesStorage;
+    RenderScratch<UiVertex> verticesScratch(verticesStorage, 8 * 1024 * 1024);
+    auto& vertices = verticesScratch.get();
     auto drawText = [&](const std::string& text,
                         float originX,
                         float originY,
                         float scale,
                         const glm::vec4& color) {
-        float px = originX, py = originY;
-        for (char raw : text) {
-            char c = static_cast<char>(std::toupper(static_cast<unsigned char>(raw)));
-            if (c == '\n') {
-                px = originX;
-                py += 9.0f * scale;
-                continue;
-            }
-            const auto& rows = glyph(c);
-            for (int row = 0; row < 7; ++row)
-                for (int col = 0; col < 5; ++col)
-                    if (rows[static_cast<std::size_t>(row)] & (1 << (4 - col)))
-                        addRect(vertices,
-                                px + col * scale,
-                                py + row * scale,
-                                scale,
-                                scale,
-                                color,
-                                width,
-                                height);
-            px += 6.0f * scale;
-        }
+        textGeometry_->append(vertices, text, originX, originY, scale, color, width, height);
     };
     const float slot = 44.0f, gap = 4.0f, total = 9 * slot + 8 * gap,
                 start = (width - total) * 0.5f, y = height - 58.0f;
@@ -1720,11 +1860,16 @@ void Renderer::renderHud(int width,
         addRect(vertices, panelX, panelY, panelW, 54, {0.04f, 0.03f, 0.025f, 0.88f}, width, height);
         drawText(craftingText, panelX + 12, panelY + 9, 1.5f, {0.98f, 0.86f, 0.58f, 1});
     }
-    glBindBuffer(GL_ARRAY_BUFFER, uiVbo_);
-    glBufferData(GL_ARRAY_BUFFER,
-                 static_cast<GLsizeiptr>(vertices.size() * sizeof(UiVertex)),
-                 vertices.data(),
-                 GL_STREAM_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, hudVbo_);
+    const std::size_t bytes = vertices.size() * sizeof(UiVertex);
+    auto& uploaded = textGeometry_->uploadedHud;
+    if (uploaded.size() != vertices.size() ||
+        (bytes && std::memcmp(uploaded.data(), vertices.data(), bytes) != 0)) {
+        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(bytes),
+                     vertices.data(), GL_STREAM_DRAW);
+        if (bytes <= TextGeometryCache::MaximumBytes) uploaded = vertices;
+        else std::vector<UiVertex>().swap(uploaded);
+    }
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_CULL_FACE);
     glEnable(GL_BLEND);
@@ -1733,7 +1878,7 @@ void Renderer::renderHud(int width,
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, itemTexture_);
     glUniform1i(uiItemAtlasUniform_, 0);
-    glBindVertexArray(uiVao_);
+    glBindVertexArray(hudVao_);
     glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
     glBindVertexArray(0);
     glDisable(GL_BLEND);
@@ -1750,7 +1895,9 @@ void Renderer::renderItemSprites(const std::vector<RenderItemSprite>& sprites,
     const EntityVisibility visibility(view, projection, maximumDistance);
     glm::mat4 inv = glm::inverse(view);
     glm::vec3 right = glm::normalize(glm::vec3(inv[0])), up = glm::normalize(glm::vec3(inv[1]));
-    std::vector<float> vertices;
+    thread_local std::vector<float> verticesStorage;
+    RenderScratch<float> verticesScratch(verticesStorage, 524288);
+    auto& vertices = verticesScratch.get();
     vertices.reserve(sprites.size() * 30);
     auto push = [&](glm::vec3 p, float u, float v) {
         vertices.insert(vertices.end(), {p.x, p.y, p.z, u, v});
@@ -1782,9 +1929,9 @@ void Renderer::renderItemSprites(const std::vector<RenderItemSprite>& sprites,
                  GL_STREAM_DRAW);
     glUseProgram(itemProgram_);
     glUniformMatrix4fv(
-        glGetUniformLocation(itemProgram_, "uView"), 1, GL_FALSE, glm::value_ptr(view));
+        itemUniforms_.view, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(
-        glGetUniformLocation(itemProgram_, "uProjection"), 1, GL_FALSE, glm::value_ptr(projection));
+        itemUniforms_.projection, 1, GL_FALSE, glm::value_ptr(projection));
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, itemTexture_);
     glUniform1i(itemAtlasUniform_, 0);
@@ -1806,18 +1953,18 @@ void Renderer::renderSelectionOutline(const glm::ivec3& block, Block type,
                                                         (minimum + maximum) * .5f);
     model = glm::scale(model, (maximum - minimum) + glm::vec3(.006f));
     glUniformMatrix4fv(
-        glGetUniformLocation(entityProgram_, "uModel"), 1, GL_FALSE, glm::value_ptr(model));
+        entityUniforms_.model, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(
-        glGetUniformLocation(entityProgram_, "uView"), 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(entityProgram_, "uProjection"),
+        entityUniforms_.view, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(entityUniforms_.projection,
                        1,
                        GL_FALSE,
                        glm::value_ptr(projection));
     glm::vec3 color(.03f);
     glm::vec3 sun(0, 1, 0);
-    glUniform3fv(glGetUniformLocation(entityProgram_, "uColor"), 1, glm::value_ptr(color));
-    glUniform3fv(glGetUniformLocation(entityProgram_, "uSunDirection"), 1, glm::value_ptr(sun));
-    glUniform1f(glGetUniformLocation(entityProgram_, "uDaylight"), 1);
+    glUniform3fv(entityUniforms_.color, 1, glm::value_ptr(color));
+    glUniform3fv(entityUniforms_.sunDirection, 1, glm::value_ptr(sun));
+    glUniform1f(entityUniforms_.daylight, 1);
     glBindVertexArray(entityVao_);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glLineWidth(2);
@@ -1832,17 +1979,17 @@ void Renderer::renderMobOutline(const RenderCuboid& bounds,
     glm::mat4 model = glm::translate(glm::mat4(1), bounds.center);
     model = glm::scale(model, bounds.size * 1.018f);
     glUniformMatrix4fv(
-        glGetUniformLocation(entityProgram_, "uModel"), 1, GL_FALSE, glm::value_ptr(model));
+        entityUniforms_.model, 1, GL_FALSE, glm::value_ptr(model));
     glUniformMatrix4fv(
-        glGetUniformLocation(entityProgram_, "uView"), 1, GL_FALSE, glm::value_ptr(view));
-    glUniformMatrix4fv(glGetUniformLocation(entityProgram_, "uProjection"),
+        entityUniforms_.view, 1, GL_FALSE, glm::value_ptr(view));
+    glUniformMatrix4fv(entityUniforms_.projection,
                        1,
                        GL_FALSE,
                        glm::value_ptr(projection));
     glm::vec3 color(1.0f, .88f, .28f), sun(0, 1, 0);
-    glUniform3fv(glGetUniformLocation(entityProgram_, "uColor"), 1, glm::value_ptr(color));
-    glUniform3fv(glGetUniformLocation(entityProgram_, "uSunDirection"), 1, glm::value_ptr(sun));
-    glUniform1f(glGetUniformLocation(entityProgram_, "uDaylight"), 1);
+    glUniform3fv(entityUniforms_.color, 1, glm::value_ptr(color));
+    glUniform3fv(entityUniforms_.sunDirection, 1, glm::value_ptr(sun));
+    glUniform1f(entityUniforms_.daylight, 1);
     glDisable(GL_CULL_FACE);
     glBindVertexArray(entityVao_);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -1854,7 +2001,9 @@ void Renderer::renderMobOutline(const RenderCuboid& bounds,
 }
 void Renderer::renderMainMenu(int width, int height, int hovered, bool pressed,
                               bool buttonsVisible, bool standaloneDemo, double now) const {
-    std::vector<UiVertex> vertices;
+    thread_local std::vector<UiVertex> verticesStorage;
+    RenderScratch<UiVertex> verticesScratch(verticesStorage, 2097152);
+    auto& vertices = verticesScratch.get();
     const float windowAspect = static_cast<float>(width) / height;
     // Cover the window: crop the longer image axis, never distort the image.
     const float uSpan = std::min(1.0f, windowAspect / panoramaAspectRatio_);
@@ -1933,7 +2082,7 @@ void Renderer::renderMainMenu(int width, int height, int hovered, bool pressed,
     glUseProgram(panoramaProgram_);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, panoramaTexture_);
-    glUniform1i(glGetUniformLocation(panoramaProgram_, "uItemAtlas"), 0);
+    glUniform1i(panoramaUniforms_.itemAtlas, 0);
     glBindVertexArray(uiVao_);
     glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size()));
     glBindVertexArray(0);
@@ -1951,7 +2100,9 @@ void Renderer::renderMenu(int width,
                           bool standaloneDemo,
                           bool showSaveWarning,
                           bool audioPage) const {
-    std::vector<UiVertex> vertices;
+    thread_local std::vector<UiVertex> verticesStorage;
+    RenderScratch<UiVertex> verticesScratch(verticesStorage, 2097152);
+    auto& vertices = verticesScratch.get();
     auto drawText = [&](std::string value, float x, float y, float scale, glm::vec4 color) {
         for (char raw : value) {
             const auto& rows = glyph(
@@ -2192,7 +2343,9 @@ void Renderer::renderMenu(int width,
 
 void Renderer::renderControlsMenu(int width, int height, int hovered,
                                   const GameSettings& settings, int activeBinding) const {
-    std::vector<UiVertex> vertices;
+    thread_local std::vector<UiVertex> verticesStorage;
+    RenderScratch<UiVertex> verticesScratch(verticesStorage, 2097152);
+    auto& vertices = verticesScratch.get();
     vertices.reserve(14000);
     auto drawText = [&](const std::string& value, float x, float y, float scale,
                         const glm::vec4& color) {
@@ -2312,7 +2465,9 @@ void Renderer::drawMenuVertices(const void* data, std::size_t count) const {
 
 void Renderer::renderSettingsCategories(int width, int height, int hovered,
                                         const GameSettings& settings, bool video) const {
-    std::vector<UiVertex> vertices;
+    thread_local std::vector<UiVertex> verticesStorage;
+    RenderScratch<UiVertex> verticesScratch(verticesStorage, 2097152);
+    auto& vertices = verticesScratch.get();
     menuPanel(vertices,video ? "VIDEO SETTINGS" : "SETTINGS",width,height);
     const std::array<std::string,4> categories{"VIDEO","AUDIO","CONTROLS","BACK"};
     if (!video) {
@@ -2356,7 +2511,9 @@ void Renderer::renderWorldMenu(int width, int height, int hovered, bool creating
                                const std::vector<SavedWorld>& worlds, int page, int selected,
                                const std::string& name, const std::string& seed, GameMode mode,
                                int field, const std::string& message, double now) const {
-    std::vector<UiVertex> vertices;
+    thread_local std::vector<UiVertex> verticesStorage;
+    RenderScratch<UiVertex> verticesScratch(verticesStorage, 2097152);
+    auto& vertices = verticesScratch.get();
     menuPanel(vertices,creating ? "CREATE NEW WORLD" : "SELECT WORLD",width,height);
     const auto p=MenuLayout::panel(width,height);
     if (creating) {
@@ -2409,7 +2566,9 @@ void Renderer::renderResetMenu(int width,
                                int hovered,
                                const std::string& seedText,
                                GameMode mode) const {
-    std::vector<UiVertex> vertices;
+    thread_local std::vector<UiVertex> verticesStorage;
+    RenderScratch<UiVertex> verticesScratch(verticesStorage, 2097152);
+    auto& vertices = verticesScratch.get();
     auto drawText = [&](std::string value, float x, float y, float scale, glm::vec4 color) {
         for (char raw : value) {
             const auto& rows = glyph(

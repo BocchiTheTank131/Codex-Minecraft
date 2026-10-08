@@ -4,6 +4,7 @@
 #include "Player.h"
 #include "SaveFile.h"
 #include "Definitions.h"
+#include "RenderScratch.h"
 
 #include <algorithm>
 #include <array>
@@ -2101,20 +2102,20 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
         for (int dx = -1; dx <= 1; ++dx)
             neighbors[static_cast<std::size_t>(dz + 1)][static_cast<std::size_t>(dx + 1)] =
                 findChunk(chunkX + dx, chunkZ + dz);
-    for (int z = -sunlightHalo; z < CHUNK_SIZE + sunlightHalo; ++z) {
-        const int offsetZ = z < 0 ? -1 : (z >= CHUNK_SIZE ? 1 : 0);
-        for (int x = -sunlightHalo; x < CHUNK_SIZE + sunlightHalo; ++x) {
-            const int offsetX = x < 0 ? -1 : (x >= CHUNK_SIZE ? 1 : 0);
-            const Chunk* source = neighbors[static_cast<std::size_t>(offsetZ + 1)]
-                                           [static_cast<std::size_t>(offsetX + 1)];
-            if (!source)
-                continue;
-            const int localX = x - offsetX * CHUNK_SIZE;
-            const int localZ = z - offsetZ * CHUNK_SIZE;
-            for (int y = 0; y < input.meshHeight; ++y) {
-                const std::size_t target =
-                    static_cast<std::size_t>(
-                        (y * span + z + sunlightHalo) * span + x + sunlightHalo);
+    // X is contiguous in both arrays. Keep every original halo coordinate and
+    // value, but traverse Y/Z/X instead of striding vertically through columns.
+    for (int y = 0; y < input.meshHeight; ++y) {
+        for (int z = -sunlightHalo; z < CHUNK_SIZE + sunlightHalo; ++z) {
+            const int offsetZ = z < 0 ? -1 : (z >= CHUNK_SIZE ? 1 : 0);
+            for (int x = -sunlightHalo; x < CHUNK_SIZE + sunlightHalo; ++x) {
+                const int offsetX = x < 0 ? -1 : (x >= CHUNK_SIZE ? 1 : 0);
+                const Chunk* source = neighbors[static_cast<std::size_t>(offsetZ + 1)]
+                                               [static_cast<std::size_t>(offsetX + 1)];
+                if (!source) continue;
+                const int localX = x - offsetX * CHUNK_SIZE;
+                const int localZ = z - offsetZ * CHUNK_SIZE;
+                const std::size_t target = static_cast<std::size_t>(
+                    (y * span + z + sunlightHalo) * span + x + sunlightHalo);
                 const std::size_t sourceIndex = localIndex(localX, y, localZ);
                 input.blocks[target] = source->blocks[sourceIndex];
                 input.packedLight[target] = source->packedLight[sourceIndex];
@@ -2127,6 +2128,7 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
 void World::meshWorkerLoop() {
     while (!stopping_) {
         MeshInput input;
+        MeshOutput reusable;
         {
             std::unique_lock<std::mutex> lock(meshMutex_);
             meshCv_.wait(lock, [&] { return stopping_ || !meshQueue_.empty(); });
@@ -2135,8 +2137,12 @@ void World::meshWorkerLoop() {
             input = std::move(meshQueue_.front());
             meshQueue_.pop_front();
             meshWorkerBusy_ = true;
+            if (!recycledMeshes_.empty()) {
+                reusable = std::move(recycledMeshes_.front());
+                recycledMeshes_.pop_front();
+            }
         }
-        MeshOutput result = buildMesh(input);
+        MeshOutput result = buildMesh(input, std::move(reusable));
         {
             std::lock_guard<std::mutex> lock(meshMutex_);
             meshWorkerBusy_ = false;
@@ -2144,6 +2150,19 @@ void World::meshWorkerLoop() {
                 completedMeshes_.push_back(std::move(result));
         }
     }
+}
+
+void World::recycleMeshOutput(MeshOutput result) {
+    // At most two returned outputs, at most 6 MiB total retained capacity.
+    if (result.opaque.capacity() > (2 * 1024 * 1024) / sizeof(VoxelVertex))
+        std::vector<VoxelVertex>().swap(result.opaque);
+    if (result.water.capacity() > (1024 * 1024) / sizeof(VoxelVertex))
+        std::vector<VoxelVertex>().swap(result.water);
+    result.opaque.clear();
+    result.water.clear();
+    std::lock_guard<std::mutex> lock(meshMutex_);
+    if (recycledMeshes_.size() < 2 && !stopping_)
+        recycledMeshes_.push_back(std::move(result));
 }
 
 void World::uploadMeshResult(const MeshOutput& result) {
@@ -2180,23 +2199,29 @@ void World::uploadCompletedMeshes(int budget) {
                     pendingMeshKeys_.erase(pending);
             }
         }
-        if (result.epoch != meshEpoch_)
+        if (result.epoch != meshEpoch_) {
+            recycleMeshOutput(std::move(result));
             continue;
+        }
         const std::int64_t key = chunkKey(result.x, result.z);
         Chunk* chunk = findChunk(result.x, result.z);
-        if (!chunk)
+        if (!chunk) {
+            recycleMeshOutput(std::move(result));
             continue;
+        }
         if (chunk->meshIdentity != result.identity ||
             chunk->meshRevision != result.revision) {
             if (dirtySet_.find(key) != dirtySet_.end()) {
                 priorityDirtyKeys_.insert(key);
                 dirtyQueue_.push_front(key);
             }
+            recycleMeshOutput(std::move(result));
             continue;
         }
         dirtySet_.erase(key);
         priorityDirtyKeys_.erase(key);
         uploadMeshResult(result);
+        recycleMeshOutput(std::move(result));
     }
 }
 
@@ -2351,19 +2376,30 @@ bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) 
     output.write(reinterpret_cast<const char*>(&editCount), sizeof(editCount));
     output.write(reinterpret_cast<const char*>(&savedGenerationVersion),
                  sizeof(savedGenerationVersion));
+    constexpr std::size_t EditRecordBytes = sizeof(std::int32_t) * 2 +
+                                            sizeof(std::uint32_t) + sizeof(std::uint8_t);
+    thread_local std::array<char, 64 * 1024> editBuffer{};
+    std::size_t buffered = 0;
+    const auto flushEdits = [&] {
+        if (buffered) output.write(editBuffer.data(), static_cast<std::streamsize>(buffered));
+        buffered = 0;
+    };
+    const auto appendField = [&](const auto& value) {
+        std::memcpy(editBuffer.data() + buffered, &value, sizeof(value));
+        buffered += sizeof(value);
+    };
     for (const auto& chunkEdits : edits_) {
         const std::uint64_t packed = static_cast<std::uint64_t>(chunkEdits.first);
         const std::int32_t chunkX = static_cast<std::int32_t>(packed >> 32U);
         const std::int32_t chunkZ = static_cast<std::int32_t>(packed & 0xffffffffU);
         for (const auto& edit : chunkEdits.second) {
+            if (buffered + EditRecordBytes > editBuffer.size()) flushEdits();
             const std::uint32_t index = static_cast<std::uint32_t>(edit.first);
             const std::uint8_t value = blockDefinition(edit.second).saveId;
-            output.write(reinterpret_cast<const char*>(&chunkX), sizeof(chunkX));
-            output.write(reinterpret_cast<const char*>(&chunkZ), sizeof(chunkZ));
-            output.write(reinterpret_cast<const char*>(&index), sizeof(index));
-            output.write(reinterpret_cast<const char*>(&value), sizeof(value));
+            appendField(chunkX); appendField(chunkZ); appendField(index); appendField(value);
         }
     }
+    flushEdits();
     const char entityMagic[8] = {'V', 'X', 'E', 'N', 'T', 'S', '1', '\0'};
     output.write(entityMagic, sizeof(entityMagic));
     auto writeStack = [&](const ItemStack& stack) {
@@ -3775,10 +3811,15 @@ void World::rebuildTouchedChunks(
 }
 
 World::MeshOutput World::buildMesh(const MeshInput& input) {
+    return buildMesh(input, MeshOutput{});
+}
+
+World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
     const int chunkX = input.x;
     const int chunkZ = input.z;
     const auto rebuildStart = std::chrono::steady_clock::now();
-    MeshOutput result;
+    result.opaque.clear();
+    result.water.clear();
     result.x = chunkX;
     result.z = chunkZ;
     result.revision = input.revision;
@@ -3787,16 +3828,23 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
     std::vector<VoxelVertex>& opaqueVertices = result.opaque;
     std::vector<VoxelVertex>& waterVertices = result.water;
     opaqueVertices.reserve(12000);
-    waterVertices.reserve(3000);
+    const auto transparentVertices = [&]() -> std::vector<VoxelVertex>& {
+        if (waterVertices.capacity() == 0) waterVertices.reserve(3000);
+        return waterVertices;
+    };
     struct GreedyFace {
         int tile = 0;
         float sun = 0.0f;
         float blockLight = 0.0f;
         float ao = 1.0f;
     };
-    std::vector<GreedyFace> greedyFaces;
-    std::vector<int> greedySlots(
-        static_cast<std::size_t>(6 * input.meshHeight * CHUNK_SIZE * CHUNK_SIZE), -1);
+    thread_local std::vector<GreedyFace> greedyFaceStorage;
+    thread_local std::vector<int> greedySlotStorage;
+    RenderScratch<GreedyFace> faceScratch(greedyFaceStorage, 1024 * 1024);
+    RenderScratch<int> slotScratch(greedySlotStorage, 1024 * 1024);
+    auto& greedyFaces = faceScratch.get();
+    auto& greedySlots = slotScratch.get();
+    greedySlots.assign(static_cast<std::size_t>(6 * input.meshHeight * CHUNK_SIZE * CHUNK_SIZE), -1);
     const auto greedySlot = [&](int face, int x, int y, int z) {
         return static_cast<std::size_t>(
             ((face * input.meshHeight + y) * CHUNK_SIZE + z) * CHUNK_SIZE + x);
@@ -4138,7 +4186,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input) {
                     }
                     std::vector<VoxelVertex>& vertices =
                         (isWater(block) || block == Block::Glass || block == Block::Ice)
-                            ? waterVertices
+                            ? transparentVertices()
                             : opaqueVertices;
                     for (int vertex = 0; vertex < 6; ++vertex) {
                         const int corner = Indices[vertex];
@@ -4275,7 +4323,9 @@ void World::drawOpaque(const glm::mat4& viewProjection) const {
 
 void World::drawWater(const glm::mat4& viewProjection, const glm::vec3& cameraPosition) const {
     const auto planes = frustumPlanes(viewProjection);
-    std::vector<const Chunk*> visible;
+    thread_local std::vector<const Chunk*> visibleStorage;
+    RenderScratch<const Chunk*> visibleScratch(visibleStorage, 256 * 1024);
+    auto& visible = visibleScratch.get();
     for (const auto& entry : chunks_) {
         const int dx = entry.second->x - streamCenter_.x;
         const int dz = entry.second->z - streamCenter_.y;

@@ -342,6 +342,8 @@ private:
     std::condition_variable meshCv_;
     std::deque<MeshInput> meshQueue_;
     std::deque<MeshOutput> completedMeshes_;
+    // Returned only after upload/discard; the worker owns buffers while building.
+    std::deque<MeshOutput> recycledMeshes_;
     bool meshWorkerBusy_ = false;
     std::unordered_map<std::int64_t, std::uint64_t> pendingMeshKeys_;
     std::unordered_set<std::int64_t> priorityDirtyKeys_;
@@ -377,6 +379,8 @@ private:
     void meshWorkerLoop();
     MeshInput captureMeshInput(int chunkX, int chunkZ) const;
     static MeshOutput buildMesh(const MeshInput& input);
+    static MeshOutput buildMesh(const MeshInput& input, MeshOutput result);
+    void recycleMeshOutput(MeshOutput result);
     void uploadMeshResult(const MeshOutput& result);
     void dispatchMeshJobs(int budget);
     void uploadCompletedMeshes(int budget);
