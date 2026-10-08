@@ -111,6 +111,28 @@ struct MeshBounds {
     bool valid = false;
 };
 
+// Main/render-thread owned. Chunks hold a reference until their range is freed.
+// Ranges use vertex units so glMultiDrawArrays needs no byte conversions.
+class TerrainBufferPage {
+public:
+    struct Range { std::size_t first, count; };
+    explicit TerrainBufferPage(std::size_t vertices);
+    ~TerrainBufferPage();
+    TerrainBufferPage(const TerrainBufferPage&) = delete;
+    TerrainBufferPage& operator=(const TerrainBufferPage&) = delete;
+    bool allocate(std::size_t count, std::size_t& first);
+    void release(std::size_t first, std::size_t count) noexcept;
+
+    GLuint vao = 0;
+    GLuint vbo = 0;
+    std::size_t capacity = 0;
+    std::size_t allocated = 0;
+    std::size_t allocationCount = 0;
+    std::vector<Range> freeRanges;
+    mutable std::vector<GLint> drawFirst;
+    mutable std::vector<GLsizei> drawCount;
+};
+
 class Chunk {
 public:
     Chunk(int chunkX, int chunkZ, std::vector<Block> data = {});
@@ -128,8 +150,8 @@ public:
     std::vector<std::uint32_t> lightEmitters;
     void rebuildLightEmitterIndex();
     int highestRenderableY = -1;
-    GLuint opaqueVao = 0;
-    GLuint opaqueVbo = 0;
+    std::shared_ptr<TerrainBufferPage> opaquePage;
+    std::size_t opaqueFirstVertex = 0;
     GLsizei opaqueVertexCount = 0;
     std::size_t opaqueBufferCapacity = 0;
     GLuint waterVao = 0;
@@ -238,6 +260,7 @@ public:
     int pendingCpuMeshCount() const;
     int completedMeshCount() const;
     int renderedChunkCount() const { return renderedChunkCount_; }
+    int opaqueSubmissionCount() const { return opaqueSubmissionCount_; }
     float lastChunkRebuildMilliseconds() const { return lastChunkRebuildMilliseconds_; }
     float lastMeshUploadMilliseconds() const { return lastMeshUploadMilliseconds_; }
     std::size_t uploadedVertexCount() const { return uploadedVertexCount_; }
@@ -390,6 +413,9 @@ private:
     std::vector<std::uint8_t> blockLightScratch_;
     std::vector<BlockLightNode> blockLightQueueScratch_;
     mutable int renderedChunkCount_ = 0;
+    mutable int opaqueSubmissionCount_ = 0;
+    std::vector<std::shared_ptr<TerrainBufferPage>> terrainPages_;
+    mutable std::vector<TerrainBufferPage*> drawPages_;
     mutable VisibleChunks visibleChunks_;
     float lastChunkRebuildMilliseconds_ = 0.0f;
     float lastMeshUploadMilliseconds_ = 0.0f;
@@ -418,6 +444,8 @@ private:
     static MeshOutput buildMesh(const MeshInput& input, MeshOutput result);
     void recycleMeshOutput(MeshOutput result);
     void uploadMeshResult(const MeshOutput& result);
+    void uploadOpaqueMesh(Chunk& chunk, const std::vector<VoxelVertex>& vertices);
+    void releaseEmptyTerrainPages();
     void dispatchMeshJobs(int budget);
     void uploadCompletedMeshes(int budget);
     void requestChunksAround(int centerX, int centerZ);

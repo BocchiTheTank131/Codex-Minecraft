@@ -69,7 +69,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.9.0** has **101 inventory items**, **55 placeable block families**, **110 block
+Version **2.9.1** has **101 inventory items**, **55 placeable block families**, **110 block
 IDs/states including Air**, **61 crafting recipes**, and **13 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -197,6 +197,13 @@ terrain preview; `--crafting-preview` exercises the actual inventory/container t
 
 ## Windows Release
 
+### v2.9.1 performance update
+
+- Reduced repeated rendering work and reused temporary mesh/UI buffers.
+- Accelerated block-light rebuilds without changing light values.
+- Batched opaque terrain draws through shared buffer pages for better high-distance performance.
+- Preserved terrain generation, transparency, gameplay, and save compatibility.
+
 ### v2.9.0 menus and multiple worlds
 
 - Polished, responsive menu buttons with smooth hover feedback.
@@ -211,10 +218,10 @@ terrain preview; `--crafting-preview` exercises the actual inventory/container t
 
 Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
 
-| v2.9.0 download | Purpose | Persistence |
+| v2.9.1 download | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.9.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.9.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.9.1-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.9.1-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The

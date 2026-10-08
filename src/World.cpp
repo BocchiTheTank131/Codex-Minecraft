@@ -8,12 +8,15 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <limits>
+#include <stdexcept>
+#include <type_traits>
 
 namespace {
 constexpr std::array<glm::ivec3, 6> FaceNormals{
@@ -196,6 +199,19 @@ MeshBounds meshBounds(const std::vector<VoxelVertex>& vertices) {
     return bounds;
 }
 
+void configureTerrainAttributes() {
+    const std::size_t offsets[] = {offsetof(VoxelVertex, position), offsetof(VoxelVertex, uv),
+        offsetof(VoxelVertex, normal), offsetof(VoxelVertex, sunLight),
+        offsetof(VoxelVertex, blockLight), offsetof(VoxelVertex, ao),
+        offsetof(VoxelVertex, atlasTile)};
+    const GLint sizes[] = {3, 2, 3, 1, 1, 1, 1};
+    for (GLuint attribute = 0; attribute < 7; ++attribute) {
+        glEnableVertexAttribArray(attribute);
+        glVertexAttribPointer(attribute, sizes[attribute], GL_FLOAT, GL_FALSE,
+                              sizeof(VoxelVertex), reinterpret_cast<void*>(offsets[attribute]));
+    }
+}
+
 void uploadMesh(GLuint& vao,
                 GLuint& vbo,
                 GLsizei& count,
@@ -272,6 +288,65 @@ void uploadMesh(GLuint& vao,
 }
 } // namespace
 
+TerrainBufferPage::TerrainBufferPage(std::size_t vertices) : capacity(vertices) {
+    freeRanges.push_back({0, capacity});
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
+    glBindVertexArray(vao);
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(capacity * sizeof(VoxelVertex)),
+                 nullptr, GL_DYNAMIC_DRAW);
+    configureTerrainAttributes();
+    glBindVertexArray(0);
+}
+
+TerrainBufferPage::~TerrainBufferPage() {
+    if (vbo) glDeleteBuffers(1, &vbo);
+    if (vao) glDeleteVertexArrays(1, &vao);
+}
+
+bool TerrainBufferPage::allocate(std::size_t count, std::size_t& first) {
+    assert(count > 0);
+    for (std::size_t index = 0; index < freeRanges.size(); ++index) {
+        if (freeRanges[index].count < count) continue;
+        // Reserve while allocation can fail, so chunk destruction/unload never
+        // needs a heap allocation to return a range. Geometric capacity growth.
+        const std::size_t releaseSlots = freeRanges.size() + allocationCount + 1;
+        if (freeRanges.capacity() < releaseSlots)
+            freeRanges.reserve(std::max(releaseSlots, freeRanges.capacity() * 2));
+        auto& range = freeRanges[index];
+        first = range.first;
+        range.first += count;
+        range.count -= count;
+        if (!range.count) freeRanges.erase(freeRanges.begin() + index);
+        allocated += count;
+        ++allocationCount;
+        return true;
+    }
+    return false;
+}
+
+void TerrainBufferPage::release(std::size_t first, std::size_t count) noexcept {
+    assert(count && first <= capacity && count <= capacity - first && allocated >= count);
+    assert(allocationCount && freeRanges.size() < freeRanges.capacity());
+    auto next = std::lower_bound(freeRanges.begin(), freeRanges.end(), first,
+        [](const Range& range, std::size_t offset) { return range.first < offset; });
+    assert(next == freeRanges.end() || first + count <= next->first);
+    assert(next == freeRanges.begin() || (next - 1)->first + (next - 1)->count <= first);
+    auto current = freeRanges.insert(next, {first, count});
+    if (current != freeRanges.begin() && (current - 1)->first + (current - 1)->count == first) {
+        (current - 1)->count += count;
+        current = freeRanges.erase(current) - 1;
+    }
+    next = current + 1;
+    if (next != freeRanges.end() && current->first + current->count == next->first) {
+        current->count += next->count;
+        freeRanges.erase(next);
+    }
+    allocated -= count;
+    --allocationCount;
+}
+
 std::size_t BlockEntityPositionHash::operator()(const BlockEntityPosition& position) const {
     std::size_t hash = std::hash<int>{}(position.x);
     hash ^= std::hash<int>{}(position.y) + 0x9e3779b9U + (hash << 6U) + (hash >> 2U);
@@ -306,10 +381,8 @@ Chunk::Chunk(int chunkX, int chunkZ, std::vector<Block> data)
 }
 
 Chunk::~Chunk() {
-    if (opaqueVbo)
-        glDeleteBuffers(1, &opaqueVbo);
-    if (opaqueVao)
-        glDeleteVertexArrays(1, &opaqueVao);
+    if (opaquePage)
+        opaquePage->release(opaqueFirstVertex, opaqueBufferCapacity / sizeof(VoxelVertex));
     if (waterVbo)
         glDeleteBuffers(1, &waterVbo);
     if (waterVao)
@@ -1748,6 +1821,7 @@ void World::generate(int renderDistance, const glm::vec3& initialPosition) {
     requestRadius_ = -1;
     nextRequestOffset_ = 0;
     chunks_.clear();
+    releaseEmptyTerrainPages();
     pendingStructureMobs_.clear();
     pendingStructureMobIds_.clear();
     fluidQueue_.clear();
@@ -2011,6 +2085,7 @@ void World::unloadDistant(int centerX, int centerZ) {
             ++it;
         }
     }
+    releaseEmptyTerrainPages();
     std::lock_guard<std::mutex> lock(meshMutex_);
     const auto obsolete = [&](int x, int z) {
         const int dx = x - centerX;
@@ -2212,6 +2287,63 @@ void World::recycleMeshOutput(MeshOutput result) {
         recycledMeshes_.push_back(std::move(result));
 }
 
+void World::releaseEmptyTerrainPages() {
+    terrainPages_.erase(std::remove_if(terrainPages_.begin(), terrainPages_.end(),
+        [](const auto& page) { return page->allocated == 0; }), terrainPages_.end());
+}
+
+void World::uploadOpaqueMesh(Chunk& chunk, const std::vector<VoxelVertex>& vertices) {
+    const std::size_t bytes = vertices.size() * sizeof(VoxelVertex);
+    if (vertices.empty()) {
+        if (chunk.opaquePage) {
+            chunk.opaquePage->release(chunk.opaqueFirstVertex,
+                                      chunk.opaqueBufferCapacity / sizeof(VoxelVertex));
+            chunk.opaquePage.reset();
+        }
+        chunk.opaqueFirstVertex = chunk.opaqueBufferCapacity = 0;
+        chunk.opaqueVertexCount = 0;
+        releaseEmptyTerrainPages();
+        return;
+    }
+    if (vertices.size() > static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()))
+        throw std::length_error("Terrain mesh exceeds OpenGL vertex count");
+    if (!chunk.opaquePage || bytes > chunk.opaqueBufferCapacity) {
+        // A small aligned growth margin avoids relocating on every small edit.
+        constexpr std::size_t alignment = 256;
+        const std::size_t needed = (vertices.size() + vertices.size() / 8 + alignment - 1) /
+                                   alignment * alignment;
+        if (needed > static_cast<std::size_t>(std::numeric_limits<GLint>::max()))
+            throw std::length_error("Terrain allocation exceeds OpenGL first-vertex range");
+        std::shared_ptr<TerrainBufferPage> page;
+        std::size_t first = 0;
+        for (const auto& candidate : terrainPages_) {
+            if (candidate->allocate(needed, first)) { page = candidate; break; }
+        }
+        if (!page) {
+            // Fixed 8 MiB pages; only an oversized individual mesh gets a larger page.
+            constexpr std::size_t pageVertices = (8 * 1024 * 1024 / sizeof(VoxelVertex)) /
+                                                 alignment * alignment;
+            page = std::make_shared<TerrainBufferPage>(std::max(pageVertices, needed));
+            terrainPages_.push_back(page);
+            const bool allocated = page->allocate(needed, first);
+            assert(allocated);
+            (void)allocated;
+        }
+        if (chunk.opaquePage)
+            chunk.opaquePage->release(chunk.opaqueFirstVertex,
+                                      chunk.opaqueBufferCapacity / sizeof(VoxelVertex));
+        chunk.opaquePage = std::move(page);
+        chunk.opaqueFirstVertex = first;
+        chunk.opaqueBufferCapacity = needed * sizeof(VoxelVertex);
+        releaseEmptyTerrainPages();
+    }
+    glBindBuffer(GL_ARRAY_BUFFER, chunk.opaquePage->vbo);
+    glBufferSubData(GL_ARRAY_BUFFER,
+        static_cast<GLintptr>(chunk.opaqueFirstVertex * sizeof(VoxelVertex)),
+        static_cast<GLsizeiptr>(bytes), vertices.data());
+    chunk.opaqueVertexCount = static_cast<GLsizei>(vertices.size());
+}
+
 void World::uploadMeshResult(const MeshOutput& result) {
     Chunk* chunk = findChunk(result.x, result.z);
     if (!chunk)
@@ -2219,8 +2351,7 @@ void World::uploadMeshResult(const MeshOutput& result) {
     const auto uploadStart = std::chrono::steady_clock::now();
     uploadedVertexCount_ -= static_cast<std::size_t>(
         chunk->opaqueVertexCount + chunk->waterVertexCount);
-    uploadMesh(chunk->opaqueVao, chunk->opaqueVbo, chunk->opaqueVertexCount,
-               chunk->opaqueBufferCapacity, result.opaque);
+    uploadOpaqueMesh(*chunk, result.opaque);
     uploadMesh(chunk->waterVao, chunk->waterVbo, chunk->waterVertexCount,
                chunk->waterBufferCapacity, result.water);
     chunk->opaqueBounds = result.opaqueBounds;
@@ -4420,10 +4551,32 @@ const World::VisibleChunks& World::collectVisibleChunks(
 
 void World::drawOpaque(const VisibleChunks& visible) const {
     renderedChunkCount_ = 0;
+    opaqueSubmissionCount_ = 0;
+    const auto clearDrawList = [](auto& list) {
+        list.clear();
+        if (list.capacity() > 4096) {
+            using List = std::decay_t<decltype(list)>;
+            List().swap(list);
+        }
+    };
+    clearDrawList(drawPages_);
+    for (const auto& page : terrainPages_) {
+        clearDrawList(page->drawFirst);
+        clearDrawList(page->drawCount);
+    }
     for (const Chunk* chunk : visible.opaque) {
-        glBindVertexArray(chunk->opaqueVao);
-        glDrawArrays(GL_TRIANGLES, 0, chunk->opaqueVertexCount);
+        auto* page = chunk->opaquePage.get();
+        assert(page && chunk->opaqueFirstVertex + chunk->opaqueVertexCount <= page->capacity);
+        if (page->drawFirst.empty()) drawPages_.push_back(page);
+        page->drawFirst.push_back(static_cast<GLint>(chunk->opaqueFirstVertex));
+        page->drawCount.push_back(chunk->opaqueVertexCount);
         ++renderedChunkCount_;
+    }
+    for (const auto* page : drawPages_) {
+        glBindVertexArray(page->vao);
+        glMultiDrawArrays(GL_TRIANGLES, page->drawFirst.data(), page->drawCount.data(),
+                          static_cast<GLsizei>(page->drawCount.size()));
+        ++opaqueSubmissionCount_;
     }
     // The paired transparent pass restores VAO 0 once after both terrain passes.
 }
