@@ -773,6 +773,14 @@ Renderer::Renderer() {
     skyUniforms_ = cacheUniforms(skyProgram_);
     uiUniforms_ = cacheUniforms(uiProgram_);
     worldUniforms_ = cacheUniforms(worldProgram_);
+    // These terrain-program constants never change between draws. Preserve the
+    // caller's program binding; relinking would require initializing them again.
+    GLint previousProgram = 0;
+    glGetIntegerv(GL_CURRENT_PROGRAM, &previousProgram);
+    glUseProgram(worldProgram_);
+    glUniform1i(worldUniforms_.atlas, 0);
+    glUniform1f(worldUniforms_.atlasTiles, static_cast<float>(BlockAtlasTiles));
+    glUseProgram(static_cast<GLuint>(previousProgram));
     uiItemAtlasUniform_ = uiUniforms_.itemAtlas;
     itemAtlasUniform_ = itemUniforms_.itemAtlas;
     atlasTexture_ = createAtlasTexture();
@@ -1438,15 +1446,16 @@ void Renderer::renderWorld(const World& world,
                 spectatorInsideBlock ? GL_TRUE : GL_FALSE);
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, atlasTexture_);
-    glUniform1i(worldUniforms_.atlas, 0);
-    glUniform1f(worldUniforms_.atlasTiles, static_cast<float>(BlockAtlasTiles));
     glUniform1i(worldUniforms_.waterPass, GL_FALSE);
-    world.drawOpaque(vp);
-    glEnable(GL_BLEND);
+    const auto& visible = world.collectVisibleChunks(vp, camera);
+    world.drawOpaque(visible);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glDepthMask(GL_FALSE);
+    if (!visible.water.empty()) {
+        glEnable(GL_BLEND);
+        glDepthMask(GL_FALSE);
+    }
     glUniform1i(worldUniforms_.waterPass, GL_TRUE);
-    world.drawWater(vp, camera);
+    world.drawWater(visible);
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
 }

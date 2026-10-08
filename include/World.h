@@ -105,6 +105,12 @@ struct ChestData {
     std::array<ItemStack, 27> slots{};
 };
 
+struct MeshBounds {
+    glm::vec3 minimum{0};
+    glm::vec3 maximum{0};
+    bool valid = false;
+};
+
 class Chunk {
 public:
     Chunk(int chunkX, int chunkZ, std::vector<Block> data = {});
@@ -126,6 +132,8 @@ public:
     GLuint waterVbo = 0;
     GLsizei waterVertexCount = 0;
     std::size_t waterBufferCapacity = 0;
+    MeshBounds opaqueBounds;
+    MeshBounds waterBounds;
     std::uint64_t meshRevision = 0;
     std::uint64_t meshIdentity = 0;
 
@@ -149,6 +157,13 @@ public:
 
 class World {
 public:
+    struct VisibleChunks {
+        std::vector<const Chunk*> opaque;
+        std::vector<const Chunk*> water;
+        std::size_t traversed = 0;
+        std::size_t distanceAccepted = 0;
+        std::size_t legacyVisible = 0;
+    };
     explicit World(std::uint32_t seed = 2026);
     ~World();
 
@@ -164,6 +179,10 @@ public:
     std::vector<StructureMobMarker> takeActiveStructureMobMarkers(bool spawnAllowed = true);
     void drawOpaque(const glm::mat4& viewProjection) const;
     void drawWater(const glm::mat4& viewProjection, const glm::vec3& cameraPosition) const;
+    const VisibleChunks& collectVisibleChunks(const glm::mat4& viewProjection,
+                                             const glm::vec3& cameraPosition) const;
+    void drawOpaque(const VisibleChunks& visible) const;
+    void drawWater(const VisibleChunks& visible) const;
 
     Block getBlock(int x, int y, int z) const;
     void setBlock(int x, int y, int z, Block block);
@@ -277,6 +296,8 @@ private:
         std::uint64_t epoch = 0;
         std::vector<VoxelVertex> opaque;
         std::vector<VoxelVertex> water;
+        MeshBounds opaqueBounds;
+        MeshBounds waterBounds;
         float buildMilliseconds = 0.0f;
     };
     struct FluidCell {
@@ -355,6 +376,7 @@ private:
     glm::ivec2 streamCenter_{1000000, 1000000};
     bool blockLightingDirty_ = false;
     mutable int renderedChunkCount_ = 0;
+    mutable VisibleChunks visibleChunks_;
     float lastChunkRebuildMilliseconds_ = 0.0f;
     float lastMeshUploadMilliseconds_ = 0.0f;
     float lastBlockEditMilliseconds_ = 0.0f;

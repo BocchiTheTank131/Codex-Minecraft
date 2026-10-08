@@ -154,10 +154,8 @@ std::array<glm::vec4, 6> frustumPlanes(const glm::mat4& matrix) {
     return planes;
 }
 
-bool chunkInFrustum(const Chunk& chunk, const std::array<glm::vec4, 6>& planes) {
-    const glm::vec3 minimum(
-        static_cast<float>(chunk.x * CHUNK_SIZE), 0.0f, static_cast<float>(chunk.z * CHUNK_SIZE));
-    const glm::vec3 maximum = minimum + glm::vec3(CHUNK_SIZE, WORLD_HEIGHT, CHUNK_SIZE);
+bool boundsInFrustum(const glm::vec3& minimum, const glm::vec3& maximum,
+                     const std::array<glm::vec4, 6>& planes) {
     for (const glm::vec4& plane : planes) {
         const glm::vec3 positive(plane.x >= 0.0f ? maximum.x : minimum.x,
                                  plane.y >= 0.0f ? maximum.y : minimum.y,
@@ -166,6 +164,36 @@ bool chunkInFrustum(const Chunk& chunk, const std::array<glm::vec4, 6>& planes) 
             return false;
     }
     return true;
+}
+
+bool chunkInFrustum(const Chunk& chunk, const std::array<glm::vec4, 6>& planes) {
+    const glm::vec3 minimum(
+        static_cast<float>(chunk.x * CHUNK_SIZE), 0.0f, static_cast<float>(chunk.z * CHUNK_SIZE));
+    return boundsInFrustum(minimum, minimum + glm::vec3(CHUNK_SIZE, WORLD_HEIGHT, CHUNK_SIZE), planes);
+}
+
+bool meshInFrustum(const MeshBounds& bounds, const std::array<glm::vec4, 6>& planes) {
+    return bounds.valid && boundsInFrustum(bounds.minimum, bounds.maximum, planes);
+}
+
+MeshBounds meshBounds(const std::vector<VoxelVertex>& vertices) {
+    MeshBounds bounds;
+    if (vertices.empty()) return bounds;
+    bounds.valid = true;
+    bounds.minimum = bounds.maximum = vertices.front().position;
+    for (const VoxelVertex& vertex : vertices) {
+        bounds.minimum = glm::min(bounds.minimum, vertex.position);
+        bounds.maximum = glm::max(bounds.maximum, vertex.position);
+    }
+    // Include rasterization/rounding tolerance, scaled for distant coordinates
+    // where a fixed 0.01-block margin alone may round away. The terrain shader
+    // does not displace vertices; custom geometry is already in this mesh.
+    const glm::vec3 magnitude = glm::max(glm::abs(bounds.minimum), glm::abs(bounds.maximum));
+    const glm::vec3 padding = glm::vec3(0.01f) +
+        magnitude * (32.0f * std::numeric_limits<float>::epsilon());
+    bounds.minimum -= padding;
+    bounds.maximum += padding;
+    return bounds;
 }
 
 void uploadMesh(GLuint& vao,
@@ -2176,6 +2204,8 @@ void World::uploadMeshResult(const MeshOutput& result) {
                chunk->opaqueBufferCapacity, result.opaque);
     uploadMesh(chunk->waterVao, chunk->waterVbo, chunk->waterVertexCount,
                chunk->waterBufferCapacity, result.water);
+    chunk->opaqueBounds = result.opaqueBounds;
+    chunk->waterBounds = result.waterBounds;
     uploadedVertexCount_ += result.opaque.size() + result.water.size();
     lastChunkRebuildMilliseconds_ = result.buildMilliseconds;
     lastMeshUploadMilliseconds_ = std::chrono::duration<float, std::milli>(
@@ -4292,6 +4322,8 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
             }
         }
     }
+    result.opaqueBounds = meshBounds(opaqueVertices);
+    result.waterBounds = meshBounds(waterVertices);
     result.buildMilliseconds = std::chrono::duration<float, std::milli>(
         std::chrono::steady_clock::now() - rebuildStart).count();
     return result;
@@ -4303,37 +4335,35 @@ void World::rebuildChunk(int chunkX, int chunkZ) {
     uploadMeshResult(buildMesh(captureMeshInput(chunkX, chunkZ)));
 }
 
-void World::drawOpaque(const glm::mat4& viewProjection) const {
+const World::VisibleChunks& World::collectVisibleChunks(
+    const glm::mat4& viewProjection, const glm::vec3& cameraPosition) const {
     const auto planes = frustumPlanes(viewProjection);
-    renderedChunkCount_ = 0;
+    auto& visible = visibleChunks_;
+    const auto reset = [](std::vector<const Chunk*>& list) {
+        list.clear();
+        if (list.capacity() > (1024 * 1024) / sizeof(const Chunk*))
+            std::vector<const Chunk*>().swap(list);
+    };
+    reset(visible.opaque);
+    reset(visible.water);
+    visible.traversed = visible.distanceAccepted = visible.legacyVisible = 0;
     for (const auto& entry : chunks_) {
+        ++visible.traversed;
         const Chunk& chunk = *entry.second;
         const int dx = chunk.x - streamCenter_.x;
         const int dz = chunk.z - streamCenter_.y;
-        if (dx * dx + dz * dz > renderDistance_ * renderDistance_)
-            continue;
-        if (chunk.opaqueVertexCount == 0 || !chunkInFrustum(chunk, planes))
-            continue;
-        glBindVertexArray(chunk.opaqueVao);
-        glDrawArrays(GL_TRIANGLES, 0, chunk.opaqueVertexCount);
-        ++renderedChunkCount_;
+        if (dx * dx + dz * dz > renderDistance_ * renderDistance_) continue;
+        ++visible.distanceAccepted;
+        if ((!chunk.opaqueVertexCount && !chunk.waterVertexCount) ||
+            !chunkInFrustum(chunk, planes)) continue;
+        ++visible.legacyVisible;
+        if (chunk.opaqueVertexCount && meshInFrustum(chunk.opaqueBounds, planes))
+            visible.opaque.push_back(&chunk);
+        // Preserve the original sort input, including off-screen mesh bounds.
+        // Removing candidates before std::sort can reorder equal-distance ties.
+        if (chunk.waterVertexCount) visible.water.push_back(&chunk);
     }
-    glBindVertexArray(0);
-}
-
-void World::drawWater(const glm::mat4& viewProjection, const glm::vec3& cameraPosition) const {
-    const auto planes = frustumPlanes(viewProjection);
-    thread_local std::vector<const Chunk*> visibleStorage;
-    RenderScratch<const Chunk*> visibleScratch(visibleStorage, 256 * 1024);
-    auto& visible = visibleScratch.get();
-    for (const auto& entry : chunks_) {
-        const int dx = entry.second->x - streamCenter_.x;
-        const int dz = entry.second->z - streamCenter_.y;
-        if (dx * dx + dz * dz <= renderDistance_ * renderDistance_ &&
-            entry.second->waterVertexCount > 0 && chunkInFrustum(*entry.second, planes))
-            visible.push_back(entry.second.get());
-    }
-    std::sort(visible.begin(), visible.end(), [&](const Chunk* a, const Chunk* b) {
+    std::sort(visible.water.begin(), visible.water.end(), [&](const Chunk* a, const Chunk* b) {
         const glm::vec2 ac(a->x * CHUNK_SIZE + CHUNK_SIZE * 0.5f,
                            a->z * CHUNK_SIZE + CHUNK_SIZE * 0.5f);
         const glm::vec2 bc(b->x * CHUNK_SIZE + CHUNK_SIZE * 0.5f,
@@ -4341,13 +4371,38 @@ void World::drawWater(const glm::mat4& viewProjection, const glm::vec3& cameraPo
         const glm::vec2 camera(cameraPosition.x, cameraPosition.z);
         return glm::dot(ac - camera, ac - camera) > glm::dot(bc - camera, bc - camera);
     });
-    for (const Chunk* chunk : visible) {
+    visible.water.erase(std::remove_if(visible.water.begin(), visible.water.end(),
+        [&](const Chunk* chunk) { return !meshInFrustum(chunk->waterBounds, planes); }),
+        visible.water.end());
+    return visible;
+}
+
+void World::drawOpaque(const VisibleChunks& visible) const {
+    renderedChunkCount_ = 0;
+    for (const Chunk* chunk : visible.opaque) {
+        glBindVertexArray(chunk->opaqueVao);
+        glDrawArrays(GL_TRIANGLES, 0, chunk->opaqueVertexCount);
+        ++renderedChunkCount_;
+    }
+    // The paired transparent pass restores VAO 0 once after both terrain passes.
+}
+
+void World::drawWater(const VisibleChunks& visible) const {
+    for (const Chunk* chunk : visible.water) {
         glBindVertexArray(chunk->waterVao);
         glDrawArrays(GL_TRIANGLES, 0, chunk->waterVertexCount);
     }
     glBindVertexArray(0);
 }
 
+void World::drawOpaque(const glm::mat4& viewProjection) const {
+    drawOpaque(collectVisibleChunks(viewProjection, glm::vec3(0)));
+    glBindVertexArray(0);
+}
+
+void World::drawWater(const glm::mat4& viewProjection, const glm::vec3& cameraPosition) const {
+    drawWater(collectVisibleChunks(viewProjection, cameraPosition));
+}
 bool World::raycast(const glm::vec3& origin,
                     const glm::vec3& direction,
                     float maxDistance,
