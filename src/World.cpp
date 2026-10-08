@@ -291,6 +291,7 @@ Chunk::Chunk(int chunkX, int chunkZ, std::vector<Block> data)
     if (blocks.empty())
         blocks.resize(static_cast<std::size_t>(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE), Block::Air);
     packedLight.resize(blocks.size(), 0);
+    rebuildLightEmitterIndex();
     for (int y = WORLD_HEIGHT - 1; y >= 0 && highestRenderableY < 0; --y) {
         for (int localZ = 0; localZ < CHUNK_SIZE && highestRenderableY < 0; ++localZ) {
             for (int localX = 0; localX < CHUNK_SIZE; ++localX) {
@@ -326,11 +327,29 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
     if (localX < 0 || localX >= CHUNK_SIZE || localZ < 0 || localZ >= CHUNK_SIZE || y < 0 ||
         y >= WORLD_HEIGHT)
         return;
-    blocks[static_cast<std::size_t>((y * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX)] = block;
+    const auto index = static_cast<std::uint32_t>(
+        (y * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX);
+    const bool wasEmitter = blockLightEmission(blocks[index]) != 0;
+    const bool isEmitter = blockLightEmission(block) != 0;
+    if (wasEmitter != isEmitter) {
+        const auto position = std::lower_bound(lightEmitters.begin(), lightEmitters.end(), index);
+        if (isEmitter)
+            lightEmitters.insert(position, index);
+        else
+            lightEmitters.erase(position);
+    }
+    blocks[index] = block;
     // An upper bound is sufficient. Leaving it high after a removal avoids a
     // full-height scan on the player edit path.
     if (isRenderable(block))
         highestRenderableY = std::max(highestRenderableY, y);
+}
+
+void Chunk::rebuildLightEmitterIndex() {
+    lightEmitters.clear();
+    for (std::size_t index = 0; index < blocks.size(); ++index)
+        if (blockLightEmission(blocks[index]))
+            lightEmitters.push_back(static_cast<std::uint32_t>(index));
 }
 
 World::World(std::uint32_t seed)
@@ -1755,16 +1774,16 @@ void World::generate(int renderDistance, const glm::vec3& initialPosition) {
     if (center.hasStructure)
         queueLightingUpdate(centerX, centerZ, false);
     if (savedEdits != edits_.end()) {
-        bool containsSavedTorch = false;
+        bool containsSavedEmitter = false;
         for (const auto& edit : savedEdits->second) {
             const int localX = static_cast<int>(edit.first % CHUNK_SIZE);
             const int localZ = static_cast<int>((edit.first / CHUNK_SIZE) % CHUNK_SIZE);
             const int y = static_cast<int>(edit.first / (CHUNK_SIZE * CHUNK_SIZE));
             queueFluidNeighborhood(
                 centerX * CHUNK_SIZE + localX, y, centerZ * CHUNK_SIZE + localZ);
-            containsSavedTorch = containsSavedTorch || edit.second == Block::Torch;
+            containsSavedEmitter = containsSavedEmitter || blockLightEmission(edit.second) != 0;
         }
-        if (containsSavedTorch)
+        if (containsSavedEmitter)
             queueLightingUpdate(centerX, centerZ, false);
     }
     rebuildChunk(centerX, centerZ);
@@ -1941,12 +1960,12 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
         if (chunks_.find(key) != chunks_.end())
             continue;
         const auto edits = edits_.find(key);
-        bool containsSavedTorch = false;
+        bool containsSavedEmitter = false;
         if (edits != edits_.end()) {
             for (const auto& edit : edits->second) {
                 generated.blocks[edit.first] = edit.second;
-                if (edit.second == Block::Torch)
-                    containsSavedTorch = true;
+                if (blockLightEmission(edit.second) != 0)
+                    containsSavedEmitter = true;
             }
         }
         initializeGeneratedLoot(generated);
@@ -1956,7 +1975,7 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
         loadedChunk->meshIdentity = nextMeshIdentity_++;
         computeSunlight(*loadedChunk);
         chunks_.emplace(key, std::move(loadedChunk));
-        if (containsSavedTorch || generated.hasStructure)
+        if (containsSavedEmitter || generated.hasStructure)
             queueLightingUpdate(generated.x, generated.z, false);
         if (edits != edits_.end()) {
             for (const auto& edit : edits->second) {
@@ -2503,6 +2522,8 @@ void World::queueLightingUpdate(int chunkX, int chunkZ, bool highPriority) {
 void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
     constexpr int TargetRadiusChunks = 1;
     constexpr int LightRadius = 15;
+    constexpr int SourceSpan = 2 * TargetRadiusChunks + 3;
+    static_assert(LightRadius < CHUNK_SIZE, "source cache covers one halo chunk");
     const int targetMinimumX = (centerChunkX - TargetRadiusChunks) * CHUNK_SIZE;
     const int targetMaximumX = (centerChunkX + TargetRadiusChunks + 1) * CHUNK_SIZE - 1;
     const int targetMinimumZ = (centerChunkZ - TargetRadiusChunks) * CHUNK_SIZE;
@@ -2513,54 +2534,52 @@ void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
     const int calculationMaximumZ = targetMaximumZ + LightRadius;
     const int calculationWidth = calculationMaximumX - calculationMinimumX + 1;
     const int calculationDepth = calculationMaximumZ - calculationMinimumZ + 1;
-
-    struct LocalLightNode {
-        int x;
-        int y;
-        int z;
-        std::uint8_t level;
-    };
+    const int sourceMinimumChunkX = floorDiv(calculationMinimumX, CHUNK_SIZE);
+    const int sourceMinimumChunkZ = floorDiv(calculationMinimumZ, CHUNK_SIZE);
     const auto lightIndex = [&](int x, int y, int z) {
         return static_cast<std::size_t>(
             (y * calculationDepth + (z - calculationMinimumZ)) * calculationWidth +
             (x - calculationMinimumX));
     };
-    std::vector<std::uint8_t> localLight(
-        static_cast<std::size_t>(calculationWidth * calculationDepth * WORLD_HEIGHT), 0);
-    std::deque<LocalLightNode> queue;
-
-    const int sourceMinimumChunkX = floorDiv(calculationMinimumX, CHUNK_SIZE);
-    const int sourceMaximumChunkX = floorDiv(calculationMaximumX, CHUNK_SIZE);
-    const int sourceMinimumChunkZ = floorDiv(calculationMinimumZ, CHUNK_SIZE);
-    const int sourceMaximumChunkZ = floorDiv(calculationMaximumZ, CHUNK_SIZE);
-    for (int chunkZ = sourceMinimumChunkZ; chunkZ <= sourceMaximumChunkZ; ++chunkZ) {
-        for (int chunkX = sourceMinimumChunkX; chunkX <= sourceMaximumChunkX; ++chunkX) {
-            const Chunk* chunk = findChunk(chunkX, chunkZ);
+    // Chunk membership cannot change during this synchronous main-thread solve.
+    // Missing chunks remain Air, including propagation through their positions.
+    std::array<Chunk*, SourceSpan * SourceSpan> sourceChunks{};
+    auto& queue = blockLightQueueScratch_;
+    queue.clear();
+    for (int z = 0; z < SourceSpan; ++z) {
+        for (int x = 0; x < SourceSpan; ++x) {
+            const int chunkX = sourceMinimumChunkX + x;
+            const int chunkZ = sourceMinimumChunkZ + z;
+            Chunk* chunk = findChunk(chunkX, chunkZ);
+            sourceChunks[z * SourceSpan + x] = chunk;
             if (!chunk)
                 continue;
-            for (int y = 0; y < WORLD_HEIGHT; ++y) {
-                for (int localZ = 0; localZ < CHUNK_SIZE; ++localZ) {
-                    const int worldZ = chunkZ * CHUNK_SIZE + localZ;
-                    if (worldZ < calculationMinimumZ || worldZ > calculationMaximumZ)
-                        continue;
-                    for (int localX = 0; localX < CHUNK_SIZE; ++localX) {
-                        const int worldX = chunkX * CHUNK_SIZE + localX;
-                        if (worldX < calculationMinimumX || worldX > calculationMaximumX ||
-                            chunk->getLocal(localX, y, localZ) != Block::Torch)
-                            continue;
-                        localLight[lightIndex(worldX, y, worldZ)] = 15;
-                        queue.push_back({worldX, y, worldZ, 15});
-                    }
-                }
+            // Sorted indices preserve the original y/z/x source insertion order.
+            for (const std::uint32_t index : chunk->lightEmitters) {
+                const int worldX = chunkX * CHUNK_SIZE + index % CHUNK_SIZE;
+                const int worldZ = chunkZ * CHUNK_SIZE + (index / CHUNK_SIZE) % CHUNK_SIZE;
+                if (worldX < calculationMinimumX || worldX > calculationMaximumX ||
+                    worldZ < calculationMinimumZ || worldZ > calculationMaximumZ)
+                    continue;
+                queue.push_back({worldX, static_cast<int>(index / (CHUNK_SIZE * CHUNK_SIZE)),
+                                 worldZ, blockLightEmission(chunk->blocks[index])});
             }
         }
     }
-
+    const bool hasSources = !queue.empty();
+    if (hasSources) {
+        blockLightScratch_.resize(
+            static_cast<std::size_t>(calculationWidth * calculationDepth * WORLD_HEIGHT));
+        std::fill(blockLightScratch_.begin(), blockLightScratch_.end(), std::uint8_t{0});
+        for (const BlockLightNode& source : queue)
+            blockLightScratch_[lightIndex(source.x, source.y, source.z)] = source.level;
+    }
     constexpr std::array<glm::ivec3, 6> Directions{
         {{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}}};
-    while (!queue.empty()) {
-        const LocalLightNode node = queue.front();
-        queue.pop_front();
+    // FIFO traversal is unchanged. A copy is necessary because push_back can
+    // reallocate the vector; processed entries never retain dangling references.
+    for (std::size_t head = 0; head < queue.size(); ++head) {
+        const BlockLightNode node = queue[head];
         if (node.level <= 1)
             continue;
         const std::uint8_t nextLevel = static_cast<std::uint8_t>(node.level - 1);
@@ -2570,36 +2589,52 @@ void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
             const int z = node.z + direction.z;
             if (x < calculationMinimumX || x > calculationMaximumX ||
                 z < calculationMinimumZ || z > calculationMaximumZ || y < 0 ||
-                y >= WORLD_HEIGHT || occludesLight(getBlock(x, y, z)))
+                y >= WORLD_HEIGHT)
                 continue;
-            std::uint8_t& value = localLight[lightIndex(x, y, z)];
+            const int cacheX = x - sourceMinimumChunkX * CHUNK_SIZE;
+            const int cacheZ = z - sourceMinimumChunkZ * CHUNK_SIZE;
+            const Chunk* chunk = sourceChunks[
+                (cacheZ / CHUNK_SIZE) * SourceSpan + cacheX / CHUNK_SIZE];
+            const Block block = chunk ? chunk->blocks[localIndex(
+                cacheX % CHUNK_SIZE, y, cacheZ % CHUNK_SIZE)] : Block::Air;
+            if (occludesLight(block))
+                continue;
+            std::uint8_t& value = blockLightScratch_[lightIndex(x, y, z)];
             if (value >= nextLevel)
                 continue;
             value = nextLevel;
             queue.push_back({x, y, z, nextLevel});
         }
     }
-
     for (int chunkZ = centerChunkZ - TargetRadiusChunks;
-         chunkZ <= centerChunkZ + TargetRadiusChunks;
-         ++chunkZ) {
+         chunkZ <= centerChunkZ + TargetRadiusChunks; ++chunkZ) {
         for (int chunkX = centerChunkX - TargetRadiusChunks;
-             chunkX <= centerChunkX + TargetRadiusChunks;
-             ++chunkX) {
-            Chunk* chunk = findChunk(chunkX, chunkZ);
+             chunkX <= centerChunkX + TargetRadiusChunks; ++chunkX) {
+            Chunk* chunk = sourceChunks[
+                (chunkZ - sourceMinimumChunkZ) * SourceSpan + chunkX - sourceMinimumChunkX];
             if (!chunk)
                 continue;
             bool changed = false;
-            for (int y = 0; y < WORLD_HEIGHT; ++y) {
-                for (int localZ = 0; localZ < CHUNK_SIZE; ++localZ) {
-                    for (int localX = 0; localX < CHUNK_SIZE; ++localX) {
-                        const int worldX = chunkX * CHUNK_SIZE + localX;
+            if (!hasSources) {
+                // Empty-source solves must still erase the previous propagated
+                // field, preserve sunlight and dirty exactly the changed chunks.
+                for (std::uint8_t& light : chunk->packedLight) {
+                    changed = changed || (light & 0x0fU) != 0;
+                    light &= 0xf0U;
+                }
+            } else {
+                for (int y = 0; y < WORLD_HEIGHT; ++y) {
+                    for (int localZ = 0; localZ < CHUNK_SIZE; ++localZ) {
                         const int worldZ = chunkZ * CHUNK_SIZE + localZ;
-                        const std::uint8_t light = localLight[lightIndex(worldX, y, worldZ)];
-                        const std::size_t index = localIndex(localX, y, localZ);
-                        if (chunk->blockLightLocal(index) != light) {
-                            chunk->setBlockLightLocal(index, light);
-                            changed = true;
+                        const std::size_t fieldRow = lightIndex(chunkX * CHUNK_SIZE, y, worldZ);
+                        const std::size_t chunkRow = localIndex(0, y, localZ);
+                        for (int localX = 0; localX < CHUNK_SIZE; ++localX) {
+                            const std::uint8_t light = blockLightScratch_[fieldRow + localX];
+                            const std::size_t index = chunkRow + localX;
+                            if (chunk->blockLightLocal(index) != light) {
+                                chunk->setBlockLightLocal(index, light);
+                                changed = true;
+                            }
                         }
                     }
                 }
@@ -2608,6 +2643,11 @@ void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
                 markDirty(chunkX, chunkZ, true);
         }
     }
+    queue.clear();
+    // Keep at most 2 MiB of queue capacity after exceptional source density.
+    // The 78x78x256 field is fixed at 1.49 MiB and allocated only when needed.
+    if (queue.capacity() > 2 * 1024 * 1024 / sizeof(BlockLightNode))
+        std::vector<BlockLightNode>().swap(queue);
 }
 
 void World::rebuildBlockLighting() {
@@ -2622,15 +2662,14 @@ void World::rebuildBlockLighting() {
         Chunk& chunk = *entry.second;
         for (std::uint8_t& light : chunk.packedLight)
             light &= 0xf0U;
-        for (int y = 0; y < WORLD_HEIGHT; ++y)
-            for (int z = 0; z < CHUNK_SIZE; ++z)
-                for (int x = 0; x < CHUNK_SIZE; ++x) {
-                    if (chunk.getLocal(x, y, z) == Block::Torch) {
-                        chunk.setBlockLightLocal(localIndex(x, y, z), 15);
-                        queue.push_back(
-                            {chunk.x * CHUNK_SIZE + x, y, chunk.z * CHUNK_SIZE + z, 15});
-                    }
-                }
+        for (const std::uint32_t index : chunk.lightEmitters) {
+            const std::uint8_t level = blockLightEmission(chunk.blocks[index]);
+            chunk.setBlockLightLocal(index, level);
+            queue.push_back({chunk.x * CHUNK_SIZE + static_cast<int>(index % CHUNK_SIZE),
+                             static_cast<int>(index / (CHUNK_SIZE * CHUNK_SIZE)),
+                             chunk.z * CHUNK_SIZE + static_cast<int>((index / CHUNK_SIZE) % CHUNK_SIZE),
+                             level});
+        }
     }
     constexpr glm::ivec3 directions[6] = {
         {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1}};
@@ -3392,6 +3431,8 @@ bool World::runFluidSmokeTest(std::string& report) {
 
     centerChunk->blocks = originalCenterBlocks;
     eastChunk->blocks = originalEastBlocks;
+    centerChunk->rebuildLightEmitterIndex();
+    eastChunk->rebuildLightEmitterIndex();
     if (hadCenterEdits)
         edits_[centerKey] = originalCenterEdits;
     else
@@ -3519,7 +3560,7 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
     const bool nearbySkyChanged =
         skylightAttenuation(previous) != skylightAttenuation(block);
 
-    bool affectsBlockLighting = previous == Block::Torch || block == Block::Torch ||
+    bool affectsBlockLighting = blockLightEmission(previous) || blockLightEmission(block) ||
                                 blockLightAt(x, y, z) > 0;
     if (!affectsBlockLighting) {
         for (const glm::ivec3& direction : FaceNormals) {

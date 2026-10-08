@@ -123,6 +123,10 @@ public:
     int z = 0;
     std::vector<Block> blocks;
     std::vector<std::uint8_t> packedLight;
+    // Sorted local indices, owned by the chunk. Bulk block replacement must
+    // rebuild this index; ordinary mutations go through setLocal.
+    std::vector<std::uint32_t> lightEmitters;
+    void rebuildLightEmitterIndex();
     int highestRenderableY = -1;
     GLuint opaqueVao = 0;
     GLuint opaqueVbo = 0;
@@ -375,6 +379,16 @@ private:
     int simulationDistance_ = 7;
     glm::ivec2 streamCenter_{1000000, 1000000};
     bool blockLightingDirty_ = false;
+    struct BlockLightNode {
+        int x;
+        int y;
+        int z;
+        std::uint8_t level;
+    };
+    // Only the main-thread light solver uses these. The field is bounded by
+    // its fixed calculation region; unusually large queues are released.
+    std::vector<std::uint8_t> blockLightScratch_;
+    std::vector<BlockLightNode> blockLightQueueScratch_;
     mutable int renderedChunkCount_ = 0;
     mutable VisibleChunks visibleChunks_;
     float lastChunkRebuildMilliseconds_ = 0.0f;

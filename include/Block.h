@@ -146,6 +146,12 @@ inline float waterHeight(Block b) {
 inline bool isTorch(Block b) {
     return b == Block::Torch;
 }
+
+// The existing block-light solver's source levels. Keep indexing and solving
+// on the same definition; non-emissive blocks must not enter the source index.
+inline std::uint8_t blockLightEmission(Block block) {
+    return block == Block::Torch ? 15U : 0U;
+}
 inline bool isCrop(Block b) {
     return b >= Block::Crop0 && b <= Block::Crop3;
 }
