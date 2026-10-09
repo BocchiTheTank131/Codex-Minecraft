@@ -8,7 +8,7 @@ std::int64_t FarmingSystem::key(const glm::ivec3& p) {
 }
 void FarmingSystem::plant(World& w, const glm::ivec3& p) {
     if (w.getBlock(p.x, p.y, p.z) == Block::Air &&
-        w.getBlock(p.x, p.y - 1, p.z) == Block::Farmland) {
+        (w.getBlock(p.x, p.y - 1, p.z) == Block::Farmland || w.getBlock(p.x, p.y - 1, p.z) == Block::WetFarmland)) {
         w.setBlock(p.x, p.y, p.z, Block::Crop0);
         growth_[key(p)] = 0;
     }
@@ -43,7 +43,7 @@ void FarmingSystem::update(float dt, World& w, const glm::vec3& player) {
             ++it;
             continue;
         }
-        it->second += dt;
+        it->second += dt * (w.getBlock(x,y-1,z)==Block::WetFarmland ? 1.25f : 1.0f);
         if (it->second >= 18.f && b != Block::Crop3) {
             it->second = 0;
             w.setBlock(x, y, z, (Block)((int)b + 1));

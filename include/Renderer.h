@@ -30,6 +30,10 @@ public:
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
 
+    void setWeather(float rain,float storm,float flash,bool fog,float wetness) {
+        weather_={rain,storm,flash,fog ? 1.0f : 0.0f}; weatherWetness_=wetness;
+    }
+    void renderWeatherSettings(int width,int height,int hovered,const GameSettings& settings) const;
     void renderSky(const glm::mat4& view, const glm::mat4& projection, float worldTime) const;
     void renderWorld(const World& world,
                      const glm::mat4& view,
@@ -167,6 +171,8 @@ private:
         GLint underwater = -1;
         GLint view = -1;
         GLint waterPass = -1;
+        GLint weather = -1;
+        GLint wetness = -1;
     };
     static ProgramUniforms cacheUniforms(GLuint program);
     ProgramUniforms billboardUniforms_;
@@ -201,6 +207,8 @@ private:
     std::vector<Particle> particles_;
     int particlePercent_ = 100;
     int effectQuality_ = 2;
+    glm::vec4 weather_{0};
+    float weatherWetness_=0;
     mutable int visibleEntityCount_ = 0;
     static GLuint compileShader(GLenum type, const char* source);
     static GLuint linkProgram(GLuint vertexShader, GLuint fragmentShader);

@@ -1,4 +1,5 @@
 #include "Survival.h"
+#include "Weather.h"
 #include "SaveFile.h"
 #include "Sound.h"
 #include "UiLayout.h"
@@ -290,6 +291,7 @@ const std::vector<Recipe>& recipes() {
                            Item::Ladder,
                            3,
                            true));
+        r.push_back(recipe(1, 3, {Item::CopperIngot, Item::CopperIngot, Item::CopperIngot}, Item::LightningRod, 1, true));
         r.push_back(recipe(2, 1, {Item::Cobblestone, Item::Vine}, Item::MossyCobblestone, 1, false, false, true));
         r.push_back(recipe(2, 1, {Item::StoneBricks, Item::Vine}, Item::MossyStoneBricks, 1, false, false, true));
         for (Item plank : {Item::Planks, Item::BirchPlanks})
@@ -2141,6 +2143,23 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
                 else if (distance < 12.0f) desired = glm::vec2(0);
             }
             active = true;
+        } else if (a.type == AnimalType::Villager && weather_ && weather_->intensity()>.4f &&
+                   Weather::precipitation(w,static_cast<int>(std::floor(a.position.x)),static_cast<int>(std::floor(a.position.z)))!=Precipitation::None) {
+            desired=glm::vec2(0); active=false;
+            if(Weather::exposed(w,a.position+glm::vec3(0,1.5f,0))) {
+                // Search only at the existing think cadence and while exposed.
+                glm::vec3 shelter=a.home;
+                float best=std::numeric_limits<float>::max();
+                for(int z=-6;z<=6;z+=2) for(int x=-6;x<=6;x+=2) {
+                    const glm::vec3 p=a.position+glm::vec3(x,0,z);
+                    if (!Weather::exposed(w,p+glm::vec3(0,1.5f,0)) &&
+                        !w.aabbIntersectsSolid(p-glm::vec3(.3f,0,.3f),p+glm::vec3(.3f,1.8f,.3f))) {
+                        const float d=glm::dot(p-a.position,p-a.position);
+                        if(d<best) {best=d;shelter=p;}
+                    }
+                }
+                desired={shelter.x-a.position.x,shelter.z-a.position.z}; active=true;
+            }
         } else if (!hostile && preferredFood && visible) {
             desired = glm::vec2(delta.x, delta.z);
             active = true;
@@ -3299,4 +3318,18 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
                   std::to_string(rateRatio) + "x), exact stacked arrow volleys, two archer sources, projectile immunity, fall damage, melee/explosion cooldowns, four named roles, old billboard/Wolf saves, and Creative immunity passed"
                 : "combat regression: " + firstFailure;
     return ok;
+}
+
+void SurvivalWorld::lightningDamage(const glm::vec3& center,const World& world) {
+    for(auto& animal:animals_) {
+        if(animal.deathTimer>0 || animal.health<=0 || glm::distance(animal.position+glm::vec3(0,.8f,0),center)>3) continue;
+        const glm::vec3 delta=animal.position+glm::vec3(0,.8f,0)-center;
+        RayHit hit;
+        if(glm::length(delta)>.01f && world.raycast(center+glm::vec3(0,.15f,0),glm::normalize(delta),glm::length(delta),hit)) continue;
+        animal.health-=5; animal.hurtFlash=.25f;
+        if(animal.health<=0) {
+            animal.deathTimer=.65f; releaseDrops(animal); spawnExperience(animal.position,4);
+            if(sounds_) sounds_->playMobDeath(mobSoundType(static_cast<std::uint8_t>(animal.type)),animal.position);
+        }
+    }
 }

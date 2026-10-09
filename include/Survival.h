@@ -116,6 +116,7 @@ enum class Item : std::uint8_t {
     PolishedGranite,
     PolishedDiorite,
     PolishedAndesite,
+    LightningRod,
     Count
 };
 
@@ -275,6 +276,7 @@ struct AttackResult {
     glm::vec3 position{0};
 };
 
+class Weather;
 class SurvivalWorld {
 public:
     struct MobDiagnostics {
@@ -290,6 +292,8 @@ public:
     };
     explicit SurvivalWorld(std::uint32_t seed);
     void setSoundSystem(SoundSystem* sounds) { sounds_ = sounds; }
+    void setWeather(const Weather* weather) { weather_ = weather; }
+    void lightningDamage(const glm::vec3& center, const World& world);
     void
     update(float deltaTime, World& world, Player& player, Inventory& inventory, float daylight);
     void spawnDrop(const glm::vec3& position,
@@ -370,6 +374,7 @@ private:
     };
     std::uint32_t seed_ = 0;
     SoundSystem* sounds_ = nullptr;
+    const Weather* weather_ = nullptr;
     std::vector<Animal> animals_;
     std::vector<Drop> drops_;
     std::vector<ExperienceOrb> experienceOrbs_;

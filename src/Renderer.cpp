@@ -206,6 +206,8 @@ uniform vec3 uCameraPosition;
 uniform float uDaylight;
 uniform float uTime;
 uniform float uBrightness;
+uniform vec4 uWeather;
+uniform float uWetness;
 uniform bool uWaterPass;
 uniform bool uFullbright;
 uniform bool uUnderwater;
@@ -228,8 +230,9 @@ void main() {
     float sunDiffuse = max(dot(normal, uSunDirection), 0.0);
     float moonDiffuse = max(dot(normal, -uSunDirection), 0.0);
     float faceShade = 0.84 + max(normal.y, 0.0) * 0.16 - max(-normal.y, 0.0) * 0.14;
-    float skyContribution = vSunLight * mix(0.055, 0.48, day);
-    float sunContribution = vSunLight * sunDiffuse * mix(0.0, 0.54, day);
+    float weatherLight = 1.0 - .25*uWeather.x - .55*uWeather.y;
+    float skyContribution = vSunLight * mix(0.055, 0.48, day) * weatherLight;
+    float sunContribution = vSunLight * sunDiffuse * mix(0.0, 0.54, day) * weatherLight;
     float moonContribution = vSunLight * moonDiffuse * (1.0-day) * 0.17;
     float emittedContribution = vBlockLight * 0.90;
     float rawLight = clamp(max(skyContribution + sunContribution + moonContribution,
@@ -270,6 +273,14 @@ void main() {
         float underwaterFog = smoothstep(3.0,24.0,vDistance);
         lit = mix(lit,vec3(0.025,0.18,0.30),underwaterFog);
     }
+    if(!uFullbright) {
+        lit *= 1.0 - uWetness * .10 * max(normal.y,0.0) * smoothstep(.6,1.0,vSunLight);
+        lit += texel.rgb * uWeather.z * .55 * vSunLight;
+    }
+    if(!uUnderwater && !uFullbright) {
+        float fog = uWeather.w * (uWeather.x*.35 + uWeather.y*.12) * smoothstep(32.0,256.0,vDistance);
+        lit = mix(lit,vec3(.28,.32,.36),fog);
+    }
     fragColor = vec4(lit,alpha);
 }
 )GLSL";
@@ -288,6 +299,7 @@ constexpr const char* SkyFragmentShader = R"GLSL(
 #version 330 core
 in vec2 vNdc;
 uniform mat4 uInverseViewProjection;
+uniform vec4 uWeather;
 uniform vec3 uSunDirection;
 uniform float uDaylight;
 uniform float uTime;
@@ -328,7 +340,7 @@ void main() {
     color += vec3(star);
     if(ray.y > 0.025 && uEffectQuality > 0) {
         vec2 cloudUv = ray.xz / (ray.y + 0.22) * 1.8 + vec2(uTime*0.012, uTime*0.002);
-        float clouds = smoothstep(0.54,0.68,cloudNoise(cloudUv));
+        float clouds = smoothstep(mix(.54,.30,uWeather.x),mix(.68,.48,uWeather.x),cloudNoise(cloudUv));
         clouds *= smoothstep(0.02,0.16,ray.y) * (0.18 + 0.82*uDaylight);
         color = mix(color, mix(vec3(0.16,0.18,0.24),vec3(0.96,0.97,1.0),uDaylight), clouds*0.72);
     }
@@ -339,6 +351,8 @@ void main() {
     float moon = smoothstep(0.9989,0.99972,moonDot);
     float phaseCut = smoothstep(0.9990,0.99974,dot(normalize(ray+vec3(0.018,0.0,0.0)),-uSunDirection));
     color += vec3(0.70,0.78,0.94) * max(moon-phaseCut*0.46,0.0) * (1.0-uDaylight);
+    color = mix(color, mix(vec3(.28,.32,.38),vec3(.085,.105,.14),uWeather.y),uWeather.x*.78);
+    color += vec3(.7,.75,.85)*uWeather.z;
     fragColor = vec4(color,1.0);
 }
 )GLSL";
@@ -744,6 +758,8 @@ Renderer::ProgramUniforms Renderer::cacheUniforms(GLuint program) {
     locations.time = glGetUniformLocation(program, "uTime");
     locations.underwater = glGetUniformLocation(program, "uUnderwater");
     locations.view = glGetUniformLocation(program, "uView");
+    locations.weather = glGetUniformLocation(program,"uWeather");
+    locations.wetness = glGetUniformLocation(program,"uWetness");
     locations.waterPass = glGetUniformLocation(program, "uWaterPass");
     return locations;
 }
@@ -1401,6 +1417,7 @@ void Renderer::renderSky(const glm::mat4& view,
     glUniform3fv(
         skyUniforms_.sunDirection, 1, glm::value_ptr(state.sunDirection));
     glUniform1f(skyUniforms_.daylight, state.daylight);
+    glUniform4fv(skyUniforms_.weather,1,glm::value_ptr(weather_));
     glUniform1f(skyUniforms_.time, worldTime);
     glUniform1i(skyUniforms_.effectQuality, effectQuality_);
     glBindVertexArray(skyVao_);
@@ -1435,6 +1452,8 @@ void Renderer::renderWorld(const World& world,
                  1,
                  glm::value_ptr(camera));
     glUniform1f(worldUniforms_.daylight, state.daylight);
+    glUniform4fv(worldUniforms_.weather,1,glm::value_ptr(weather_));
+    glUniform1f(worldUniforms_.wetness,weatherWetness_);
     glUniform1f(worldUniforms_.time, worldTime);
     glUniform1f(worldUniforms_.brightness, brightness);
     glUniform1i(worldUniforms_.effectQuality, effectQuality_);
@@ -1567,7 +1586,7 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
     glUniform3fv(entityUniforms_.sunDirection,
                  1,
                  glm::value_ptr(state.sunDirection));
-    glUniform1f(entityUniforms_.daylight, state.daylight);
+    glUniform1f(entityUniforms_.daylight, state.daylight*(1-.25f*weather_.x-.55f*weather_.y));
     glBindVertexArray(entityVao_);
     for (const RenderCuboid& cuboid : cuboids) {
         if (!visibility.visible(cuboid.center, glm::length(cuboid.size) * 0.5f))
@@ -1601,7 +1620,7 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
     const glm::mat4 inverseView = glm::inverse(view);
     const glm::vec3 cameraRight = glm::normalize(glm::vec3(
         inverseView[0][0], 0.0f, inverseView[0][2]));
-    const float daylight = celestial(worldTime).daylight;
+    const float daylight = celestial(worldTime).daylight*(1-.25f*weather_.x-.55f*weather_.y);
     thread_local std::vector<const RenderBillboard*> visibleStorage;
     RenderScratch<const RenderBillboard*> visibleScratch(visibleStorage, 65536);
     auto& visible = visibleScratch.get();
@@ -2480,8 +2499,11 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
     menuPanel(vertices,video ? "VIDEO SETTINGS" : "SETTINGS",width,height);
     const std::array<std::string,4> categories{"VIDEO","AUDIO","CONTROLS","BACK"};
     if (!video) {
-        for (int index=0; index<4; ++index)
-            menuButton(vertices,MenuLayout::hubRow(index,width,height),categories[index],hovered==30+index,width,height,2.2f);
+        const std::array<std::string,5> hub{"VIDEO","AUDIO","CONTROLS","WEATHER","BACK"};
+        for (int index=0; index<5; ++index) {
+            const int action=index==3 ? 34 : index==4 ? 33 : 30+index;
+            menuButton(vertices,MenuLayout::hubRow(index,width,height),hub[index],hovered==action,width,height,2.2f);
+        }
     } else {
         for (int index=0; index<3; ++index)
             menuButton(vertices,MenuLayout::tab(index,width,height),categories[index],index==0 || hovered==30+index,width,height);
@@ -2660,4 +2682,31 @@ void Renderer::renderResetMenu(int width,
     glDisable(GL_BLEND);
     glEnable(GL_CULL_FACE);
     glEnable(GL_DEPTH_TEST);
+}
+
+void Renderer::renderWeatherSettings(int width,int height,int hovered,const GameSettings& s) const {
+    thread_local std::vector<UiVertex> storage;
+    RenderScratch<UiVertex> scratch(storage,2097152); auto& vertices=scratch.get();
+    menuPanel(vertices,"WEATHER SETTINGS",width,height);
+    const std::array<std::string,8> labels{"WEATHER CYCLE","WEATHER QUALITY","PRECIPITATION DENSITY","SNOW ACCUMULATION","LIGHTNING EFFECTS","FLASH INTENSITY","WEATHER FOG","WIND EFFECTS"};
+    const auto on=[](bool value){return value ? "ON" : "OFF";};
+    const std::array<std::string,8> values{on(s.weatherCycle),std::array<std::string,4>{"OFF","LOW","MEDIUM","HIGH"}[s.weatherQuality],
+        std::to_string(static_cast<int>(std::round(s.precipitationDensity*100)))+"%",on(s.snowAccumulation),on(s.lightningEffects),
+        std::to_string(static_cast<int>(std::round(s.lightningFlash*100)))+"%",on(s.weatherFog),on(s.weatherWind)};
+    for(int i=0;i<8;++i) {
+        const auto r=MenuLayout::videoRow(i,width,height);
+        addRect(vertices,r.x,r.y,r.width,r.height,hovered==40+i ? glm::vec4(.27f,.32f,.25f,1) : glm::vec4(.15f,.17f,.19f,1),width,height);
+        menuText(vertices,labels[i],r.x+12,r.y+11,1.25f,{1,1,1,1},width,height);
+        const float x=MenuLayout::panel(width,height).x+340;
+        if(i==2 || i==5) {
+            const float value=i==2 ? s.precipitationDensity : s.lightningFlash;
+            addRect(vertices,x,r.y+15,170,5,{.07f,.08f,.09f,1},width,height);
+            addRect(vertices,x,r.y+15,170*value,5,{.48f,.70f,.34f,1},width,height);
+            addRect(vertices,x+170*value-4,r.y+8,8,19,{.88f,.92f,.78f,1},width,height);
+            menuText(vertices,values[i],x+185,r.y+11,1.15f,{1,.93f,.70f,1},width,height);
+        } else menuText(vertices,values[i],x,r.y+11,1.3f,{.85f,.93f,.78f,1},width,height);
+    }
+    menuText(vertices,"GRAPHICS OPTIONS KEEP WEATHER GAMEPLAY ACTIVE",MenuLayout::panel(width,height).x+28,MenuLayout::panel(width,height).y+430,1.15f,{.8f,.85f,.8f,1},width,height);
+    menuButton(vertices,MenuLayout::back(width,height),"BACK",hovered==48,width,height);
+    drawMenuVertices(vertices.data(),vertices.size());
 }

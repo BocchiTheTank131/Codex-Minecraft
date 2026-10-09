@@ -2,6 +2,7 @@
 #include "SaveFile.h"
 
 #include <algorithm>
+#include <cmath>
 #include <fstream>
 #include <sstream>
 #include <GLFW/glfw3.h>
@@ -30,6 +31,9 @@ bool GameSettings::bindControl(ControlAction action, int key) {
 }
 
 void GameSettings::clamp() {
+    weatherQuality = std::clamp(weatherQuality,0,3);
+    precipitationDensity = std::isfinite(precipitationDensity) ? std::clamp(precipitationDensity,0.0f,1.0f) : 1.0f;
+    lightningFlash = std::isfinite(lightningFlash) ? std::clamp(lightningFlash,0.0f,1.0f) : .65f;
     renderDistance = std::clamp(renderDistance, 2, 64);
     simulationDistance = std::clamp(simulationDistance, 2, 32);
     fov = std::clamp(fov, 55.0f, 105.0f);
@@ -79,6 +83,7 @@ void GameSettings::applyPreset(GraphicsPreset preset) {
         entityDistance = 6;
         particlePercent = 35;
         effectQuality = 0;
+        weatherQuality = 1;
         break;
     case GraphicsPreset::Medium:
         renderDistance = 12;
@@ -87,6 +92,7 @@ void GameSettings::applyPreset(GraphicsPreset preset) {
         entityDistance = 12;
         particlePercent = 70;
         effectQuality = 1;
+        weatherQuality = 2;
         break;
     case GraphicsPreset::High:
         renderDistance = 24;
@@ -95,6 +101,7 @@ void GameSettings::applyPreset(GraphicsPreset preset) {
         entityDistance = 24;
         particlePercent = 100;
         effectQuality = 2;
+        weatherQuality = 3;
         break;
     case GraphicsPreset::Custom:
         break;
@@ -114,7 +121,15 @@ bool GameSettings::load(const std::string& path) {
         const std::string key = line.substr(0, split);
         const std::string value = line.substr(split + 1);
         try {
-            if (key == "render_distance")
+            if (key == "weather_cycle") weatherCycle = std::stoi(value)!=0;
+            else if (key == "weather_quality") weatherQuality = std::stoi(value);
+            else if (key == "precipitation_density") precipitationDensity = std::stof(value);
+            else if (key == "snow_accumulation") snowAccumulation = std::stoi(value)!=0;
+            else if (key == "lightning_effects") lightningEffects = std::stoi(value)!=0;
+            else if (key == "lightning_flash") lightningFlash = std::stof(value);
+            else if (key == "weather_fog") weatherFog = std::stoi(value)!=0;
+            else if (key == "weather_wind") weatherWind = std::stoi(value)!=0;
+            else if (key == "render_distance")
                 renderDistance = std::stoi(value);
             else if (key == "simulation_distance")
                 simulationDistance = std::stoi(value);
@@ -168,7 +183,15 @@ bool GameSettings::load(const std::string& path) {
 
 bool GameSettings::save(const std::string& path) const {
     return SaveFile::write(path, std::ios::out, [&](std::ofstream& output) {
-    output << "render_distance=" << renderDistance << '\n'
+    output << "weather_cycle=" << weatherCycle << '\n'
+           << "weather_quality=" << weatherQuality << '\n'
+           << "precipitation_density=" << precipitationDensity << '\n'
+           << "snow_accumulation=" << snowAccumulation << '\n'
+           << "lightning_effects=" << lightningEffects << '\n'
+           << "lightning_flash=" << lightningFlash << '\n'
+           << "weather_fog=" << weatherFog << '\n'
+           << "weather_wind=" << weatherWind << '\n'
+           << "render_distance=" << renderDistance << '\n'
            << "simulation_distance=" << simulationDistance << '\n'
            << "fov=" << fov << '\n'
            << "mouse_sensitivity=" << mouseSensitivity << '\n'

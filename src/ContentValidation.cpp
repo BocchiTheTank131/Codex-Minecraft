@@ -112,7 +112,8 @@ void Game::runCraftingContentSmokeTest() {
     }
     for (int id = static_cast<int>(Block::CoalBlock); id < static_cast<int>(Block::Count); ++id) {
         const Block block = static_cast<Block>(id);
-        testWorld.setBlock(id - static_cast<int>(Block::CoalBlock), 240, 0, block);
+        const int offset=id-static_cast<int>(Block::CoalBlock);
+        testWorld.setBlock(offset%CHUNK_SIZE,240,offset/CHUNK_SIZE,block);
         Block restored;
         if (!blockFromSaveId(blockDefinition(block).saveId, restored) || restored != block)
             throw std::runtime_error("new block stable ID");
@@ -167,11 +168,11 @@ void Game::runCraftingContentSmokeTest() {
             if (restoredInventory.count(static_cast<Item>(id)) != 3)
                 throw std::runtime_error("new inventory persistence");
         for (int id = static_cast<int>(Block::CoalBlock); id < static_cast<int>(Block::Count); ++id)
-            if (restoredWorld.getBlock(id-static_cast<int>(Block::CoalBlock),240,0) != static_cast<Block>(id))
+            if (restoredWorld.getBlock((id-static_cast<int>(Block::CoalBlock))%CHUNK_SIZE,240,(id-static_cast<int>(Block::CoalBlock))/CHUNK_SIZE) != static_cast<Block>(id))
                 throw std::runtime_error("new block persistence");
         std::remove(inventoryPath); std::remove(worldPath);
     }
-    std::cout << "Crafting expansion: all 18 item IDs/icons, 15 block states, support, furnace fuels, "
+    std::cout << "Content: appended item IDs/icons and block states, support, furnace fuels, "
               << (Persistence::enabled() ? "save/reload" : "demo persistence bypass") << " passed\n";
 }
 

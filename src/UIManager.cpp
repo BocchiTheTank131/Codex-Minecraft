@@ -13,7 +13,7 @@
 
 bool UIManager::simulationPaused() const {
     return state_ == GameState::MainMenu || state_ == GameState::WorldSelection ||
-           state_ == GameState::CreateWorld || state_ == GameState::VideoSettings ||
+           state_ == GameState::CreateWorld || state_ == GameState::WeatherSettings || state_ == GameState::VideoSettings ||
            state_ == GameState::PauseMenu || state_ == GameState::Settings ||
            state_ == GameState::AudioSettings ||
            state_ == GameState::Controls || state_ == GameState::ResetWorld;
@@ -197,6 +197,7 @@ void UIManager::handleEscape(Inventory* inventory) {
         break;
     case GameState::Controls:
     case GameState::AudioSettings:
+    case GameState::WeatherSettings:
     case GameState::VideoSettings:
         state_ = GameState::Settings;
         break;
@@ -459,8 +460,12 @@ int UIManager::menuHit(
         return -1;
     }
     if (state == GameState::Settings) {
-        for (int i=0; i<4; ++i) if (MenuLayout::hubRow(i,width,height).contains(mouseX,mouseY)) return 30+i;
+        for (int i=0; i<5; ++i) if (MenuLayout::hubRow(i,width,height).contains(mouseX,mouseY)) return i==3 ? 34 : i==4 ? 33 : 30+i;
         return -1;
+    }
+    if (state == GameState::WeatherSettings) {
+        for(int i=0;i<8;++i) if(MenuLayout::videoRow(i,width,height).contains(mouseX,mouseY)) return 40+i;
+        return MenuLayout::back(width,height).contains(mouseX,mouseY) ? 48 : -1;
     }
     if (state == GameState::VideoSettings) {
         for (int i=0; i<3; ++i) if (MenuLayout::tab(i,width,height).contains(mouseX,mouseY)) return 30+i;

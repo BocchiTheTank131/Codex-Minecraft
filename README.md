@@ -25,7 +25,7 @@ Everything in this project was created entirely with Codex, including the game c
 It includes procedural terrain, streamed chunks, caves, structures, mobs, crafting, farming, lighting, persistent worlds, and first-person voxel interaction.
 
 Launch to the moving panorama main menu: **PLAY** opens **Select World** in the installed
-game, **SETTINGS** opens Video, Audio, and Controls categories, and **QUIT** closes the game.
+game, **SETTINGS** opens Video, Audio, Controls, and Weather categories, and **QUIT** closes the game.
 Select a saved world and press PLAY (or double-click it), or choose **CREATE NEW WORLD**.
 New worlds have a name, an optional numeric seed, and Survival or Creative mode.
 The standalone demo skips world selection and starts a fresh temporary world.
@@ -69,8 +69,8 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.9.1** has **101 inventory items**, **55 placeable block families**, **110 block
-IDs/states including Air**, **61 crafting recipes**, and **13 furnace recipes**. Existing item
+Version **2.10.0** has **102 inventory items**, **56 placeable block families**, **120 block
+IDs/states including Air**, **62 crafting recipes**, and **13 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
 ### Crafting expansion
@@ -105,6 +105,7 @@ Sandstone, Polished Granite, Polished Diorite, Polished Andesite, Sugar Cane, Vi
 | Cobblestone + Vine, shapeless | Mossy Cobblestone | 2×2 |
 | Stone Bricks + Vine, shapeless | Mossy Stone Bricks | 2×2 |
 | Three Wheat horizontally | Bread | 3×3 |
+| Three Copper Ingots vertically | Lightning Rod | 3×3 |
 
 Generic plank ingredients accept default/oak and Birch, including mixed planks. Wooden Doors
 require six matching planks; both wood families produce the existing Wooden Door item.
@@ -131,8 +132,8 @@ Each smelt takes the existing **5 seconds**. Coal and Charcoal each burn for **4
 (8 smelts); a Coal Block burns for **400 seconds** (80 smelts). Charcoal is a distinct item
 and also crafts Torches. Cooking and smelting remain separate from crafting.
 
-Breaking Clay in Survival drops **4 Clay Balls**; a Snow layer drops **1 Snowball**. Snow
-layers remain fixed-height. Proper Book, Brick, Snowball, and Vine chains replace the previous
+Breaking Clay in Survival drops **4 Clay Balls**; Snow drops one Snowball per accumulated
+layer. Crafted Snow is 1/8 block high; weather can accumulate up to eight layers. Proper Book, Brick, Snowball, and Vine chains replace the previous
 missing/adapted recipes. All new items are available in Creative and through `/give`.
 
 ### Plants and original textures
@@ -197,6 +198,24 @@ terrain preview; `--crafting-preview` exercises the actual inventory/container t
 
 ## Windows Release
 
+### v2.10.0 - The Weather Update
+
+Weather follows the documented [Weather](https://minecraft.wiki/w/Weather) mechanics,
+adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms 1-3.
+
+- Smooth sky/cloud/daylight transitions; dry biomes stay dry and cold regions receive snow.
+- Local batched precipitation, roof clipping, ground splashes, wind and optional weather fog.
+- Snow accumulates up to eight layers and melts in warm biomes or near emitted light.
+- Exposed farmland hydrates in rain; exposed lightning fire is extinguished.
+- Lightning damages nearby entities, can ignite wood, and attracts to exposed rods within 32 blocks.
+- Craft a Lightning Rod from three Copper Ingots vertically in a Crafting Table.
+- Dark storms allow daytime hostile spawning; villagers seek nearby shelter.
+- All 19 supplied weather/impact clips are embedded. Outdoor/roof rain crossfades;
+  positional thunder is delayed by strike distance, with close positional impact sounds.
+- Weather commands and a dedicated Weather settings page.
+- Each installed world saves weather state, timers, intensity and random sequence.
+  Legacy metadata defaults to Clear; the standalone demo remains stateless.
+
 ### v2.9.1 performance update
 
 - Reduced repeated rendering work and reused temporary mesh/UI buffers.
@@ -212,16 +231,16 @@ terrain preview; `--crafting-preview` exercises the actual inventory/container t
 - Create separate Survival or Creative worlds with an optional seed; blank seeds are randomized.
 - Each world keeps its own terrain, player, inventory, mobs, and day/night time.
 - Legacy single-world saves are safely imported as **Imported World**, preserving the original files.
-- Settings are organized into Video, Audio, and Controls; settings remain global.
+- Settings are organized into Video, Audio, Controls, and Weather; settings remain global.
 - Save & Return to Menu saves and unloads the full game. The standalone demo discards its
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
 Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
 
-| v2.9.1 download | Purpose | Persistence |
+| v2.10.0 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.9.1-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.9.1-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.10.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.10.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -410,6 +429,9 @@ the brackets themselves.
 | `/teleport <x> <y> <z>` | Alias for `/tp` | `/teleport 100 70 -250` |
 | `/kill [@s]` | Kill the current player, even when explicitly used in Creative/Spectator | `/kill` |
 | `/summon <mob> [x y z]` | Spawn a mob; defaults to three blocks along the player's look direction | `/summon NijikaIjichi` |
+| `/weather <clear\|rain\|thunder> [seconds]` | Set weather for up to 86,400 seconds, or use a random duration | `/weather thunder 120` |
+| `/weather query` | Show current weather and remaining duration | `/weather query` |
+| `/summon lightning_bolt [x y z]` | Strike at the specified loaded position (relative coordinates supported) | `/summon lightning_bolt ~10 ~ ~10` |
 | `/seed` | Show the current session seed | `/seed` |
 | `/setblock <x> <y> <z> <block>` | Replace one block in a loaded chunk | `/setblock ~ ~-1 ~ stone` |
 | `/fill <x1> <y1> <z1> <x2> <y2> <z2> <block>` | Fill an inclusive region, up to 4,096 blocks | `/fill 0 60 0 4 64 4 stone` |
@@ -427,11 +449,11 @@ the brackets themselves.
 - Gameplay-changing commands have an internal cheat permission check. Cheats currently default
   to enabled; no world-creation permission toggle is exposed yet. `/help` and `/seed` remain
   available if permission is disabled.
-- `/locate`, `/weather`, `/difficulty`, multiplayer selectors, and Minecraft's full command
+- `/locate`, `/difficulty`, `/gamerule`, multiplayer selectors, and Minecraft's full command
   catalog are not implemented.
 
 Installed-world changes use the normal save system. Demo commands affect only the current
-session. Command-summoned hostiles may appear in daytime; natural spawning remains night-only.
+session. Command-summoned hostiles may appear in daytime; natural spawning remains night-only except during sufficiently dark thunderstorms.
 
 ## Mobs
 
@@ -591,7 +613,7 @@ Settings are saved to:
 voxel_settings.cfg
 ```
 
-Choose **VIDEO**, **AUDIO**, or **CONTROLS** from Settings, then use **BACK** to return.
+Choose **VIDEO**, **AUDIO**, **CONTROLS**, or **WEATHER** from Settings, then use **BACK** to return.
 Mouse sensitivity and existing keybindings are under Controls.
 
 Available options include:
@@ -610,6 +632,7 @@ Available options include:
 - FPS display
 - Coordinate display
 - Custom keybindings
+- Weather cycle, Off/Low/Medium/High quality, density, snow accumulation, lightning/flash intensity, fog and wind
 
 Most settings apply immediately.
 
@@ -619,11 +642,37 @@ menus. The Music slider controls 0–100% of the intended music level; its real 
 `Master × Music × 0.30`. The full installed game saves audio settings. The standalone demo keeps
 them only for the current session. Release builds embed the background tracks in the executable.
 
+## Weather
+
+Each installed world stores weather, transition intensity, remaining duration and random
+sequence in its existing seed metadata. Old metadata defaults to Clear; demo sessions remain
+stateless. Hydrated farmland grows crops 25% faster while wet. Lightning deals 5 HP to nearby
+exposed entities; Creative/Spectator players are immune. Fire is temporary and non-spreading.
+A sky-exposed rod attracts strikes within 32 blocks. Close impacts reach 64 blocks and thunder
+320 blocks; thunder arrives after `distance / 343` seconds. Weather uses Master/SFX controls.
+
+Graphics Off skips precipitation generation, scans, uploads and draws. Low has a sparse
+16-block radius; Medium/High use 24/30 blocks and add splashes. One batched draw handles
+precipitation and lightning. Cached column roof heights avoid per-particle vertical scans.
+Weather lighting/wet-ground shading use uniforms without chunk remeshing; actual snow/fire/
+farmland edits use the normal block path. Storage, environment ticks and strike searches are bounded.
+Graphics switches leave weather gameplay active; snow accumulation has its own explicit toggle.
+
+Developer checks: `--weather-smoke --seed=123456789` covers biomes, roofs, ecology, commands,
+audio, lightning, recipes and graphics paths. `--weather-benchmark=<folder>` also measures
+RD8/16/32/64 at every weather quality. Use isolated user data for tests.
+See [weather validation](docs/WEATHER_VALIDATION.md) for measurements and verification limits.
+Original rod/fire artwork can be regenerated with `python tools/generate_weather_textures.py`
+after the existing atlas generation tools.
+
 ## Source Structure
 
 The project is split into focused systems:
 
 - `main.cpp` - application entry point
+- `Weather` - per-world weather, ecology, lightning and metadata
+- `WeatherRenderer` - bounded local precipitation/lightning batch
+- `WeatherValidation` - opt-in Release smoke checks and quality benchmarks
 - `Game` - initialization, main loop, simulation, rendering, saves, and shutdown
 - `World` - chunks, terrain, blocks, lighting, and world data
 - `WorldLibrary` - saved-world listing, creation, metadata, and safe legacy import

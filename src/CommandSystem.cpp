@@ -1,4 +1,5 @@
 #include "CommandSystem.h"
+#include "Weather.h"
 #include "Definitions.h"
 #include "Player.h"
 #include "Survival.h"
@@ -82,7 +83,7 @@ std::string modeName(GameMode mode) {
 const std::vector<std::string>& mobNames() {
     static const std::vector<std::string> names{
         "cow", "pig", "sheep", "villager", "pillager",
-        "HitoriGotoh", "KitaIkuyo", "NijikaIjichi", "RyoYamada"};
+        "HitoriGotoh", "KitaIkuyo", "NijikaIjichi", "RyoYamada", "lightning_bolt"};
     return names;
 }
 } // namespace
@@ -117,7 +118,7 @@ CommandSystem::CommandSystem() {
                                : error("Unknown command: " + a[1]);
             }
             return {ChatTone::Normal,
-                "Commands: help, gamemode, time, give, clear, tp, kill, summon, seed, setblock, fill"};
+                "Commands: help, gamemode, time, weather, give, clear, tp, kill, summon, seed, setblock, fill"};
         }});
     definitions_.push_back({"gamemode", "", "/gamemode <survival|creative|spectator>",
         "Change game mode", true, [](const auto& a, CommandContext& c) -> CommandResult {
@@ -154,6 +155,20 @@ CommandSystem::CommandSystem() {
                 return ok("Time set to " + label);
             }
             return ok("Time set to " + std::to_string(static_cast<int>(c.worldTime)) + " seconds");
+        }});
+    definitions_.push_back({"weather", "", "/weather <clear|rain|thunder|query> [seconds]", "Change or query weather", true,
+        [](const auto& a, CommandContext& c) -> CommandResult {
+            if (!c.weather) return error("No active weather system");
+            if (a.size()==2 && lower(a[1])=="query") return ok(std::string("Weather: ")+Weather::name(c.weather->type())+"; "+std::to_string(static_cast<int>(c.weather->remaining()))+" seconds remaining");
+            if (a.size()!=2 && a.size()!=3) return error("Usage: /weather <clear|rain|thunder> [seconds]");
+            WeatherType type;
+            if(lower(a[1])=="clear") type=WeatherType::Clear;
+            else if(lower(a[1])=="rain") type=WeatherType::Rain;
+            else if(lower(a[1])=="thunder") type=WeatherType::Thunder;
+            else return error("Unknown weather: "+a[1]);
+            double seconds=0;
+            if(a.size()==3 && (!real(a[2],seconds) || seconds<=0 || seconds>86400)) return error("Duration must be 0-86400 seconds (exclusive of zero)");
+            c.weather->set(type,static_cast<float>(seconds)); return ok(std::string("Weather set to ")+Weather::name(type));
         }});
     definitions_.push_back({"give", "", "/give [@s] <item> [count]", "Give an item", true,
         [](const auto& a, CommandContext& c) -> CommandResult {
@@ -213,6 +228,11 @@ CommandSystem::CommandSystem() {
             if (a.size() == 5 && !position(a, 2, c.player.position(), destination))
                 return error("Usage: /summon <mob> [x y z]");
             if (destination.y < 0 || destination.y >= WORLD_HEIGHT) return error("Y must be inside the world");
+            if (canonical(a[1])=="lightningbolt" && c.weather && c.sounds) {
+                if (!c.world.hasLoadedChunkAt(static_cast<int>(destination.x),static_cast<int>(destination.z))) return error("Strike chunk is not loaded");
+                c.weather->strike(glm::vec3(destination),c.world,c.player,c.survival,*c.sounds);
+                return ok("Summoned lightning bolt");
+            }
             if (!c.survival.summonMob(a[1], glm::vec3(destination))) return error("Unknown mob: " + a[1]);
             return ok("Summoned " + a[1]);
         }});
@@ -286,6 +306,7 @@ std::vector<std::string> CommandSystem::suggest(const std::string& line) const {
         else if (command == "time") pool = words.size() == 1
             ? std::vector<std::string>{"set", "add"}
             : std::vector<std::string>{"day", "noon", "night", "midnight"};
+        else if (command == "weather") pool={"clear","rain","thunder","query"};
         else if (command == "summon") pool = mobNames();
         else if (command == "give" || command == "clear" || command == "setblock" || command == "fill") {
             if (command == "give") pool.push_back("@s");

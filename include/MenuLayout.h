@@ -9,7 +9,7 @@ inline UiRect panel(int w, int h) { return {w * .5f - 310, h * .5f - 310, 620, 6
 inline UiRect tab(int index, int w, int h) { const auto p = panel(w,h); return {p.x + 20 + index * 195.0f, p.y + 58, 190, 35}; }
 inline UiRect videoRow(int index, int w, int h) { const auto p = panel(w,h); return {p.x + 24, p.y + 108 + index * 35.0f, 572, 32}; }
 inline UiRect back(int w, int h) { const auto p = panel(w,h); return {p.x + 190, p.y + 565, 240, 38}; }
-inline UiRect hubRow(int index, int w, int h) { const auto p = panel(w,h); return {p.x + 120, p.y + 175 + index * 75.0f, 380, 54}; }
+inline UiRect hubRow(int index, int w, int h) { const auto p = panel(w,h); return {p.x + 120, p.y + 155 + index * 67.0f, 380, 54}; }
 inline UiRect worldRow(int index, int w, int h) { const auto p = panel(w,h); return {p.x + 24, p.y + 92 + index * 62.0f, 572, 56}; }
 inline UiRect worldAction(int index, int w, int h) { const auto p=panel(w,h); return {p.x + 24 + index * 194.0f, p.y + 552, 184, 44}; }
 inline UiRect pageButton(int index, int w, int h) { const auto p=panel(w,h); return {p.x + 24 + index * 490.0f, p.y + 478, 82, 32}; }

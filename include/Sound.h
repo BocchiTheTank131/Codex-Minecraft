@@ -19,6 +19,9 @@ public:
     void setMasterVolume(float value);
     void setCategoryVolumes(float music, float sfx, float passiveMobs, float hostileMobs);
     void startMusic();
+    void setRainAmbience(float outdoor, float sheltered);
+    void playLightning(const glm::vec3& position, bool thunder, float muffle);
+    bool verifyWeather();
     void setListener(const glm::vec3& position, const glm::vec3& forward);
     void update(float deltaTime);
     void playBlockBreak(Block block, const glm::vec3& position);

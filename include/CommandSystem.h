@@ -11,6 +11,8 @@ class World;
 class Player;
 class Inventory;
 class SurvivalWorld;
+class Weather;
+class SoundSystem;
 
 struct CommandContext {
     World& world;
@@ -22,6 +24,8 @@ struct CommandContext {
     std::function<GameMode()> gameMode;
     std::function<void(GameMode)> setGameMode;
     bool cheatsEnabled = true; // World creation UI can expose this later.
+    Weather* weather = nullptr;
+    SoundSystem* sounds = nullptr;
 };
 struct CommandResult { ChatTone tone = ChatTone::Normal; std::string text; };
 

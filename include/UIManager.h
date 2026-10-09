@@ -27,6 +27,7 @@ enum class GameState {
     AudioSettings,
     Controls,
     ResetWorld,
+    WeatherSettings,
 };
 
 struct RecipeBookView {
@@ -64,6 +65,7 @@ public:
     void openMainMenu();
     void openWorldSelection() { state_ = GameState::WorldSelection; }
     void openCreateWorld() { state_ = GameState::CreateWorld; }
+    void openWeatherSettings() { state_=GameState::WeatherSettings; }
     void openVideoSettings() { state_ = GameState::VideoSettings; }
     void backFromSettings();
     void openSettings();

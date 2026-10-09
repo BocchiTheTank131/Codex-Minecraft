@@ -16,6 +16,10 @@ struct GameSettings {
     float sfxVolume = 1.0f;
     float passiveMobVolume = 1.0f;
     float hostileMobVolume = 1.0f;
+    bool weatherCycle = true, snowAccumulation = true, lightningEffects = true;
+    bool weatherFog = true, weatherWind = true;
+    int weatherQuality = 2;
+    float precipitationDensity = 1.0f, lightningFlash = .65f;
     int antiAliasingSamples = 0;
     GraphicsPreset graphicsPreset = GraphicsPreset::Custom;
     int entityDistance = 12;

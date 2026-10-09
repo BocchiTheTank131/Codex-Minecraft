@@ -150,6 +150,7 @@ public:
     std::vector<std::uint32_t> lightEmitters;
     void rebuildLightEmitterIndex();
     int highestRenderableY = -1;
+    std::array<std::int16_t, CHUNK_SIZE * CHUNK_SIZE> precipitationTop{};
     std::shared_ptr<TerrainBufferPage> opaquePage;
     std::size_t opaqueFirstVertex = 0;
     GLsizei opaqueVertexCount = 0;
@@ -213,6 +214,7 @@ public:
     Block getBlock(int x, int y, int z) const;
     void setBlock(int x, int y, int z, Block block);
     bool hasLoadedChunkAt(int x, int z) const;
+    float precipitationHeight(int x, int z) const;
     bool canPlacePlant(const glm::ivec3& position, Block block) const;
     int fillBlocks(const glm::ivec3& low, const glm::ivec3& high, Block block);
     bool isSolidAt(int x, int y, int z) const;

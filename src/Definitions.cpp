@@ -127,6 +127,7 @@ const Items& items() {
         put(Item::PolishedGranite, 99, 99, "PolishedGranite");
         put(Item::PolishedDiorite, 100, 100, "PolishedDiorite");
         put(Item::PolishedAndesite, 101, 101, "PolishedAndesite");
+        put(Item::LightningRod, 102, 102, "LightningRod");
         // Placement and furnace behavior share the authoritative item registry.
         const std::pair<Item, Block> placements[] = {
             {Item::Grass, Block::Grass}, {Item::Dirt, Block::Dirt},
@@ -136,7 +137,7 @@ const Items& items() {
             {Item::IronOre, Block::IronOre}, {Item::GoldOre, Block::GoldOre},
             {Item::CopperOre, Block::CopperOre}, {Item::DiamondOre, Block::DiamondOre},
             {Item::Planks, Block::Planks}, {Item::CraftingTable, Block::CraftingTable},
-            {Item::Torch, Block::Torch}, {Item::Cobblestone, Block::Cobblestone},
+            {Item::LightningRod, Block::LightningRod}, {Item::Torch, Block::Torch}, {Item::Cobblestone, Block::Cobblestone},
             {Item::StoneBricks, Block::StoneBricks}, {Item::Bricks, Block::Bricks},
             {Item::Glass, Block::Glass}, {Item::Gravel, Block::Gravel},
             {Item::Clay, Block::Clay}, {Item::Snow, Block::Snow},
@@ -340,6 +341,18 @@ const Blocks& blocks() {
         for (int offset = 0; offset < 4; ++offset)
             put(static_cast<Block>(static_cast<int>(Block::VineNorth) + offset),
                 static_cast<std::uint8_t>(106 + offset), 58, 58, 58, Item::Vine);
+        put(Block::LightningRod, 110, 48, 48, 48, Item::LightningRod);
+        put(Block::WetFarmland, 111, 2, 2, 2, Item::Dirt);
+        put(Block::Fire, 112, 59, 59, 59, Item::None);
+        result[static_cast<std::size_t>(Block::Fire)].emittedLight = 15;
+        for(int layer=2;layer<=8;++layer) {
+            const Block block=snowLayerBlock(layer);
+            put(block,static_cast<std::uint8_t>(block),23,23,23,Item::Snowball);
+            auto& definition=result[static_cast<std::size_t>(block)];
+            definition.dropCount=layer;
+            definition.soundMaterial=SoundMaterial::Snow;
+            definition.hardness=.15f;
+        }
         result[static_cast<std::size_t>(Block::Clay)].drop = Item::ClayBall;
         result[static_cast<std::size_t>(Block::Clay)].dropCount = 4;
         result[static_cast<std::size_t>(Block::Snow)].drop = Item::Snowball;
@@ -414,6 +427,8 @@ const Blocks& blocks() {
                             Block::PolishedDiorite, Block::PolishedAndesite})
             configure(block, 1.5f, ToolKind::Pickaxe);
         configure(Block::HayBale, .5f);
+        configure(Block::LightningRod, 1.5f, ToolKind::Pickaxe, 1);
+        material(SoundMaterial::Grass,{Block::WetFarmland});
         material(SoundMaterial::Grass, {Block::HayBale, Block::SugarCane,
                  Block::VineNorth, Block::VineSouth, Block::VineEast, Block::VineWest});
         material(SoundMaterial::Sand, {Block::Sandstone});

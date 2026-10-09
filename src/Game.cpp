@@ -1,4 +1,6 @@
 #include "Game.h"
+#include "Weather.h"
+#include "WeatherRenderer.h"
 #include "MenuLayout.h"
 
 #include "Definitions.h"
@@ -193,7 +195,10 @@ bool Game::initialize(int argc, char** argv) {
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
                      "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
-        if (smokeTest_.patch272) {
+        if (weatherSmoke_) {
+            runWeatherSmokeTest();
+            glfwSetWindowShouldClose(window_,GLFW_TRUE);
+        } else if (smokeTest_.patch272) {
             runPatch272SmokeTest();
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
         } else if (smokeTest_.resetEnabled) {
@@ -265,11 +270,15 @@ void Game::shutdown() {
         return;
     }
 
+    weather_.reset();
+    if (weatherRenderer_) weatherRenderer_->clear();
+    if (sounds_) sounds_->setRainAmbience(0,0);
     farming_.reset();
     survival_.reset();
     inventory_.reset();
     player_.reset();
     world_.reset();
+    weatherRenderer_.reset();
     sounds_.reset();
     renderer_.reset();
     destroyRenderTarget();
@@ -319,6 +328,10 @@ void Game::parseArguments(int argc, char** argv) {
                 spectatorMode_ = true;
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
+            } else if (argument == "--weather-smoke") {
+                weatherSmoke_=true; saveOnExit_=false;
+            } else if (argument.rfind("--weather-benchmark=",0)==0) {
+                weatherSmoke_=true; saveOnExit_=false; weatherBenchmark_=argument.substr(20);
             } else if (argument == "--survival-smoke") {
                 smokeTest_.survivalEnabled = true;
             } else if (argument == "--command-smoke") {
@@ -468,6 +481,16 @@ void Game::createWorldAndSystems() {
         settings_.brightness = smokeTest_.previewBrightness;
         survival_->spawnBillboardPreview(player_->position(), player_->lookDirection());
     }
+    weather_ = std::make_unique<Weather>(seed_);
+    if (loadedWorld && Persistence::enabled()) {
+        std::ifstream metadata(worldSavePath(SeedPath));
+        std::string line;
+        for (int i=0;i<3 && std::getline(metadata,line);++i) {}
+        weather_->read(metadata); // Absent/invalid old metadata retains clear defaults.
+    }
+    if (!weatherRenderer_) weatherRenderer_ = std::make_unique<WeatherRenderer>();
+    weatherRenderer_->clear();
+    survival_->setWeather(weather_.get());
     farming_ = std::make_unique<FarmingSystem>();
 
     input_.setCursorCaptured(true);
@@ -532,6 +555,7 @@ bool Game::saveWorldMetadata() const {
         output << seed_ << '\n' << mode << '\n'
                << std::setprecision(std::numeric_limits<float>::max_digits10)
                << std::fmod(std::max(0.0f, timing_.worldTime), DayNightCycleSeconds) << '\n';
+        if (weather_) weather_->write(output);
         return static_cast<bool>(output);
     });
     if (!activeWorld_.directory.empty()) {
@@ -568,6 +592,9 @@ void Game::playSavedWorld(const SavedWorld& selected) {
         ui_.resumeGame();
         synchronizeCursorCapture();
     } catch (const std::exception& error) {
+        weather_.reset();
+        if (weatherRenderer_) weatherRenderer_->clear();
+        if (sounds_) sounds_->setRainAmbience(0,0);
         farming_.reset(); survival_.reset(); inventory_.reset(); player_.reset(); world_.reset();
         activeWorld_ = {};
         menuMessage_ = error.what();
@@ -678,6 +705,9 @@ void Game::setGameMode(GameMode mode) {
 
 void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     ui_.resumeGame();
+    weather_.reset();
+    if (weatherRenderer_) weatherRenderer_->clear();
+    if (sounds_) sounds_->setRainAmbience(0,0);
     farming_.reset();
     survival_.reset();
     inventory_.reset();
@@ -712,6 +742,10 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
         inventory_->clear();
     survival_ = std::make_unique<SurvivalWorld>(seed_);
     survival_->setSoundSystem(sounds_.get());
+    weather_ = std::make_unique<Weather>(seed_);
+    if (!weatherRenderer_) weatherRenderer_ = std::make_unique<WeatherRenderer>();
+    weatherRenderer_->clear();
+    survival_->setWeather(weather_.get());
     farming_ = std::make_unique<FarmingSystem>();
 
     timing_.worldTime = 35.0f;
@@ -774,7 +808,7 @@ void Game::handleGlobalInput() {
             CommandContext context{*world_, *player_, *inventory_, *survival_,
                                    timing_.worldTime, seed_,
                                    [this] { return gameMode(); },
-                                   [this](GameMode mode) { setGameMode(mode); }, true};
+                                   [this](GameMode mode) { setGameMode(mode); }, true, weather_.get(), sounds_.get()};
             const CommandResult result = commands_.execute(submitted, context);
             chat_.addMessage(result.text, result.tone, glfwGetTime());
         }
@@ -943,6 +977,19 @@ void Game::updatePauseInterface() {
         return;
     }
 
+    if (ui_.state()==GameState::WeatherSettings) {
+        const bool down=input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
+        const float x=MenuLayout::panel(framebufferWidth,framebufferHeight).x+340;
+        if(!down && activeSettingsSlider_>=0) {activeSettingsSlider_=-1;saveSettings();}
+        if(input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) && (hit==42 || hit==45) && cursor.x>=x-10 && cursor.x<=x+180)
+            activeSettingsSlider_=hit;
+        if(down && activeSettingsSlider_>=40) {
+            const float value=std::clamp(static_cast<float>((cursor.x-x)/170),0.0f,1.0f);
+            if(activeSettingsSlider_==42) settings_.precipitationDensity=value;
+            if(activeSettingsSlider_==45) settings_.lightningFlash=value;
+            return;
+        }
+    }
     if (ui_.state() == GameState::VideoSettings) {
         const bool leftDown = input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
         const float sliderX = MenuLayout::panel(framebufferWidth, framebufferHeight).x + 340.0f;
@@ -1067,13 +1114,26 @@ void Game::updatePauseInterface() {
         else if (hit == 4) { refreshWorlds(); ui_.openWorldSelection(); }
         return;
     }
-    if (hit >= 30 && hit <= 33) {
+    if(ui_.state()==GameState::WeatherSettings) {
+        switch(hit) {
+        case 40: settings_.weatherCycle=!settings_.weatherCycle; break;
+        case 41: settings_.weatherQuality=(settings_.weatherQuality+1)%4; break;
+        case 43: settings_.snowAccumulation=!settings_.snowAccumulation; break;
+        case 44: settings_.lightningEffects=!settings_.lightningEffects; break;
+        case 46: settings_.weatherFog=!settings_.weatherFog; break;
+        case 47: settings_.weatherWind=!settings_.weatherWind; break;
+        case 48: ui_.openSettings(); break;
+        }
+        saveSettings(); return;
+    }
+    if (hit >= 30 && hit <= 34) {
         activeSettingsSlider_ = -1;
         saveSettings();
         if (hit == 30) ui_.openVideoSettings();
         if (hit == 31) ui_.openAudioSettings();
         if (hit == 32) ui_.openControls();
         if (hit == 33) ui_.backFromSettings();
+        if (hit == 34) ui_.openWeatherSettings();
         return;
     }
     if (ui_.state() == GameState::Controls) {
@@ -1236,12 +1296,13 @@ void Game::updateSimulation(float deltaTime) {
     world_->updateFluids(deltaTime);
     world_->updateBlockEntities(deltaTime);
     const bool playerInputEnabled =
-        ui_.state() == GameState::Playing && input_.cursorCaptured();
+        ui_.state() == GameState::Playing && input_.cursorCaptured() && weatherBenchmark_.empty();
     const bool wasDead = player_->isDead();
     const bool wasBelowWorld = player_->position().y < -24.0f;
     player_->update(deltaTime, input_.playerInput(playerInputEnabled), *world_);
     if ((wasDead || wasBelowWorld) && !player_->isDead() && player_->position().y >= 0.0f)
         world_->prepareSpawnTerrain(player_->position());
+    weather_->update(deltaTime, *world_, *player_, *survival_, *sounds_, settings_);
     farming_->update(deltaTime, *world_, player_->position());
 
     if (ui_.gameplayInterfaceOpen()) {
@@ -1540,7 +1601,7 @@ void Game::handleUseAction() {
         const Block targetBlock =
             world_->getBlock(targetPosition.x, targetPosition.y, targetPosition.z);
 
-        if (heldItem == Item::Seeds && targetBlock == Block::Farmland &&
+        if (heldItem == Item::Seeds && (targetBlock == Block::Farmland || targetBlock == Block::WetFarmland) &&
             world_->getBlock(adjacentPosition.x, adjacentPosition.y, adjacentPosition.z) ==
                 Block::Air) {
             farming_->plant(*world_, adjacentPosition);
@@ -1739,7 +1800,7 @@ void Game::handleUseAction() {
 
 void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
     sounds_->setListener(player_->cameraPosition(), player_->lookDirection());
-    survival_->update(deltaTime, *world_, *player_, *inventory_, daylight(timing_.worldTime));
+    survival_->update(deltaTime, *world_, *player_, *inventory_, weather_->stormSpawning() ? 0.0f : daylight(timing_.worldTime));
     for (const glm::vec3& center : survival_->takeExplosionEffects())
         renderer_->spawnExplosionParticles(center);
 
@@ -1832,6 +1893,9 @@ void Game::renderFrame(float deltaTime) {
     }
 
     const bool underwater = player_->isSwimming();
+    renderer_->setWeather(weather_->intensity(), weather_->storm(),
+        settings_.lightningEffects && settings_.weatherQuality > 0 ? weather_->flash()*settings_.lightningFlash : 0,
+        settings_.weatherFog && settings_.weatherQuality >= 2, weather_->wetness());
     renderer_->renderSky(view, projection, timing_.worldTime);
     renderer_->renderWorld(*world_,
                            view,
@@ -1860,6 +1924,8 @@ void Game::renderFrame(float deltaTime) {
                                 timing_.worldTime, settings_.brightness, fullbright_, entityDistance);
     renderer_->renderItemSprites(items.get(), view, projection, timing_.worldTime, entityDistance);
     renderer_->renderParticles(view, projection, entityDistance);
+    weatherRenderer_->render(*weather_, *world_, settings_, player_->cameraPosition(),
+                             view, projection, timing_.worldTime, daylight(timing_.worldTime));
 
     if (!zooming) {
         if (!spectatorMode_ && ui_.state() == GameState::Playing &&
@@ -2151,7 +2217,7 @@ void Game::runCommandSmokeTest() {
     if (!ChatUI::runSelfTest(report)) throw std::runtime_error("Chat UI: " + report);
     CommandContext context{*world_, *player_, *inventory_, *survival_, timing_.worldTime,
                            seed_, [this] { return gameMode(); },
-                           [this](GameMode mode) { setGameMode(mode); }, true};
+                           [this](GameMode mode) { setGameMode(mode); }, true, weather_.get(), sounds_.get()};
     // The fixture edits the origin even when an existing profile loads far away.
     world_->generate(2, glm::vec3(10.0f,70.0f,10.0f));
     auto check = [&](const std::string& line, bool success) {
@@ -2319,27 +2385,23 @@ void Game::runSurvivalSmokeTest() {
     UIManager settingsUi;
     settingsUi.openPauseMenu();
     settingsUi.openSettings();
-    const float settingsPanelX = uiWidth * 0.5f - 220.0f;
-    const float settingsPanelY = uiHeight * 0.5f - 350.0f;
-    for (int row = 0; row < 14; ++row) {
-        uiLayoutPassed = uiLayoutPassed &&
-            settingsUi.hoveredMenuItem(
-                {settingsPanelX + 80.0f, settingsPanelY + 82.0f + row * 37.0f},
-                uiWidth, uiHeight) == row;
-    }
-    uiLayoutPassed = uiLayoutPassed &&
-        settingsUi.hoveredMenuItem(
-            {settingsPanelX + 200.0f, settingsPanelY + 655.0f},
-            uiWidth, uiHeight) == 15;
-    uiLayoutPassed = uiLayoutPassed &&
-        settingsUi.hoveredMenuItem(
-            {settingsPanelX + 200.0f, settingsPanelY + 605.0f},
-            uiWidth, uiHeight) == 14;
+    const float settingsScale=UIManager::menuScale(uiWidth,uiHeight);
+    const int logicalWidth=static_cast<int>(uiWidth/settingsScale),logicalHeight=static_cast<int>(uiHeight/settingsScale);
+    const auto checkMenuHit=[&](UiRect r,int expected) {
+        return settingsUi.hoveredMenuItem({(r.x+r.width*.5f)*settingsScale,(r.y+r.height*.5f)*settingsScale},uiWidth,uiHeight)==expected;
+    };
+    for(int row=0;row<5;++row)
+        uiLayoutPassed=uiLayoutPassed && checkMenuHit(MenuLayout::hubRow(row,logicalWidth,logicalHeight),row==3?34:row==4?33:30+row);
+    settingsUi.openVideoSettings();
+    for(int row=0;row<12;++row)
+        uiLayoutPassed=uiLayoutPassed && checkMenuHit(MenuLayout::videoRow(row,logicalWidth,logicalHeight),MenuLayout::VideoActions[row]);
+    uiLayoutPassed=uiLayoutPassed && checkMenuHit(MenuLayout::back(logicalWidth,logicalHeight),15);
+    settingsUi.openWeatherSettings();
+    for(int row=0;row<8;++row)
+        uiLayoutPassed=uiLayoutPassed && checkMenuHit(MenuLayout::videoRow(row,logicalWidth,logicalHeight),40+row);
+    uiLayoutPassed=uiLayoutPassed && checkMenuHit(MenuLayout::back(logicalWidth,logicalHeight),48);
     settingsUi.openControls();
-    uiLayoutPassed = uiLayoutPassed &&
-        settingsUi.hoveredMenuItem(
-            {settingsPanelX + 200.0f, settingsPanelY + 89.0f},
-            uiWidth, uiHeight) == 0;
+    uiLayoutPassed=uiLayoutPassed && checkMenuHit({logicalWidth*.5f-185,logicalHeight*.5f-275,370,29},0);
     GameSettings bindingSettings;
     const int originalForward = bindingSettings.controls[static_cast<int>(ControlAction::Forward)];
     const int originalBackward = bindingSettings.controls[static_cast<int>(ControlAction::Backward)];
@@ -2455,6 +2517,10 @@ void Game::runSurvivalSmokeTest() {
     testSettings.passiveMobVolume = .75f;
     testSettings.hostileMobVolume = 0.0f;
     testSettings.brightness = .75f;
+    testSettings.weatherCycle=false; testSettings.weatherQuality=1;
+    testSettings.precipitationDensity=.37f; testSettings.lightningFlash=.45f;
+    testSettings.snowAccumulation=false; testSettings.lightningEffects=false;
+    testSettings.weatherFog=false; testSettings.weatherWind=false;
     GameSettings reloadedSettings;
     distancePassed = distancePassed && testSettings.save(settingsTestPath) &&
                      reloadedSettings.load(settingsTestPath) &&
@@ -2467,7 +2533,11 @@ void Game::runSurvivalSmokeTest() {
                      reloadedSettings.sfxVolume == .25f &&
                      reloadedSettings.passiveMobVolume == .75f &&
                      reloadedSettings.hostileMobVolume == 0.0f &&
-                     reloadedSettings.brightness == .75f;
+                     reloadedSettings.brightness == .75f &&
+                     !reloadedSettings.weatherCycle && reloadedSettings.weatherQuality==1 &&
+                     reloadedSettings.precipitationDensity==.37f && reloadedSettings.lightningFlash==.45f &&
+                     !reloadedSettings.snowAccumulation && !reloadedSettings.lightningEffects &&
+                     !reloadedSettings.weatherFog && !reloadedSettings.weatherWind;
     std::filesystem::remove(settingsTestPath);
 
     GameSettings presetSettings;
@@ -3343,6 +3413,8 @@ void Game::renderMenuInterface(int width, int height) {
         renderer_->renderWorldMenu(width,height,hover,ui_.state()==GameState::CreateWorld,
             savedWorlds_,worldPage_,selectedWorld_,newWorldName_,newWorldSeed_,newWorldMode_,
             worldNameField_,menuMessage_,glfwGetTime());
+    } else if(ui_.state()==GameState::WeatherSettings) {
+        renderer_->renderWeatherSettings(width,height,hover,settings_);
     } else if (ui_.state() == GameState::Settings || ui_.state() == GameState::VideoSettings) {
         renderer_->renderSettingsCategories(width,height,hover,settings_,ui_.state()==GameState::VideoSettings);
     } else if (ui_.state() == GameState::ResetWorld) {
@@ -3361,6 +3433,9 @@ void Game::returnToMainMenu() {
         chat_.addMessage(menuMessage_, ChatTone::Error, glfwGetTime());
         return;
     }
+    weather_.reset();
+    if (weatherRenderer_) weatherRenderer_->clear();
+    if (sounds_) sounds_->setRainAmbience(0,0);
     farming_.reset();
     survival_.reset();
     inventory_.reset();
@@ -3454,6 +3529,7 @@ void Game::runMainMenuSmokeTest() {
     const int initialDiamonds = inventory_->count(Item::Diamond);
     inventory_->add(Item::Diamond, 1);
     timing_.worldTime = 290.0f;
+    weather_->set(WeatherType::Thunder,179);
     returnToMainMenu();
     capture();
     check(!world_ && !input_.cursorCaptured(), "Return-to-menu teardown");
@@ -3467,9 +3543,10 @@ void Game::runMainMenuSmokeTest() {
     if (Persistence::enabled()) {
         check(glm::distance(player_->position(), position) < .01f &&
               std::abs(timing_.worldTime - 290.0f) < .01f &&
-              inventory_->count(Item::Diamond) == initialDiamonds + 1, "Full game save/load");
+              inventory_->count(Item::Diamond) == initialDiamonds + 1 &&
+              weather_->type()==WeatherType::Thunder && weather_->remaining()==179, "Full game save/load/weather");
     } else {
-        check(timing_.worldTime == 35.0f && gameMode() == GameMode::Survival &&
+        check(timing_.worldTime == 35.0f && weather_->type()==WeatherType::Clear && weather_->intensity()==0 && gameMode() == GameMode::Survival &&
               inventory_->count(Item::Diamond) == initialDiamonds,
               "Demo did not reset its session");
     }
@@ -3494,6 +3571,7 @@ void Game::runMainMenuSmokeTest() {
             player_->teleport(positions[index]);
             check(survival_->summonMob(index==1 ? "NijikaIjichi" : "cow",positions[index]+glm::vec3(2,0,0)), "Mob initialization");
             timing_.worldTime = 100.0f+index*50;
+            weather_->set(static_cast<WeatherType>(index),180.0f+index);
             returnToMainMenu();
             check(!world_, "Separate world teardown failed");
         }
@@ -3506,6 +3584,7 @@ void Game::runMainMenuSmokeTest() {
                   glm::distance(player_->position(),positions[index])<.01f &&
                   std::abs(timing_.worldTime-(100.0f+index*50))<.01f &&
                   gameMode()==(index==1 ? GameMode::Creative : GameMode::Survival),"World state mixed across saves");
+            check(weather_->type()==static_cast<WeatherType>(index) && weather_->remaining()==180.0f+index,"Weather mixed across worlds");
             world_->prepareSpawnTerrain({.5f,240,.5f});
             check(world_->getBlock(edit.x,edit.y,edit.z)==(index==1 ? Block::GoldBlock : Block::DiamondBlock),"Terrain edit did not persist");
             if (index==1) {

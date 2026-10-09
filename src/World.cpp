@@ -411,7 +411,16 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
         else
             lightEmitters.erase(position);
     }
+    const auto column = static_cast<std::size_t>(localZ * CHUNK_SIZE + localX);
+    const auto blocksRain = [](Block b) { return b != Block::Air && !isCrop(b) &&
+        !isPlant(b) && !isWallAttachment(b) && !isTorch(b); };
     blocks[index] = block;
+    if (blocksRain(block)) precipitationTop[column] = std::max(precipitationTop[column], static_cast<std::int16_t>(y));
+    else if (precipitationTop[column] == y) {
+        int top = y - 1;
+        while (top >= 0 && !blocksRain(getLocal(localX,top,localZ))) --top;
+        precipitationTop[column] = static_cast<std::int16_t>(top);
+    }
     // An upper bound is sufficient. Leaving it high after a removal avoids a
     // full-height scan on the player edit path.
     if (isRenderable(block))
@@ -420,9 +429,13 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
 
 void Chunk::rebuildLightEmitterIndex() {
     lightEmitters.clear();
-    for (std::size_t index = 0; index < blocks.size(); ++index)
-        if (blockLightEmission(blocks[index]))
-            lightEmitters.push_back(static_cast<std::uint32_t>(index));
+    precipitationTop.fill(-1);
+    for (std::size_t index = 0; index < blocks.size(); ++index) {
+        const Block b = blocks[index];
+        if (blockLightEmission(b)) lightEmitters.push_back(static_cast<std::uint32_t>(index));
+        if (b != Block::Air && !isPlant(b) && !isCrop(b) && !isWallAttachment(b) && !isTorch(b))
+            precipitationTop[index % (CHUNK_SIZE*CHUNK_SIZE)] = static_cast<std::int16_t>(index / (CHUNK_SIZE*CHUNK_SIZE));
+    }
 }
 
 World::World(std::uint32_t seed)
@@ -783,8 +796,12 @@ glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
                     const Block b = blockAt(x,y,z);
                     if (isSolid(b) || isWater(b)) break;
                 }
+                const bool snowCovered = snowLayers(blockAt(x,y,z)) > 1;
+                const float snowTop = y + blockGeometry(blockAt(x,y,z)).maxY;
+                if (snowCovered) --y;
                 if (y <= 2 || !safeGround(blockAt(x,y,z)) ||
                     !safeGround(blockAt(x,y-1,z))) continue;
+                const float spawnY = snowCovered ? snowTop + .01f : y + 1.01f;
                 bool safe = true;
                 // A clear body and a supported neighborhood avoid cliff edges,
                 // water, cactus and dangerous immediate sideways steps.
@@ -802,11 +819,23 @@ glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
                         const Block head = blockAt(x+ox,y+2,z+oz);
                         safe = footing && !isSolid(feet) && !isWater(feet) &&
                                !isSolid(head) && !isWater(head);
+                        if (snowCovered && footing) {
+                            safe = true;
+                            // Accumulated snow is safe footing on supported terrain.
+                            // Check actual heights so neither snow nor a low roof
+                            // overlaps the complete player body at the new surface.
+                            for (int by=y+1; by<=static_cast<int>(std::floor(spawnY+1.8f)) && safe; ++by) {
+                                const Block b=blockAt(x+ox,by,z+oz);
+                                const auto g=blockGeometry(b);
+                                safe = !isWater(b) && (!isSolid(b) ||
+                                    by+g.maxY<=spawnY || by+g.minY>=spawnY+1.8f);
+                            }
+                        }
                     }
                 const int distance = dx*dx + dz*dz;
                 if (safe && distance < bestDistance) {
                     bestDistance = distance;
-                    best = {x + .5f, y + 1.01f, z + .5f};
+                    best = {x + .5f, spawnY, z + .5f};
                 }
             }
         }
@@ -3626,6 +3655,14 @@ Block World::getBlock(int x, int y, int z) const {
     return chunk->getLocal(floorMod(x, CHUNK_SIZE), y, floorMod(z, CHUNK_SIZE));
 }
 
+float World::precipitationHeight(int x, int z) const {
+    const Chunk* chunk = findChunk(floorDiv(x,CHUNK_SIZE),floorDiv(z,CHUNK_SIZE));
+    if (!chunk) return -1.0f;
+    const int lx = x - chunk->x*CHUNK_SIZE, lz = z - chunk->z*CHUNK_SIZE;
+    const int y = chunk->precipitationTop[static_cast<std::size_t>(lz*CHUNK_SIZE+lx)];
+    return y < 0 ? 0.0f : static_cast<float>(y) + blockGeometry(chunk->getLocal(lx,y,lz)).maxY;
+}
+
 bool World::isSolidAt(int x, int y, int z) const {
     return isSolid(getBlock(x, y, z));
 }
@@ -4198,7 +4235,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
                 }
 
                 const BlockGeometryProperties ownGeometry = blockGeometry(block);
-                if (isSlab(block) || isDoor(block) || isTorch(block)) {
+                if (isSlab(block) || isDoor(block) || isTorch(block) || block == Block::LightningRod) {
                     const BlockGeometryProperties& geometry = ownGeometry;
                     const glm::vec3 localMinimum(geometry.minX, geometry.minY, geometry.minZ);
                     const glm::vec3 localMaximum(geometry.maxX, geometry.maxY, geometry.maxZ);
@@ -4617,7 +4654,7 @@ bool World::raycast(const glm::vec3& origin,
     while (travelled <= maxDistance) {
         const Block block = getBlock(cell.x, cell.y, cell.z);
         if (isRenderable(block) && !isWater(block)) {
-            if (isDoor(block) || isTorch(block)) {
+            if (isDoor(block) || isTorch(block) || block == Block::LightningRod) {
                 const BlockGeometryProperties bounds = blockGeometry(block);
                 const glm::vec3 lower = glm::vec3(cell) +
                     glm::vec3(bounds.minX, bounds.minY, bounds.minZ);

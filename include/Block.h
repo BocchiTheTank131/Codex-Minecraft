@@ -112,6 +112,10 @@ enum class Block : std::uint8_t {
     VineSouth,
     VineEast,
     VineWest,
+    LightningRod,
+    WetFarmland,
+    Fire,
+    Snow2, Snow3, Snow4, Snow5, Snow6, Snow7, Snow8,
     Count
 };
 
@@ -150,7 +154,7 @@ inline bool isTorch(Block b) {
 // The existing block-light solver's source levels. Keep indexing and solving
 // on the same definition; non-emissive blocks must not enter the source index.
 inline std::uint8_t blockLightEmission(Block block) {
-    return block == Block::Torch ? 15U : 0U;
+    return block == Block::Torch || block == Block::Fire ? 15U : 0U;
 }
 inline bool isCrop(Block b) {
     return b >= Block::Crop0 && b <= Block::Crop3;
@@ -160,7 +164,7 @@ inline bool isLeaf(Block b) {
 }
 inline bool isPlant(Block b) {
     return b == Block::TallGrass || b == Block::RedFlower || b == Block::YellowFlower ||
-           b == Block::SugarCane;
+           b == Block::SugarCane || b == Block::Fire;
 }
 
 inline bool isVine(Block b) {
@@ -224,31 +228,39 @@ inline Block doorBlock(int facing, bool upper, bool hingeRight, bool open) {
 inline Block doorBlock(int facing, bool upper, bool open) {
     return doorBlock(facing, upper, false, open);
 }
+inline int snowLayers(Block b) {
+    return b==Block::Snow ? 1 : b>=Block::Snow2 && b<=Block::Snow8 ?
+        static_cast<int>(b)-static_cast<int>(Block::Snow2)+2 : 0;
+}
+inline Block snowLayerBlock(int layers) {
+    return layers<=0 ? Block::Air : layers==1 ? Block::Snow :
+        static_cast<Block>(static_cast<int>(Block::Snow2)+layers-2);
+}
 inline float blockCollisionMinY(Block b) {
     return isTopSlab(b) ? 0.5f : 0.0f;
 }
 inline float blockCollisionMaxY(Block b) {
-    if (b == Block::Snow)
-        return 0.125f;
+    if (snowLayers(b))
+        return snowLayers(b)*0.125f;
     return isSlab(b) ? (isTopSlab(b) ? 1.0f : 0.5f) : 1.0f;
 }
 inline float blockCollisionHeight(Block b) {
     if (isSlab(b))
         return blockCollisionMaxY(b) - blockCollisionMinY(b);
-    if (b == Block::Snow)
-        return 0.125f;
+    if (snowLayers(b))
+        return snowLayers(b)*0.125f;
     return 1.0f;
 }
 inline bool isSolid(Block b) {
     return b != Block::Air && !isWater(b) && b != Block::Torch && !isCrop(b) &&
-           b != Block::Snow && !isPlant(b) && !isWallAttachment(b);
+           b != Block::Snow && b != Block::LightningRod && b != Block::Fire && !isPlant(b) && !isWallAttachment(b);
 }
 inline bool isRenderable(Block b) {
     return b != Block::Air;
 }
 inline bool occludesLight(Block b) {
     return isSolid(b) && !isLeaf(b) && b != Block::Glass && b != Block::Ice && !isSlab(b) &&
-           !isDoor(b);
+           !isDoor(b) && !snowLayers(b);
 }
 
 enum class BlockShape : std::uint8_t {
@@ -290,9 +302,20 @@ inline BlockGeometryProperties blockGeometry(Block block) {
         geometry.occludesNeighborFaces = false;
         geometry.mergeMatchingFaces = true;
         geometry.aoOcclusion = 0.0f;
-    } else if (block == Block::Snow) {
+    } else if (block == Block::LightningRod) {
+        geometry.shape = BlockShape::Thin;
+        geometry.minX = geometry.minZ = .4375f;
+        geometry.maxX = geometry.maxZ = .5625f;
+        geometry.maxY = 1.0f;
+        geometry.occludesNeighborFaces = false;
+        geometry.aoOcclusion = 0;
+    } else if (block == Block::Fire) {
+        geometry.shape = BlockShape::Crossed;
+        geometry.occludesNeighborFaces = false;
+        geometry.aoOcclusion = 0;
+    } else if (snowLayers(block)) {
         geometry.shape = BlockShape::PartialCube;
-        geometry.maxY = 0.125f;
+        geometry.maxY = snowLayers(block)*0.125f;
         geometry.aoOcclusion = 0.25f;
     } else if (isSlab(block)) {
         geometry.shape = BlockShape::PartialCube;
@@ -345,7 +368,7 @@ inline BlockGeometryProperties blockGeometry(Block block) {
                                block == Block::Ice ? 0.06f : 0.0f;
     } else if (block == Block::Cactus) {
         geometry.aoOcclusion = 0.45f;
-    } else if (block == Block::Farmland) {
+    } else if (block == Block::Farmland || block == Block::WetFarmland) {
         geometry.aoOcclusion = 0.85f;
     }
     return geometry;

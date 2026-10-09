@@ -21,6 +21,8 @@ class FarmingSystem;
 class Player;
 class Renderer;
 class SoundSystem;
+class Weather;
+class WeatherRenderer;
 
 class Game {
 public:
@@ -108,6 +110,8 @@ private:
     std::unique_ptr<Inventory> inventory_;
     std::unique_ptr<SurvivalWorld> survival_;
     std::unique_ptr<FarmingSystem> farming_;
+    std::unique_ptr<Weather> weather_;
+    std::unique_ptr<WeatherRenderer> weatherRenderer_;
 
     std::uint32_t seed_ = 20260917;
     TimingState timing_{};
@@ -188,6 +192,9 @@ private:
     std::string buildDebugText() const;
     bool playerIsWalking() const;
 
+    void runWeatherSmokeTest();
+    bool weatherSmoke_ = false;
+    std::string weatherBenchmark_;
     void runSurvivalSmokeTest();
     void runCraftingContentSmokeTest();
     void runPatch272SmokeTest();

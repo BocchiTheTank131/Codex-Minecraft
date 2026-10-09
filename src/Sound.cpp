@@ -20,6 +20,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <numeric>
@@ -106,6 +107,9 @@ struct SoundSystem::Impl {
     std::unordered_map<std::string, std::size_t> lastVariant;
     std::unordered_set<std::string> warnedGroups;
     std::vector<Voice> voices;
+    std::array<Voice,4> rainVoices{};
+    std::array<float,2> rainTarget{}, rainGain{};
+
     std::vector<MusicTrack> musicTracks;
     std::vector<std::size_t> musicBag;
     std::size_t lastMusic = static_cast<std::size_t>(-1);
@@ -166,7 +170,17 @@ struct SoundSystem::Impl {
 #else
         (void)executablePath;
 #endif
-        const ma_engine_config config = ma_engine_config_init();
+        ma_engine_config config = ma_engine_config_init();
+        // Only attenuate overloaded mixed buffers. No allocations or locks on
+        // the audio thread, and normal (unclipped) playback remains unchanged.
+        config.pProcessUserData=&engine;
+        config.onProcess=[](void* user,float* frames,ma_uint64 count) {
+            const auto channels=ma_engine_get_channels(static_cast<ma_engine*>(user));
+            const auto samples=count*channels;
+            float peak=1.0f;
+            for(ma_uint64 i=0;i<samples;++i) peak=std::max(peak,std::abs(frames[i]));
+            if(peak>1.0f) for(ma_uint64 i=0;i<samples;++i) frames[i]/=peak;
+        };
         if (ma_engine_init(&config, &engine) != MA_SUCCESS) {
             std::cerr << "Audio: output device unavailable; effects disabled\n";
             return;
@@ -260,6 +274,7 @@ struct SoundSystem::Impl {
         if (!engineReady) return;
         stopMusic();
         for (auto& voice : voices) releaseVoice(voice);
+        for (auto& voice : rainVoices) releaseVoice(voice);
 #ifndef VOXEL_STANDALONE
         for (auto& asset : assets) ma_sound_uninit(asset.source.get());
 #endif
@@ -267,6 +282,7 @@ struct SoundSystem::Impl {
     }
 
     static void releaseVoice(Voice& voice) {
+        if (!voice.sound) return;
         ma_sound_uninit(voice.sound.get());
 #ifdef VOXEL_STANDALONE
         ma_audio_buffer_uninit(voice.buffer.get());
@@ -379,9 +395,36 @@ struct SoundSystem::Impl {
         }
     }
 
+    Voice makeVoice(std::size_t assetIndex) {
+        auto sound = std::make_unique<ma_sound>();
+#ifdef VOXEL_STANDALONE
+        const Asset& asset = assets[assetIndex];
+        auto buffer = std::make_unique<ma_audio_buffer>();
+        ma_audio_buffer_config bufferConfig = ma_audio_buffer_config_init(
+            ma_format_f32, asset.channels, asset.frameCount, asset.pcm.data(), nullptr);
+        bufferConfig.sampleRate = asset.sampleRate;
+        if (ma_audio_buffer_init(&bufferConfig, buffer.get()) != MA_SUCCESS) return {};
+        if (ma_sound_init_from_data_source(&engine,
+                reinterpret_cast<ma_data_source*>(buffer.get()), 0, nullptr,
+                sound.get()) != MA_SUCCESS) {
+            ma_audio_buffer_uninit(buffer.get());
+            return {};
+        }
+#else
+        if (ma_sound_init_copy(&engine, assets[assetIndex].source.get(),
+                               0, nullptr, sound.get()) != MA_SUCCESS) return {};
+#endif
+        Voice voice;
+        voice.sound = std::move(sound);
+#ifdef VOXEL_STANDALONE
+        voice.buffer = std::move(buffer);
+#endif
+        return voice;
+    }
+
     void play(const std::string& group, float gain, int priority,
               const glm::vec3* position = nullptr, float pitchRange = 0.06f,
-              AudioCategory category = AudioCategory::Sfx) {
+              AudioCategory category = AudioCategory::Sfx, float audibleRange = 28.0f) {
         if (!engineReady || masterVolume <= 0.001f ||
             categoryVolume(category) <= 0.001f) return;
         const auto found = groups.find(group);
@@ -390,7 +433,7 @@ struct SoundSystem::Impl {
                 std::cerr << "Audio: missing sound group " << group << '\n';
             return;
         }
-        if (position && glm::distance(*position, listener) > 28.0f) return;
+        if (position && glm::distance(*position, listener) > audibleRange) return;
         voices.erase(std::remove_if(voices.begin(), voices.end(), [](Voice& voice) {
             if (ma_sound_is_playing(voice.sound.get())) return false;
             releaseVoice(voice);
@@ -411,48 +454,71 @@ struct SoundSystem::Impl {
             variant == previous->second)
             variant = (variant + 1) % variants.size();
         lastVariant[group] = variant;
-        auto sound = std::make_unique<ma_sound>();
-#ifdef VOXEL_STANDALONE
-        const Asset& asset = assets[variants[variant]];
-        auto buffer = std::make_unique<ma_audio_buffer>();
-        ma_audio_buffer_config bufferConfig = ma_audio_buffer_config_init(
-            ma_format_f32, asset.channels, asset.frameCount, asset.pcm.data(), nullptr);
-        bufferConfig.sampleRate = asset.sampleRate;
-        if (ma_audio_buffer_init(&bufferConfig, buffer.get()) != MA_SUCCESS) return;
-        if (ma_sound_init_from_data_source(&engine,
-                reinterpret_cast<ma_data_source*>(buffer.get()), 0, nullptr,
-                sound.get()) != MA_SUCCESS) {
-            ma_audio_buffer_uninit(buffer.get());
-            return;
-        }
-#else
-        if (ma_sound_init_copy(&engine, assets[variants[variant]].source.get(),
-                               0, nullptr, sound.get()) != MA_SUCCESS) return;
-#endif
-        ma_sound_set_volume(sound.get(), gain * categoryVolume(category));
+        Voice voice = makeVoice(variants[variant]);
+        if (!voice.sound) return;
+        auto* sound = voice.sound.get();
+        ma_sound_set_volume(sound, gain * categoryVolume(category));
         if (pitchRange > 0.0f) {
             std::uniform_real_distribution<float> pitch(1.0f - pitchRange,
                                                         1.0f + pitchRange);
-            ma_sound_set_pitch(sound.get(), pitch(random));
+            ma_sound_set_pitch(sound, pitch(random));
         }
         if (position) {
-            ma_sound_set_spatialization_enabled(sound.get(), MA_TRUE);
-            ma_sound_set_position(sound.get(), position->x, position->y, position->z);
-            ma_sound_set_min_distance(sound.get(), 2.0f);
-            ma_sound_set_max_distance(sound.get(), 28.0f);
-            ma_sound_set_attenuation_model(sound.get(), ma_attenuation_model_linear);
+            ma_sound_set_spatialization_enabled(sound, MA_TRUE);
+            ma_sound_set_position(sound, position->x, position->y, position->z);
+            ma_sound_set_min_distance(sound, 2.0f);
+            ma_sound_set_max_distance(sound, audibleRange);
+            ma_sound_set_attenuation_model(sound, ma_attenuation_model_linear);
         } else {
-            ma_sound_set_spatialization_enabled(sound.get(), MA_FALSE);
+            ma_sound_set_spatialization_enabled(sound, MA_FALSE);
         }
-        ma_sound_start(sound.get());
-#ifdef VOXEL_STANDALONE
-        voices.push_back({std::move(sound), std::move(buffer), priority, gain, category});
-#else
-        voices.push_back({std::move(sound), priority, gain, category});
-#endif
+        ma_sound_start(sound);
+        voice.priority = priority; voice.baseGain = gain; voice.category = category;
+        voices.push_back(std::move(voice));
     }
 
+    void updateRain(float dt) {
+        if (!engineReady) return;
+        for (int kind=0;kind<2;++kind) {
+            rainGain[kind] += (rainTarget[kind]-rainGain[kind])*(1-std::exp(-dt*4));
+            const char* group = kind==0 ? "weather/rain" : "weather/rainabove";
+            const auto found=groups.find(group);
+            if(found==groups.end() || found->second.empty()) continue;
+            auto& a=rainVoices[kind*2]; auto& b=rainVoices[kind*2+1];
+            for(Voice* voice : {&a,&b}) if(voice->sound && ma_sound_at_end(voice->sound.get())) {
+                releaseVoice(*voice); *voice=Voice{};
+            }
+            auto left=[](Voice& voice) {
+                if(!voice.sound) return 0.0f;
+                float length=0,cursor=0;
+                ma_sound_get_length_in_seconds(voice.sound.get(),&length);
+                ma_sound_get_cursor_in_seconds(voice.sound.get(),&cursor);
+                return std::max(0.0f,length-cursor);
+            };
+            if(rainGain[kind]>.001f && ((!a.sound && !b.sound) ||
+                (a.sound && !b.sound && left(a)<.25f) || (b.sound && !a.sound && left(b)<.25f))) {
+                auto& destination=!a.sound ? a : b;
+                const auto& variants=found->second;
+                std::size_t variant=random()%variants.size();
+                const auto previous=lastVariant.find(group);
+                if(variants.size()>1 && previous!=lastVariant.end() && variant==previous->second) variant=(variant+1)%variants.size();
+                lastVariant[group]=variant;
+                destination=makeVoice(variants[variant]);
+                if(destination.sound) {
+                    ma_sound_set_spatialization_enabled(destination.sound.get(),MA_FALSE);
+                    ma_sound_set_volume(destination.sound.get(),0);
+                    ma_sound_start(destination.sound.get());
+                }
+            }
+            for(Voice* voice : {&a,&b}) if(voice->sound) {
+                float cursor=0; ma_sound_get_cursor_in_seconds(voice->sound.get(),&cursor);
+                const float envelope=std::min({1.0f,cursor/.25f,left(*voice)/.25f});
+                ma_sound_set_volume(voice->sound.get(),rainGain[kind]*sfxVolume*envelope*.28f);
+            }
+        }
+    }
     void tick(float deltaTime) {
+        updateRain(deltaTime);
         updateMusic();
         pickupCooldown = std::max(0.0f, pickupCooldown - deltaTime);
         xpCooldown = std::max(0.0f, xpCooldown - deltaTime);
@@ -654,4 +720,55 @@ bool SoundSystem::verifyMusic() {
               << " unique streamed tracks, automatic transitions, shuffle boundary, "
                  "and exact category gain passed\n";
     return heard.size() == trackCount;
+}
+
+void SoundSystem::setRainAmbience(float outdoor,float sheltered) {
+    impl_->rainTarget={std::clamp(outdoor,0.0f,1.0f),std::clamp(sheltered,0.0f,1.0f)};
+}
+void SoundSystem::playLightning(const glm::vec3& position,bool thunder,float muffle) {
+    impl_->play(thunder ? "weather/thunder" : "explode/explode",
+                (thunder ? .55f : .70f)*std::clamp(muffle,0.0f,1.0f),8,&position,0.02f,
+                AudioCategory::Sfx,thunder ? 320.0f : 64.0f);
+}
+bool SoundSystem::verifyWeather() {
+    if(!impl_->engineReady) return false;
+    for(const auto& entry : std::array<std::pair<const char*,std::size_t>,4>{{
+        {"weather/rain",8},{"weather/rainabove",4},{"weather/thunder",3},{"explode/explode",4}}}) {
+        const auto found=impl_->groups.find(entry.first);
+        if(found==impl_->groups.end() || found->second.size()!=entry.second) return false;
+    }
+    const float oldMaster=impl_->masterVolume,oldSfx=impl_->sfxVolume;
+    setMasterVolume(1);
+    impl_->rainGain={0,0}; setRainAmbience(1,0);
+    for(int i=0;i<10;++i) impl_->updateRain(.1f);
+    if(impl_->rainGain[0]<.98f || !impl_->rainVoices[0].sound) return false;
+    auto* outdoor=impl_->rainVoices[0].sound.get();
+    if(ma_sound_is_spatialization_enabled(outdoor)) return false;
+    // Force the current clip to its handoff boundary, using the actual engine.
+    ma_uint64 length=0; ma_sound_get_length_in_pcm_frames(outdoor,&length);
+    const auto tail=static_cast<ma_uint64>(ma_engine_get_sample_rate(&impl_->engine)*.1f);
+    if(length>tail) ma_sound_seek_to_pcm_frame(outdoor,length-tail);
+    impl_->updateRain(.016f);
+    if(!impl_->rainVoices[1].sound || !ma_sound_is_playing(impl_->rainVoices[1].sound.get())) return false;
+    setRainAmbience(0,1);
+    for(int i=0;i<10;++i) impl_->updateRain(.1f);
+    if(impl_->rainGain[0]>.02f || impl_->rainGain[1]<.98f) return false;
+    impl_->sfxVolume=0; impl_->updateRain(.016f);
+    for(const auto& voice:impl_->rainVoices) if(voice.sound && ma_sound_get_volume(voice.sound.get())!=0) return false;
+    impl_->sfxVolume=1;
+    const glm::vec3 strike=impl_->listener+glm::vec3(20,0,0);
+    playLightning(strike,true,1);
+    if(impl_->voices.empty()) return false;
+    auto* thunder=impl_->voices.back().sound.get();
+    const auto position=ma_sound_get_position(thunder);
+    if(position.x!=strike.x || position.y!=strike.y || position.z!=strike.z ||
+       !ma_sound_is_spatialization_enabled(thunder) || ma_sound_get_max_distance(thunder)!=320) return false;
+    const auto count=impl_->voices.size();
+    playLightning(impl_->listener+glm::vec3(65,0,0),false,1);
+    if(impl_->voices.size()!=count) return false;
+    for(auto& voice:impl_->rainVoices) {impl_->releaseVoice(voice);voice=Impl::Voice{};}
+    impl_->rainGain={0,0}; setRainAmbience(0,0);
+    impl_->sfxVolume=oldSfx; setMasterVolume(oldMaster);
+    std::cout << "Weather audio: 19 decodes, continuous clip handoff, shelter crossfade, SFX mute, strike position and ranges passed\n";
+    return true;
 }
