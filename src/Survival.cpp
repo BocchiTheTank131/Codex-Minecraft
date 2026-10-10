@@ -36,7 +36,8 @@ struct BillboardMobDefinition {
     std::string name;
     BillboardBehavior behavior = BillboardBehavior::MeleeChase;
     float health = 20.0f;
-    float chaseSpeed = 2.35f;
+    float wanderSpeed = 2.0f;
+    float chaseSpeed = 6.0f;
     float damage = 2.0f;
     float attackCooldown = 1.0f;
     float detectionRange = 16.0f;
@@ -2327,6 +2328,8 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
                             ? (isBillboard(a.type)
                                    ? billboardMobDefinitions()[billboardIndex(a.type)].chaseSpeed
                                    : 2.35f)
+                        : isBillboard(a.type)
+                            ? billboardMobDefinitions()[billboardIndex(a.type)].wanderSpeed
                         : preferredFood && distance < 8.0f ? 1.15f : 0.75f;
     const float movementScale = a.fuseTimer > 0.0f ? .12f : 1.0f;
     glm::vec3 move(a.heading.x * speed * movementScale + a.velocity.x, 0,
