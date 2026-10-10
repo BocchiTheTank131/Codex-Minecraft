@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.10.2 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.10.3 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 option(VOXELFRONTIER_STANDALONE_DEMO "Build the stateless standalone demo" OFF)

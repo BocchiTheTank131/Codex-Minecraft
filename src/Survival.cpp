@@ -36,8 +36,8 @@ struct BillboardMobDefinition {
     std::string name;
     BillboardBehavior behavior = BillboardBehavior::MeleeChase;
     float health = 20.0f;
-    float wanderSpeed = 2.0f;
-    float chaseSpeed = 6.0f;
+    float wanderSpeed = 1.5f;
+    float chaseSpeed = 4.5f;
     float damage = 2.0f;
     float attackCooldown = 1.0f;
     float detectionRange = 16.0f;

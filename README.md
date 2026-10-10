@@ -69,7 +69,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.10.2** has **102 inventory items**, **56 placeable block families**, **120 block
+Version **2.10.3** has **102 inventory items**, **56 placeable block families**, **120 block
 IDs/states including Air**, **62 crafting recipes**, and **13 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -198,6 +198,11 @@ terrain preview; `--crafting-preview` exercises the actual inventory/container t
 
 ## Windows Release
 
+### v2.10.3 - Billboard Mob Speed Adjustment
+
+- All four billboard mobs wander at 1.5 blocks/second and chase at 4.5 blocks/second.
+- Player and other mob speeds are unchanged. Existing combat roles and movement mechanics are preserved.
+
 ### v2.10.2 - Billboard Mob Speed Update
 
 - All four billboard mobs wander at 2 blocks/second and chase at 6 blocks/second.
@@ -250,10 +255,10 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
 
 Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
 
-| v2.10.2 Windows build | Purpose | Persistence |
+| v2.10.3 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.10.2-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.10.2-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.10.3-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.10.3-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
