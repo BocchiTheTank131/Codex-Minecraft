@@ -40,6 +40,7 @@ struct UiHit {
 };
 
 namespace UiLayout {
+inline constexpr int CreativeColumns = 13;
 inline UiRect panel(UiMode mode, int width, int height) {
     const bool creative = mode == UiMode::Creative;
     return {width * .5f - 325.0f, height * .5f - (creative ? 315.0f : 280.0f),
@@ -67,8 +68,9 @@ inline UiRect craftingOutput(int width, int height) {
 }
 inline UiRect creativeItem(int index, int width, int height) {
     const UiRect p = panel(UiMode::Creative, width, height);
-    return {p.x + 116.0f + (index % 9) * 43.0f,
-            p.y + 45.0f + (index / 9) * 43.0f, 40.0f, 40.0f};
+    return {p.x + (p.width - (CreativeColumns * 43.0f - 3.0f)) * .5f +
+                (index % CreativeColumns) * 43.0f,
+            p.y + 45.0f + (index / CreativeColumns) * 43.0f, 40.0f, 40.0f};
 }
 inline UiRect furnaceSlot(UiSlotKind kind, int width, int height) {
     const UiRect p = panel(UiMode::Furnace, width, height);

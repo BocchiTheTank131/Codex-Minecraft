@@ -117,6 +117,18 @@ enum class Item : std::uint8_t {
     PolishedDiorite,
     PolishedAndesite,
     LightningRod,
+    // Appended IDs: existing worlds and inventory save IDs remain stable.
+    SpruceLog, SprucePlanks, SpruceLeaves,
+    JungleLog, JunglePlanks, JungleLeaves,
+    AcaciaLog, AcaciaPlanks, AcaciaLeaves,
+    DarkOakLog, DarkOakPlanks, DarkOakLeaves,
+    Podzol, Mycelium, CoarseDirt,
+    PackedIce, BlueIce, Terracotta,
+    TerracottaRed, TerracottaOrange, TerracottaYellow,
+    TerracottaWhite, TerracottaBrown, Bamboo,
+    Fern, DeadBush, LilyPad,
+    RedMushroom, BrownMushroom, MushroomStem,
+    RedMushroomBlock, BrownMushroomBlock,
     Count
 };
 
@@ -145,9 +157,13 @@ struct Ingredient {
     bool empty() const { return item == Item::None && group == IngredientGroup::None; }
     bool accepts(Item value) const {
         if (group == IngredientGroup::Planks)
-            return value == Item::Planks || value == Item::BirchPlanks;
+            return value == Item::Planks || value == Item::BirchPlanks ||
+                   value == Item::SprucePlanks || value == Item::JunglePlanks ||
+                   value == Item::AcaciaPlanks || value == Item::DarkOakPlanks;
         if (group == IngredientGroup::Logs)
-            return value == Item::Log || value == Item::BirchLog;
+            return value == Item::Log || value == Item::BirchLog ||
+                   value == Item::SpruceLog || value == Item::JungleLog ||
+                   value == Item::AcaciaLog || value == Item::DarkOakLog;
         return item == value;
     }
 };

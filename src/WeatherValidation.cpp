@@ -81,8 +81,11 @@ bool Weather::runSelfTest(World& world,SoundSystem& sounds,SurvivalWorld& surviv
     require(!fireTest.fires_.empty() && fireTest.fires_.size()<=64,"bounded lightning ignition");
     for(const auto& saved : fireOriginal) world.setBlock(saved.first.x,saved.first.y,saved.first.z,saved.second);
     int rain=0,snow=0,dry=0; glm::ivec2 rainSite(0),snowSite(0),drySite(0);
-    for(int cz=-768;cz<=768;cz+=64) for(int cx=-768;cx<=768;cx+=64) {
-        const auto kind=precipitation(world,cx,cz);
+    for(int cz=-4096;cz<=4096;cz+=128) for(int cx=-4096;cx<=4096;cx+=128) {
+        // The ecology platforms are at Y=240, so choose climate for that
+        // elevation instead of selecting a lowland rain site that becomes snow.
+        const auto climate=world.biomeClimateAt(cx,cz,241);
+        const auto kind=climate.dry?Precipitation::None:climate.freezes?Precipitation::Snow:Precipitation::Rain;
         if(kind==Precipitation::Rain && rain++==0) rainSite={cx,cz};
         if(kind==Precipitation::Snow && snow++==0) snowSite={cx,cz};
         if(kind==Precipitation::None && dry++==0) drySite={cx,cz};
@@ -125,6 +128,25 @@ bool Weather::runSelfTest(World& world,SoundSystem& sounds,SurvivalWorld& surviv
         fixture(drySite);
         a.environmentColumn(world,drySite.x,drySite.y,settings);
         require(world.getBlock(drySite.x,241,drySite.y)==Block::Air,"dry biome has no snow");
+    }
+    if(world.generationVersion()>=9 && snow) {
+        world.setBlock(snowSite.x+1,241,snowSite.y,Block::Air);
+        for(int i=0;i<20 && world.blockLightAt(snowSite.x,241,snowSite.y)>=10;++i)
+            world.updateStreaming({snowSite.x+.5f,240,snowSite.y+.5f},0);
+        fixture(snowSite);
+        world.setBlock(snowSite.x,240,snowSite.y,Block::Water);
+        a.environmentColumn(world,snowSite.x,snowSite.y,settings);
+        require(world.getBlock(snowSite.x,240,snowSite.y)==Block::Ice,"cold exposed water freezes");
+        fixture(rainSite);
+        world.setBlock(rainSite.x,240,rainSite.y,Block::Ice);
+        a.environmentColumn(world,rainSite.x,rainSite.y,settings);
+        require(world.getBlock(rainSite.x,240,rainSite.y)==Block::Water,"warm ordinary ice melts");
+        for(Block permanent:{Block::PackedIce,Block::BlueIce}) {
+            fixture(rainSite);
+            world.setBlock(rainSite.x,240,rainSite.y,permanent);
+            a.environmentColumn(world,rainSite.x,rainSite.y,settings);
+            require(world.getBlock(rainSite.x,240,rainSite.y)==permanent,"building ice remains permanent");
+        }
     }
     std::cout<<"Weather ecology: exposed/sheltered farmland, fire, snow depths/melting and dry biome passed\n";
     report="weather metadata/RNG roundtrip, legacy/corrupt saves, stone/glass/slab roofs, removal and rain/snow/dry biomes passed";

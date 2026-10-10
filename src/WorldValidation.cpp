@@ -24,6 +24,7 @@ bool World::runPatch272SelfTest(std::string& report) const {
     for(auto seed : seeds) {
         World old(seed), fresh(seed);
         old.generationVersion_=7;
+        fresh.generationVersion_=8; // Historical v2.7.2 fixture; v9 has its own audit.
         int oldMin=256,oldMax=0,newMin=256,newMax=0;
         for(int z=-2048;z<=2048;z+=32) for(int x=-2048;x<=2048;x+=32) {
             const auto a=old.sampleTerrain(x,z),b=fresh.sampleTerrain(x,z);

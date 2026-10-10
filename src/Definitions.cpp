@@ -1,4 +1,5 @@
 #include "Definitions.h"
+#include "BiomeContent.h"
 
 #include <algorithm>
 #include <array>
@@ -128,6 +129,15 @@ const Items& items() {
         put(Item::PolishedDiorite, 100, 100, "PolishedDiorite");
         put(Item::PolishedAndesite, 101, 101, "PolishedAndesite");
         put(Item::LightningRod, 102, 102, "LightningRod");
+        for(const auto& content : biomeContent()) {
+            put(content.item, static_cast<std::uint8_t>(content.item), static_cast<int>(content.item), content.name);
+            auto& definition=result[static_cast<std::size_t>(content.item)];
+            definition.placedBlock=content.block;
+            if(content.material==BiomeMaterial::Wood) definition.fuelSeconds=6;
+        }
+        for(Item log : {Item::SpruceLog,Item::JungleLog,Item::AcaciaLog,Item::DarkOakLog})
+            result[static_cast<std::size_t>(log)].smeltedItem=Item::Charcoal;
+        result[static_cast<std::size_t>(Item::Clay)].smeltedItem=Item::Terracotta;
         // Placement and furnace behavior share the authoritative item registry.
         const std::pair<Item, Block> placements[] = {
             {Item::Grass, Block::Grass}, {Item::Dirt, Block::Dirt},
@@ -242,6 +252,19 @@ const Blocks& blocks() {
             definition.solid = isSolid(block);
             definition.transparent = isTransparentBlock(block);
         };
+        for(const auto& content : biomeContent()) {
+            put(content.block,static_cast<std::uint8_t>(content.block),content.top,content.side,content.bottom,content.item);
+            auto& definition=result[static_cast<std::size_t>(content.block)];
+            const auto material=content.material;
+            definition.hardness=material==BiomeMaterial::Wood?1.0f:material==BiomeMaterial::Plant?.05f:
+                material==BiomeMaterial::Foliage?.15f:material==BiomeMaterial::Stone?1.25f:.5f;
+            definition.correctTool=material==BiomeMaterial::Wood?ToolKind::Axe:
+                material==BiomeMaterial::Ground?ToolKind::Shovel:
+                material==BiomeMaterial::Stone||material==BiomeMaterial::Ice?ToolKind::Pickaxe:ToolKind::None;
+            definition.soundMaterial=material==BiomeMaterial::Wood?SoundMaterial::Wood:
+                material==BiomeMaterial::Ground||material==BiomeMaterial::Foliage||material==BiomeMaterial::Plant?
+                    SoundMaterial::Grass:SoundMaterial::Stone;
+        }
         put(Block::Air, 0, 3, 3, 3, Item::None);
         put(Block::Grass, 1, 0, 1, 2, Item::Grass);
         put(Block::Dirt, 2, 2, 2, 2, Item::Dirt);

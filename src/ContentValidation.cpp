@@ -164,9 +164,15 @@ void Game::runCraftingContentSmokeTest() {
         if (!restoredInventory.load(inventoryPath, seed_) || !restoredWorld.loadWorld(worldPath, position))
             throw std::runtime_error("new content reload failed");
         restoredWorld.generate(2, position);
-        for (int id = static_cast<int>(Item::Paper); id < static_cast<int>(Item::Count); ++id)
-            if (restoredInventory.count(static_cast<Item>(id)) != 3)
-                throw std::runtime_error("new inventory persistence");
+        // Content now exceeds one inventory's slot capacity. Roundtrip each
+        // item independently instead of silently failing add() on a full bag.
+        for (int id = static_cast<int>(Item::Paper); id < static_cast<int>(Item::Count); ++id) {
+            inventory.clear();
+            const auto item=static_cast<Item>(id);
+            if(inventory.add(item,3)!=0 || !inventory.save(inventoryPath,seed_) ||
+               !restoredInventory.load(inventoryPath,seed_) || restoredInventory.count(item)!=3)
+                throw std::runtime_error("new inventory persistence: "+itemDefinition(item).displayName);
+        }
         for (int id = static_cast<int>(Block::CoalBlock); id < static_cast<int>(Block::Count); ++id)
             if (restoredWorld.getBlock((id-static_cast<int>(Block::CoalBlock))%CHUNK_SIZE,240,(id-static_cast<int>(Block::CoalBlock))/CHUNK_SIZE) != static_cast<Block>(id))
                 throw std::runtime_error("new block persistence");

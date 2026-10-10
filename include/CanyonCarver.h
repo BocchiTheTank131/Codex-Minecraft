@@ -19,6 +19,8 @@ public:
                                   int& worldX, int& worldZ,
                                   bool moreEntrances = false) const;
 
+    bool surfaceSurvives(int x, int z, int surface, Block block,
+                         const std::function<int(int,int)>& terrainHeight) const;
     void carveChunk(int chunkX, int chunkZ, int chunkSize, int worldHeight,
                     const std::array<int, 256>& surfaceHeights,
                     const std::array<int, 256>& aquiferLevels,

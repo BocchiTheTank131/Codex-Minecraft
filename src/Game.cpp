@@ -195,7 +195,12 @@ bool Game::initialize(int argc, char** argv) {
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
                      "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
-        if (weatherSmoke_) {
+        if (!biomeAudit_.empty()) {
+            std::string report;
+            if (!world_->runBiomeAudit(biomeAudit_, report)) throw std::runtime_error(report);
+            std::cout << report << std::endl;
+            glfwSetWindowShouldClose(window_, true);
+        } else if (weatherSmoke_) {
             runWeatherSmokeTest();
             glfwSetWindowShouldClose(window_,GLFW_TRUE);
         } else if (smokeTest_.patch272) {
@@ -328,6 +333,8 @@ void Game::parseArguments(int argc, char** argv) {
                 spectatorMode_ = true;
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
+            } else if (argument.rfind("--biome-audit=",0)==0) {
+                biomeAudit_=argument.substr(14); saveOnExit_=false;
             } else if (argument == "--weather-smoke") {
                 weatherSmoke_=true; saveOnExit_=false;
             } else if (argument.rfind("--weather-benchmark=",0)==0) {
@@ -2135,6 +2142,11 @@ std::string Game::buildDebugText() const {
              << "WEIRDNESS " << generation.weirdness
              << " PEAK/VALLEY " << generation.peakValley << '\n'
              << "TERRAIN HEIGHT " << generation.terrainHeight << '\n';
+        if(world_->generationVersion()>=9) {
+            constexpr const char* regions[]={"FREEZING","COLD","TEMPERATE","WARM","HOT"};
+            text << "CLIMATE " << regions[static_cast<int>(generation.climate)] << " EFFECTIVE TEMP "
+                 << generation.effectiveTemperature << " GENERATOR " << world_->generationVersion() << '\n';
+        }
         if (showWorldgenDebug_) {
             text << "CHEESE " << generation.caveCheese
                  << " SPAGHETTI " << generation.caveSpaghetti
@@ -2246,6 +2258,7 @@ void Game::runCommandSmokeTest() {
     check("/clear", true);
     if (inventory_->count(Item::Stone)) throw std::runtime_error("clear all");
     for (int id = static_cast<int>(Item::Paper); id < static_cast<int>(Item::Count); ++id) {
+        inventory_->clear();
         const Item item = static_cast<Item>(id);
         std::string name = itemDefinition(item).displayName;
         for (char& c : name) c = c == ' ' ? '_' : static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -2436,8 +2449,10 @@ void Game::runSurvivalSmokeTest() {
     std::array<bool, 256> seenItemIds{};
     std::array<bool, 256> seenBlockIds{};
     const ItemAtlasLayout atlas = itemAtlasLayout();
-    metadataPassed = metadataPassed && atlas.width == 640 && atlas.height == 704 &&
-                     atlas.tilePixels == 64 && atlas.columns == 10 && atlas.rows == 11;
+    metadataPassed = metadataPassed && atlas.width == atlas.columns * atlas.tilePixels &&
+                     atlas.height == atlas.rows * atlas.tilePixels &&
+                     atlas.tilePixels == 64 && atlas.columns == 10 &&
+                     atlas.rows == (static_cast<int>(Item::Count) + atlas.columns - 1) / atlas.columns;
     for (int value = 0; value < static_cast<int>(Item::Count); ++value) {
         const Item item = static_cast<Item>(value);
         const ItemDefinition& definition = itemDefinition(item);
@@ -2592,7 +2607,9 @@ void Game::runSurvivalSmokeTest() {
     const std::array<std::uint32_t, 8> terrainSeeds{
         seed_, 42U, 1337U, 8675309U, 7U, 314159U, 982451653U, 271828U};
     for (const std::uint32_t terrainSeed : terrainSeeds) {
-        World sampledWorld(terrainSeed);
+        // Retain the original v8 landform regression. Generator 9's expanded
+        // climate/biome distribution is covered by the dedicated biome audit.
+        World sampledWorld(terrainSeed, 8);
         int lowSamples = 0;
         int highSamples = 0;
         int mountainSamples = 0;

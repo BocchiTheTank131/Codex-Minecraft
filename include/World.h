@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Block.h"
+#include "Biome.h"
 #include "Noise.h"
 #include "Structure.h"
 #include "CanyonCarver.h"
@@ -54,6 +55,8 @@ struct WorldGenerationDebug {
     float caveEntranceInfluence = 0.0f;
     int depthBelowSurface = 0;
     int aquiferLevel = 0;
+    float effectiveTemperature = .5f;
+    ClimateRegion climate = ClimateRegion::Temperate;
 };
 
 struct WorldgenSurvey {
@@ -69,6 +72,15 @@ struct WorldgenSurvey {
     bool deterministic = true;
 };
 
+// Tile ID and RGB tint share the previous four-byte material slot. Tile 255
+// retains the custom-model UV sentinel; ordinary tiles fit in the low byte.
+struct VoxelMaterial {
+    std::uint32_t packed;
+    VoxelMaterial(float tile = -1.0f)
+        : packed(0xffffff00U | (tile < 0 ? 255U : static_cast<std::uint32_t>(tile))) {}
+    operator float() const { return (packed & 255U) == 255U ? -1.0f : float(packed & 255U); }
+    void setTint(std::uint32_t rgb) { packed = (packed & 255U) | (rgb << 8U); }
+};
 struct VoxelVertex {
     glm::vec3 position;
     glm::vec2 uv;
@@ -76,8 +88,9 @@ struct VoxelVertex {
     float sunLight = 1.0f;
     float blockLight = 0.0f;
     float ao = 1.0f;
-    float atlasTile = -1.0f;
+    VoxelMaterial atlasTile;
 };
+static_assert(sizeof(VoxelVertex) == 48, "Climate tint must not enlarge terrain vertices");
 
 struct BlockEntityPosition {
     int x = 0;
@@ -147,6 +160,8 @@ public:
     std::vector<std::uint8_t> packedLight;
     // Sorted local indices, owned by the chunk. Bulk block replacement must
     // rebuild this index; ordinary mutations go through setLocal.
+    mutable bool climateColorsReady = false;
+    mutable std::array<std::array<glm::vec3,4>,3> climateColors{};
     std::vector<std::uint32_t> lightEmitters;
     void rebuildLightEmitterIndex();
     int highestRenderableY = -1;
@@ -191,7 +206,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 9);
     ~World();
 
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
@@ -228,7 +243,9 @@ public:
     int terrainHeight(int worldX, int worldZ) const;
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
     void prepareSpawnTerrain(const glm::vec3& position);
+    bool runBiomeAudit(const std::string& directory, std::string& report) const;
     bool runPatch272SelfTest(std::string& report) const;
+    BiomeClimate biomeClimateAt(int worldX, int worldZ, float elevation = -1) const;
     std::string biomeNameAt(int worldX, int worldZ) const;
     WorldGenerationDebug generationDebugAt(int worldX, int worldZ,
                                            int worldY = SEA_LEVEL,
@@ -283,10 +300,6 @@ public:
     int simulationDistance() const { return simulationDistance_; }
 
 private:
-    enum class Biome {
-        Plains, Forest, Desert, Mountains, SnowyPlains, Meadow, SnowySlopes,
-        StonyPeaks, SnowyPeaks, BirchForest, Beach, Ocean
-    };
     struct TerrainSample {
         int height = SEA_LEVEL;
         Biome biome = Biome::Plains;
@@ -298,6 +311,7 @@ private:
         float peakValley = 0.0f;
         float river = 0.0f;
         float ravine = 0.0f;
+        float mushroomIsland = 0.0f;
     };
     struct GeneratedChunk {
         int x;
@@ -313,6 +327,8 @@ private:
         std::uint64_t revision = 0;
         std::uint64_t identity = 0;
         std::uint64_t epoch = 0;
+        bool climateTinted = false;
+        std::array<std::array<glm::vec3,4>,3> climateColors{};
         int meshHeight = WORLD_HEIGHT;
         std::vector<Block> blocks;
         std::vector<std::uint8_t> packedLight;
@@ -359,7 +375,7 @@ private:
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 8;
+    std::uint32_t generationVersion_ = 9;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;

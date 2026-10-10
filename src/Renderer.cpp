@@ -166,7 +166,7 @@ layout(location=2) in vec3 aNormal;
 layout(location=3) in float aSunLight;
 layout(location=4) in float aBlockLight;
 layout(location=5) in float aAo;
-layout(location=6) in float aAtlasTile;
+layout(location=6) in uint aMaterial;
 uniform mat4 uView;
 uniform mat4 uProjection;
 out vec2 vUv;
@@ -177,6 +177,7 @@ out float vAo;
 out float vDistance;
 out vec3 vWorldPosition;
 out float vAtlasTile;
+out vec3 vClimateTint;
 void main() {
     vec4 viewPosition = uView * vec4(aPosition, 1.0);
     gl_Position = uProjection * viewPosition;
@@ -184,7 +185,11 @@ void main() {
     vSunLight = aSunLight; vBlockLight = aBlockLight; vAo = aAo;
     vDistance = length(viewPosition.xyz);
     vWorldPosition = aPosition;
-    vAtlasTile = aAtlasTile;
+    uint tile = aMaterial & 255u;
+    vAtlasTile = tile == 255u ? -1.0 : float(tile);
+    vClimateTint = vec3(float((aMaterial >> 8u) & 255u),
+                       float((aMaterial >> 16u) & 255u),
+                       float((aMaterial >> 24u) & 255u)) / 255.0;
 }
 )GLSL";
 
@@ -198,6 +203,7 @@ in float vAo;
 in float vDistance;
 in vec3 vWorldPosition;
 in float vAtlasTile;
+in vec3 vClimateTint;
 uniform sampler2D uAtlas;
 uniform float uAtlasTiles;
 uniform vec3 uSunDirection;
@@ -225,6 +231,9 @@ void main() {
     }
     vec4 texel = texture(uAtlas, atlasUv);
     if (texel.a < 0.20) discard;
+    // Grass side pixels retain their brown soil; tint only green vegetation.
+    int tile = vAtlasTile >= 0.0 ? int(vAtlasTile) : int(atlasUv.x*uAtlasTiles);
+    if(tile != 1 || (texel.g > texel.r && texel.g > texel.b)) texel.rgb *= vClimateTint;
     vec3 normal = normalize(vNormal);
     float day = smoothstep(0.0, 1.0, uDaylight);
     float sunDiffuse = max(dot(normal, uSunDirection), 0.0);
@@ -255,7 +264,7 @@ void main() {
     if (uWaterPass) {
         float topSurface = max(normal.y,0.0);
         vec3 waterColor = mix(vec3(0.035,0.17,0.34), vec3(0.08,0.34,0.56), day);
-        lit = mix(lit, waterColor, 0.34);
+        lit = mix(lit, waterColor * vClimateTint, 0.34);
         if (uEffectQuality > 0) {
             float ripple = sin(vWorldPosition.x*0.34 + uTime*0.75) *
                            sin(vWorldPosition.z*0.29 - uTime*0.58);

@@ -31,13 +31,8 @@ void Weather::set(WeatherType type, float seconds) {
                  type == WeatherType::Rain ? range(120,300) : range(60,180);
 }
 Precipitation Weather::precipitation(const World& world, int x, int z) {
-    const auto biome = world.biomeNameAt(x,z);
-    if (biome.find("DESERT") != std::string::npos || biome.find("SAVANNA") != std::string::npos ||
-        biome.find("BADLAND") != std::string::npos) return Precipitation::None;
-    if(biome=="MOUNTAINS" && world.terrainHeight(x,z)>=SEA_LEVEL+48) return Precipitation::Snow;
-    return biome.find("SNOW") != std::string::npos || biome.find("FROZEN") != std::string::npos ||
-           biome.find("TAIGA") != std::string::npos || biome.find("ALPINE") != std::string::npos
-               ? Precipitation::Snow : Precipitation::Rain;
+    const auto climate=world.biomeClimateAt(x,z,world.precipitationHeight(x,z));
+    return climate.dry?Precipitation::None:climate.freezes?Precipitation::Snow:Precipitation::Rain;
 }
 bool Weather::exposed(const World& world, const glm::vec3& position) {
     const float surface = world.precipitationHeight(static_cast<int>(std::floor(position.x)),
@@ -117,6 +112,14 @@ void Weather::environmentColumn(World& world, int x, int z, const GameSettings& 
         else if (layers && settings.snowAccumulation &&
                  (kind!=Precipitation::Snow || world.blockLightAt(x,y-1,z)>11))
             world.setBlock(x,y-1,z,snowLayerBlock(layers-1));
+        // Natural ice responds to the same effective climate as precipitation.
+        // Packed/Blue Ice are permanent building materials and never melt here.
+        if(world.generationVersion()>=9 && settings.snowAccumulation) {
+            if(isWater(top) && kind==Precipitation::Snow && world.getBlock(x,y,z)==Block::Air &&
+               world.blockLightAt(x,y,z)<10) world.setBlock(x,y-1,z,Block::Ice);
+            else if(top==Block::Ice && (kind!=Precipitation::Snow || world.blockLightAt(x,y,z)>11))
+                world.setBlock(x,y-1,z,Block::Water);
+        }
         // Wet farmland is a new appended state, sharing old farmland geometry.
         if (intensity_>.15f && kind==Precipitation::Rain && top==Block::Farmland)
             world.setBlock(x,y-1,z,Block::WetFarmland);

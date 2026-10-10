@@ -116,6 +116,18 @@ enum class Block : std::uint8_t {
     WetFarmland,
     Fire,
     Snow2, Snow3, Snow4, Snow5, Snow6, Snow7, Snow8,
+    // Appended IDs: existing worlds and inventory save IDs remain stable.
+    SpruceLog, SprucePlanks, SpruceLeaves,
+    JungleLog, JunglePlanks, JungleLeaves,
+    AcaciaLog, AcaciaPlanks, AcaciaLeaves,
+    DarkOakLog, DarkOakPlanks, DarkOakLeaves,
+    Podzol, Mycelium, CoarseDirt,
+    PackedIce, BlueIce, Terracotta,
+    TerracottaRed, TerracottaOrange, TerracottaYellow,
+    TerracottaWhite, TerracottaBrown, Bamboo,
+    Fern, DeadBush, LilyPad,
+    RedMushroom, BrownMushroom, MushroomStem,
+    RedMushroomBlock, BrownMushroomBlock,
     Count
 };
 
@@ -159,12 +171,19 @@ inline std::uint8_t blockLightEmission(Block block) {
 inline bool isCrop(Block b) {
     return b >= Block::Crop0 && b <= Block::Crop3;
 }
+inline bool isLog(Block b) {
+    return b==Block::Log||b==Block::BirchLog||b==Block::SpruceLog||b==Block::JungleLog||
+           b==Block::AcaciaLog||b==Block::DarkOakLog;
+}
 inline bool isLeaf(Block b) {
-    return b == Block::Leaves || b == Block::BirchLeaves;
+    return b == Block::Leaves || b == Block::BirchLeaves ||
+           b == Block::SpruceLeaves || b == Block::JungleLeaves ||
+           b == Block::AcaciaLeaves || b == Block::DarkOakLeaves;
 }
 inline bool isPlant(Block b) {
     return b == Block::TallGrass || b == Block::RedFlower || b == Block::YellowFlower ||
-           b == Block::SugarCane || b == Block::Fire;
+           b == Block::SugarCane || b == Block::Fire || b == Block::Bamboo ||
+           b == Block::Fern || b == Block::DeadBush || b == Block::RedMushroom || b == Block::BrownMushroom;
 }
 
 inline bool isVine(Block b) {
@@ -253,7 +272,7 @@ inline float blockCollisionHeight(Block b) {
 }
 inline bool isSolid(Block b) {
     return b != Block::Air && !isWater(b) && b != Block::Torch && !isCrop(b) &&
-           b != Block::Snow && b != Block::LightningRod && b != Block::Fire && !isPlant(b) && !isWallAttachment(b);
+           b != Block::Snow && b != Block::LilyPad && b != Block::LightningRod && b != Block::Fire && !isPlant(b) && !isWallAttachment(b);
 }
 inline bool isRenderable(Block b) {
     return b != Block::Air;
@@ -296,6 +315,11 @@ inline BlockGeometryProperties blockGeometry(Block block) {
         geometry.maxX = geometry.maxY = geometry.maxZ = 0.0f;
         geometry.occludesNeighborFaces = false;
         geometry.aoOcclusion = 0.0f;
+    } else if (block == Block::LilyPad) {
+        geometry.shape = BlockShape::PartialCube;
+        geometry.maxY = .0625f;
+        geometry.occludesNeighborFaces = false;
+        geometry.aoOcclusion = 0;
     } else if (isWater(block)) {
         geometry.shape = BlockShape::Fluid;
         geometry.maxY = waterHeight(block);

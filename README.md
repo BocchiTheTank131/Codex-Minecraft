@@ -64,13 +64,13 @@ Pressing PLAY again in the demo starts a fresh gameplay session.
 
 Crafting uses the same recipes for manual grid matching and the Recipe Book. The player grid
 accepts recipes up to 2×2; the Crafting Table accepts up to 3×3. Plank recipes accept oak and
-birch planks, including mixed planks where the output has no wood variant. Breaking Stone
+birch, spruce, jungle, acacia and dark oak planks, including mixed planks where the output has no wood variant. Breaking Stone
 provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; smelting
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.10.3** has **102 inventory items**, **56 placeable block families**, **120 block
-IDs/states including Air**, **62 crafting recipes**, and **13 furnace recipes**. Existing item
+Version **2.11.0** has **134 inventory items**, **88 placeable block families**, **152 block
+IDs/states including Air**, **73 crafting recipes**, and **18 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
 ### Crafting expansion
@@ -107,8 +107,9 @@ Sandstone, Polished Granite, Polished Diorite, Polished Andesite, Sugar Cane, Vi
 | Three Wheat horizontally | Bread | 3×3 |
 | Three Copper Ingots vertically | Lightning Rod | 3×3 |
 
-Generic plank ingredients accept default/oak and Birch, including mixed planks. Wooden Doors
-require six matching planks; both wood families produce the existing Wooden Door item.
+Generic plank ingredients accept Oak, Birch, Spruce, Jungle, Acacia and Dark Oak, including
+mixed planks. Wooden Doors require six matching planks; all families produce the existing
+Wooden Door item.
 Manual recipes and Recipe Book previews/search/categories/autofill/batch crafting share one
 registry. Tool recipes and mirrored axes remain supported.
 
@@ -196,7 +197,67 @@ and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in th
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
 
+## v2.11.0 - Biome & Climate Update
+
+New worlds use **terrain generator 9**, with 35 biomes selected from large-scale temperature,
+humidity, continentalness, erosion, ridges, river masks and elevation. Temperature and humidity
+are normalized to 0–1. Elevation cools mountain slopes and summits without changing the
+regional base climate. Frozen/Cold/Temperate/Warm/Hot boundaries are 0.17/0.34/0.60/0.80.
+
+| Region | Biomes |
+|---|---|
+| Frozen | Snowy Plains, Ice Spikes, Snowy Taiga, Frozen Ocean, Frozen River, Snowy Beach |
+| Cold | Taiga, Old Growth Taiga, Cold Ocean, Stony Shore |
+| Temperate | Plains, Forest, Birch Forest, Dark Forest, Flower Forest, Meadow, Mountains, Windswept Hills |
+| Warm | Jungle, Sparse Jungle, Swamp, Savanna, Savanna Plateau |
+| Hot | Desert, Desert Hills, Badlands, Wooded Badlands |
+| Other landscapes | Mushroom Fields, Ocean, Warm Ocean, Beach, River, Snowy Slopes, Stony Peaks, Snowy Peaks |
+
+These regions have distinct surfaces and vegetation: giant spruce/jungle trees, spreading
+acacia crowns, dense dark oak trees, fern-covered taiga, flower forests, swamp lily pads,
+layered badlands, packed-ice spikes/icebergs, and rare mycelium islands with giant mushrooms.
+Mushroom Fields exclude natural billboard-hostile spawning; summoned/structure mobs retain
+normal behavior. Grass, foliage and water use climate colors with smooth chunk-edge blending.
+
+**32 new inventory/block families:** Spruce/Jungle/Acacia/Dark Oak Logs, Planks and Leaves;
+Podzol, Mycelium, Coarse Dirt, Packed Ice, Blue Ice; Terracotta and Red/Orange/Yellow/White/Brown
+Terracotta; Bamboo, Fern, Dead Bush, Lily Pad, Red/Brown Mushroom, Mushroom Stem and
+Red/Brown Mushroom Blocks. Original 16×16 artwork adds 36 world tiles and 32 inventory icons.
+Existing occupied inventory cells remain unchanged; the runtime inventory atlas is now 640×896.
+New content is available in Creative and through `/give` and `/setblock` name lookup.
+
+Each new Log crafts into four matching Planks and smelts into Charcoal. Generic plank recipes
+accept all six wood families. Four Dirt/Gravel in alternating corners craft four Coarse Dirt;
+nine Ice craft Packed Ice, and nine Packed Ice craft Blue Ice. Clay blocks smelt into Terracotta.
+Colored Terracotta is obtained from badlands/Creative; no dye system is added. Natural ground
+and vegetation blocks can be mined and placed with their own inventory items.
+
+Weather reads shared climate metadata: normal Taiga gets rain, freezing surfaces get snow,
+and Deserts/Savannas/Badlands remain dry. Exposed ordinary water freezes in cold climates;
+ordinary Ice melts in warmer climates or strong block light. Packed/Blue Ice remain permanent.
+The existing snow-accumulation option also controls this environmental freezing/melting.
+Weather audio, lightning, farmland hydration and settings remain supported.
+
+**Compatibility:** existing worlds retain generator versions 1–8, including unexplored chunks.
+New IDs are appended; the world/inventory save formats are unchanged. Full installations save
+normally, while the standalone demo remains stateless. F3/F4 show normalized temperature,
+humidity, effective temperature, climate region and generator version in v9 worlds.
+
+Developer validation: `--biome-audit=<absolute-output-directory>` exports chunk hashes,
+CPU generation timings, three-seed biome/climate/height maps, distributions, content counts,
+and persistence/recipe tests. `python tools/build_biome_previews.py <directory>` labels the maps.
+`python tools/generate_biome_textures.py` appends biome artwork; Pillow is development-only.
+
+The Windows release provides the **2.11.0** standalone demo and full-game installer.
+
 ## Windows Release
+
+### v2.11.0 - The Biome & Climate Update
+
+- 35 biomes with normalized climate, altitude cooling and biome-specific vegetation.
+- 32 new item/block families, expanded wood recipes and climate-colored grass, foliage and water.
+- Generator 9 for new worlds; existing worlds retain generators 1–8.
+- Climate-aware weather, freezing/melting and new F3/F4 diagnostics.
 
 ### v2.10.3 - Billboard Mob Speed Adjustment
 
@@ -253,12 +314,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
 - Save & Return to Menu saves and unloads the full game. The standalone demo discards its
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
-Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
+Download from [Voxel Frontier v2.11.0](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.0).
 
-| v2.10.3 Windows build | Purpose | Persistence |
+| v2.11.0 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.10.3-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.10.3-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.11.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.11.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -693,6 +754,9 @@ The project is split into focused systems:
 - `WeatherValidation` - opt-in Release smoke checks and quality benchmarks
 - `Game` - initialization, main loop, simulation, rendering, saves, and shutdown
 - `World` - chunks, terrain, blocks, lighting, and world data
+- `Biome` - shared climate thresholds, biome definitions and vegetation/water colors
+- `BiomeContent` / `BiomeVegetation` - biome materials and deterministic chunk decoration
+- `WorldBiomeValidation` - compatibility hashes, climate maps and content validation
 - `WorldLibrary` - saved-world listing, creation, metadata, and safe legacy import
 - `Renderer` - OpenGL rendering and mesh handling
 - `Player` - movement and first-person physics

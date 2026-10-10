@@ -305,6 +305,12 @@ const std::vector<Recipe>& recipes() {
                                                                    : Item::DiamondSword)));
             r.push_back(recipe(1, 3, {material, material, Item::Stick}, sword, 1, true));
         }
+        for(const auto& wood : {std::pair<Item,Item>{Item::SpruceLog,Item::SprucePlanks},
+             {Item::JungleLog,Item::JunglePlanks},{Item::AcaciaLog,Item::AcaciaPlanks},{Item::DarkOakLog,Item::DarkOakPlanks}})
+            r.push_back(recipe(1,1,{wood.first},wood.second,4,false));
+        r.push_back(recipe(2,2,{Item::Dirt,Item::Gravel,Item::Gravel,Item::Dirt},Item::CoarseDirt,4,false));
+        for(const auto& ice : {std::pair<Item,Item>{Item::Ice,Item::PackedIce},{Item::PackedIce,Item::BlueIce}})
+            r.push_back(recipe(3,3,{ice.first,ice.first,ice.first,ice.first,ice.first,ice.first,ice.first,ice.first,ice.first},ice.second,1,true));
         r.push_back(recipe(1, 1, {Item::BirchLog}, Item::BirchPlanks, 4, false));
         r.push_back(recipe(2,
                            2,
@@ -360,7 +366,7 @@ const std::vector<Recipe>& recipes() {
         r.push_back(recipe(1, 3, {Item::CopperIngot, Item::CopperIngot, Item::CopperIngot}, Item::LightningRod, 1, true));
         r.push_back(recipe(2, 1, {Item::Cobblestone, Item::Vine}, Item::MossyCobblestone, 1, false, false, true));
         r.push_back(recipe(2, 1, {Item::StoneBricks, Item::Vine}, Item::MossyStoneBricks, 1, false, false, true));
-        for (Item plank : {Item::Planks, Item::BirchPlanks})
+        for (Item plank : {Item::Planks, Item::BirchPlanks,Item::SprucePlanks,Item::JunglePlanks,Item::AcaciaPlanks,Item::DarkOakPlanks})
             r.push_back(recipe(2, 3, {plank, plank, plank, plank, plank, plank},
                                Item::WoodenDoor, 3, true));
         r.push_back(recipe(3,
@@ -1344,8 +1350,10 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
             for (int x = 0; x < definition.w; ++x) {
                 const Ingredient ingredient = definition.cells[static_cast<std::size_t>(y * definition.w + x)];
                 if (ingredient.empty()) continue;
+                constexpr Item planks[]={Item::Planks,Item::BirchPlanks,Item::SprucePlanks,
+                    Item::JunglePlanks,Item::AcaciaPlanks,Item::DarkOakPlanks};
                 const Item item = ingredient.group == IngredientGroup::Planks
-                    ? ((x + y) % 2 ? Item::BirchPlanks : Item::Planks)
+                    ? planks[(x+y*definition.w)%6]
                     : ingredient.group == IngredientGroup::Logs ? Item::Log : ingredient.item;
                 manual.crafting_[static_cast<std::size_t>(y * 3 + x)] = {item, 2, 0};
                 book.add(item, 2);
@@ -1749,6 +1757,7 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         }
         if (!valid)
             continue;
+        if (hostile && !world.biomeClimateAt(x,z,feetY).naturalHostiles) continue;
         if (hostile && billboardTouchesSolid(
                 world, {x + .5f, feetY + .01f, z + .5f}))
             continue;

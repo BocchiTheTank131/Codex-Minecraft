@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.10.3 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.11.0 LANGUAGES C CXX)
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 option(VOXELFRONTIER_STANDALONE_DEMO "Build the stateless standalone demo" OFF)
@@ -49,6 +49,8 @@ add_executable(VoxelFrontier
     src/Screenshot.cpp
     src/UIManager.cpp
     src/WorldLibrary.cpp
+    src/Biome.cpp
+    src/BiomeVegetation.cpp
     src/Noise.cpp
     src/Definitions.cpp
     src/Explosion.cpp
@@ -66,6 +68,7 @@ add_executable(VoxelFrontier
     src/Structure.cpp
     src/CanyonCarver.cpp
     src/World.cpp
+    src/WorldBiomeValidation.cpp
     src/WorldValidation.cpp
 )
 target_include_directories(VoxelFrontier PRIVATE include ${miniaudio_SOURCE_DIR})

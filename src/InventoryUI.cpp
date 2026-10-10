@@ -313,8 +313,11 @@ void Renderer::renderCreativeInventory(
     rect(vertices, panelX + 10, panelY + 10, panel.width - 20, panel.height - 20,
          {.34f, .34f, .34f, .98f}, W, H);
     const auto& catalog = creativeCatalog();
-    const float catalogHeight = 22.0f + ((catalog.size() + 8) / 9) * 43.0f;
-    rect(vertices, panelX + 104, panelY + 34, 408, catalogHeight, {.16f, .16f, .18f, 1}, W, H);
+    const float catalogHeight = 22.0f +
+        ((catalog.size() + UiLayout::CreativeColumns - 1) / UiLayout::CreativeColumns) * 43.0f;
+    const float catalogWidth = UiLayout::CreativeColumns * 43.0f + 21.0f;
+    rect(vertices, panelX + (panel.width - catalogWidth) * .5f, panelY + 34,
+         catalogWidth, catalogHeight, {.16f, .16f, .18f, 1}, W, H);
     for (int index = 0; index < static_cast<int>(catalog.size()); ++index) {
         ItemStack stack{catalog[static_cast<std::size_t>(index)],
                         Inventory::maxStack(catalog[static_cast<std::size_t>(index)]),

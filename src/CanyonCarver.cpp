@@ -251,3 +251,15 @@ void CanyonCarver::carveChunk(
         }
     }
 }
+
+// Use the exact existing finite carvers on a one-column probe. This is only
+// used for sparse v9 vegetation roots, never for every terrain block.
+bool CanyonCarver::surfaceSurvives(int x,int z,int surface,Block block,
+                                  const std::function<int(int,int)>& terrainHeight) const {
+    thread_local std::vector<Block> column;
+    column.assign(256,Block::Air); column[static_cast<std::size_t>(surface)]=block;
+    std::array<int,256> heights{},aquifers{}; std::array<bool,256> wet{};
+    heights[0]=surface;
+    carveChunk(x,z,1,256,heights,aquifers,wet,column,terrainHeight,true,true);
+    return column[static_cast<std::size_t>(surface)]!=Block::Air;
+}

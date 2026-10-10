@@ -30,7 +30,9 @@ foreach ($variant in @(
     if ($LASTEXITCODE -ne 0) { throw "Release build failed for $($variant.Name)." }
 }
 if (-not (Test-Path -LiteralPath $fullExe)) { throw 'Full game executable is missing.' }
-Copy-Item -LiteralPath (Join-Path $demoBuildDir 'Release/VoxelFrontier.exe') -Destination $standalone -Force
+$demoExe = Join-Path $demoBuildDir 'Release/VoxelFrontier.exe'
+# Copy the binary as bytes without relying on the shell's native CopyFile path.
+[System.IO.File]::WriteAllBytes($standalone, [System.IO.File]::ReadAllBytes($demoExe))
 
 $compiler = @(
     (Join-Path $env:LOCALAPPDATA 'Programs/Inno Setup 7/ISCC.exe'),

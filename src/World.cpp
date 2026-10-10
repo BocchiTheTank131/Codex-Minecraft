@@ -1,4 +1,5 @@
 #include "World.h"
+#include "BiomeVegetation.h"
 #include "AmbientOcclusion.h"
 
 #include "Player.h"
@@ -30,6 +31,7 @@ constexpr float FaceCorners[6][4][3] = {{{1, 0, 0}, {1, 1, 0}, {1, 1, 1}, {1, 0,
                                         {{0, 0, 0}, {0, 1, 0}, {1, 1, 0}, {1, 0, 0}}};
 constexpr int Indices[6] = {0, 1, 2, 0, 2, 3};
 constexpr int AtlasTiles = BlockAtlasTiles;
+static_assert(AtlasTiles < 255, "Terrain material reserves tile 255 for custom UVs");
 
 struct FaceOcclusion {
     bool hidden = false;
@@ -205,11 +207,14 @@ void configureTerrainAttributes() {
         offsetof(VoxelVertex, blockLight), offsetof(VoxelVertex, ao),
         offsetof(VoxelVertex, atlasTile)};
     const GLint sizes[] = {3, 2, 3, 1, 1, 1, 1};
-    for (GLuint attribute = 0; attribute < 7; ++attribute) {
+    for (GLuint attribute = 0; attribute < 6; ++attribute) {
         glEnableVertexAttribArray(attribute);
         glVertexAttribPointer(attribute, sizes[attribute], GL_FLOAT, GL_FALSE,
                               sizeof(VoxelVertex), reinterpret_cast<void*>(offsets[attribute]));
     }
+    glEnableVertexAttribArray(6);
+    glVertexAttribIPointer(6,1,GL_UNSIGNED_INT,sizeof(VoxelVertex),
+                          reinterpret_cast<void*>(offsetof(VoxelVertex,atlasTile)));
 }
 
 void uploadMesh(GLuint& vao,
@@ -277,10 +282,9 @@ void uploadMesh(GLuint& vao,
                           sizeof(VoxelVertex),
                           reinterpret_cast<void*>(offsetof(VoxelVertex, ao)));
     glEnableVertexAttribArray(6);
-    glVertexAttribPointer(6,
+    glVertexAttribIPointer(6,
                           1,
-                          GL_FLOAT,
-                          GL_FALSE,
+                          GL_UNSIGNED_INT,
                           sizeof(VoxelVertex),
                           reinterpret_cast<void*>(offsetof(VoxelVertex, atlasTile)));
     glBindVertexArray(0);
@@ -438,7 +442,7 @@ void Chunk::rebuildLightEmitterIndex() {
     }
 }
 
-World::World(std::uint32_t seed)
+World::World(std::uint32_t seed, std::uint32_t generationVersion)
     : terrainNoise_(seed), biomeNoise_(seed ^ 0x517cc1b7U), caveNoise_(seed ^ 0x9e3779b9U),
       continentalNoise_(seed ^ 0x5a21f29bU), erosionNoise_(seed ^ 0x8d4c03e7U),
       temperatureNoise_(seed ^ 0xb794de31U), humidityNoise_(seed ^ 0x41c9a62dU),
@@ -447,6 +451,7 @@ World::World(std::uint32_t seed)
       cheeseNoise_(seed ^ 0x91b37d65U), spaghettiNoise_(seed ^ 0x326fa1cbU),
       noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed),
       seed_(seed) {
+    generationVersion_ = std::clamp(generationVersion, 1U, 9U);
     const unsigned int hardware = std::thread::hardware_concurrency();
     const unsigned int workerCount =
         std::max(1U, std::min(3U, hardware > 2U ? hardware - 2U : 1U));
@@ -529,9 +534,15 @@ World::TerrainSample World::sampleTerrainModern(int worldX, int worldZ) const {
         x * 0.0011f - 53.271f, z * 0.0011f + 117.439f, 3, 2.0f, 0.52f);
     sample.erosion = smoothRange(-0.38f, 0.38f, rawErosion);
     sample.temperature = temperatureNoise_.fractal2D(
-        x * 0.0009f + 129.337f, z * 0.0009f - 83.719f, 3, 2.0f, 0.53f);
+        x * (generationVersion_>=9?.00035f:.0009f) + 129.337f, z * (generationVersion_>=9?.00035f:.0009f) - 83.719f, 3, 2.0f, 0.53f);
     sample.humidity = humidityNoise_.fractal2D(
-        x * 0.00095f - 211.381f, z * 0.00095f + 47.527f, 3, 2.0f, 0.53f);
+        x * (generationVersion_>=9?.00038f:.00095f) - 211.381f, z * (generationVersion_>=9?.00038f:.00095f) + 47.527f, 3, 2.0f, 0.53f);
+    if(generationVersion_>=9) {
+        sample.temperature=std::clamp(.5f+sample.temperature*1.55f,0.f,1.f);
+        sample.humidity=std::clamp(.5f+sample.humidity*1.55f,0.f,1.f);
+        sample.mushroomIsland=smoothRange(.24f,.37f,continentalDetail)*
+            (1.f-smoothRange(-.28f,-.17f,largeContinent));
+    }
     sample.weirdness = weirdnessNoise_.fractal2D(
         x * 0.00095f + 67.673f, z * 0.00095f + 173.291f, 3, 2.0f, 0.53f);
 
@@ -598,6 +609,19 @@ World::TerrainSample World::sampleTerrainModern(int worldX, int worldZ) const {
     height += std::pow(mountainRegion, 3.0f) * std::pow(cliffBand, 8.0f) *
               ruggedness * (generationVersion_ >= 8 ? 8.0f : 13.0f);
 
+    if(generationVersion_>=9) {
+        // Smooth masks change landforms before biome selection, never at a label boundary.
+        const float hotDry=smoothRange(.72f,.88f,sample.temperature)*
+            (1.f-smoothRange(.25f,.45f,sample.humidity));
+        const float plateau=hotDry*inland*smoothRange(.05f,.22f,sample.weirdness);
+        height=glm::mix(height,76.f+sample.continentalness*32.f+rolling*3.f,plateau*.65f);
+        height=glm::mix(height,SEA_LEVEL+5.f+rolling*3.f,sample.mushroomIsland);
+        const float marsh=smoothRange(.65f,.82f,sample.humidity)*smoothRange(.40f,.62f,sample.erosion)*
+            (1.f-smoothRange(55.f,65.f,height))*smoothRange(.0f,.05f,sample.continentalness)*
+            smoothRange(.30f,.36f,sample.temperature)*(1.f-smoothRange(.76f,.82f,sample.temperature));
+        height=glm::mix(height,float(SEA_LEVEL)+1.f+rolling*3.f,marsh);
+
+    }
     // A domain-warped zero contour forms continuous, gently curving river
     // paths. The elevation/continental masks keep deep cuts out of peaks.
     const float warpX = riverNoise_.noise(x * 0.0008f + 81.473f, 0.0f,
@@ -631,6 +655,11 @@ World::TerrainSample World::sampleTerrainModern(int worldX, int worldZ) const {
     height = glm::mix(height, std::min(height, riverBed), sample.river * sample.river);
     sample.height = std::clamp(static_cast<int>(std::round(height)), 6, WORLD_HEIGHT - 12);
 
+    if(generationVersion_>=9) {
+        sample.biome=selectClimateBiome(sample.temperature,sample.humidity,sample.continentalness,
+            sample.erosion,sample.weirdness,sample.river,sample.height,sample.mushroomIsland);
+        return sample;
+    }
     // Climate and elevation label the already-shaped terrain. No biome branch
     // above changes the height equation, so biome borders cannot create walls.
     const float effectiveTemperature =
@@ -747,10 +776,16 @@ StructureTerrain World::structureTerrainAt(int worldX, int worldZ) const {
     StructureBiome biome = StructureBiome::Other;
     switch (sample.biome) {
     case Biome::Plains:
-    case Biome::Meadow: biome = StructureBiome::Plains; break;
+    case Biome::Meadow:
+    case Biome::Savanna: biome = StructureBiome::Plains; break;
     case Biome::Forest:
-    case Biome::BirchForest: biome = StructureBiome::Forest; break;
-    case Biome::Desert: biome = StructureBiome::Desert; break;
+    case Biome::BirchForest:
+    case Biome::Taiga:
+    case Biome::OldGrowthTaiga:
+    case Biome::DarkForest:
+    case Biome::FlowerForest: biome = StructureBiome::Forest; break;
+    case Biome::Desert:
+    case Biome::DesertHills: biome = StructureBiome::Desert; break;
     case Biome::Mountains:
     case Biome::SnowySlopes:
     case Biome::StonyPeaks:
@@ -781,7 +816,7 @@ glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
     const auto safeGround = [](Block b) {
         const auto g = blockGeometry(b);
         return isSolid(b) && !isWater(b) && !isLeaf(b) && b != Block::Cactus &&
-               b != Block::Log && b != Block::BirchLog &&
+               !isLog(b) &&
                g.shape == BlockShape::Cube && g.minY == 0 && g.maxY == 1;
     };
     for (int radius = 0; radius <= 48; ++radius) {
@@ -872,24 +907,21 @@ void World::prepareSpawnTerrain(const glm::vec3& position) {
 }
 
 std::string World::biomeNameAt(int worldX, int worldZ) const {
-    switch (sampleTerrain(worldX, worldZ).biome) {
-    case Biome::Ocean: return "OCEAN";
-    case Biome::Beach: return "BEACH";
-    case Biome::SnowyPlains: return "SNOWY PLAINS";
-    case Biome::Meadow: return "MEADOW";
-    case Biome::SnowySlopes: return "SNOWY SLOPES";
-    case Biome::StonyPeaks: return "STONY PEAKS";
-    case Biome::SnowyPeaks: return "SNOWY PEAKS";
-    case Biome::BirchForest: return "BIRCH FOREST";
-    case Biome::Forest:
-        return "FOREST";
-    case Biome::Desert:
-        return "DESERT";
-    case Biome::Mountains:
-        return "MOUNTAINS";
-    default:
-        return "PLAINS";
-    }
+    return biomeDefinition(sampleTerrain(worldX,worldZ).biome).name;
+}
+
+BiomeClimate World::biomeClimateAt(int x,int z,float elevation) const {
+    const auto sample=sampleTerrain(x,z);
+    const auto& definition=biomeDefinition(sample.biome);
+    BiomeClimate result;
+    result.biome=sample.biome;
+    result.temperature=generationVersion_>=9?sample.temperature:std::clamp(.5f+sample.temperature*1.55f,0.f,1.f);
+    result.humidity=generationVersion_>=9?sample.humidity:std::clamp(.5f+sample.humidity*1.55f,0.f,1.f);
+    result.effectiveTemperature=altitudeTemperature(result.temperature,elevation<0?float(sample.height):elevation);
+    result.dry=definition.dry;
+    result.freezes=definition.frozen || result.effectiveTemperature<.17f;
+    result.naturalHostiles=definition.naturalHostiles;
+    return result;
 }
 
 WorldGenerationDebug World::generationDebugAt(int worldX, int worldZ,
@@ -898,6 +930,10 @@ WorldGenerationDebug World::generationDebugAt(int worldX, int worldZ,
     WorldGenerationDebug debug{sample.continentalness, sample.erosion, sample.temperature,
             sample.humidity, sample.weirdness, sample.peakValley,
             sample.river, sample.height, biomeNameAt(worldX, worldZ)};
+    if(generationVersion_>=9) {
+        debug.effectiveTemperature=altitudeTemperature(sample.temperature,float(worldY));
+        debug.climate=climateRegion(debug.effectiveTemperature);
+    }
     if (!detailed)
         return debug;
     debug.depthBelowSurface = sample.height - worldY;
@@ -1168,10 +1204,11 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                 worldX * 0.006f + 47.433f, 0.0f,
                 worldZ * 0.006f - 79.317f);
 
-            const bool sandy = ground.biome == Biome::Desert ||
+            const auto& biome=biomeDefinition(ground.biome);
+            const bool sandy = (generationVersion_>=9 && biome.surface==Block::Sand) || ground.biome == Biome::Desert ||
                                ground.biome == Biome::Beach ||
                                ground.biome == Biome::Ocean;
-            const bool snowy = ground.biome == Biome::SnowyPlains ||
+            const bool snowy = (generationVersion_>=9 && biome.frozen) || ground.biome == Biome::SnowyPlains ||
                                ground.biome == Biome::SnowySlopes ||
                                ground.biome == Biome::SnowyPeaks;
             const bool steepStone = slope >= 5;
@@ -1181,12 +1218,12 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                 ground.height <= SEA_LEVEL + 9 && (hash % 5U) < 3U;
             const bool clayShore = ground.height <= SEA_LEVEL + 1 &&
                                    (hash % 17U) < 3U;
-            const Block surface = steepStone ? Block::Stone
+            const Block surface = generationVersion_>=9 ? (steepStone?Block::Stone:gravelSlope||gravelRiverBank?Block::Gravel:biome.surface) : steepStone ? Block::Stone
                                   : gravelSlope || gravelRiverBank ? Block::Gravel
                                   : snowy ? Block::SnowBlock
                                   : clayShore ? Block::Clay
                                   : sandy ? Block::Sand : Block::Grass;
-            const Block subsoil = steepStone ? Block::Stone
+            const Block subsoil = generationVersion_>=9 ? (steepStone?Block::Stone:gravelSlope||gravelRiverBank?Block::Gravel:biome.soil) : steepStone ? Block::Stone
                                   : gravelSlope || gravelRiverBank ? Block::Gravel
                                   : clayShore ? Block::Clay
                                   : sandy ? Block::Sand : Block::Dirt;
@@ -1319,10 +1356,20 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                             block = Block::Andesite;
                     }
                 }
+                if(generationVersion_>=9 &&
+                   (ground.biome==Biome::Badlands||ground.biome==Biome::WoodedBadlands) &&
+                   block!=Block::Air && !isWater(block) && ground.height-y<=18) {
+                    constexpr Block bands[]={Block::TerracottaOrange,Block::TerracottaBrown,
+                        Block::Terracotta,Block::TerracottaRed,Block::TerracottaYellow,Block::TerracottaWhite};
+                    block=bands[(y/3+int(seed_%6))%6];
+                    if(y==ground.height && ground.biome==Biome::WoodedBadlands) block=Block::CoarseDirt;
+                }
                 localBlock(x, y, z) = block;
             }
             for (int y = ground.height + 1; y <= SEA_LEVEL; ++y)
                 localBlock(x, y, z) = Block::Water;
+            if(generationVersion_>=9 && ground.height<SEA_LEVEL && biome.frozen)
+                localBlock(x,SEA_LEVEL,z)=Block::Ice;
             if (snowy && ground.height > SEA_LEVEL && slope <= 4 &&
                 ground.height + 1 < WORLD_HEIGHT &&
                 localBlock(x, ground.height, z) == Block::SnowBlock) {
@@ -1357,7 +1404,7 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
 
     // Surface features are deliberately last. Border roots are evaluated by
     // both chunks using world coordinates, so crowns do not stop at seams.
-    for (int rootZ = chunkZ * CHUNK_SIZE - 3;
+    if (generationVersion_ < 9) for (int rootZ = chunkZ * CHUNK_SIZE - 3;
          rootZ < (chunkZ + 1) * CHUNK_SIZE + 3; ++rootZ) {
         for (int rootX = chunkX * CHUNK_SIZE - 3;
              rootX < (chunkX + 1) * CHUNK_SIZE + 3; ++rootX) {
@@ -1465,6 +1512,31 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
             }
         }
     }
+    if(generationVersion_>=9) {
+        std::array<std::vector<StructurePlan>,9> vegetationPlans;
+        std::array<bool,9> planned{};
+        const auto reserved=[&](int x,int z) {
+            const int cx=floorDiv(x,CHUNK_SIZE),cz=floorDiv(z,CHUNK_SIZE);
+            const int slot=(cz-chunkZ+1)*3+cx-chunkX+1;
+            if(!planned[slot]) {
+                vegetationPlans[slot]=structures_.plansForChunk(cx,cz,
+                    [&](int nx,int nz) {return structureTerrainAt(nx,nz);});
+                planned[slot]=true;
+            }
+            for(const auto& plan:vegetationPlans[slot])
+                if(x>=plan.bounds.minX-1&&x<=plan.bounds.maxX+1&&z>=plan.bounds.minZ-1&&z<=plan.bounds.maxZ+1) return true;
+            return false;
+        };
+        decorateBiomeChunk(chunkX,chunkZ,seed_,result.blocks,[&](int x,int z) {
+            const int lx=x-chunkX*CHUNK_SIZE,lz=z-chunkZ*CHUNK_SIZE;
+            const auto ground=(lx>=-1&&lx<=CHUNK_SIZE&&lz>=-1&&lz<=CHUNK_SIZE)?column(lx,lz):sampleTerrainModern(x,z);
+            return BiomeTerrain{ground.height,ground.biome,ground.river};
+        },reserved,[&](int x,int z) {
+            const auto ground=sampleTerrainModern(x,z);
+            return canyonCarver_.surfaceSurvives(x,z,ground.height,biomeDefinition(ground.biome).surface,
+                [&](int nx,int nz) {return sampleTerrainModern(nx,nz).height;});
+        });
+    }
     if (generationVersion_ >= 3) {
         const auto structureTerrain = [&](int x, int z) {
             return structureTerrainAt(x, z);
@@ -1547,6 +1619,8 @@ bool World::runCraftingContentSmokeTest(std::string& report) {
                 report = "new block atlas bounds"; return false;
             }
     }
+    World historicalPlants(seed_);
+    historicalPlants.generationVersion_=8;
     int cane = 0, vines = 0, generated = 0;
     const int plantSurveyRadius = generationVersion_ >= 8 ? 128 : 32;
     for (int cz = -plantSurveyRadius; cz <= plantSurveyRadius && (cane == 0 || vines == 0) && generated < 128; ++cz) {
@@ -1555,19 +1629,19 @@ bool World::runCraftingContentSmokeTest(std::string& report) {
             bool shore = false, forest = false;
             for (int z = 0; z < CHUNK_SIZE; ++z)
                 for (int x = 0; x < CHUNK_SIZE; ++x) {
-                    const TerrainSample sample = sampleTerrainModern(cx * CHUNK_SIZE+x, cz * CHUNK_SIZE+z);
+                    const TerrainSample sample = historicalPlants.sampleTerrainModern(cx * CHUNK_SIZE+x, cz * CHUNK_SIZE+z);
                     if (sample.height == SEA_LEVEL && (generationVersion_ < 8 ||
-                        terrainHeight(cx*CHUNK_SIZE+x-1,cz*CHUNK_SIZE+z)<SEA_LEVEL ||
-                        terrainHeight(cx*CHUNK_SIZE+x+1,cz*CHUNK_SIZE+z)<SEA_LEVEL ||
-                        terrainHeight(cx*CHUNK_SIZE+x,cz*CHUNK_SIZE+z-1)<SEA_LEVEL ||
-                        terrainHeight(cx*CHUNK_SIZE+x,cz*CHUNK_SIZE+z+1)<SEA_LEVEL)) shore=true;
+                        historicalPlants.terrainHeight(cx*CHUNK_SIZE+x-1,cz*CHUNK_SIZE+z)<SEA_LEVEL ||
+                        historicalPlants.terrainHeight(cx*CHUNK_SIZE+x+1,cz*CHUNK_SIZE+z)<SEA_LEVEL ||
+                        historicalPlants.terrainHeight(cx*CHUNK_SIZE+x,cz*CHUNK_SIZE+z-1)<SEA_LEVEL ||
+                        historicalPlants.terrainHeight(cx*CHUNK_SIZE+x,cz*CHUNK_SIZE+z+1)<SEA_LEVEL)) shore=true;
                     forest |= sample.biome == Biome::Forest || sample.biome == Biome::BirchForest;
                 }
             if ((!shore || cane > 0) && (!forest || vines > 0)) continue;
             if (generated >= 128) continue;
             ++generated;
-            const auto first = generateChunkDataModern(cx,cz);
-            const auto second = generateChunkDataModern(cx,cz);
+            const auto first = historicalPlants.generateChunkDataModern(cx,cz);
+            const auto second = historicalPlants.generateChunkDataModern(cx,cz);
             if (first.blocks != second.blocks) { report = "plant generation nondeterministic"; return false; }
             for (Block block : first.blocks) {
                 cane += block == Block::SugarCane ? 1 : 0;
@@ -2241,6 +2315,19 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
     input.epoch = meshEpoch_;
     const Chunk* center = findChunk(chunkX, chunkZ);
     if (center) {
+        if(generationVersion_>=9) {
+            if(!center->climateColorsReady) {
+                for(int corner=0;corner<4;++corner) {
+                    const auto c=biomeClimateAt(chunkX*CHUNK_SIZE+(corner%2)*CHUNK_SIZE,
+                                                chunkZ*CHUNK_SIZE+(corner/2)*CHUNK_SIZE);
+                    center->climateColors[0][corner]=climateGrassColor(c);
+                    center->climateColors[1][corner]=climateFoliageColor(c);
+                    center->climateColors[2][corner]=climateWaterColor(c);
+                }
+                center->climateColorsReady=true;
+            }
+            input.climateTinted=true; input.climateColors=center->climateColors;
+        }
         input.revision = center->meshRevision;
         input.identity = center->meshIdentity;
         input.meshHeight = std::clamp(center->highestRenderableY + 2, 1, WORLD_HEIGHT);
@@ -2467,7 +2554,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
                        loadedGenerationVersion != 3U && loadedGenerationVersion != 4U &&
                        loadedGenerationVersion != 5U &&
                        loadedGenerationVersion != 6U && loadedGenerationVersion != 7U &&
-                       loadedGenerationVersion != 8U))
+                       loadedGenerationVersion != 8U && loadedGenerationVersion != 9U))
             return false;
     }
 
@@ -3679,6 +3766,16 @@ bool World::canPlacePlant(const glm::ivec3& position, Block block) const {
         const Block backing = getBlock(wall.x, wall.y, wall.z);
         return blockGeometry(backing).occludesNeighborFaces || isLeaf(backing);
     }
+    const Block support=getBlock(position.x,position.y-1,position.z);
+    if(block==Block::LilyPad) return isWater(support);
+    if(block==Block::Bamboo && support==Block::Bamboo) return true;
+    if(block==Block::Bamboo||block==Block::Fern||block==Block::DeadBush||
+       block==Block::RedMushroom||block==Block::BrownMushroom) {
+        if(block==Block::DeadBush && (support==Block::Sand||support==Block::Terracotta||
+            support==Block::TerracottaOrange)) return true;
+        return support==Block::Grass||support==Block::Dirt||support==Block::CoarseDirt||
+               support==Block::Podzol||support==Block::Mycelium||support==Block::Mud;
+    }
     if (block != Block::SugarCane) return true;
     const Block below = getBlock(position.x, position.y - 1, position.z);
     if (below == Block::SugarCane) return true;
@@ -4530,6 +4627,25 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
                 }
             }
         }
+    }
+    if(input.climateTinted) {
+        auto tint=[&](std::vector<VoxelVertex>& vertices) {
+            for(auto& v:vertices) {
+                const int tile=v.atlasTile>=0?int(v.atlasTile):int(v.uv.x*BlockAtlasTiles);
+                int category=-1;
+                if(tile==0||tile==1||tile==40||tile==88) category=0;
+                if(tile==7||tile==27||tile==63||tile==67||tile==71||tile==75) category=1;
+                if(tile==8) category=2;
+                if(category<0) continue;
+                const float x=std::clamp((v.position.x-originX)/CHUNK_SIZE,0.f,1.f);
+                const float z=std::clamp((v.position.z-originZ)/CHUNK_SIZE,0.f,1.f);
+                const auto& colors=input.climateColors[category];
+                const auto c=glm::mix(glm::mix(colors[0],colors[1],x),glm::mix(colors[2],colors[3],x),z);
+                const auto channel=[](float f) { return std::uint32_t(std::clamp(f,0.f,1.f)*255.f+.5f); };
+                v.atlasTile.setTint(channel(c.r)|(channel(c.g)<<8U)|(channel(c.b)<<16U));
+            }
+        };
+        tint(opaqueVertices); tint(waterVertices);
     }
     result.opaqueBounds = meshBounds(opaqueVertices);
     result.waterBounds = meshBounds(waterVertices);

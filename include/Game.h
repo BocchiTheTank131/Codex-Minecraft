@@ -193,6 +193,7 @@ private:
     bool playerIsWalking() const;
 
     void runWeatherSmokeTest();
+    std::string biomeAudit_;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();
