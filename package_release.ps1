@@ -1,5 +1,6 @@
 param(
-    [string]$Generator = 'Visual Studio 18 2026'
+    [string]$Generator = 'Visual Studio 18 2026',
+    [ValidateRange(1, 64)][int]$BuildJobs = 4
 )
 
 $ErrorActionPreference = 'Stop'
@@ -8,13 +9,15 @@ $cmakeText = Get-Content -LiteralPath (Join-Path $root 'CMakeLists.txt') -Raw
 $match = [regex]::Match($cmakeText, 'project\(VoxelFrontier VERSION (\d+\.\d+\.\d+)')
 if (-not $match.Success) { throw 'Could not read the project version from CMakeLists.txt.' }
 $version = $match.Groups[1].Value
+$suffixMatch = [regex]::Match($cmakeText, 'set\(VOXELFRONTIER_VERSION_SUFFIX "([^"]*)"\)')
+$displayVersion = $version + $suffixMatch.Groups[1].Value
 $fullBuildDir = Join-Path $root 'build/installed-release'
 $demoBuildDir = Join-Path $root 'build/standalone-demo-release'
 $distDir = Join-Path $root 'dist'
 $icon = Join-Path $root 'packaging/VoxelFrontier.ico'
-$standalone = Join-Path $distDir "VoxelFrontier-v$version-Windows-Standalone.exe"
+$standalone = Join-Path $distDir "VoxelFrontier-v$displayVersion-Windows-Standalone.exe"
 $fullExe = Join-Path $fullBuildDir 'Release/VoxelFrontier.exe'
-$setup = Join-Path $distDir "VoxelFrontier-v$version-Windows-Setup.exe"
+$setup = Join-Path $distDir "VoxelFrontier-v$displayVersion-Windows-Setup.exe"
 
 if (-not (Test-Path -LiteralPath $icon)) { throw 'Windows icon is missing.' }
 New-Item -ItemType Directory -Path $distDir -Force | Out-Null
@@ -26,7 +29,7 @@ foreach ($variant in @(
     & cmake -S $root -B $variant.Path -G $Generator -A x64 `
         -DVOXEL_STANDALONE=ON $demoOption
     if ($LASTEXITCODE -ne 0) { throw "CMake configuration failed for $($variant.Name)." }
-    & cmake --build $variant.Path --config Release --parallel
+    & cmake --build $variant.Path --config Release --parallel $BuildJobs
     if ($LASTEXITCODE -ne 0) { throw "Release build failed for $($variant.Name)." }
 }
 if (-not (Test-Path -LiteralPath $fullExe)) { throw 'Full game executable is missing.' }
@@ -48,6 +51,7 @@ if ($LASTEXITCODE -ne 0 -or $compilerVersion -notmatch '^7\.') {
 }
 $isccArgs = @(
     "--define=AppVersion=$version",
+    "--define=AppDisplayVersion=$displayVersion",
     "--define=SourceExe=$fullExe",
     "--define=OutputDir=$distDir",
     "--define=IconPath=$icon",

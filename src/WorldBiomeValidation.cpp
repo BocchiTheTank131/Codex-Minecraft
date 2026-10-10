@@ -35,7 +35,7 @@ bool World::runBiomeAudit(const std::string& directory, std::string& report) con
     std::ofstream out(directory + "/generation.csv");
     out << "seed,version,x,z,hash,ms\n";
     for (auto seed : {20260917U,123456789U,42U}) {
-        World probe(seed);
+        World probe(seed, 9);
         for (unsigned version = 1; version <= 9; ++version) {
             probe.generationVersion_ = version;
             for (int i=0;i<16;++i) {
@@ -55,7 +55,7 @@ bool World::runBiomeAudit(const std::string& directory, std::string& report) con
     std::ofstream locations(directory+"/biomes.csv");
     locations << "seed,biome,x,z,height,temperature,humidity\n";
     for(auto seed:{20260917U,123456789U,42U}) {
-        World probe(seed);
+        World probe(seed, 9);
         constexpr int side=320,step=96;
         std::array<unsigned,static_cast<int>(Biome::Count)> counts{};
         std::array<glm::ivec2,static_cast<int>(Biome::Count)> first{};
@@ -141,7 +141,7 @@ bool World::runBiomeAudit(const std::string& directory, std::string& report) con
     std::string crafting;
     if(!Inventory::runCraftingSelfTest(crafting)) {report=crafting;return false;}
     // Real world format roundtrip, with new IDs, followed by old-version loads.
-    World saved(seed_); saved.generate(1);
+    World saved(seed_, 9); saved.generate(1);
     saved.synchronousMeshForSmokeTest_=false;
     for(int i=0;i<static_cast<int>(biomeContent().size());++i) {
         const int x=i%8,z=i/8;
@@ -150,7 +150,7 @@ bool World::runBiomeAudit(const std::string& directory, std::string& report) con
     }
     const auto worldPath=directory+"/world.vxw";
     if(!saved.saveWorld(worldPath,{.5f,230,.5f})) {report="World save";return false;}
-    World restored(seed_); glm::vec3 player;
+    World restored(seed_, 9); glm::vec3 player;
     if(!restored.loadWorld(worldPath,player)||restored.generationVersion()!=9) {report="Generator 9 load";return false;}
     restored.generate(1,player);
     for(int i=0;i<static_cast<int>(biomeContent().size());++i)

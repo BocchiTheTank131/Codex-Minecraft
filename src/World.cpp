@@ -451,7 +451,7 @@ World::World(std::uint32_t seed, std::uint32_t generationVersion)
       cheeseNoise_(seed ^ 0x91b37d65U), spaghettiNoise_(seed ^ 0x326fa1cbU),
       noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed),
       seed_(seed) {
-    generationVersion_ = std::clamp(generationVersion, 1U, 9U);
+    generationVersion_ = std::clamp(generationVersion, 1U, 10U);
     const unsigned int hardware = std::thread::hardware_concurrency();
     const unsigned int workerCount =
         std::max(1U, std::min(3U, hardware > 2U ? hardware - 2U : 1U));
@@ -510,6 +510,7 @@ World::TerrainSample World::sampleTerrain(int worldX, int worldZ) const {
 }
 
 World::TerrainSample World::sampleTerrainModern(int worldX, int worldZ) const {
+    if (generationVersion_ >= 10) return sampleTerrainGeography(worldX, worldZ);
     const float x = static_cast<float>(worldX);
     const float z = static_cast<float>(worldZ);
     const auto smoothRange = [](float lower, float upper, float value) {
@@ -1228,6 +1229,17 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                                   : clayShore ? Block::Clay
                                   : sandy ? Block::Sand : Block::Dirt;
 
+            std::array<PerlinNoise::Column, 15> noiseColumns;
+            std::array<bool, 15> noiseColumnsReady{};
+            const auto columnNoise = [&](int slot, const PerlinNoise& noise, float nx, float ny, float nz) {
+                if (generationVersion_ < 10) return noise.noise(nx, ny, nz);
+                if (!noiseColumnsReady[slot]) {
+                    noiseColumns[slot] = noise.column(nx, nz);
+                    noiseColumnsReady[slot] = true;
+                }
+                return noiseColumns[slot].noise(ny);
+            };
+
             for (int y = 0; y <= ground.height; ++y) {
                 Block block = y == ground.height ? surface
                               : y >= ground.height - 3 ? subsoil : Block::Stone;
@@ -1242,9 +1254,21 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                             : 1.0f;
                         const float caveOpening = nearSurface * nearSurface *
                             (3.0f - 2.0f * nearSurface);
-                        const float cheese = cheeseNoise_.fractal3D(
-                            worldX * 0.022f, y * 0.027f, worldZ * 0.022f,
-                            3, 2.0f, 0.52f);
+                        float cheese;
+                        if (generationVersion_ >= 10) {
+                            float value = 0, amplitude = 1, totalAmplitude = 0, frequency = 1;
+                            for (int octave = 0; octave < 3; ++octave) {
+                                value += columnNoise(octave, cheeseNoise_, (worldX * .022f) * frequency,
+                                    (y * .027f) * frequency, (worldZ * .022f) * frequency) * amplitude;
+                                totalAmplitude += amplitude;
+                                amplitude *= .52f;
+                                frequency *= 2.f;
+                            }
+                            cheese = value / totalAmplitude;
+                        } else {
+                            cheese = cheeseNoise_.fractal3D(worldX * .022f, y * .027f, worldZ * .022f,
+                                3, 2.f, .52f);
+                        }
                         const float cheeseThreshold = generationVersion_ >= 4
                             ? (generationVersion_ >= 5
                                 ? 0.59f - 0.09f * std::clamp(
@@ -1258,7 +1282,7 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                             : 0.46f;
                         carved = cheese > cheeseThreshold;
                         if (!carved) {
-                            const float spaghettiA = std::abs(spaghettiNoise_.noise(
+                            const float spaghettiA = std::abs(columnNoise(3, spaghettiNoise_,
                                 worldX * 0.028f + 17.0f, y * 0.032f,
                                 worldZ * 0.028f - 29.0f));
                             const float spaghettiWidth = generationVersion_ >= 4
@@ -1269,7 +1293,7 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                                     : depth > 22 ? 0.062f : 0.043f)
                                 : 0.075f;
                             if (spaghettiA < spaghettiWidth) {
-                                const float spaghettiB = std::abs(caveNoise_.noise(
+                                const float spaghettiB = std::abs(columnNoise(4, caveNoise_,
                                     worldX * 0.027f - 61.0f, y * 0.029f + 13.0f,
                                     worldZ * 0.027f + 44.0f));
                                 carved = spaghettiB < (generationVersion_ >= 4
@@ -1284,7 +1308,7 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                         }
                         if (!carved && noodleRegion >
                             (generationVersion_ >= 4 ? 0.18f : 0.13f)) {
-                            const float noodleA = std::abs(noodleNoise_.noise(
+                            const float noodleA = std::abs(columnNoise(5, noodleNoise_,
                                 worldX * 0.044f + 61.0f, y * 0.048f,
                                 worldZ * 0.044f - 71.0f));
                             if (noodleA < (generationVersion_ >= 4
@@ -1292,7 +1316,7 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                                         ? 0.028f * (0.12f + 0.88f * caveOpening)
                                         : 0.028f)
                                     : 0.035f)) {
-                                carved = std::abs(cheeseNoise_.noise(
+                                carved = std::abs(columnNoise(6, cheeseNoise_,
                                     worldX * 0.041f - 113.0f, y * 0.045f + 23.0f,
                                     worldZ * 0.041f + 37.0f)) <
                                     (generationVersion_ >= 4
@@ -1324,33 +1348,33 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
                         0.75f + std::max(0.0f, static_cast<float>(y - 110) / 90.0f),
                         0.0f, 1.0f);
                     const float coalChance = y < 180 ? 1.0f : 0.0f;
-                    if (diamondChance > 0.0f && terrainNoise_.noise(
+                    if (diamondChance > 0.0f && columnNoise(7, terrainNoise_,
                             worldX * 0.15f + 271.0f, y * 0.16f + 117.0f,
                             worldZ * 0.15f - 239.0f) > 0.63f + (1.0f - diamondChance) * 0.2f)
                         block = Block::DiamondOre;
-                    else if (goldChance > 0.0f && terrainNoise_.noise(
+                    else if (goldChance > 0.0f && columnNoise(8, terrainNoise_,
                             worldX * 0.14f + 151.0f, y * 0.15f - 47.0f,
                             worldZ * 0.14f - 113.0f) > 0.57f + (1.0f - goldChance) * 0.16f)
                         block = Block::GoldOre;
-                    else if (copperChance > 0.0f && terrainNoise_.noise(
+                    else if (copperChance > 0.0f && columnNoise(9, terrainNoise_,
                             worldX * 0.115f - 211.0f, y * 0.12f + 81.0f,
                             worldZ * 0.115f + 193.0f) > 0.53f + (1.0f - copperChance) * 0.13f)
                         block = Block::CopperOre;
-                    else if (ironChance > 0.0f && terrainNoise_.noise(
+                    else if (ironChance > 0.0f && columnNoise(10, terrainNoise_,
                             worldX * 0.12f - 83.0f, y * 0.125f + 31.0f,
                             worldZ * 0.12f + 71.0f) > 0.55f + (1.0f - ironChance) * 0.09f)
                         block = Block::IronOre;
-                    else if (coalChance > 0.0f && terrainNoise_.noise(
+                    else if (coalChance > 0.0f && columnNoise(11, terrainNoise_,
                             worldX * 0.10f + 19.0f, y * 0.11f,
                             worldZ * 0.10f - 37.0f) > 0.53f)
                         block = Block::CoalOre;
                     else {
-                        const float patch = ridgeNoise_.noise(
+                        const float patch = columnNoise(12, ridgeNoise_,
                             worldX * 0.075f + 411.0f, y * 0.075f,
                             worldZ * 0.075f - 337.0f);
                         if (patch > 0.57f) block = Block::Granite;
                         else if (patch < -0.57f) block = Block::Diorite;
-                        else if (caveNoise_.noise(worldX * 0.072f + 127.0f,
+                        else if (columnNoise(13, caveNoise_, worldX * 0.072f + 127.0f,
                                                   y * 0.071f - 89.0f,
                                                   worldZ * 0.072f + 211.0f) > 0.59f)
                             block = Block::Andesite;
@@ -1805,7 +1829,7 @@ WorldgenSurvey World::runWorldgenSurvey() const {
 }
 
 bool World::runStructureGenerationSmokeTest(
-    std::string& report, glm::ivec3* representativeChest) const {
+    std::string& report, glm::ivec3* representativeChest, int regionRadius) const {
     if (generationVersion_ < 3) {
         report = "legacy generator intentionally unchanged";
         return true;
@@ -1815,8 +1839,8 @@ bool World::runStructureGenerationSmokeTest(
     std::vector<StructureBox> majorBounds;
     bool valid = true;
     bool chestChecked = false;
-    for (int regionZ = -4; regionZ <= 4; ++regionZ) {
-        for (int regionX = -4; regionX <= 4; ++regionX) {
+    for (int regionZ = -regionRadius; regionZ <= regionRadius; ++regionZ) {
+        for (int regionX = -regionRadius; regionX <= regionRadius; ++regionX) {
             const StructurePlan plan = structures_.majorPlanForRegion(
                 regionX, regionZ, terrain);
             if (plan.pieces.empty()) continue;
@@ -2554,7 +2578,8 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
                        loadedGenerationVersion != 3U && loadedGenerationVersion != 4U &&
                        loadedGenerationVersion != 5U &&
                        loadedGenerationVersion != 6U && loadedGenerationVersion != 7U &&
-                       loadedGenerationVersion != 8U && loadedGenerationVersion != 9U))
+                       loadedGenerationVersion != 8U && loadedGenerationVersion != 9U &&
+                       loadedGenerationVersion != 10U))
             return false;
     }
 

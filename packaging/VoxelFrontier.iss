@@ -1,6 +1,9 @@
 #ifndef AppVersion
   #error AppVersion must be supplied by package_release.ps1
 #endif
+#ifndef AppDisplayVersion
+  #define AppDisplayVersion AppVersion
+#endif
 #ifndef SourceExe
   #error SourceExe must be supplied by package_release.ps1
 #endif
@@ -27,7 +30,7 @@
 AppId={#AppId}
 AppName={#AppDisplayName}
 AppVersion={#AppVersion}
-AppVerName={#AppDisplayName} {#AppVersion}
+AppVerName={#AppDisplayName} {#AppDisplayVersion}
 AppPublisher=Voxel Frontier Project
 AppPublisherURL=https://github.com/BocchiTheTank131/Codex-Minecraft
 AppSupportURL=https://github.com/BocchiTheTank131/Codex-Minecraft/issues
@@ -52,7 +55,7 @@ SetupMutex=VoxelFrontierSetupMutex
 Compression=lzma2
 SolidCompression=yes
 OutputDir={#OutputDir}
-OutputBaseFilename=VoxelFrontier-v{#AppVersion}-Windows-Setup
+OutputBaseFilename=VoxelFrontier-v{#AppDisplayVersion}-Windows-Setup
 VersionInfoVersion={#AppVersion}
 VersionInfoProductVersion={#AppVersion}
 VersionInfoProductName=Voxel Frontier

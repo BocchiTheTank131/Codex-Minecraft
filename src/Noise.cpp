@@ -60,6 +60,55 @@ float PerlinNoise::noise(float x, float y, float z) const {
     return lerp(y1, lerp(x3, x4, v), w);
 }
 
+PerlinNoise::Column PerlinNoise::column(float x, float z) const {
+    Column result;
+    result.owner_ = this;
+    const int xi = static_cast<int>(std::floor(x)) & 255;
+    result.px0_ = permutation_[xi];
+    result.px1_ = permutation_[xi + 1];
+    result.zi_ = static_cast<int>(std::floor(z)) & 255;
+    result.xf_ = x - std::floor(x);
+    result.zf_ = z - std::floor(z);
+    result.u_ = fade(result.xf_);
+    result.w_ = fade(result.zf_);
+    return result;
+}
+
+float PerlinNoise::Column::noise(float y) {
+    const int yi = static_cast<int>(std::floor(y)) & 255;
+    if (yi != yi_) {
+        yi_ = yi;
+        const auto& p = owner_->permutation_;
+        const std::array<int, 8> hashes{p[p[px0_ + yi] + zi_], p[p[px0_ + yi + 1] + zi_],
+            p[p[px0_ + yi] + zi_ + 1], p[p[px0_ + yi + 1] + zi_ + 1],
+            p[p[px1_ + yi] + zi_], p[p[px1_ + yi + 1] + zi_],
+            p[p[px1_ + yi] + zi_ + 1], p[p[px1_ + yi + 1] + zi_ + 1]};
+        for (int corner = 0; corner < 8; ++corner) {
+            const int h = hashes[corner] & 15;
+            const float x = corner >= 4 ? xf_ - 1.f : xf_;
+            const float z = corner % 4 >= 2 ? zf_ - 1.f : zf_;
+            const float u = h < 8 ? ((h & 1) ? -x : x) : 0.f;
+            const float v = h < 4 ? 0.f : ((h & 2) ? -(h == 12 || h == 14 ? x : z) : (h == 12 || h == 14 ? x : z));
+            // Exactly the original two signed operands. At most one is Y.
+            // Cache fixed operands; do not approximate gradients or re-associate
+            // a multi-term floating-point expression.
+            constants_[corner] = h >= 8 ? v : h < 4 ? u : u + v;
+            ySigns_[corner] = static_cast<std::int8_t>(h >= 8 ? ((h & 1) ? -1 : 1) : h < 4 ? ((h & 2) ? -1 : 1) : 0);
+        }
+    }
+    const float yf = y - std::floor(y), v = fade(yf);
+    const auto gradient = [&](int corner, float value) {
+        return ySigns_[corner] == 0 ? constants_[corner] :
+            constants_[corner] + (ySigns_[corner] < 0 ? -value : value);
+    };
+    const float x1 = lerp(gradient(0, yf), gradient(4, yf), u_);
+    const float x2 = lerp(gradient(1, yf - 1.f), gradient(5, yf - 1.f), u_);
+    const float y1 = lerp(x1, x2, v);
+    const float x3 = lerp(gradient(2, yf), gradient(6, yf), u_);
+    const float x4 = lerp(gradient(3, yf - 1.f), gradient(7, yf - 1.f), u_);
+    return lerp(y1, lerp(x3, x4, v), w_);
+}
+
 float PerlinNoise::fractal2D(
     float x, float z, int octaves, float lacunarity, float persistence) const {
     float value = 0.0f;

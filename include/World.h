@@ -206,7 +206,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 9);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 10);
     ~World();
 
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
@@ -244,6 +244,7 @@ public:
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
     void prepareSpawnTerrain(const glm::vec3& position);
     bool runBiomeAudit(const std::string& directory, std::string& report) const;
+    bool runGeographyAudit(const std::string& directory, std::string& report) const;
     bool runPatch272SelfTest(std::string& report) const;
     BiomeClimate biomeClimateAt(int worldX, int worldZ, float elevation = -1) const;
     std::string biomeNameAt(int worldX, int worldZ) const;
@@ -291,7 +292,8 @@ public:
     bool runCraftingContentSmokeTest(std::string& report);
     WorldgenSurvey runWorldgenSurvey() const;
     bool runStructureGenerationSmokeTest(std::string& report,
-                                         glm::ivec3* representativeChest = nullptr) const;
+                                         glm::ivec3* representativeChest = nullptr,
+                                         int regionRadius = 4) const;
     int renderDistance() const {
         return renderDistance_;
     }
@@ -312,6 +314,8 @@ private:
         float river = 0.0f;
         float ravine = 0.0f;
         float mushroomIsland = 0.0f;
+        float macroTemperature = 0.5f;
+        float macroHumidity = 0.5f;
     };
     struct GeneratedChunk {
         int x;
@@ -375,7 +379,7 @@ private:
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 9;
+    std::uint32_t generationVersion_ = 10;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;
@@ -451,6 +455,7 @@ private:
     TerrainSample sampleTerrain(int worldX, int worldZ) const;
     TerrainSample sampleTerrainLegacy(int worldX, int worldZ) const;
     TerrainSample sampleTerrainModern(int worldX, int worldZ) const;
+    TerrainSample sampleTerrainGeography(int worldX, int worldZ) const;
     StructureTerrain structureTerrainAt(int worldX, int worldZ) const;
     GeneratedChunk generateChunkData(int chunkX, int chunkZ) const;
     GeneratedChunk generateChunkDataLegacy(int chunkX, int chunkZ) const;

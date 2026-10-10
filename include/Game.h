@@ -194,6 +194,7 @@ private:
 
     void runWeatherSmokeTest();
     std::string biomeAudit_;
+    std::string geographyAudit_;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();

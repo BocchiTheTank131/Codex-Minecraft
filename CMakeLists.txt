@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.11.0 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.11.1 LANGUAGES C CXX)
+set(VOXELFRONTIER_VERSION_SUFFIX "-beta")
+set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
 option(VOXELFRONTIER_STANDALONE_DEMO "Build the stateless standalone demo" OFF)
@@ -69,10 +71,12 @@ add_executable(VoxelFrontier
     src/CanyonCarver.cpp
     src/World.cpp
     src/WorldBiomeValidation.cpp
+    src/WorldGeography.cpp
+    src/WorldGeographyValidation.cpp
     src/WorldValidation.cpp
 )
 target_include_directories(VoxelFrontier PRIVATE include ${miniaudio_SOURCE_DIR})
-target_compile_definitions(VoxelFrontier PRIVATE VOXELFRONTIER_VERSION="${PROJECT_VERSION}")
+target_compile_definitions(VoxelFrontier PRIVATE VOXELFRONTIER_VERSION="${VOXELFRONTIER_DISPLAY_VERSION}")
 target_link_libraries(VoxelFrontier PRIVATE glfw glad glm::glm OpenGL::GL Threads::Threads)
 
 if(WIN32)

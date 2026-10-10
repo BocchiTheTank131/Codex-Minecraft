@@ -69,7 +69,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.11.0** has **134 inventory items**, **88 placeable block families**, **152 block
+Version **2.11.1-beta** has **134 inventory items**, **88 placeable block families**, **152 block
 IDs/states including Air**, **73 crafting recipes**, and **18 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -197,9 +197,43 @@ and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in th
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
 
+## v2.11.1-beta - Geographical Generator 10
+
+New worlds now use **terrain generator 10**. Broad continental fields form connected landmasses
+and ocean basins, with a smaller coastal-detail field for islands, bays and peninsulas. Climate
+is split into regional temperature/humidity and restrained local variation; altitude still cools
+mountains. The five climate regions and all 35 biomes remain available, with existing vegetation,
+materials, climate colors and weather behavior.
+
+Regional erosion and mountain belts create connected ranges, foothills and valleys. Rivers use
+a broad warped contour and a graded valley/channel profile. A rotated noise slice avoids grid-like
+river patterns. Mushroom Fields are restricted to rare offshore islands; swamp basins include
+shallow water for lily pads. The starter-land fallback raises ocean near spawn gently instead of
+adding an artificial mountain to every new world.
+
+**Compatibility:** worlds saved with generators 1–9 keep those algorithms, including unexplored
+chunks. No block/item IDs or save-record formats changed. The full game remains persistent and
+the standalone demo remains stateless. Column caches reuse exact cave/ore noise calculations
+within each generation worker; they do not interpolate or approximate noise values.
+
+Developer validation: `--geography-audit=<absolute-output-directory>` compares generators 9/10
+over **30,720 × 30,720** and **4,096 × 4,096-block** regions for seeds `20260917`, `123456789`
+and `42`. Each map samples 512 × 512 columns (60-block and 8-block spacing respectively).
+It exports biome, climate, continentalness and elevation data, regional generation timings,
+natural-content checks, structures, chunk hashes, threaded determinism and generator save/load
+tests. `python tools/build_geography_previews.py <directory>` makes labeled comparison maps
+and connected-region statistics. These are development tools; no Python dependency is required
+to run the game. The historical `--biome-audit` remains pinned to generator 9.
+
+See [geography validation](docs/GEOGRAPHY_VALIDATION.md) for measured distributions,
+compatibility checks, performance comparisons and remaining limitations.
+
+This beta introduces generator 10 for new worlds. Existing worlds retain their stored
+generator. See the validation report for performance measurements and limitations.
+
 ## v2.11.0 - Biome & Climate Update
 
-New worlds use **terrain generator 9**, with 35 biomes selected from large-scale temperature,
+The published v2.11.0 release introduced **terrain generator 9**, with 35 biomes selected from temperature,
 humidity, continentalness, erosion, ridges, river masks and elevation. Temperature and humidity
 are normalized to 0–1. Elevation cools mountain slopes and summits without changing the
 regional base climate. Frozen/Cold/Temperate/Warm/Hot boundaries are 0.17/0.34/0.60/0.80.
@@ -248,9 +282,17 @@ CPU generation timings, three-seed biome/climate/height maps, distributions, con
 and persistence/recipe tests. `python tools/build_biome_previews.py <directory>` labels the maps.
 `python tools/generate_biome_textures.py` appends biome artwork; Pillow is development-only.
 
-The Windows release provides the **2.11.0** standalone demo and full-game installer.
+The Windows beta release provides the **2.11.1-beta** standalone demo and full-game installer.
 
 ## Windows Release
+
+### v2.11.1-beta - Geography Update
+
+- Larger continents, connected ocean basins and broad regional climates.
+- Regional mountain belts, foothills and longer river valleys; all 35 biomes retained.
+- Generator 10 for new worlds; generators 1–9 remain unchanged for existing worlds.
+- Exact worker-local noise caching and expanded geography/compatibility validation.
+- Standalone remains a stateless demo; installed worlds and settings remain persistent.
 
 ### v2.11.0 - The Biome & Climate Update
 
@@ -314,12 +356,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
 - Save & Return to Menu saves and unloads the full game. The standalone demo discards its
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
-Download from [Voxel Frontier v2.11.0](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.0).
+Download from [Voxel Frontier v2.11.1-beta](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.1-beta).
 
-| v2.11.0 Windows build | Purpose | Persistence |
+| v2.11.1-beta Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.11.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.11.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.11.1-beta-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.11.1-beta-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The

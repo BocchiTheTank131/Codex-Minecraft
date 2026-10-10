@@ -195,7 +195,12 @@ bool Game::initialize(int argc, char** argv) {
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
                      "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
-        if (!biomeAudit_.empty()) {
+        if (!geographyAudit_.empty()) {
+            std::string report;
+            if (!world_->runGeographyAudit(geographyAudit_, report)) throw std::runtime_error(report);
+            std::cout << report << std::endl;
+            glfwSetWindowShouldClose(window_, true);
+        } else if (!biomeAudit_.empty()) {
             std::string report;
             if (!world_->runBiomeAudit(biomeAudit_, report)) throw std::runtime_error(report);
             std::cout << report << std::endl;
@@ -333,6 +338,8 @@ void Game::parseArguments(int argc, char** argv) {
                 spectatorMode_ = true;
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
+            } else if (argument.rfind("--geography-audit=",0)==0) {
+                geographyAudit_=argument.substr(18); saveOnExit_=false;
             } else if (argument.rfind("--biome-audit=",0)==0) {
                 biomeAudit_=argument.substr(14); saveOnExit_=false;
             } else if (argument == "--weather-smoke") {
