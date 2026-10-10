@@ -69,7 +69,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.10.0** has **102 inventory items**, **56 placeable block families**, **120 block
+Version **2.10.1** has **102 inventory items**, **56 placeable block families**, **120 block
 IDs/states including Air**, **62 crafting recipes**, and **13 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -198,6 +198,13 @@ terrain preview; `--crafting-preview` exercises the actual inventory/container t
 
 ## Windows Release
 
+### v2.10.1 - Billboard Movement Fix
+
+- Swept full-hitbox collision prevents billboard enemies tunneling through terrain.
+- Reliable descents and landings across ledges, slabs, corners, and chunk boundaries.
+- Unloaded terrain remains blocked; Ryo retains wall climbing without walking into unsafe drops.
+- Includes 52 terrain-physics regression cases, with existing combat and save compatibility preserved.
+
 ### v2.10.0 - The Weather Update
 
 Weather follows the documented [Weather](https://minecraft.wiki/w/Weather) mechanics,
@@ -237,10 +244,10 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
 
 Download from [GitHub Releases](https://github.com/BocchiTheTank131/Codex-Minecraft/releases).
 
-| v2.10.0 Windows build | Purpose | Persistence |
+| v2.10.1 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.10.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.10.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.10.1-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.10.1-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
