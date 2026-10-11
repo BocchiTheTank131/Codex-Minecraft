@@ -272,7 +272,7 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
         jumpWasDown_ = false;
     }
 
-    if (position_.y < -24.0f) {
+    if (position_.y < world.minimumY() - 24.0f) {
         if (creativeMode_)
             respawn(world);
         else
@@ -426,6 +426,9 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
     if (!creativeMode_ && world.aabbTouchesBlock(aabbMinimum(), aabbMaximum(), Block::Cactus)) {
         damage(1.0f);
     }
+
+    if (!creativeMode_ && world.aabbTouchesBlock(aabbMinimum(), aabbMaximum(), Block::Lava))
+        damage(4.0f);
 
     if (creativeMode_) {
         exhaustion_ = 0.0f;

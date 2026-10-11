@@ -394,10 +394,13 @@ StructureBox structureBoundingBox(const StructurePiece& piece) {
 std::array<int, 3> terrainHeightForFootprint(
     const StructureBox& footprint,
     const std::function<StructureTerrain(int, int)>& terrain) {
-    int lowest = WorldHeight, highest = 0, sum = 0, count = 0;
+    int lowest = 320, highest = -64, sum = 0, count = 0;
     for (int z = footprint.minZ; z <= footprint.maxZ; ++z)
         for (int x = footprint.minX; x <= footprint.maxX; ++x) {
-            const int height = terrain(x, z).height;
+            const auto ground = terrain(x, z);
+            // Reject a footprint crossing a V11 ravine, including off-center cells.
+            if (!ground.supported) return {-64, 320, 0};
+            const int height = ground.height;
             lowest = std::min(lowest, height);
             highest = std::max(highest, height);
             sum += height;
@@ -409,8 +412,9 @@ std::array<int, 3> terrainHeightForFootprint(
 bool canPlaceStructure(const StructureBox& footprint, int maximumSlope,
                        const std::function<StructureTerrain(int, int)>& terrain) {
     const auto heights = terrainHeightForFootprint(footprint, terrain);
-    if (heights[0] <= SeaLevel + 2 || heights[1] - heights[0] > maximumSlope ||
-        heights[2] + footprint.maxY - footprint.minY >= WorldHeight - 3)
+    const auto center = terrain((footprint.minX + footprint.maxX) / 2, (footprint.minZ + footprint.maxZ) / 2);
+    if (!center.supported || heights[0] <= center.seaLevel + 2 || heights[1] - heights[0] > maximumSlope ||
+        heights[2] + footprint.maxY - footprint.minY >= center.maximumY - 3)
         return false;
     const int centerX = (footprint.minX + footprint.maxX) / 2;
     const int centerZ = (footprint.minZ + footprint.maxZ) / 2;
@@ -443,7 +447,7 @@ StructurePlan StructureGenerator::planMajor(
     } else {
         return plan;
     }
-    if (center.height < SeaLevel + 4 || center.height > WorldHeight - 28 ||
+    if (!center.supported || center.height < center.seaLevel + 4 || center.height > center.maximumY - 28 ||
         center.river > 0.08f)
         return plan;
 
@@ -506,7 +510,7 @@ StructurePlan StructureGenerator::planMajor(
             const int x = candidate.x + dx * step;
             const int z = candidate.z + dz * step;
             const StructureTerrain ground = terrain(x, z);
-            if (ground.height <= SeaLevel + 2 || ground.river > 0.09f ||
+            if (!ground.supported || ground.height <= ground.seaLevel + 2 || ground.river > 0.09f ||
                 std::abs(ground.height - previousHeight) > 2)
                 break;
             previousHeight = ground.height;
@@ -572,7 +576,7 @@ StructurePlan StructureGenerator::planSmall(
                                              SmallRegion, 0xc561ab27U);
     if ((candidate.hash >> 18U) % 100U >= 22U) return plan;
     const StructureTerrain ground = terrain(candidate.x, candidate.z);
-    if (ground.height <= SeaLevel + 3 || ground.river > 0.08f ||
+    if (!ground.supported || ground.height <= ground.seaLevel + 3 || ground.river > 0.08f ||
         ground.biome == StructureBiome::Other)
         return plan;
     // Keep inexpensive ruins away from major centers without querying plans.
@@ -677,12 +681,12 @@ std::vector<StructurePlan> StructureGenerator::plansForChunk(
 void StructureGenerator::placeTemplate(
     const StructurePiece& piece, int chunkX, int chunkZ,
     std::vector<Block>& blocks, std::vector<StructureLootMarker>& loot,
-    std::vector<StructureMobMarker>& mobs) const {
+    std::vector<StructureMobMarker>& mobs, int minimumY, int maximumY) const {
     const StructureTemplate& source = structureTemplate(piece.kind);
     const int minimumX = chunkX * ChunkSize;
     const int minimumZ = chunkZ * ChunkSize;
-    auto index = [](int x, int y, int z) {
-        return static_cast<std::size_t>((y * ChunkSize + z) * ChunkSize + x);
+    auto index = [minimumY](int x, int y, int z) {
+        return static_cast<std::size_t>(((y - minimumY) * ChunkSize + z) * ChunkSize + x);
     };
     for (const StructureCell& cell : source.cells) {
         const auto rotated = rotateLocalPosition(cell.x, cell.z,
@@ -691,7 +695,7 @@ void StructureGenerator::placeTemplate(
         const int localZ = piece.z + rotated[1] - minimumZ;
         const int y = piece.y + cell.y;
         if (localX < 0 || localX >= ChunkSize || localZ < 0 ||
-            localZ >= ChunkSize || y < 0 || y >= WorldHeight)
+            localZ >= ChunkSize || y < minimumY || y >= maximumY)
             continue;
         Block block = cell.operation == TemplateOperation::Clear
             ? Block::Air : (piece.desert ? desertMaterial(cell.block) : cell.block);
@@ -721,7 +725,7 @@ void StructureGenerator::placeTemplate(
         const int y = piece.y + marker.y;
         if (x < minimumX || x >= minimumX + ChunkSize ||
             z < minimumZ || z >= minimumZ + ChunkSize ||
-            y < 0 || y >= WorldHeight)
+            y < minimumY || y >= maximumY)
             continue;
         loot.push_back({x, y, z, marker.table,
                         regionHash(seed_, x, z, static_cast<std::uint32_t>(y))});
@@ -741,19 +745,19 @@ bool StructureGenerator::applyToChunk(
     int chunkX, int chunkZ, std::vector<Block>& blocks,
     std::vector<StructureLootMarker>& loot,
     std::vector<StructureMobMarker>& mobs,
-    const std::function<StructureTerrain(int, int)>& terrain) const {
+    const std::function<StructureTerrain(int, int)>& terrain, int minimumY, int maximumY) const {
     const std::vector<StructurePlan> plans = plansForChunk(chunkX, chunkZ, terrain);
     const int minimumX = chunkX * ChunkSize;
     const int minimumZ = chunkZ * ChunkSize;
-    auto index = [](int x, int y, int z) {
-        return static_cast<std::size_t>((y * ChunkSize + z) * ChunkSize + x);
+    auto index = [minimumY](int x, int y, int z) {
+        return static_cast<std::size_t>(((y - minimumY) * ChunkSize + z) * ChunkSize + x);
     };
     for (const StructurePlan& plan : plans) {
         for (const StructureRoadCell& road : plan.roads) {
             const int x = road.x - minimumX;
             const int z = road.z - minimumZ;
             if (x < 0 || x >= ChunkSize || z < 0 || z >= ChunkSize ||
-                road.y < 1 || road.y + 3 >= WorldHeight)
+                road.y < minimumY + 1 || road.y + 3 >= maximumY)
                 continue;
             blocks[index(x, road.y, z)] = road.block;
             for (int y = road.y + 1; y <= road.y + 3; ++y)
@@ -774,15 +778,15 @@ bool StructureGenerator::applyToChunk(
                     const int ground = terrain(worldX, worldZ).height;
                     // A short foundation follows natural ground; placements with
                     // larger relief were already rejected during planning.
-                    for (int y = ground + 1; y < piece.y && y < WorldHeight; ++y)
+                    for (int y = ground + 1; y < piece.y && y < maximumY; ++y)
                         blocks[index(x, y, z)] = foundation;
                     for (int y = piece.y + 1;
                          y <= std::max(ground + 2, piece.bounds.maxY + 2) &&
-                         y < WorldHeight; ++y)
+                         y < maximumY; ++y)
                         blocks[index(x, y, z)] = Block::Air;
                 }
             }
-            placeTemplate(piece, chunkX, chunkZ, blocks, loot, mobs);
+            placeTemplate(piece, chunkX, chunkZ, blocks, loot, mobs, minimumY, maximumY);
         }
     }
     return !plans.empty();

@@ -37,7 +37,7 @@ Precipitation Weather::precipitation(const World& world, int x, int z) {
 bool Weather::exposed(const World& world, const glm::vec3& position) {
     const float surface = world.precipitationHeight(static_cast<int>(std::floor(position.x)),
                                                   static_cast<int>(std::floor(position.z)));
-    return surface >= 0 && position.y >= surface;
+    return surface >= world.minimumY() && position.y >= surface;
 }
 float Weather::flash() const {
     float value = 0;
@@ -82,7 +82,7 @@ void Weather::strike(const glm::vec3& requested, World& world, Player& player,
         const int z=base.z+static_cast<int>(nextRandom()%3)-1;
         const int y=static_cast<int>(std::ceil(world.precipitationHeight(x,z)));
         const auto support=world.getBlock(x,y-1,z);
-        if (world.hasLoadedChunkAt(x,z) && y>0 && y<WORLD_HEIGHT &&
+        if (world.hasLoadedChunkAt(x,z) && y>world.minimumY() && y<world.maximumY() &&
             world.getBlock(x,y,z)==Block::Air && blockDefinition(support).soundMaterial==SoundMaterial::Wood &&
             nextRandom()%3==0 && fires_.size()<64) {
             world.setBlock(x,y,z,Block::Fire); fires_.push_back({{x,y,z},range(8,16)});
@@ -91,9 +91,9 @@ void Weather::strike(const glm::vec3& requested, World& world, Player& player,
 }
 void Weather::environmentColumn(World& world, int x, int z, const GameSettings& settings) {
         const float surface=world.precipitationHeight(x,z);
-        if (surface<0) return;
+        if (surface<world.minimumY()) return;
         const int y=static_cast<int>(std::ceil(surface));
-        if (y<1 || y>=WORLD_HEIGHT) return;
+        if (y<world.minimumY()+1 || y>=world.maximumY()) return;
         const Precipitation kind=precipitation(world,x,z);
         const Block top=world.getBlock(x,y-1,z);
         if (world.getBlock(x,y,z)==Block::Fire &&
@@ -223,7 +223,7 @@ bool Weather::read(std::istream& input) {
         for(std::size_t i=0;i<count;++i) {
             Burning fire;
             if(!(input>>fire.position.x>>fire.position.y>>fire.position.z>>fire.life) ||
-               fire.position.y<0 || fire.position.y>=WORLD_HEIGHT || !std::isfinite(fire.life) || fire.life<0 || fire.life>16)
+               fire.position.y<-64 || fire.position.y>=320 || !std::isfinite(fire.life) || fire.life<0 || fire.life>16)
                 return true;
             restored.push_back(fire);
         }

@@ -22,7 +22,7 @@ void FarmingSystem::update(float dt, World& w, const glm::vec3& player) {
         const int scanRadius = std::min(48, w.simulationDistance() * CHUNK_SIZE);
         for (int z = pz - scanRadius; z <= pz + scanRadius; ++z)
             for (int x = px - scanRadius; x <= px + scanRadius; ++x)
-                for (int y = std::max(1, py - 10); y < std::min(WORLD_HEIGHT - 1, py + 8); ++y) {
+                for (int y = std::max(w.minimumY() + 1, py - 10); y < std::min(w.maximumY() - 1, py + 8); ++y) {
                     Block b = w.getBlock(x, y, z);
                     if (isCrop(b))
                         growth_.try_emplace(key({x, y, z}), 0.f);

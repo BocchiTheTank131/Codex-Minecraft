@@ -1,5 +1,7 @@
 #include "Definitions.h"
 #include "BiomeContent.h"
+#include "UndergroundContent.h"
+#include <limits>
 
 #include <algorithm>
 #include <array>
@@ -135,6 +137,12 @@ const Items& items() {
             definition.placedBlock=content.block;
             if(content.material==BiomeMaterial::Wood) definition.fuelSeconds=6;
         }
+        for (const auto& content : undergroundContent()) {
+            put(content.item, static_cast<std::uint8_t>(content.item), static_cast<int>(content.item), content.name);
+            auto& definition = result[static_cast<std::size_t>(content.item)];
+            definition.placedBlock = content.block;
+            definition.smeltedItem = content.smelt;
+        }
         for(Item log : {Item::SpruceLog,Item::JungleLog,Item::AcaciaLog,Item::DarkOakLog})
             result[static_cast<std::size_t>(log)].smeltedItem=Item::Charcoal;
         result[static_cast<std::size_t>(Item::Clay)].smeltedItem=Item::Terracotta;
@@ -264,6 +272,15 @@ const Blocks& blocks() {
             definition.soundMaterial=material==BiomeMaterial::Wood?SoundMaterial::Wood:
                 material==BiomeMaterial::Ground||material==BiomeMaterial::Foliage||material==BiomeMaterial::Plant?
                     SoundMaterial::Grass:SoundMaterial::Stone;
+        }
+        for (const auto& content : undergroundContent()) {
+            put(content.block, static_cast<std::uint8_t>(content.block), content.tile, content.tile, content.tile, content.drop);
+            auto& definition = result[static_cast<std::size_t>(content.block)];
+            definition.hardness = content.hardness;
+            definition.emittedLight = blockLightEmission(content.block);
+            definition.correctTool = ToolKind::Pickaxe;
+            definition.requiredHarvestTier = content.tier;
+            definition.soundMaterial = SoundMaterial::Stone;
         }
         put(Block::Air, 0, 3, 3, 3, Item::None);
         put(Block::Grass, 1, 0, 1, 2, Item::Grass);

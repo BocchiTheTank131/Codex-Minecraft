@@ -208,7 +208,7 @@ CommandSystem::CommandSystem() {
             glm::dvec3 destination;
             if (a.size() != 4 || !position(a, 1, c.player.position(), destination))
                 return error("Usage: /tp <x> <y> <z>");
-            if (destination.y < 0 || destination.y >= WORLD_HEIGHT)
+            if (destination.y < c.world.minimumY() || destination.y >= c.world.maximumY())
                 return error("Y must be inside the world");
             c.player.teleport(glm::vec3(destination));
             return ok("Teleported to " + std::to_string(static_cast<int>(destination.x)) + " " +
@@ -227,7 +227,7 @@ CommandSystem::CommandSystem() {
             glm::dvec3 destination(c.player.position() + c.player.lookDirection() * 3.0f);
             if (a.size() == 5 && !position(a, 2, c.player.position(), destination))
                 return error("Usage: /summon <mob> [x y z]");
-            if (destination.y < 0 || destination.y >= WORLD_HEIGHT) return error("Y must be inside the world");
+            if (destination.y < c.world.minimumY() || destination.y >= c.world.maximumY()) return error("Y must be inside the world");
             if (canonical(a[1])=="lightningbolt" && c.weather && c.sounds) {
                 if (!c.world.hasLoadedChunkAt(static_cast<int>(destination.x),static_cast<int>(destination.z))) return error("Strike chunk is not loaded");
                 c.weather->strike(glm::vec3(destination),c.world,c.player,c.survival,*c.sounds);
@@ -249,7 +249,7 @@ CommandSystem::CommandSystem() {
             Block block;
             if (!findBlock(a[4], block)) return error("Unknown block: " + a[4]);
             const glm::ivec3 cell(glm::floor(point));
-            if (cell.y < 0 || cell.y >= WORLD_HEIGHT) return error("Y must be inside the world");
+            if (cell.y < c.world.minimumY() || cell.y >= c.world.maximumY()) return error("Y must be inside the world");
             if (!c.world.hasLoadedChunkAt(cell.x, cell.z)) return error("Target chunk is not loaded");
             c.world.setBlock(cell.x, cell.y, cell.z, block);
             return ok("Block set");
@@ -271,7 +271,7 @@ CommandSystem::CommandSystem() {
                 return error("Fill exceeds 4096 blocks");
             const std::int64_t count = dx * dy * dz;
             if (count > 4096) return error("Fill exceeds 4096 blocks (" + std::to_string(count) + ")");
-            if (low.y < 0 || high.y >= WORLD_HEIGHT) return error("Y must be inside the world");
+            if (low.y < c.world.minimumY() || high.y >= c.world.maximumY()) return error("Y must be inside the world");
             for (int x = low.x; x <= high.x; ++x)
                 for (int z = low.z; z <= high.z; ++z)
                     if (!c.world.hasLoadedChunkAt(x, z))

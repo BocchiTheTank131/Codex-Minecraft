@@ -1,4 +1,5 @@
 #include "World.h"
+#include "TerrainDensity.h"
 #include "BiomeVegetation.h"
 #include "AmbientOcclusion.h"
 
@@ -173,8 +174,8 @@ bool boundsInFrustum(const glm::vec3& minimum, const glm::vec3& maximum,
 
 bool chunkInFrustum(const Chunk& chunk, const std::array<glm::vec4, 6>& planes) {
     const glm::vec3 minimum(
-        static_cast<float>(chunk.x * CHUNK_SIZE), 0.0f, static_cast<float>(chunk.z * CHUNK_SIZE));
-    return boundsInFrustum(minimum, minimum + glm::vec3(CHUNK_SIZE, WORLD_HEIGHT, CHUNK_SIZE), planes);
+        static_cast<float>(chunk.x * CHUNK_SIZE), static_cast<float>(chunk.minimumY), static_cast<float>(chunk.z * CHUNK_SIZE));
+    return boundsInFrustum(minimum, minimum + glm::vec3(CHUNK_SIZE, chunk.maximumY - chunk.minimumY, CHUNK_SIZE), planes);
 }
 
 bool meshInFrustum(const MeshBounds& bounds, const std::array<glm::vec4, 6>& planes) {
@@ -365,17 +366,18 @@ std::size_t World::FluidCellHash::operator()(const FluidCell& cell) const {
     return hash;
 }
 
-Chunk::Chunk(int chunkX, int chunkZ, std::vector<Block> data)
-    : x(chunkX), z(chunkZ), blocks(std::move(data)) {
+Chunk::Chunk(int chunkX, int chunkZ, std::vector<Block> data, int low, int high)
+    : x(chunkX), z(chunkZ), minimumY(low), maximumY(high), blocks(std::move(data)) {
+    highestRenderableY = minimumY - 1;
     if (blocks.empty())
-        blocks.resize(static_cast<std::size_t>(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE), Block::Air);
+        blocks.resize(static_cast<std::size_t>(CHUNK_SIZE * (maximumY - minimumY) * CHUNK_SIZE), Block::Air);
     packedLight.resize(blocks.size(), 0);
     rebuildLightEmitterIndex();
-    for (int y = WORLD_HEIGHT - 1; y >= 0 && highestRenderableY < 0; --y) {
-        for (int localZ = 0; localZ < CHUNK_SIZE && highestRenderableY < 0; ++localZ) {
+    for (int y = allocatedMaximumY() - 1; y >= minimumY && highestRenderableY < minimumY; --y) {
+        for (int localZ = 0; localZ < CHUNK_SIZE && highestRenderableY < minimumY; ++localZ) {
             for (int localX = 0; localX < CHUNK_SIZE; ++localX) {
                 if (isRenderable(blocks[static_cast<std::size_t>(
-                        (y * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX)])) {
+                        ((y - minimumY) * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX)])) {
                     highestRenderableY = y;
                     break;
                 }
@@ -394,18 +396,20 @@ Chunk::~Chunk() {
 }
 
 Block Chunk::getLocal(int localX, int y, int localZ) const {
-    if (localX < 0 || localX >= CHUNK_SIZE || localZ < 0 || localZ >= CHUNK_SIZE || y < 0 ||
-        y >= WORLD_HEIGHT)
+    if (localX < 0 || localX >= CHUNK_SIZE || localZ < 0 || localZ >= CHUNK_SIZE || y < minimumY ||
+        y >= maximumY)
         return Block::Air;
-    return blocks[static_cast<std::size_t>((y * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX)];
+    const auto index = indexAt(localX, y, localZ);
+    return index < blocks.size() ? blocks[index] : Block::Air;
 }
 
 void Chunk::setLocal(int localX, int y, int localZ, Block block) {
-    if (localX < 0 || localX >= CHUNK_SIZE || localZ < 0 || localZ >= CHUNK_SIZE || y < 0 ||
-        y >= WORLD_HEIGHT)
+    if (localX < 0 || localX >= CHUNK_SIZE || localZ < 0 || localZ >= CHUNK_SIZE || y < minimumY ||
+        y >= maximumY)
         return;
+    ensureHeight(y);
     const auto index = static_cast<std::uint32_t>(
-        (y * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX);
+        ((y - minimumY) * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX);
     const bool wasEmitter = blockLightEmission(blocks[index]) != 0;
     const bool isEmitter = blockLightEmission(block) != 0;
     if (wasEmitter != isEmitter) {
@@ -422,7 +426,7 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
     if (blocksRain(block)) precipitationTop[column] = std::max(precipitationTop[column], static_cast<std::int16_t>(y));
     else if (precipitationTop[column] == y) {
         int top = y - 1;
-        while (top >= 0 && !blocksRain(getLocal(localX,top,localZ))) --top;
+        while (top >= minimumY && !blocksRain(getLocal(localX,top,localZ))) --top;
         precipitationTop[column] = static_cast<std::int16_t>(top);
     }
     // An upper bound is sufficient. Leaving it high after a removal avoids a
@@ -433,13 +437,22 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
 
 void Chunk::rebuildLightEmitterIndex() {
     lightEmitters.clear();
-    precipitationTop.fill(-1);
+    precipitationTop.fill(static_cast<std::int16_t>(minimumY - 1));
     for (std::size_t index = 0; index < blocks.size(); ++index) {
         const Block b = blocks[index];
         if (blockLightEmission(b)) lightEmitters.push_back(static_cast<std::uint32_t>(index));
         if (b != Block::Air && !isPlant(b) && !isCrop(b) && !isWallAttachment(b) && !isTorch(b))
-            precipitationTop[index % (CHUNK_SIZE*CHUNK_SIZE)] = static_cast<std::int16_t>(index / (CHUNK_SIZE*CHUNK_SIZE));
+            precipitationTop[index % (CHUNK_SIZE*CHUNK_SIZE)] = static_cast<std::int16_t>(minimumY + index / (CHUNK_SIZE*CHUNK_SIZE));
     }
+}
+
+void Chunk::ensureHeight(int y) {
+    if (y < allocatedMaximumY() || y >= maximumY) return;
+    // Allocate air only in 16-block bands reached by content or propagated light.
+    const int top = std::min(maximumY, minimumY + ((y - minimumY) / 16 + 1) * 16);
+    const auto count = static_cast<std::size_t>((top - minimumY) * CHUNK_SIZE * CHUNK_SIZE);
+    blocks.resize(count, Block::Air);
+    packedLight.resize(count, 0xf0U);
 }
 
 World::World(std::uint32_t seed, std::uint32_t generationVersion)
@@ -451,7 +464,7 @@ World::World(std::uint32_t seed, std::uint32_t generationVersion)
       cheeseNoise_(seed ^ 0x91b37d65U), spaghettiNoise_(seed ^ 0x326fa1cbU),
       noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed),
       seed_(seed) {
-    generationVersion_ = std::clamp(generationVersion, 1U, 10U);
+    generationVersion_ = std::clamp(generationVersion, 1U, 11U);
     const unsigned int hardware = std::thread::hardware_concurrency();
     const unsigned int workerCount =
         std::max(1U, std::min(3U, hardware > 2U ? hardware - 2U : 1U));
@@ -490,8 +503,8 @@ int World::floorMod(int value, int divisor) {
     return remainder < 0 ? remainder + std::abs(divisor) : remainder;
 }
 
-std::size_t World::localIndex(int localX, int y, int localZ) {
-    return static_cast<std::size_t>((y * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX);
+std::size_t World::localIndex(int localX, int y, int localZ) const {
+    return static_cast<std::size_t>(((y - minimumY()) * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX);
 }
 
 Chunk* World::findChunk(int chunkX, int chunkZ) {
@@ -510,6 +523,7 @@ World::TerrainSample World::sampleTerrain(int worldX, int worldZ) const {
 }
 
 World::TerrainSample World::sampleTerrainModern(int worldX, int worldZ) const {
+    if (generationVersion_ >= 11) return sampleTerrainDensity(worldX, worldZ);
     if (generationVersion_ >= 10) return sampleTerrainGeography(worldX, worldZ);
     const float x = static_cast<float>(worldX);
     const float z = static_cast<float>(worldZ);
@@ -793,13 +807,13 @@ StructureTerrain World::structureTerrainAt(int worldX, int worldZ) const {
     case Biome::SnowyPeaks: biome = StructureBiome::Mountains; break;
     default: break;
     }
-    return {sample.height, biome, sample.river};
+    return {sample.height, biome, sample.river, seaLevel(), maximumY(), generationVersion_ < 11 || sample.ravine < .02f};
 }
 
 glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
     std::unordered_map<std::int64_t, GeneratedChunk> cache;
     const auto blockAt = [&](int x, int y, int z) {
-        if (y < 0 || y >= WORLD_HEIGHT) return Block::Air;
+        if (y < minimumY() || y >= maximumY()) return Block::Air;
         const int cx = floorDiv(x, CHUNK_SIZE), cz = floorDiv(z, CHUNK_SIZE);
         if (const Chunk* loaded = findChunk(cx, cz))
             return loaded->getLocal(floorMod(x, CHUNK_SIZE), y, floorMod(z, CHUNK_SIZE));
@@ -809,10 +823,11 @@ glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
             auto generated = generateChunkData(cx, cz);
             const auto changed = edits_.find(key);
             if (changed != edits_.end())
-                for (const auto& edit : changed->second) generated.blocks[edit.first] = edit.second;
+                for (const auto& edit : changed->second) { auto& data = generated.blocks; if (edit.first >= data.size()) data.resize(((edit.first / 4096) + 1) * 4096, Block::Air); data[edit.first] = edit.second; }
             it = cache.emplace(key, std::move(generated)).first;
         }
-        return it->second.blocks[localIndex(floorMod(x, CHUNK_SIZE), y, floorMod(z, CHUNK_SIZE))];
+        const auto index = localIndex(floorMod(x, CHUNK_SIZE), y, floorMod(z, CHUNK_SIZE));
+        return index < it->second.blocks.size() ? it->second.blocks[index] : Block::Air;
     };
     const auto safeGround = [](Block b) {
         const auto g = blockGeometry(b);
@@ -827,15 +842,15 @@ glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
             for (int dx = -radius; dx <= radius; ++dx) {
                 if (std::max(std::abs(dx), std::abs(dz)) != radius) continue;
                 const int x = worldX + dx, z = worldZ + dz;
-                int y = WORLD_HEIGHT - 3;
-                for (; y > 2; --y) {
+                int y = maximumY() - 3;
+                for (; y > minimumY() + 2; --y) {
                     const Block b = blockAt(x,y,z);
                     if (isSolid(b) || isWater(b)) break;
                 }
                 const bool snowCovered = snowLayers(blockAt(x,y,z)) > 1;
                 const float snowTop = y + blockGeometry(blockAt(x,y,z)).maxY;
                 if (snowCovered) --y;
-                if (y <= 2 || !safeGround(blockAt(x,y,z)) ||
+                if (y <= minimumY() + 2 || !safeGround(blockAt(x,y,z)) ||
                     !safeGround(blockAt(x,y-1,z))) continue;
                 const float spawnY = snowCovered ? snowTop + .01f : y + 1.01f;
                 bool safe = true;
@@ -853,8 +868,8 @@ glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
                         }
                         const Block feet = blockAt(x+ox,y+1,z+oz);
                         const Block head = blockAt(x+ox,y+2,z+oz);
-                        safe = footing && !isSolid(feet) && !isWater(feet) &&
-                               !isSolid(head) && !isWater(head);
+                        safe = footing && !isSolid(feet) && !isWater(feet) && !isLava(feet) &&
+                               !isSolid(head) && !isWater(head) && !isLava(head);
                         if (snowCovered && footing) {
                             safe = true;
                             // Accumulated snow is safe footing on supported terrain.
@@ -863,7 +878,7 @@ glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
                             for (int by=y+1; by<=static_cast<int>(std::floor(spawnY+1.8f)) && safe; ++by) {
                                 const Block b=blockAt(x+ox,by,z+oz);
                                 const auto g=blockGeometry(b);
-                                safe = !isWater(b) && (!isSolid(b) ||
+                                safe = !isWater(b) && !isLava(b) && (!isSolid(b) ||
                                     by+g.maxY<=spawnY || by+g.minY>=spawnY+1.8f);
                             }
                         }
@@ -892,10 +907,10 @@ void World::prepareSpawnTerrain(const glm::vec3& position) {
             auto generated = generateChunkData(cx,cz);
             const auto changed = edits_.find(chunkKey(cx,cz));
             if (changed != edits_.end())
-                for (const auto& edit : changed->second) generated.blocks[edit.first] = edit.second;
+                for (const auto& edit : changed->second) { auto& data = generated.blocks; if (edit.first >= data.size()) data.resize(((edit.first / 4096) + 1) * 4096, Block::Air); data[edit.first] = edit.second; }
             initializeGeneratedLoot(generated);
             queueGeneratedMobs(generated);
-            auto chunk = std::make_unique<Chunk>(cx,cz,std::move(generated.blocks));
+            auto chunk = std::make_unique<Chunk>(cx,cz,std::move(generated.blocks), minimumY(), maximumY());
             chunk->meshIdentity = nextMeshIdentity_++;
             computeSunlight(*chunk);
             chunks_.emplace(chunkKey(cx,cz),std::move(chunk));
@@ -918,7 +933,7 @@ BiomeClimate World::biomeClimateAt(int x,int z,float elevation) const {
     result.biome=sample.biome;
     result.temperature=generationVersion_>=9?sample.temperature:std::clamp(.5f+sample.temperature*1.55f,0.f,1.f);
     result.humidity=generationVersion_>=9?sample.humidity:std::clamp(.5f+sample.humidity*1.55f,0.f,1.f);
-    result.effectiveTemperature=altitudeTemperature(result.temperature,elevation<0?float(sample.height):elevation);
+    result.effectiveTemperature=altitudeTemperature(result.temperature,(std::isnan(elevation) ? float(sample.height) : elevation) - (generationVersion_ >= 11 ? 16.f : 0.f));
     result.dry=definition.dry;
     result.freezes=definition.frozen || result.effectiveTemperature<.17f;
     result.naturalHostiles=definition.naturalHostiles;
@@ -932,12 +947,34 @@ WorldGenerationDebug World::generationDebugAt(int worldX, int worldZ,
             sample.humidity, sample.weirdness, sample.peakValley,
             sample.river, sample.height, biomeNameAt(worldX, worldZ)};
     if(generationVersion_>=9) {
-        debug.effectiveTemperature=altitudeTemperature(sample.temperature,float(worldY));
+        debug.effectiveTemperature=altitudeTemperature(sample.temperature,float(worldY)-(generationVersion_ >= 11 ? 16.f : 0.f));
         debug.climate=climateRegion(debug.effectiveTemperature);
     }
     if (!detailed)
         return debug;
     debug.depthBelowSurface = sample.height - worldY;
+    if (generationVersion_ >= 11) {
+        thread_local std::unique_ptr<TerrainDensity::Grid> grid;
+        thread_local std::uint32_t cachedSeed = 0;
+        thread_local glm::ivec2 cachedChunk(1000000);
+        const glm::ivec2 chunk(floorDiv(worldX,16),floorDiv(worldZ,16));
+        if (!grid || cachedSeed != seed_ || chunk != cachedChunk) {
+            grid=std::make_unique<TerrainDensity::Grid>(chunk.x,chunk.y,ridgeNoise_,cheeseNoise_,spaghettiNoise_,noodleNoise_,caveNoise_);
+            cachedSeed=seed_; cachedChunk=chunk;
+        }
+        const auto f=grid->at(worldX,std::clamp(worldY,-64,319),worldZ);
+        debug.caveCheese=f.chamber;
+        debug.caveSpaghetti=std::sqrt(f.tunnelA*f.tunnelA+f.tunnelB*f.tunnelB);
+        debug.caveNoodle=std::sqrt(f.surface*f.surface+f.vein*f.vein);
+        debug.canyonRegionX=floorDiv(worldX,1024); debug.canyonRegionZ=floorDiv(worldZ,1024);
+        debug.canyonActive=debug.canyonSurfaceExposure=sample.ravine>.02f;
+        const float region=aquiferNoise_.fractal2D(worldX*.0018f+113.7f,worldZ*.0018f-67.3f,2,2.f,.3f);
+        debug.aquiferLevel=int(-24.f+region*30.f);
+        debug.caveEntranceCandidate=debug.canyonActive;
+        debug.caveEntranceInfluence=sample.ravine;
+        return debug;
+    }
+
     debug.caveCheese = cheeseNoise_.fractal3D(worldX * 0.022f,
         worldY * 0.027f, worldZ * 0.022f, 3, 2.0f, 0.52f);
     debug.caveSpaghetti = std::abs(spaghettiNoise_.noise(
@@ -983,6 +1020,7 @@ WorldGenerationDebug World::generationDebugAt(int worldX, int worldZ,
 }
 
 World::GeneratedChunk World::generateChunkData(int chunkX, int chunkZ) const {
+    if (generationVersion_ >= 11) return generateChunkDataDensity(chunkX, chunkZ);
     return generationVersion_ == 1 ? generateChunkDataLegacy(chunkX, chunkZ)
                                    : generateChunkDataModern(chunkX, chunkZ);
 }
@@ -1154,6 +1192,7 @@ World::GeneratedChunk World::generateChunkDataLegacy(int chunkX, int chunkZ) con
 }
 
 World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) const {
+    if (generationVersion_ >= 11) return generateChunkDataDensity(chunkX, chunkZ);
     GeneratedChunk result{
         chunkX, chunkZ,
         std::vector<Block>(static_cast<std::size_t>(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE),
@@ -1679,6 +1718,7 @@ bool World::runCraftingContentSmokeTest(std::string& report) {
 }
 
 bool World::runGenerationSmokeTest(std::string& report) const {
+    if (generationVersion_ >= 11) { World legacy(seed_, 10); return legacy.runGenerationSmokeTest(report); }
     if (generationVersion_ < 2) {
         report = "modern generation test requires a new world";
         return false;
@@ -1750,12 +1790,16 @@ WorldgenSurvey World::runWorldgenSurvey() const {
         const GeneratedChunk chunk = generateChunkDataModern(position.x, position.y);
         const GeneratedChunk repeated = generateChunkDataModern(position.x, position.y);
         survey.deterministic = survey.deterministic && chunk.blocks == repeated.blocks;
+        const auto read = [&](int x, int y, int z) {
+            const auto index = localIndex(x, y, z);
+            return index < chunk.blocks.size() ? chunk.blocks[index] : Block::Air;
+        };
         for (int z = 0; z < CHUNK_SIZE; ++z) {
             for (int x = 0; x < CHUNK_SIZE; ++x) {
                 const int worldX = position.x * CHUNK_SIZE + x;
                 const int worldZ = position.y * CHUNK_SIZE + z;
                 const int height = terrainHeight(worldX, worldZ);
-                const Block top = chunk.blocks[localIndex(x, height, z)];
+                const Block top = read(x, height, z);
                 ++survey.surfaceColumns;
                 if (top == Block::Air || top == Block::Water)
                     ++survey.exposedColumns;
@@ -1767,15 +1811,15 @@ WorldgenSurvey World::runWorldgenSurvey() const {
                     survey.maximumBorderRise = std::max(survey.maximumBorderRise,
                         std::abs(height - terrainHeight(worldX, worldZ + 1)));
                 }
-                for (int y = 8; y < height - 8; ++y) {
-                    const Block block = chunk.blocks[localIndex(x, y, z)];
+                for (int y = minimumY() + 8; y < height - 8; ++y) {
+                    const Block block = read(x, y, z);
                     survey.dryCaveBlocks += block == Block::Air ? 1 : 0;
                     survey.floodedCaveBlocks += block == Block::Water ? 1 : 0;
                 }
             }
         }
     }
-    if (generationVersion_ >= 5) {
+    if (generationVersion_ >= 5 && generationVersion_ <= 10) {
         const int firstRegionX = static_cast<int>(seed_ % 11U) - 5;
         const int firstRegionZ = static_cast<int>((seed_ >> 8U) % 11U) - 5;
         for (int regionZ = firstRegionZ; regionZ < firstRegionZ + 3; ++regionZ) {
@@ -1858,7 +1902,7 @@ bool World::runStructureGenerationSmokeTest(
             for (const StructurePiece& piece : plan.pieces) {
                 const auto heights = terrainHeightForFootprint(piece.bounds, terrain);
                 valid = valid && heights[1] - heights[0] <= 4 &&
-                        heights[0] > SEA_LEVEL + 2;
+                        heights[0] > seaLevel() + 2;
                 if (chestChecked) continue;
                 const StructureTemplate& templ = structureTemplate(piece.kind);
                 if (templ.loot.empty()) continue;
@@ -1964,22 +2008,23 @@ void World::generate(int renderDistance, const glm::vec3& initialPosition) {
     const auto savedEdits = edits_.find(key);
     if (savedEdits != edits_.end()) {
         for (const auto& edit : savedEdits->second)
-            center.blocks[edit.first] = edit.second;
+            { auto& data = center.blocks; if (edit.first >= data.size()) data.resize(((edit.first / 4096) + 1) * 4096, Block::Air); data[edit.first] = edit.second; }
     }
     initializeGeneratedLoot(center);
     queueGeneratedMobs(center);
-    auto centerChunk = std::make_unique<Chunk>(centerX, centerZ, std::move(center.blocks));
+    auto centerChunk = std::make_unique<Chunk>(centerX, centerZ, std::move(center.blocks), minimumY(), maximumY());
     centerChunk->meshIdentity = nextMeshIdentity_++;
     computeSunlight(*centerChunk);
+    const bool generatedEmitter = !centerChunk->lightEmitters.empty();
     chunks_.emplace(key, std::move(centerChunk));
-    if (center.hasStructure)
+    if (center.hasStructure || generatedEmitter)
         queueLightingUpdate(centerX, centerZ, false);
     if (savedEdits != edits_.end()) {
         bool containsSavedEmitter = false;
         for (const auto& edit : savedEdits->second) {
             const int localX = static_cast<int>(edit.first % CHUNK_SIZE);
             const int localZ = static_cast<int>((edit.first / CHUNK_SIZE) % CHUNK_SIZE);
-            const int y = static_cast<int>(edit.first / (CHUNK_SIZE * CHUNK_SIZE));
+            const int y = minimumY() + static_cast<int>(edit.first / (CHUNK_SIZE * CHUNK_SIZE));
             queueFluidNeighborhood(
                 centerX * CHUNK_SIZE + localX, y, centerZ * CHUNK_SIZE + localZ);
             containsSavedEmitter = containsSavedEmitter || blockLightEmission(edit.second) != 0;
@@ -2087,7 +2132,7 @@ void World::initializeGeneratedLoot(const GeneratedChunk& generated) {
         const int localX = marker.x - generated.x * CHUNK_SIZE;
         const int localZ = marker.z - generated.z * CHUNK_SIZE;
         if (localX < 0 || localX >= CHUNK_SIZE || localZ < 0 ||
-            localZ >= CHUNK_SIZE || marker.y < 0 || marker.y >= WORLD_HEIGHT ||
+            localZ >= CHUNK_SIZE || marker.y < minimumY() || marker.y >= maximumY() ||
             generated.blocks[localIndex(localX, marker.y, localZ)] != Block::Chest)
             continue;
         const BlockEntityPosition key{marker.x, marker.y, marker.z};
@@ -2104,7 +2149,7 @@ void World::queueGeneratedMobs(const GeneratedChunk& generated) {
         const int localX = marker.x - generated.x * CHUNK_SIZE;
         const int localZ = marker.z - generated.z * CHUNK_SIZE;
         if (localX < 0 || localX >= CHUNK_SIZE || localZ < 0 ||
-            localZ >= CHUNK_SIZE || marker.y < 2 || marker.y + 1 >= WORLD_HEIGHT)
+            localZ >= CHUNK_SIZE || marker.y < 2 || marker.y + 1 >= maximumY())
             continue;
         if (!isSolid(generated.blocks[localIndex(localX, marker.y - 1, localZ)]) ||
             isSolid(generated.blocks[localIndex(localX, marker.y, localZ)]) ||
@@ -2164,7 +2209,7 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
         bool containsSavedEmitter = false;
         if (edits != edits_.end()) {
             for (const auto& edit : edits->second) {
-                generated.blocks[edit.first] = edit.second;
+                { auto& data = generated.blocks; if (edit.first >= data.size()) data.resize(((edit.first / 4096) + 1) * 4096, Block::Air); data[edit.first] = edit.second; }
                 if (blockLightEmission(edit.second) != 0)
                     containsSavedEmitter = true;
             }
@@ -2172,17 +2217,24 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
         initializeGeneratedLoot(generated);
         queueGeneratedMobs(generated);
         auto loadedChunk =
-            std::make_unique<Chunk>(generated.x, generated.z, std::move(generated.blocks));
+            std::make_unique<Chunk>(generated.x, generated.z, std::move(generated.blocks), minimumY(), maximumY());
         loadedChunk->meshIdentity = nextMeshIdentity_++;
         computeSunlight(*loadedChunk);
+        bool generatedEmitter = !loadedChunk->lightEmitters.empty();
         chunks_.emplace(key, std::move(loadedChunk));
-        if (containsSavedEmitter || generated.hasStructure)
+        if (generationVersion_ >= 11 && !generatedEmitter) {
+            for (int nz=-1;nz<=1;++nz)for(int nx=-1;nx<=1;++nx) {
+                const auto* neighbor=findChunk(generated.x+nx,generated.z+nz);
+                generatedEmitter |= neighbor && !neighbor->lightEmitters.empty();
+            }
+        }
+        if (containsSavedEmitter || generated.hasStructure || generatedEmitter)
             queueLightingUpdate(generated.x, generated.z, false);
         if (edits != edits_.end()) {
             for (const auto& edit : edits->second) {
                 const int localX = static_cast<int>(edit.first % CHUNK_SIZE);
                 const int localZ = static_cast<int>((edit.first / CHUNK_SIZE) % CHUNK_SIZE);
-                const int y = static_cast<int>(edit.first / (CHUNK_SIZE * CHUNK_SIZE));
+                const int y = minimumY() + static_cast<int>(edit.first / (CHUNK_SIZE * CHUNK_SIZE));
                 queueFluidNeighborhood(generated.x * CHUNK_SIZE + localX,
                                        y,
                                        generated.z * CHUNK_SIZE + localZ);
@@ -2203,6 +2255,8 @@ void World::unloadDistant(int centerX, int centerZ) {
         const int dx = it->second->x - centerX;
         const int dz = it->second->z - centerZ;
         if (dx * dx + dz * dz > unloadDistance * unloadDistance) {
+            if (generationVersion_ >= 11 && !it->second->lightEmitters.empty())
+                queueLightingUpdate(it->second->x,it->second->z,false);
             dirtySet_.erase(it->first);
             priorityDirtyKeys_.erase(it->first);
             uploadedVertexCount_ -= static_cast<std::size_t>(
@@ -2337,6 +2391,7 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
     input.x = chunkX;
     input.z = chunkZ;
     input.epoch = meshEpoch_;
+    input.minimumY = minimumY();
     const Chunk* center = findChunk(chunkX, chunkZ);
     if (center) {
         if(generationVersion_>=9) {
@@ -2354,9 +2409,9 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
         }
         input.revision = center->meshRevision;
         input.identity = center->meshIdentity;
-        input.meshHeight = std::clamp(center->highestRenderableY + 2, 1, WORLD_HEIGHT);
+        input.meshHeight = std::clamp(center->highestRenderableY + 2, minimumY() + 1, maximumY());
     }
-    const std::size_t count = static_cast<std::size_t>(span * span * input.meshHeight);
+    const std::size_t count = static_cast<std::size_t>(span * span * (input.meshHeight - input.minimumY));
     input.blocks.resize(count, Block::Air);
     input.packedLight.resize(count, 0);
     std::array<std::array<const Chunk*, 3>, 3> neighbors{};
@@ -2366,7 +2421,7 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
                 findChunk(chunkX + dx, chunkZ + dz);
     // X is contiguous in both arrays. Keep every original halo coordinate and
     // value, but traverse Y/Z/X instead of striding vertically through columns.
-    for (int y = 0; y < input.meshHeight; ++y) {
+    for (int y = input.minimumY; y < input.meshHeight; ++y) {
         for (int z = -sunlightHalo; z < CHUNK_SIZE + sunlightHalo; ++z) {
             const int offsetZ = z < 0 ? -1 : (z >= CHUNK_SIZE ? 1 : 0);
             for (int x = -sunlightHalo; x < CHUNK_SIZE + sunlightHalo; ++x) {
@@ -2377,10 +2432,10 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
                 const int localX = x - offsetX * CHUNK_SIZE;
                 const int localZ = z - offsetZ * CHUNK_SIZE;
                 const std::size_t target = static_cast<std::size_t>(
-                    (y * span + z + sunlightHalo) * span + x + sunlightHalo);
+                    ((y - input.minimumY) * span + z + sunlightHalo) * span + x + sunlightHalo);
                 const std::size_t sourceIndex = localIndex(localX, y, localZ);
-                input.blocks[target] = source->blocks[sourceIndex];
-                input.packedLight[target] = source->packedLight[sourceIndex];
+                input.blocks[target] = source->getLocal(localX, y, localZ);
+                input.packedLight[target] = sourceIndex < source->packedLight.size() ? source->packedLight[sourceIndex] : 0xf0U;
             }
         }
     }
@@ -2579,7 +2634,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
                        loadedGenerationVersion != 5U &&
                        loadedGenerationVersion != 6U && loadedGenerationVersion != 7U &&
                        loadedGenerationVersion != 8U && loadedGenerationVersion != 9U &&
-                       loadedGenerationVersion != 10U))
+                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U))
             return false;
     }
 
@@ -2606,7 +2661,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         input.read(reinterpret_cast<char*>(&index), sizeof(index));
         input.read(reinterpret_cast<char*>(&value), sizeof(value));
         Block loadedBlock = Block::Air;
-        if (!input || index >= static_cast<std::uint32_t>(CHUNK_SIZE * WORLD_HEIGHT * CHUNK_SIZE) ||
+        if (!input || index >= static_cast<std::uint32_t>(CHUNK_SIZE * (loadedGenerationVersion >= 11 ? 384 : WORLD_HEIGHT) * CHUNK_SIZE) ||
             !blockFromSaveId(value, loadedBlock)) {
             return false;
         }
@@ -2770,7 +2825,7 @@ void World::computeSunlight(Chunk& chunk) {
 
 void World::computeSunlightColumn(Chunk& chunk, int localX, int localZ) {
     std::uint8_t light = 15;
-    for (int y = WORLD_HEIGHT - 1; y >= 0; --y) {
+    for (int y = chunk.allocatedMaximumY() - 1; y >= minimumY(); --y) {
         const std::size_t index = localIndex(localX, y, localZ);
         const Block block = chunk.blocks[index];
         if (occludesLight(block))
@@ -2810,7 +2865,7 @@ void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
     const int sourceMinimumChunkZ = floorDiv(calculationMinimumZ, CHUNK_SIZE);
     const auto lightIndex = [&](int x, int y, int z) {
         return static_cast<std::size_t>(
-            (y * calculationDepth + (z - calculationMinimumZ)) * calculationWidth +
+            ((y - minimumY()) * calculationDepth + (z - calculationMinimumZ)) * calculationWidth +
             (x - calculationMinimumX));
     };
     // Chunk membership cannot change during this synchronous main-thread solve.
@@ -2833,7 +2888,7 @@ void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
                 if (worldX < calculationMinimumX || worldX > calculationMaximumX ||
                     worldZ < calculationMinimumZ || worldZ > calculationMaximumZ)
                     continue;
-                queue.push_back({worldX, static_cast<int>(index / (CHUNK_SIZE * CHUNK_SIZE)),
+                queue.push_back({worldX, minimumY() + static_cast<int>(index / (CHUNK_SIZE * CHUNK_SIZE)),
                                  worldZ, blockLightEmission(chunk->blocks[index])});
             }
         }
@@ -2841,7 +2896,7 @@ void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
     const bool hasSources = !queue.empty();
     if (hasSources) {
         blockLightScratch_.resize(
-            static_cast<std::size_t>(calculationWidth * calculationDepth * WORLD_HEIGHT));
+            static_cast<std::size_t>(calculationWidth * calculationDepth * heightSpan()));
         std::fill(blockLightScratch_.begin(), blockLightScratch_.end(), std::uint8_t{0});
         for (const BlockLightNode& source : queue)
             blockLightScratch_[lightIndex(source.x, source.y, source.z)] = source.level;
@@ -2860,15 +2915,14 @@ void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
             const int y = node.y + direction.y;
             const int z = node.z + direction.z;
             if (x < calculationMinimumX || x > calculationMaximumX ||
-                z < calculationMinimumZ || z > calculationMaximumZ || y < 0 ||
-                y >= WORLD_HEIGHT)
+                z < calculationMinimumZ || z > calculationMaximumZ || y < minimumY() ||
+                y >= maximumY())
                 continue;
             const int cacheX = x - sourceMinimumChunkX * CHUNK_SIZE;
             const int cacheZ = z - sourceMinimumChunkZ * CHUNK_SIZE;
             const Chunk* chunk = sourceChunks[
                 (cacheZ / CHUNK_SIZE) * SourceSpan + cacheX / CHUNK_SIZE];
-            const Block block = chunk ? chunk->blocks[localIndex(
-                cacheX % CHUNK_SIZE, y, cacheZ % CHUNK_SIZE)] : Block::Air;
+            const Block block = chunk ? chunk->getLocal(cacheX % CHUNK_SIZE, y, cacheZ % CHUNK_SIZE) : Block::Air;
             if (occludesLight(block))
                 continue;
             std::uint8_t& value = blockLightScratch_[lightIndex(x, y, z)];
@@ -2895,7 +2949,7 @@ void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
                     light &= 0xf0U;
                 }
             } else {
-                for (int y = 0; y < WORLD_HEIGHT; ++y) {
+                for (int y = minimumY(); y < maximumY(); ++y) {
                     for (int localZ = 0; localZ < CHUNK_SIZE; ++localZ) {
                         const int worldZ = chunkZ * CHUNK_SIZE + localZ;
                         const std::size_t fieldRow = lightIndex(chunkX * CHUNK_SIZE, y, worldZ);
@@ -2904,6 +2958,7 @@ void World::rebuildBlockLightingNear(int centerChunkX, int centerChunkZ) {
                             const std::uint8_t light = blockLightScratch_[fieldRow + localX];
                             const std::size_t index = chunkRow + localX;
                             if (chunk->blockLightLocal(index) != light) {
+                                chunk->ensureHeight(y);
                                 chunk->setBlockLightLocal(index, light);
                                 changed = true;
                             }
@@ -2938,7 +2993,7 @@ void World::rebuildBlockLighting() {
             const std::uint8_t level = blockLightEmission(chunk.blocks[index]);
             chunk.setBlockLightLocal(index, level);
             queue.push_back({chunk.x * CHUNK_SIZE + static_cast<int>(index % CHUNK_SIZE),
-                             static_cast<int>(index / (CHUNK_SIZE * CHUNK_SIZE)),
+                             minimumY() + static_cast<int>(index / (CHUNK_SIZE * CHUNK_SIZE)),
                              chunk.z * CHUNK_SIZE + static_cast<int>((index / CHUNK_SIZE) % CHUNK_SIZE),
                              level});
         }
@@ -2953,7 +3008,7 @@ void World::rebuildBlockLighting() {
         const std::uint8_t nextLevel = static_cast<std::uint8_t>(node.level - 1);
         for (const glm::ivec3& direction : directions) {
             const int x = node.x + direction.x, y = node.y + direction.y, z = node.z + direction.z;
-            if (y < 0 || y >= WORLD_HEIGHT || occludesLight(getBlock(x, y, z)))
+            if (y < minimumY() || y >= maximumY() || occludesLight(getBlock(x, y, z)))
                 continue;
             Chunk* chunk = findChunk(floorDiv(x, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE));
             if (!chunk)
@@ -2962,6 +3017,7 @@ void World::rebuildBlockLighting() {
                 localIndex(floorMod(x, CHUNK_SIZE), y, floorMod(z, CHUNK_SIZE));
             if (chunk->blockLightLocal(index) >= nextLevel)
                 continue;
+            chunk->ensureHeight(y);
             chunk->setBlockLightLocal(index, nextLevel);
             queue.push_back({x, y, z, nextLevel});
         }
@@ -2971,16 +3027,16 @@ void World::rebuildBlockLighting() {
 }
 
 std::uint8_t World::sunlightAt(int x, int y, int z) const {
-    if (y >= WORLD_HEIGHT)
+    if (y >= maximumY())
         return 15;
-    if (y < 0)
+    if (y < minimumY())
         return 0;
     const Chunk* chunk = findChunk(floorDiv(x, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE));
     if (!chunk)
         return 0;
     const std::size_t index = localIndex(floorMod(x, CHUNK_SIZE), y,
                                          floorMod(z, CHUNK_SIZE));
-    if (occludesLight(chunk->blocks[index]))
+    if (occludesLight(chunk->getLocal(floorMod(x, CHUNK_SIZE), y, floorMod(z, CHUNK_SIZE))))
         return 0;
     std::uint8_t light = chunk->sunlightLocal(index);
     if (light == 15)
@@ -2998,7 +3054,7 @@ std::uint8_t World::sunlightAt(int x, int y, int z) const {
                 break;
             const std::size_t neighborIndex = localIndex(
                 floorMod(sampleX, CHUNK_SIZE), y, floorMod(sampleZ, CHUNK_SIZE));
-            if (occludesLight(neighbor->blocks[neighborIndex]))
+            if (occludesLight(neighbor->getLocal(floorMod(sampleX, CHUNK_SIZE), y, floorMod(sampleZ, CHUNK_SIZE))))
                 break;
             const int nearbyLight = static_cast<int>(std::round(
                 neighbor->sunlightLocal(neighborIndex) * weights[distance - 1]));
@@ -3009,7 +3065,7 @@ std::uint8_t World::sunlightAt(int x, int y, int z) const {
 }
 
 std::uint8_t World::blockLightAt(int x, int y, int z) const {
-    if (y < 0 || y >= WORLD_HEIGHT)
+    if (y < minimumY() || y >= maximumY())
         return 0;
     const Chunk* chunk = findChunk(floorDiv(x, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE));
     if (!chunk)
@@ -3039,11 +3095,11 @@ bool World::runMeshEditSmokeTest(std::string& report) {
         const auto savedEdits = edits_.find(eastKey);
         if (savedEdits != edits_.end()) {
             for (const auto& edit : savedEdits->second) {
-                generated.blocks[edit.first] = edit.second;
+                { auto& data = generated.blocks; if (edit.first >= data.size()) data.resize(((edit.first / 4096) + 1) * 4096, Block::Air); data[edit.first] = edit.second; }
             }
         }
         auto loadedChunk =
-            std::make_unique<Chunk>(eastX, centerZ, std::move(generated.blocks));
+            std::make_unique<Chunk>(eastX, centerZ, std::move(generated.blocks), minimumY(), maximumY());
         loadedChunk->meshIdentity = nextMeshIdentity_++;
         computeSunlight(*loadedChunk);
         eastChunk = loadedChunk.get();
@@ -3489,7 +3545,7 @@ bool World::runAsyncMeshSmokeTest(std::string& report) {
     if (!east) {
         GeneratedChunk generated = generateChunkData(eastX, centerZ);
         auto newChunk =
-            std::make_unique<Chunk>(eastX, centerZ, std::move(generated.blocks));
+            std::make_unique<Chunk>(eastX, centerZ, std::move(generated.blocks), minimumY(), maximumY());
         newChunk->meshIdentity = nextMeshIdentity_++;
         computeSunlight(*newChunk);
         east = newChunk.get();
@@ -3584,10 +3640,10 @@ bool World::runFluidSmokeTest(std::string& report) {
         const auto savedEdits = edits_.find(eastKey);
         if (savedEdits != edits_.end()) {
             for (const auto& edit : savedEdits->second)
-                generated.blocks[edit.first] = edit.second;
+                { auto& data = generated.blocks; if (edit.first >= data.size()) data.resize(((edit.first / 4096) + 1) * 4096, Block::Air); data[edit.first] = edit.second; }
         }
         auto loadedChunk =
-            std::make_unique<Chunk>(eastX, centerZ, std::move(generated.blocks));
+            std::make_unique<Chunk>(eastX, centerZ, std::move(generated.blocks), minimumY(), maximumY());
         loadedChunk->meshIdentity = nextMeshIdentity_++;
         computeSunlight(*loadedChunk);
         eastChunk = loadedChunk.get();
@@ -3732,7 +3788,7 @@ bool World::runFluidSmokeTest(std::string& report) {
 bool World::hasBlockNear(const glm::vec3& position, Block block, float radius) const {
     const glm::ivec3 minimum = glm::ivec3(glm::floor(position - glm::vec3(radius)));
     const glm::ivec3 maximum = glm::ivec3(glm::floor(position + glm::vec3(radius)));
-    for (int y = std::max(0, minimum.y); y <= std::min(WORLD_HEIGHT - 1, maximum.y); ++y)
+    for (int y = std::max(minimumY(), minimum.y); y <= std::min(maximumY() - 1, maximum.y); ++y)
         for (int z = minimum.z; z <= maximum.z; ++z)
             for (int x = minimum.x; x <= maximum.x; ++x)
                 if (getBlock(x, y, z) == block)
@@ -3742,7 +3798,7 @@ bool World::hasBlockNear(const glm::vec3& position, Block block, float radius) c
 bool World::hasClimbableNear(const glm::vec3& position, float radius) const {
     const glm::ivec3 minimum = glm::ivec3(glm::floor(position - glm::vec3(radius)));
     const glm::ivec3 maximum = glm::ivec3(glm::floor(position + glm::vec3(radius)));
-    for (int y = std::max(0, minimum.y); y <= std::min(WORLD_HEIGHT - 1, maximum.y); ++y)
+    for (int y = std::max(minimumY(), minimum.y); y <= std::min(maximumY() - 1, maximum.y); ++y)
         for (int z = minimum.z; z <= maximum.z; ++z)
             for (int x = minimum.x; x <= maximum.x; ++x)
                 if (isLadder(getBlock(x, y, z)))
@@ -3759,7 +3815,7 @@ bool World::simulationActiveAt(float worldX, float worldZ) const {
     return dx * dx + dz * dz <= simulationDistance_ * simulationDistance_;
 }
 Block World::getBlock(int x, int y, int z) const {
-    if (y < 0 || y >= WORLD_HEIGHT)
+    if (y < minimumY() || y >= maximumY())
         return Block::Air;
     const Chunk* chunk = findChunk(floorDiv(x, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE));
     if (!chunk)
@@ -3769,10 +3825,10 @@ Block World::getBlock(int x, int y, int z) const {
 
 float World::precipitationHeight(int x, int z) const {
     const Chunk* chunk = findChunk(floorDiv(x,CHUNK_SIZE),floorDiv(z,CHUNK_SIZE));
-    if (!chunk) return -1.0f;
+    if (!chunk) return -10000.0f;
     const int lx = x - chunk->x*CHUNK_SIZE, lz = z - chunk->z*CHUNK_SIZE;
     const int y = chunk->precipitationTop[static_cast<std::size_t>(lz*CHUNK_SIZE+lx)];
-    return y < 0 ? 0.0f : static_cast<float>(y) + blockGeometry(chunk->getLocal(lx,y,lz)).maxY;
+    return y < minimumY() ? static_cast<float>(minimumY()) : static_cast<float>(y) + blockGeometry(chunk->getLocal(lx,y,lz)).maxY;
 }
 
 bool World::isSolidAt(int x, int y, int z) const {
@@ -3784,7 +3840,7 @@ void World::setBlock(int x, int y, int z, Block block) {
 }
 
 bool World::canPlacePlant(const glm::ivec3& position, Block block) const {
-    if (position.y <= 0 || position.y >= WORLD_HEIGHT) return false;
+    if (position.y <= minimumY() || position.y >= maximumY()) return false;
     if (isVine(block)) {
         constexpr glm::ivec3 support[] = {{0,0,-1}, {0,0,1}, {1,0,0}, {-1,0,0}};
         const glm::ivec3 wall = position + support[static_cast<int>(block) - static_cast<int>(Block::VineNorth)];
@@ -3829,7 +3885,7 @@ int World::fillBlocks(const glm::ivec3& low, const glm::ivec3& high, Block block
 bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmediately,
                              bool dispatchImmediately) {
     const auto editStart = std::chrono::steady_clock::now();
-    if (y < 0 || y >= WORLD_HEIGHT)
+    if (y < minimumY() || y >= maximumY())
         return false;
 
     const int chunkX = floorDiv(x, CHUNK_SIZE);
@@ -3885,12 +3941,12 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
         dispatchMeshJobs(2);
     queueFluidNeighborhood(x, y, z);
     if (rebuildImmediately && isDoor(previous) && !isDoorUpper(previous) &&
-        !isDoor(block) && y + 1 < WORLD_HEIGHT) {
+        !isDoor(block) && y + 1 < maximumY()) {
         const Block upper = getBlock(x, y + 1, z);
         if (isDoor(upper) && isDoorUpper(upper))
             setBlockInternal(x, y + 1, z, Block::Air, true);
     }
-    if (rebuildImmediately && block == Block::Air && y + 1 < WORLD_HEIGHT) {
+    if (rebuildImmediately && block == Block::Air && y + 1 < maximumY()) {
         const Block above = getBlock(x, y + 1, z);
         if (isDoor(above) && !isDoorUpper(above)) {
             setBlockInternal(x, y + 2, z, Block::Air, true);
@@ -3997,7 +4053,7 @@ void World::updateBlockEntities(float deltaTime) {
 }
 
 void World::queueFluidUpdate(int x, int y, int z) {
-    if (y < 0 || y >= WORLD_HEIGHT)
+    if (y < minimumY() || y >= maximumY())
         return;
     if (!findChunk(floorDiv(x, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE)))
         return;
@@ -4084,7 +4140,7 @@ void World::scheduleFluidBoundaryUpdates(int chunkX, int chunkZ) {
         if (!findChunk(chunkX + direction.x, chunkZ + direction.y))
             continue;
 
-        for (int y = 0; y < WORLD_HEIGHT; ++y) {
+        for (int y = minimumY(); y < maximumY(); ++y) {
             for (int offset = 0; offset < CHUNK_SIZE; ++offset) {
                 const int localX = direction.x > 0   ? CHUNK_SIZE - 1
                                    : direction.x < 0 ? 0
@@ -4205,10 +4261,10 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
     RenderScratch<int> slotScratch(greedySlotStorage, 1024 * 1024);
     auto& greedyFaces = faceScratch.get();
     auto& greedySlots = slotScratch.get();
-    greedySlots.assign(static_cast<std::size_t>(6 * input.meshHeight * CHUNK_SIZE * CHUNK_SIZE), -1);
+    greedySlots.assign(static_cast<std::size_t>(6 * (input.meshHeight - input.minimumY) * CHUNK_SIZE * CHUNK_SIZE), -1);
     const auto greedySlot = [&](int face, int x, int y, int z) {
         return static_cast<std::size_t>(
-            ((face * input.meshHeight + y) * CHUNK_SIZE + z) * CHUNK_SIZE + x);
+            ((face * (input.meshHeight - input.minimumY) + y - input.minimumY) * CHUNK_SIZE + z) * CHUNK_SIZE + x);
     };
 
     // The three-column halo lets exterior faces receive daylight around short eaves.
@@ -4218,7 +4274,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
     const int originX = chunkX * CHUNK_SIZE;
     const int originZ = chunkZ * CHUNK_SIZE;
     const auto sample = [&](int x, int y, int z) -> std::size_t {
-        if (y < 0 || y >= input.meshHeight)
+        if (y < input.minimumY || y >= input.meshHeight)
             return input.blocks.size();
         const int relativeX = x - originX;
         const int relativeZ = z - originZ;
@@ -4226,7 +4282,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
             relativeZ < -sunlightHalo || relativeZ >= CHUNK_SIZE + sunlightHalo)
             return input.blocks.size();
         return static_cast<std::size_t>(
-            (y * span + relativeZ + sunlightHalo) * span + relativeX + sunlightHalo);
+            ((y - input.minimumY) * span + relativeZ + sunlightHalo) * span + relativeX + sunlightHalo);
     };
     const auto meshBlock = [&](int x, int y, int z) {
         const std::size_t index = sample(x, y, z);
@@ -4291,7 +4347,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
         return indirect;
     };
 
-    for (int y = 0; y < input.meshHeight; ++y) {
+    for (int y = input.minimumY; y < input.meshHeight; ++y) {
         for (int localZ = 0; localZ < CHUNK_SIZE; ++localZ) {
             for (int localX = 0; localX < CHUNK_SIZE; ++localX) {
                 const int worldX = chunkX * CHUNK_SIZE + localX;
@@ -4574,15 +4630,15 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
         const int normalAxis = face < 2 ? 0 : (face < 4 ? 1 : 2);
         const int uAxis = face < 2 ? 2 : 0;
         const int vAxis = face < 4 && face >= 2 ? 2 : 1;
-        const int sliceCount = normalAxis == 1 ? input.meshHeight : CHUNK_SIZE;
-        const int uCount = uAxis == 1 ? input.meshHeight : CHUNK_SIZE;
-        const int vCount = vAxis == 1 ? input.meshHeight : CHUNK_SIZE;
+        const int sliceCount = normalAxis == 1 ? input.meshHeight - input.minimumY : CHUNK_SIZE;
+        const int uCount = uAxis == 1 ? input.meshHeight - input.minimumY : CHUNK_SIZE;
+        const int vCount = vAxis == 1 ? input.meshHeight - input.minimumY : CHUNK_SIZE;
         const auto slotAt = [&](int slice, int u, int v) {
             int coordinate[3]{};
             coordinate[normalAxis] = slice;
             coordinate[uAxis] = u;
             coordinate[vAxis] = v;
-            return greedySlot(face, coordinate[0], coordinate[1], coordinate[2]);
+            return greedySlot(face, coordinate[0], coordinate[1] + input.minimumY, coordinate[2]);
         };
         for (int slice = 0; slice < sliceCount; ++slice) {
             for (int v = 0; v < vCount; ++v) {
@@ -4625,7 +4681,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
                     origin[uAxis] = u;
                     origin[vAxis] = v;
                     const float worldOrigin[3]{static_cast<float>(originX + origin[0]),
-                                               static_cast<float>(origin[1]),
+                                               static_cast<float>(origin[1] + input.minimumY),
                                                static_cast<float>(originZ + origin[2])};
                     const glm::vec3 normal(FaceNormals[static_cast<std::size_t>(face)]);
                     for (int vertex : Indices) {
@@ -4920,7 +4976,11 @@ bool World::aabbTouchesBlock(const glm::vec3& minimum,
                     continue;
                 glm::vec3 blockMin;
                 glm::vec3 blockMax;
-                if (!blockCollisionBounds({x, y, z}, blockMin, blockMax))
+                if (isLava(wanted)) {
+                    // Contact volumes are independent from solid-body collision.
+                    blockMin = glm::vec3(x,y,z);
+                    blockMax = blockMin + glm::vec3(1.f);
+                } else if (!blockCollisionBounds({x, y, z}, blockMin, blockMax))
                     continue;
                 if (blockMin.x <= maximum.x + tolerance &&
                     blockMax.x >= minimum.x - tolerance &&

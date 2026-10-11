@@ -8,9 +8,11 @@ float smooth(float a, float b, float value) {
     return t * t * (3.0f - 2.0f * t);
 }
 
+} // namespace
+
 // Regional climate chooses the biome family; elevation and regional habitat
 // choose compatible sub-biomes. This is deliberately separate from the v9 selector.
-Biome geographicalBiome(float t, float h, float c, float e, float habitat,
+Biome selectGeographicalBiome(float t, float h, float c, float e, float habitat,
                          float river, int y, float island) {
     const float effective = altitudeTemperature(t, static_cast<float>(y));
     if (island > .40f && c < -.10f && y >= SEA_LEVEL + 1) return Biome::MushroomFields;
@@ -44,7 +46,6 @@ Biome geographicalBiome(float t, float h, float c, float e, float habitat,
     if (h > .59f) return habitat > .09f ? Biome::FlowerForest : Biome::BirchForest;
     if (h > .43f) return Biome::Forest;
     return Biome::Plains;
-}
 }
 
 World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const {
@@ -115,8 +116,9 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     height -= std::max(0.f, height - bed) * bank * eligibility * .55f;
     sample.river = core * eligibility;
     height = glm::mix(height, std::min(height, bed), sample.river * sample.river);
+    sample.unclampedHeight = height;
     sample.height = std::clamp(static_cast<int>(std::round(height)), 6, WORLD_HEIGHT - 12);
-    sample.biome = geographicalBiome(sample.temperature, sample.humidity, sample.continentalness,
+    sample.biome = selectGeographicalBiome(sample.temperature, sample.humidity, sample.continentalness,
         sample.erosion, habitat, sample.river, sample.height, sample.mushroomIsland);
     return sample;
 }

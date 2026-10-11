@@ -3,7 +3,7 @@
 #include <cmath>
 
 namespace {
-constexpr int size=16, height=256, sea=48, reach=6;
+constexpr int size=16, reach=6;
 std::uint32_t hash(int x,int z,std::uint32_t seed) {
     std::uint32_t h=seed ^ (std::uint32_t(x)*0x9e3779b9U) ^ (std::uint32_t(z)*0x85ebca6bU);
     h ^= h>>16; h*=0x7feb352dU; h ^= h>>15; h*=0x846ca68bU; return h^(h>>16);
@@ -24,11 +24,12 @@ Wood wood(TreeStyle style) {
 void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blocks,
                         const std::function<BiomeTerrain(int,int)>& terrain,
                         const std::function<bool(int,int)>& reserved,
-                        const std::function<bool(int,int)>& supported) {
+                        const std::function<bool(int,int)>& supported, int minimumY, int maximumY, int seaLevel) {
+    const int height = maximumY, sea = seaLevel;
     const int ox=cx*size,oz=cz*size;
-    auto at=[&](int x,int y,int z)->Block& { return blocks[(y*size+z)*size+x]; };
+    auto at=[&](int x,int y,int z)->Block& { return blocks[((y-minimumY)*size+z)*size+x]; };
     auto place=[&](int x,int y,int z,Block value) {
-        if(x<ox||x>=ox+size||z<oz||z>=oz+size||y<1||y>=height||reserved(x,z)) return;
+        if(x<ox||x>=ox+size||z<oz||z>=oz+size||y<minimumY+1||y>=height||reserved(x,z)) return;
         Block& current=at(x-ox,y,z-oz);
         if(current==Block::Air || current==Block::Snow || isPlant(current) ||
            (isWater(current) && (value==Block::PackedIce||value==Block::BlueIce))) current=value;

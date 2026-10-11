@@ -96,3 +96,7 @@ atlas=native.resize((640,896),Image.Resampling.NEAREST)
 atlas.save(ASSETS/'item_icons_expansion.png')
 (ASSETS/'item_icons_expansion.rgba').write_bytes(struct.pack('<ii',*atlas.size)+atlas.tobytes())
 print('Appended 36 world tiles and 32 icons; existing cells unchanged.')
+
+# Keep the later underground extension registered when rebuilding biome art.
+import runpy
+runpy.run_path(str(ROOT/'tools'/'generate_underground_textures.py'),run_name='__main__')

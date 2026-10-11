@@ -88,18 +88,19 @@ int chunkCoordinate(float position) {
 }
 
 bool isOre(Block block) {
+    if (block >= Block::DeepslateCoalOre && block <= Block::DeepslateDiamondOre) return true;
     return block == Block::CoalOre || block == Block::CopperOre || block == Block::IronOre ||
            block == Block::GoldOre || block == Block::DiamondOre;
 }
 
 int oreExperience(Block block) {
-    if (block == Block::DiamondOre) {
+    if (block == Block::DiamondOre || block == Block::DeepslateDiamondOre) {
         return 7;
     }
-    if (block == Block::GoldOre) {
+    if (block == Block::GoldOre || block == Block::DeepslateGoldOre) {
         return 5;
     }
-    if (block == Block::IronOre) {
+    if (block == Block::IronOre || block == Block::DeepslateIronOre) {
         return 3;
     }
     return 2;
@@ -195,7 +196,12 @@ bool Game::initialize(int argc, char** argv) {
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
                      "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
-        if (!geographyAudit_.empty()) {
+        if (!densityAudit_.empty()) {
+            std::string report;
+            if (!world_->runDensityAudit(densityAudit_, report)) throw std::runtime_error(report);
+            std::cout << report << std::endl;
+            glfwSetWindowShouldClose(window_, true);
+        } else if (!geographyAudit_.empty()) {
             std::string report;
             if (!world_->runGeographyAudit(geographyAudit_, report)) throw std::runtime_error(report);
             std::cout << report << std::endl;
@@ -225,7 +231,7 @@ bool Game::initialize(int argc, char** argv) {
             saveOnExit_ = false;
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
         } else if (smokeTest_.worldgenEnabled) {
-            const WorldgenSurvey survey = world_->runWorldgenSurvey();
+            const WorldgenSurvey survey = world_->generationVersion() >= 11 ? WorldgenSurvey{} : world_->runWorldgenSurvey();
             std::cout << "Worldgen preview seed " << seed_ << ": surface openings "
                       << survey.exposedColumns << '/' << survey.surfaceColumns
                       << ", dry/flooded cave blocks " << survey.dryCaveBlocks
@@ -338,6 +344,10 @@ void Game::parseArguments(int argc, char** argv) {
                 spectatorMode_ = true;
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
+            } else if (argument.rfind("--generator=",0)==0) {
+                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,11));
+            } else if (argument.rfind("--density-audit=",0)==0) {
+                densityAudit_=argument.substr(16); saveOnExit_=false;
             } else if (argument.rfind("--geography-audit=",0)==0) {
                 geographyAudit_=argument.substr(18); saveOnExit_=false;
             } else if (argument.rfind("--biome-audit=",0)==0) {
@@ -366,8 +376,16 @@ void Game::parseArguments(int argc, char** argv) {
                 smokeTest_.menuEnabled = true;
             } else if (argument.rfind("--preview-x=",0)==0) {
                 smokeTest_.previewX = std::stof(argument.substr(12));
+            } else if (argument.rfind("--preview-y=",0)==0) {
+                smokeTest_.previewY = std::stof(argument.substr(12));
             } else if (argument.rfind("--preview-z=",0)==0) {
                 smokeTest_.previewZ = std::stof(argument.substr(12));
+            } else if (argument == "--preview-torch") {
+                smokeTest_.previewTorch = true;
+            } else if (argument.rfind("--preview-yaw=",0)==0) {
+                smokeTest_.previewYaw = std::stof(argument.substr(14));
+            } else if (argument.rfind("--preview-pitch=",0)==0) {
+                smokeTest_.previewPitch = std::clamp(std::stof(argument.substr(16)),-89.f,89.f);
             } else if (argument == "--crafting-preview") {
                 smokeTest_.craftingPreview = true;
             } else if (argument.rfind("--preview-brightness=", 0) == 0) {
@@ -434,7 +452,7 @@ void Game::createPresentationSystems() {
 }
 
 void Game::createWorldAndSystems() {
-    world_ = std::make_unique<World>(seed_);
+    world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setSimulationDistance(settings_.simulationDistance);
     glm::vec3 spawnPosition(0.5f, 0.0f, 0.5f);
     const bool loadedWorld = Persistence::enabled() && !smokeTest_.worldgenEnabled &&
@@ -460,7 +478,7 @@ void Game::createWorldAndSystems() {
             static_cast<float>(world_->terrainHeight(static_cast<int>(smokeTest_.previewX),
                                                      static_cast<int>(smokeTest_.previewZ))),
             smokeTest_.previewZ + .5f};
-        spawnPosition.y += 85.0f;
+        spawnPosition.y = std::isnan(smokeTest_.previewY) ? spawnPosition.y + 85.f : smokeTest_.previewY;
         creativeMode_ = true;
         spectatorMode_ = false;
         saveOnExit_ = false;
@@ -476,8 +494,13 @@ void Game::createWorldAndSystems() {
         player_->setSpectatorMode(true);
     if (smokeTest_.worldgenEnabled) {
         player_->setFlying(true);
-        player_->addMouseMovement(0.0,
-            -30.0 / std::max(0.01f, settings_.mouseSensitivity));
+        settings_.brightness = smokeTest_.previewBrightness;
+        if(smokeTest_.previewTorch) {
+            const auto cell=glm::ivec3(glm::floor(spawnPosition));
+            world_->setBlock(cell.x,cell.y,cell.z,Block::Torch);
+        }
+        player_->addMouseMovement((smokeTest_.previewYaw + 90.f) / std::max(0.01f, settings_.mouseSensitivity),
+            (smokeTest_.previewPitch + 12.f) / std::max(0.01f, settings_.mouseSensitivity));
     }
 
     inventory_ = std::make_unique<Inventory>();
@@ -658,7 +681,7 @@ glm::vec3 Game::safeExitFromSpectator() const {
                         static_cast<float>(center.x + dx) + 0.5f,
                         static_cast<float>(center.y + dy) + 0.01f,
                         static_cast<float>(center.z + dz) + 0.5f);
-                    if (candidate.y < 1.0f || candidate.y > WORLD_HEIGHT - Player::Height - 1.0f)
+                    if (candidate.y < world_->minimumY() + 1.0f || candidate.y > world_->maximumY() - Player::Height - 1.0f)
                         continue;
                     const glm::vec3 minimum = candidate +
                         glm::vec3(-Player::Width * 0.5f, 0.0f, -Player::Width * 0.5f);
@@ -741,7 +764,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     timing_.worldTime = 35.0f;
     saveWorldMetadata();
 
-    world_ = std::make_unique<World>(seed_);
+    world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setSimulationDistance(settings_.simulationDistance);
     const glm::vec3 spawnPosition = world_->findSafeSpawnNear(0, 0);
     world_->generate(settings_.renderDistance, spawnPosition);
@@ -1312,9 +1335,9 @@ void Game::updateSimulation(float deltaTime) {
     const bool playerInputEnabled =
         ui_.state() == GameState::Playing && input_.cursorCaptured() && weatherBenchmark_.empty();
     const bool wasDead = player_->isDead();
-    const bool wasBelowWorld = player_->position().y < -24.0f;
+    const bool wasBelowWorld = player_->position().y < world_->minimumY() - 24.0f;
     player_->update(deltaTime, input_.playerInput(playerInputEnabled), *world_);
-    if ((wasDead || wasBelowWorld) && !player_->isDead() && player_->position().y >= 0.0f)
+    if ((wasDead || wasBelowWorld) && !player_->isDead() && player_->position().y >= world_->minimumY())
         world_->prepareSpawnTerrain(player_->position());
     weather_->update(deltaTime, *world_, *player_, *survival_, *sounds_, settings_);
     farming_->update(deltaTime, *world_, player_->position());
@@ -1717,7 +1740,7 @@ void Game::handleUseAction() {
                 isSolid(placedBlock) && placementIntersectsPlayer(adjacentPosition, placedBlock);
 
             if (placedBlock == Block::WoodenDoor && destination == Block::Air &&
-                adjacentPosition.y + 1 < WORLD_HEIGHT &&
+                adjacentPosition.y + 1 < world_->maximumY() &&
                 world_->getBlock(adjacentPosition.x, adjacentPosition.y + 1, adjacentPosition.z) ==
                     Block::Air &&
                 isSolid(world_->getBlock(
@@ -2023,7 +2046,8 @@ void Game::renderFrame(float deltaTime) {
     }
     if (smokeTest_.worldgenEnabled) {
         const double elapsed = glfwGetTime() - smokeTest_.startTime;
-        if (elapsed > 4.0 && !smokeTest_.worldgenScreenshotTaken) {
+        const bool settled = world_->pendingChunkCount()==0 && world_->pendingCpuMeshCount()==0 && world_->queuedMeshRebuildCount()==0;
+        if (elapsed > 4.0 && (settled || elapsed > 30.0) && !smokeTest_.worldgenScreenshotTaken) {
             Screenshot::saveBmp(width, height);
             smokeTest_.worldgenScreenshotTaken = true;
         }
@@ -2035,7 +2059,7 @@ void Game::renderFrame(float deltaTime) {
     }
     if (smokeTest_.worldgenEnabled) {
         const double elapsed = glfwGetTime() - smokeTest_.startTime;
-        if (elapsed > 5.0)
+        if (elapsed > 5.0 && smokeTest_.worldgenScreenshotTaken)
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
     }
     if (smokeTest_.billboardPreview && glfwGetTime() - smokeTest_.startTime > 8.0)
@@ -2155,6 +2179,7 @@ std::string Game::buildDebugText() const {
                  << generation.effectiveTemperature << " GENERATOR " << world_->generationVersion() << '\n';
         }
         if (showWorldgenDebug_) {
+            if (world_->generationVersion() >= 11) text << "WORLD Y -64..319 SEA 64\n";
             text << "CHEESE " << generation.caveCheese
                  << " SPAGHETTI " << generation.caveSpaghetti
                  << " NOODLE " << generation.caveNoodle << '\n'
@@ -2292,6 +2317,17 @@ void Game::runCommandSmokeTest() {
     check("/setblock 10 60 10 banana", false);
     check("/summon banana", false);
     check("/fill 0 60 0 100 100 100 stone", false);
+    if(world_->generationVersion()>=11) {
+        check("/tp 10 -40 10",true);
+        check("/setblock 10 -41 10 deepslate",true);
+        check("/fill 10 -40 10 11 -39 11 deepslate",true);
+        check("/setblock 10 319 10 bedrock",true);
+        check("/tp 10 -65 10",false);
+        check("/setblock 10 320 10 stone",false);
+        check("/summon KitaIkuyo 10 -38 10",true);
+        if(world_->getBlock(10,-41,10)!=Block::Deepslate || world_->getBlock(10,319,10)!=Block::Bedrock)
+            throw std::runtime_error("V11 command vertical bounds");
+    }
     context.cheatsEnabled = false;
     check("/help", true); check("/seed", true); check("/give stone 1", false);
     std::cout << "Command smoke: parser, chat, commands, permissions OK\n";
@@ -2693,7 +2729,8 @@ void Game::runSurvivalSmokeTest() {
     for (std::uint32_t sample = 0; sample < 24U; ++sample) {
         const std::uint32_t surveySeed =
             0x9e3779b9U * (sample + 1U) ^ (seed_ + sample * 0x85ebca6bU);
-        World surveyWorld(surveySeed);
+        // Historical cave-entrance regression; V11 has its own density audit.
+        World surveyWorld(surveySeed, 10);
         const WorldgenSurvey result = surveyWorld.runWorldgenSurvey();
         aggregateSurvey.surfaceColumns += result.surfaceColumns;
         aggregateSurvey.exposedColumns += result.exposedColumns;

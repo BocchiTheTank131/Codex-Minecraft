@@ -14,6 +14,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <limits>
 #include <string>
 
 struct GLFWwindow;
@@ -85,7 +86,10 @@ private:
         bool patch272 = false;
         bool menuEnabled = false;
         float previewX = 0, previewZ = 0;
-        float previewBrightness = 1.0f;
+        float previewY = std::numeric_limits<float>::quiet_NaN();
+        float previewBrightness = .5f;
+        float previewYaw = -90.f, previewPitch = -42.f;
+        bool previewTorch = false;
         bool worldgenScreenshotTaken = false;
         bool checksPassed = true;
         double startTime = 0.0;
@@ -195,6 +199,8 @@ private:
     void runWeatherSmokeTest();
     std::string biomeAudit_;
     std::string geographyAudit_;
+    std::string densityAudit_;
+    unsigned fixtureGenerator_ = 11;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();

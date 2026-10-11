@@ -9,4 +9,5 @@ void decorateBiomeChunk(int chunkX, int chunkZ, std::uint32_t seed,
                         std::vector<Block>& blocks,
                         const std::function<BiomeTerrain(int,int)>& terrain,
                         const std::function<bool(int,int)>& reserved,
-                        const std::function<bool(int,int)>& supported);
+                        const std::function<bool(int,int)>& supported,
+                        int minimumY = 0, int maximumY = 256, int seaLevel = 48);

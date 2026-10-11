@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <deque>
 #include <memory>
+#include <limits>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -148,7 +149,7 @@ public:
 
 class Chunk {
 public:
-    Chunk(int chunkX, int chunkZ, std::vector<Block> data = {});
+    Chunk(int chunkX, int chunkZ, std::vector<Block> data = {}, int minimumY = 0, int maximumY = WORLD_HEIGHT);
     ~Chunk();
 
     Chunk(const Chunk&) = delete;
@@ -156,6 +157,13 @@ public:
 
     int x = 0;
     int z = 0;
+    int minimumY = 0;
+    int maximumY = WORLD_HEIGHT;
+    int allocatedMaximumY() const { return minimumY + static_cast<int>(blocks.size() / (CHUNK_SIZE * CHUNK_SIZE)); }
+    std::size_t indexAt(int localX, int y, int localZ) const {
+        return static_cast<std::size_t>(((y - minimumY) * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX);
+    }
+    void ensureHeight(int y);
     std::vector<Block> blocks;
     std::vector<std::uint8_t> packedLight;
     // Sorted local indices, owned by the chunk. Bulk block replacement must
@@ -182,10 +190,10 @@ public:
     Block getLocal(int localX, int y, int localZ) const;
     void setLocal(int localX, int y, int localZ, Block block);
     std::uint8_t sunlightLocal(std::size_t index) const {
-        return static_cast<std::uint8_t>(packedLight[index] >> 4U);
+        return index < packedLight.size() ? static_cast<std::uint8_t>(packedLight[index] >> 4U) : 15;
     }
     std::uint8_t blockLightLocal(std::size_t index) const {
-        return static_cast<std::uint8_t>(packedLight[index] & 0x0fU);
+        return index < packedLight.size() ? static_cast<std::uint8_t>(packedLight[index] & 0x0fU) : 0;
     }
     void setSunlightLocal(std::size_t index, std::uint8_t value) {
         packedLight[index] = static_cast<std::uint8_t>(
@@ -206,7 +214,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 10);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 11);
     ~World();
 
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
@@ -244,14 +252,19 @@ public:
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
     void prepareSpawnTerrain(const glm::vec3& position);
     bool runBiomeAudit(const std::string& directory, std::string& report) const;
+    bool runDensityAudit(const std::string& directory, std::string& report) const;
     bool runGeographyAudit(const std::string& directory, std::string& report) const;
     bool runPatch272SelfTest(std::string& report) const;
-    BiomeClimate biomeClimateAt(int worldX, int worldZ, float elevation = -1) const;
+    BiomeClimate biomeClimateAt(int worldX, int worldZ, float elevation = std::numeric_limits<float>::quiet_NaN()) const;
     std::string biomeNameAt(int worldX, int worldZ) const;
     WorldGenerationDebug generationDebugAt(int worldX, int worldZ,
                                            int worldY = SEA_LEVEL,
                                            bool detailed = false) const;
     int generationVersion() const { return generationVersion_; }
+    int minimumY() const { return generationVersion_ >= 11 ? -64 : 0; }
+    int maximumY() const { return generationVersion_ >= 11 ? 320 : WORLD_HEIGHT; }
+    int heightSpan() const { return maximumY() - minimumY(); }
+    int seaLevel() const { return generationVersion_ >= 11 ? 64 : SEA_LEVEL; }
 
     bool raycast(const glm::vec3& origin,
                  const glm::vec3& direction,
@@ -316,6 +329,7 @@ private:
         float mushroomIsland = 0.0f;
         float macroTemperature = 0.5f;
         float macroHumidity = 0.5f;
+        float unclampedHeight = 0.f;
     };
     struct GeneratedChunk {
         int x;
@@ -334,6 +348,7 @@ private:
         bool climateTinted = false;
         std::array<std::array<glm::vec3,4>,3> climateColors{};
         int meshHeight = WORLD_HEIGHT;
+        int minimumY = 0;
         std::vector<Block> blocks;
         std::vector<std::uint8_t> packedLight;
     };
@@ -379,7 +394,7 @@ private:
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 10;
+    std::uint32_t generationVersion_ = 11;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;
@@ -448,13 +463,15 @@ private:
     static std::int64_t chunkKey(int chunkX, int chunkZ);
     static int floorDiv(int value, int divisor);
     static int floorMod(int value, int divisor);
-    static std::size_t localIndex(int localX, int y, int localZ);
+    std::size_t localIndex(int localX, int y, int localZ) const;
 
     Chunk* findChunk(int chunkX, int chunkZ);
     const Chunk* findChunk(int chunkX, int chunkZ) const;
     TerrainSample sampleTerrain(int worldX, int worldZ) const;
     TerrainSample sampleTerrainLegacy(int worldX, int worldZ) const;
     TerrainSample sampleTerrainModern(int worldX, int worldZ) const;
+    TerrainSample sampleTerrainDensity(int worldX, int worldZ) const;
+    GeneratedChunk generateChunkDataDensity(int chunkX, int chunkZ) const;
     TerrainSample sampleTerrainGeography(int worldX, int worldZ) const;
     StructureTerrain structureTerrainAt(int worldX, int worldZ) const;
     GeneratedChunk generateChunkData(int chunkX, int chunkZ) const;

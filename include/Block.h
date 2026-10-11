@@ -128,8 +128,12 @@ enum class Block : std::uint8_t {
     Fern, DeadBush, LilyPad,
     RedMushroom, BrownMushroom, MushroomStem,
     RedMushroomBlock, BrownMushroomBlock,
+    // Generator V11: append only; historical save IDs are unchanged.
+    Deepslate, DeepslateCoalOre, DeepslateIronOre, DeepslateCopperOre, DeepslateGoldOre, DeepslateDiamondOre, Bedrock, Lava,
     Count
 };
+
+inline bool isLava(Block b) { return b == Block::Lava; }
 
 inline bool isWater(Block b) {
     return b == Block::Water ||
@@ -166,7 +170,7 @@ inline bool isTorch(Block b) {
 // The existing block-light solver's source levels. Keep indexing and solving
 // on the same definition; non-emissive blocks must not enter the source index.
 inline std::uint8_t blockLightEmission(Block block) {
-    return block == Block::Torch || block == Block::Fire ? 15U : 0U;
+    return block == Block::Torch || block == Block::Fire || block == Block::Lava ? 15U : 0U;
 }
 inline bool isCrop(Block b) {
     return b >= Block::Crop0 && b <= Block::Crop3;
@@ -271,7 +275,7 @@ inline float blockCollisionHeight(Block b) {
     return 1.0f;
 }
 inline bool isSolid(Block b) {
-    return b != Block::Air && !isWater(b) && b != Block::Torch && !isCrop(b) &&
+    return b != Block::Air && !isWater(b) && !isLava(b) && b != Block::Torch && !isCrop(b) &&
            b != Block::Snow && b != Block::LilyPad && b != Block::LightningRod && b != Block::Fire && !isPlant(b) && !isWallAttachment(b);
 }
 inline bool isRenderable(Block b) {
@@ -320,9 +324,9 @@ inline BlockGeometryProperties blockGeometry(Block block) {
         geometry.maxY = .0625f;
         geometry.occludesNeighborFaces = false;
         geometry.aoOcclusion = 0;
-    } else if (isWater(block)) {
+    } else if (isWater(block) || isLava(block)) {
         geometry.shape = BlockShape::Fluid;
-        geometry.maxY = waterHeight(block);
+        geometry.maxY = isLava(block) ? 1.f : waterHeight(block);
         geometry.occludesNeighborFaces = false;
         geometry.mergeMatchingFaces = true;
         geometry.aoOcclusion = 0.0f;

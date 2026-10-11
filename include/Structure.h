@@ -21,6 +21,9 @@ struct StructureTerrain {
     int height = 0;
     StructureBiome biome = StructureBiome::Other;
     float river = 0.0f;
+    int seaLevel = 48;
+    int maximumY = 256;
+    bool supported = true;
 };
 
 enum class StructureKind : std::uint8_t {
@@ -125,11 +128,13 @@ public:
     void placeTemplate(const StructurePiece& piece, int chunkX, int chunkZ,
                        std::vector<Block>& blocks,
                        std::vector<StructureLootMarker>& loot,
-                       std::vector<StructureMobMarker>& mobs) const;
+                       std::vector<StructureMobMarker>& mobs,
+                       int minimumY = 0, int maximumY = 256) const;
     bool applyToChunk(int chunkX, int chunkZ, std::vector<Block>& blocks,
                       std::vector<StructureLootMarker>& loot,
                       std::vector<StructureMobMarker>& mobs,
-                      const std::function<StructureTerrain(int, int)>& terrain) const;
+                      const std::function<StructureTerrain(int, int)>& terrain,
+                      int minimumY = 0, int maximumY = 256) const;
     std::array<ItemStack, 27> rollLoot(const StructureLootMarker& marker) const;
     bool runSelfTest(std::string& report) const;
 

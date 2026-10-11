@@ -61,7 +61,7 @@ void WeatherRenderer::render(const Weather& weather,const World& world,const Gam
         }
         if(column.kind==Precipitation::None) continue;
         const float floor=world.precipitationHeight(x,z);
-        if(floor<0 || floor>camera.y+15) continue;
+        if(floor<world.minimumY() || floor>camera.y+15) continue;
         const bool snow=column.kind==Precipitation::Snow;
         const int lanes=s.weatherQuality==1 ? 1 : s.weatherQuality==2 ? 2 : 4;
         const float alpha=(1-d/(radius*radius))*(snow ? .72f : .35f)*(.35f+.65f*daylight);

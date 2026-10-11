@@ -157,7 +157,7 @@ bool sweepBillboardAxis(const World& world, glm::vec3& feet, int axis, float amo
     for (int z = first.z; z <= last.z; ++z)
         for (int x = first.x; x <= last.x; ++x) {
             const bool loaded = world.hasLoadedChunkAt(x, z);
-            for (int y = std::max(0, first.y); y <= std::min(WORLD_HEIGHT - 1, last.y); ++y) {
+            for (int y = std::max(world.minimumY(), first.y); y <= std::min(world.maximumY() - 1, last.y); ++y) {
                 glm::vec3 low(x, y, z), high = low + glm::vec3(1);
                 if (loaded && !world.blockCollisionBounds({x, y, z}, low, high)) continue;
                 bool overlap = true;
@@ -1735,7 +1735,7 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
             continue;
         const int terrainY = world.terrainHeight(x, z);
         int feetY = terrainY + 1;
-        if (feetY < 3 || feetY >= WORLD_HEIGHT - 2)
+        if (feetY < world.minimumY() + 3 || feetY >= world.maximumY() - 2)
             continue;
         // Check the terrain surface and a few blocks below it without scanning the column.
         bool valid = false;
@@ -1762,7 +1762,7 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
                 world, {x + .5f, feetY + .01f, z + .5f}))
             continue;
         if (!hostile) {
-            if (ground != Block::Grass || feetY <= SEA_LEVEL ||
+            if (ground != Block::Grass || feetY <= world.seaLevel() ||
                 world.biomeNameAt(x, z) == "DESERT")
                 continue;
             const std::int64_t key = chunkKey(

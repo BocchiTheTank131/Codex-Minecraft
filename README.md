@@ -35,7 +35,7 @@ Pressing PLAY again in the demo starts a fresh gameplay session.
 
 ## Features
 
-- 256-block-tall procedurally generated worlds
+- Versioned procedural worlds: new Generator V11 worlds span Y=-64 through 319; legacy worlds keep Y=0 through 255
 - Multi-noise terrain with continents, mountains, rivers, beaches, oceans, caves, ravines, and aquifers
 - Plains, deserts, snowy mountains, forests, and other terrain variations
 - Villages, pillager outposts, desert pyramids, ruins, wells, and campsites
@@ -69,8 +69,8 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.11.1-beta** has **134 inventory items**, **88 placeable block families**, **152 block
-IDs/states including Air**, **73 crafting recipes**, and **18 furnace recipes**. Existing item
+Version **2.11.1** has **142 inventory items**, **96 placeable block families**, **160 block
+IDs/states including Air**, **73 crafting recipes**, and **23 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
 ### Crafting expansion
@@ -197,9 +197,50 @@ and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in th
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
 
+## v2.11.1 - Generator V11: Terrain & Underground Overhaul
+
+New worlds use **terrain generator 11**, with **384 vertical blocks (Y=-64..319)** and
+**sea level 64**. Existing worlds keep their saved generator version **1–10**, original
+vertical coordinates, sea level, and unexplored terrain. The application release version is
+**v2.11.1**.
+
+V11 retains V10's continents, connected oceans and macroclimate. Compatible local habitat
+variation creates more medium-sized biome regions while preserving all 35 biomes and
+altitude cooling. A cached 3D density lattice adds mountainous overhangs and occasional
+floating rock formations to the heightmap. Broad chambers, connecting tunnels, pillars
+and winding surface ravines replace the denser underground carving. Regional aquifers
+leave most sampled cave space dry, with occasional deep water and lava pools.
+
+New materials are **Deepslate, Deepslate Coal/Iron/Copper/Gold/Diamond Ore, Bedrock, and
+Lava**. Eight item/block IDs are appended; existing IDs are unchanged. Deepslate ores use
+the corresponding existing drops and furnace outputs. This build has **142
+inventory items**, **96 placeable block families**, and **160 block IDs/states including Air**.
+Bedrock resists Survival mining.
+Lava pools emit light and damage Survival players; this update does not add flowing-lava
+or water/lava reaction simulation. Coal favors higher elevations, iron has low and mountain
+distributions, copper favors middle depths, gold favors deep layers, and diamond increases
+with depth with reduced air exposure. Rare regional iron/copper lodes supplement small veins.
+
+The eight original 16×16 icons extend the native atlas to **160×240**, and the runtime atlas
+to **640×960**. Existing atlas cells and world textures are preserved. Creative inventory,
+commands, targeting, mining, lighting, weather, structures and persistence understand the
+new world bounds. Full-game persistence and the stateless standalone demo remain separate.
+
+Generated V11 chunks omit unused upper air in 16-block bands. Density fields and ore rolls
+are cached per chunk; generation remains asynchronous. See
+[Generator V11 validation](docs/GENERATOR_V11_VALIDATION.md) for measured performance,
+compatibility coverage and limitations, including the additional rendering cost of cave geometry.
+
+Developer tools: `--density-audit=<absolute-output-directory>` exports paired V10/V11
+biome/climate/terrain maps at 4,096 and 30,720 blocks, depth ore counts, underground
+cross-sections, 3D cutaway volumes, timings and compatibility checks for three seeds.
+`python tools/build_density_previews.py <directory>` creates labeled previews and statistics
+(development dependencies: Pillow, NumPy, Matplotlib). Runtime previews accept `--generator=11`,
+`--preview-y`, `--preview-yaw`, `--preview-pitch`, and `--preview-torch` with `--worldgen-test`.
+
 ## v2.11.1-beta - Geographical Generator 10
 
-New worlds now use **terrain generator 10**. Broad continental fields form connected landmasses
+The published beta uses **terrain generator 10**. Broad continental fields form connected landmasses
 and ocean basins, with a smaller coastal-detail field for islands, bays and peninsulas. Climate
 is split into regional temperature/humidity and restrained local variation; altitude still cools
 mountains. The five climate regions and all 35 biomes remain available, with existing vegetation,
@@ -282,9 +323,18 @@ CPU generation timings, three-seed biome/climate/height maps, distributions, con
 and persistence/recipe tests. `python tools/build_biome_previews.py <directory>` labels the maps.
 `python tools/generate_biome_textures.py` appends biome artwork; Pillow is development-only.
 
-The Windows beta release provides the **2.11.1-beta** standalone demo and full-game installer.
+The Windows release provides the **2.11.1** standalone demo and full-game installer.
 
 ## Windows Release
+
+### v2.11.1 - Terrain & Underground Overhaul
+
+- Generator 11: 384-block worlds (Y=-64..319), sea level 64, 3D terrain and expanded caves.
+- Surface ravines, regional aquifers, deep lava pools and depth-based ore distributions.
+- Deepslate, five Deepslate ores and Bedrock; eight original new block/item textures.
+- All 35 biomes retained; generators 1–10 and existing numeric IDs remain compatible.
+- Reduced upper-air storage; additional cave geometry still increases rendering cost.
+- Full installer remains persistent; standalone remains a stateless demo.
 
 ### v2.11.1-beta - Geography Update
 
@@ -356,12 +406,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
 - Save & Return to Menu saves and unloads the full game. The standalone demo discards its
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
-Download from [Voxel Frontier v2.11.1-beta](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.1-beta).
+Download from [Voxel Frontier v2.11.1](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.1).
 
-| v2.11.1-beta Windows build | Purpose | Persistence |
+| v2.11.1 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.11.1-beta-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.11.1-beta-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.11.1-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.11.1-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -796,6 +846,9 @@ The project is split into focused systems:
 - `WeatherValidation` - opt-in Release smoke checks and quality benchmarks
 - `Game` - initialization, main loop, simulation, rendering, saves, and shutdown
 - `World` - chunks, terrain, blocks, lighting, and world data
+- `TerrainDensity` / `WorldDensity` - versioned V11 density lattice, caves, aquifers and depth-based ores
+- `WorldDensityValidation` - V11 maps, cutaways, deterministic hashes and vertical-range regressions
+- `UndergroundContent` - appended underground block/item metadata
 - `Biome` - shared climate thresholds, biome definitions and vegetation/water colors
 - `BiomeContent` / `BiomeVegetation` - biome materials and deterministic chunk decoration
 - `WorldBiomeValidation` - compatibility hashes, climate maps and content validation
