@@ -24,7 +24,7 @@ struct Pixel {
 };
 static_assert(sizeof(Pixel)==28,"Density map layout");
 }
-bool World::runDensityAudit(const std::string& directory,std::string& report) const {
+bool World::runDensityAudit(const std::string& directory,std::string& report,unsigned modernVersion) const {
     namespace fs=std::filesystem;
     fs::create_directories(directory);
     std::ofstream generation(directory+"/generation.csv"),oreCounts(directory+"/ores.csv"),
@@ -49,9 +49,9 @@ bool World::runDensityAudit(const std::string& directory,std::string& report) co
         for(auto seed:{20260917U,123456789U,42U}) {
             std::array<int,35> totalBiomes{};
             glm::ivec2 mountain(0);
-            World modern(seed,11);
+            World modern(seed,modernVersion);
             require(modern.minimumY()==-64&&modern.maximumY()==320&&modern.seaLevel()==64,"V11 vertical bounds");
-            for(unsigned version:{10U,11U}) {
+            for(unsigned version:{modernVersion-1,modernVersion}) {
                 World probe(seed,version);
                 for(int extent:{4096,30720}) {
                     std::ofstream map(directory+"/map-"+std::to_string(seed)+"-v"+std::to_string(version)+"-"+std::to_string(extent)+".bin",std::ios::binary);
@@ -59,7 +59,7 @@ bool World::runDensityAudit(const std::string& directory,std::string& report) co
                     for(int z=0;z<512;++z) for(int x=0;x<512;++x) {
                         const int wx=x*(extent/512)-extent/2,wz=z*(extent/512)-extent/2;
                         const auto t=probe.sampleTerrain(wx,wz); ++counts[int(t.biome)];
-                        if(version==11) {
+                        if(version==modernVersion) {
                             ++totalBiomes[int(t.biome)];
                             if(totalBiomes[int(t.biome)]==1) sites<<seed<<','<<biomeDefinition(t.biome).name<<','<<wx<<','<<wz<<','<<t.height<<'\n';
                             if(t.height>modern.terrainHeight(mountain.x,mountain.y)&&t.ravine<.02f) mountain={wx,wz};
@@ -72,10 +72,10 @@ bool World::runDensityAudit(const std::string& directory,std::string& report) co
                     for(int b=0;b<35;++b) distributions<<seed<<','<<version<<','<<extent<<','<<biomeDefinition(Biome(b)).name<<','<<counts[b]<<'\n';
                 }
             }
-            for(int b=0;b<35;++b) if(!totalBiomes[b]) throw std::runtime_error(std::string("Missing V11 biome: ")+biomeDefinition(Biome(b)).name);
+            for(int b=0;b<35;++b) if(!totalBiomes[b]) throw std::runtime_error("Missing V"+std::to_string(modernVersion)+" biome: "+biomeDefinition(Biome(b)).name);
             std::array<std::array<std::uint64_t,9>,384> histogram{};
             std::uint64_t caveAir=0,caveWater=0,caveLava=0,solid=0,above=0,bytes=0;
-            for(unsigned version:{10U,11U}) {
+            for(unsigned version:{modernVersion-1,modernVersion}) {
                 World probe(seed,version);
                 for(int i=0;i<48;++i) {
                     const int cx=(i%8)*173-606,cz=(i/8)*197-492;
@@ -87,7 +87,7 @@ bool World::runDensityAudit(const std::string& directory,std::string& report) co
                         const auto h=hashBlocks(data.blocks);
                         if(repeat) require(expected==h,"Repeated density generation changed"); expected=h;
                         generation<<seed<<','<<version<<','<<cx<<','<<cz<<','<<h<<','<<ms<<','<<data.blocks.size()<<'\n';
-                        if(version!=11||repeat!=0) continue;
+                        if(version!=modernVersion||repeat!=0) continue;
                         bytes+=data.blocks.size();
                         std::array<int,256> surfaceHeights{};
                         for(int z=0;z<16;++z)for(int x=0;x<16;++x) surfaceHeights[z*16+x]=probe.terrainHeight(cx*16+x,cz*16+z);
@@ -187,7 +187,7 @@ bool World::runDensityAudit(const std::string& directory,std::string& report) co
             }
             std::string structureReport;
             require(modern.runStructureGenerationSmokeTest(structureReport,nullptr,48),"V11 structures/loot/footprint support");
-            std::cout << "V11 " << seed << " structures: " << structureReport << '\n';
+            std::cout << 'V' << modernVersion << ' ' << seed << " structures: " << structureReport << '\n';
             modern.prepareSpawnTerrain({.5f,80,.5f});
             modern.setBlock(2,-40,2,Block::Torch);
             modern.setBlock(2,-40,3,Block::Air);
@@ -198,7 +198,7 @@ bool World::runDensityAudit(const std::string& directory,std::string& report) co
             const std::string save=directory+"/roundtrip-"+std::to_string(seed)+".vxw";
             require(modern.saveWorld(save,{2,-39,2}),"V11 save write");
             World restored(seed,10);glm::vec3 position;
-            require(restored.loadWorld(save,position)&&restored.generationVersion()==11,"V11 load metadata");
+            require(restored.loadWorld(save,position)&&restored.generationVersion()==int(modernVersion),"V11 load metadata");
             restored.prepareSpawnTerrain({.5f,80,.5f});
             require(restored.getBlock(2,-40,2)==Block::Torch&&restored.getBlock(2,319,2)==Block::DiamondBlock,"V11 edit roundtrip");
             const auto mesh=buildMesh(restored.captureMeshInput(0,0));
@@ -230,15 +230,15 @@ bool World::runDensityAudit(const std::string& directory,std::string& report) co
             RayHit hit;
             require(modern.raycast({2.5f,-30.f,2.5f},{0,-1,0},12,hit)&&hit.block.y==-40,"Negative Y raycast");
             require(!Weather::exposed(modern,{2.5f,-38.f,2.5f}),"Underground roof exposure");
-            for(unsigned version=1;version<=10;++version) {
-                World old(seed,version);require(old.minimumY()==0&&old.maximumY()==256&&old.seaLevel()==48,"Legacy vertical bounds");
+            for(unsigned version=1;version<modernVersion;++version) {
+                World old(seed,version);require(old.minimumY()==(version>=11?-64:0)&&old.maximumY()==(version>=11?320:256)&&old.seaLevel()==(version>=11?64:48),"Legacy vertical bounds");
                 const auto path=directory+"/legacy-"+std::to_string(seed)+"-"+std::to_string(version)+".vxw";
                 require(old.saveWorld(path,{0,72,0}),"Legacy save write");
                 World loaded(seed,11); require(loaded.loadWorld(path,position)&&loaded.generationVersion()==int(version),"Legacy generator save roundtrip");
                 require(hashBlocks(old.generateChunkData(-1,0).blocks)==hashBlocks(loaded.generateChunkData(-1,0).blocks),"Legacy geography after load");
             }
         }
-        report="V11 density audit passed: all 35 biomes, repeat/parallel generation, lattice seams, negative/upper Y edits/meshes/lighting, and generator 1-11 save roundtrips.";
+        report="V"+std::to_string(modernVersion)+" density audit passed: all 35 biomes, repeat/parallel generation, lattice seams, negative/upper Y edits/meshes/lighting, and versioned generator save roundtrips.";
         return true;
     } catch(const std::exception& error) { report=error.what();return false; }
 }

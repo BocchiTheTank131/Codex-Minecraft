@@ -196,7 +196,12 @@ bool Game::initialize(int argc, char** argv) {
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
                      "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
-        if (!densityAudit_.empty()) {
+        if (!explorationAudit_.empty()) {
+            std::string report;
+            if (!world_->runExplorationAudit(explorationAudit_,report)) throw std::runtime_error(report);
+            std::cout<<report<<std::endl;
+            glfwSetWindowShouldClose(window_,true);
+        } else if (!densityAudit_.empty()) {
             std::string report;
             if (!world_->runDensityAudit(densityAudit_, report)) throw std::runtime_error(report);
             std::cout << report << std::endl;
@@ -211,6 +216,9 @@ bool Game::initialize(int argc, char** argv) {
             if (!world_->runBiomeAudit(biomeAudit_, report)) throw std::runtime_error(report);
             std::cout << report << std::endl;
             glfwSetWindowShouldClose(window_, true);
+        } else if (!streamingBenchmark_.empty()) {
+            runStreamingBenchmark();
+            glfwSetWindowShouldClose(window_, GLFW_TRUE);
         } else if (weatherSmoke_) {
             runWeatherSmokeTest();
             glfwSetWindowShouldClose(window_,GLFW_TRUE);
@@ -345,7 +353,9 @@ void Game::parseArguments(int argc, char** argv) {
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
             } else if (argument.rfind("--generator=",0)==0) {
-                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,11));
+                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,12));
+            } else if (argument.rfind("--exploration-audit=",0)==0) {
+                explorationAudit_=argument.substr(20); weatherSmoke_=true; saveOnExit_=false;
             } else if (argument.rfind("--density-audit=",0)==0) {
                 densityAudit_=argument.substr(16); saveOnExit_=false;
             } else if (argument.rfind("--geography-audit=",0)==0) {
@@ -356,6 +366,16 @@ void Game::parseArguments(int argc, char** argv) {
                 weatherSmoke_=true; saveOnExit_=false;
             } else if (argument.rfind("--weather-benchmark=",0)==0) {
                 weatherSmoke_=true; saveOnExit_=false; weatherBenchmark_=argument.substr(20);
+            } else if (argument.rfind("--streaming-benchmark=",0)==0) {
+                weatherSmoke_=true; saveOnExit_=false; streamingBenchmark_=argument.substr(22);
+            } else if (argument.rfind("--streaming-quality=",0)==0) {
+                settings_.chunkStreamingQuality=std::clamp(std::stoi(argument.substr(20)),0,3);
+            } else if (argument.rfind("--streaming-rd=",0)==0) {
+                streamingFixtureDistance_=std::clamp(std::stoi(argument.substr(15)),2,64);
+            } else if (argument.rfind("--streaming-flight-seconds=",0)==0) {
+                streamingFlightSeconds_=std::clamp(std::stof(argument.substr(27)),5.f,300.f);
+            } else if (argument.rfind("--streaming-recovery-seconds=",0)==0) {
+                streamingRecoverySeconds_=std::clamp(std::stof(argument.substr(29)),10.f,300.f);
             } else if (argument == "--survival-smoke") {
                 smokeTest_.survivalEnabled = true;
             } else if (argument == "--command-smoke") {
@@ -453,6 +473,7 @@ void Game::createPresentationSystems() {
 
 void Game::createWorldAndSystems() {
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
+    world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setSimulationDistance(settings_.simulationDistance);
     glm::vec3 spawnPosition(0.5f, 0.0f, 0.5f);
     const bool loadedWorld = Persistence::enabled() && !smokeTest_.worldgenEnabled &&
@@ -765,6 +786,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     saveWorldMetadata();
 
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
+    world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setSimulationDistance(settings_.simulationDistance);
     const glm::vec3 spawnPosition = world_->findSafeSpawnNear(0, 0);
     world_->generate(settings_.renderDistance, spawnPosition);
@@ -1293,6 +1315,10 @@ void Game::updatePauseInterface() {
                                           : (settings_.frameLimit == 60 ? 120 : 0));
         settings_.graphicsPreset = GraphicsPreset::Custom;
         break;
+    case 35:
+        settings_.chunkStreamingQuality=(settings_.chunkStreamingQuality+1)%4;
+        if(world_) world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
+        break;
     case 14:
         ui_.openControls();
         break;
@@ -1329,6 +1355,7 @@ void Game::updateSimulation(float deltaTime) {
     updateTargets();
 
     const float oldHealth = player_->health();
+    world_->setStreamingView(player_->lookDirection(),timing_.streamingWorkMilliseconds);
     world_->updateStreaming(player_->cameraPosition(), 2);
     world_->updateFluids(deltaTime);
     world_->updateBlockEntities(deltaTime);
@@ -1899,6 +1926,9 @@ void Game::renderFrame(float deltaTime) {
             Screenshot::saveBmp(width, height);
             screenshotRequested_ = false;
         }
+        // Streaming headroom excludes presentation/FPS-cap idle time. F3 and
+        // simulation retain the real frame interval measured by beginFrame().
+        timing_.streamingWorkMilliseconds = static_cast<float>((glfwGetTime()-timing_.previousFrame)*1000.0);
         glfwSwapBuffers(window_);
         return;
     }
@@ -2052,6 +2082,7 @@ void Game::renderFrame(float deltaTime) {
             smokeTest_.worldgenScreenshotTaken = true;
         }
     }
+    timing_.streamingWorkMilliseconds = static_cast<float>((glfwGetTime()-timing_.previousFrame)*1000.0);
     glfwSwapBuffers(window_);
 
     if (smokeTest_.uiEnabled && glfwGetTime() - smokeTest_.startTime > 22.0) {
@@ -2161,6 +2192,7 @@ std::string Game::buildDebugText() const {
         static_cast<int>(std::floor(position.z)),
         static_cast<int>(std::floor(position.y)), showWorldgenDebug_);
     const SurvivalWorld::MobDiagnostics mobs = survival_->diagnostics(position);
+    const auto streaming=world_->streamingDiagnostics();
     text << "BIOME " << generation.biome << '\n'
          << "FACING " << facingDirection(direction) << '\n'
          << "MODE " << gameModeName(gameMode()) << '\n';
@@ -2175,8 +2207,8 @@ std::string Game::buildDebugText() const {
              << "TERRAIN HEIGHT " << generation.terrainHeight << '\n';
         if(world_->generationVersion()>=9) {
             constexpr const char* regions[]={"FREEZING","COLD","TEMPERATE","WARM","HOT"};
-            text << "CLIMATE " << regions[static_cast<int>(generation.climate)] << " EFFECTIVE TEMP "
-                 << generation.effectiveTemperature << " GENERATOR " << world_->generationVersion() << '\n';
+            text << "CLIMATE " << regions[static_cast<int>(generation.climate)] << " SURFACE TEMP "
+                 << generation.surfaceTemperature << " CAMERA TEMP " << generation.effectiveTemperature << " GENERATOR " << world_->generationVersion() << '\n';
         }
         if (showWorldgenDebug_) {
             if (world_->generationVersion() >= 11) text << "WORLD Y -64..319 SEA 64\n";
@@ -2234,6 +2266,12 @@ std::string Game::buildDebugText() const {
          << world_->queuedMeshRebuildCount() << " DIRTY\n"
          << "MESH " << world_->pendingCpuMeshCount() << " CPU / "
          << world_->completedMeshCount() << " UPLOAD\n"
+         << "WORKERS GEN " << streaming.generationActive << "/" << streaming.generationLimit
+         << " MESH " << streaming.meshActive << "/" << streaming.meshLimit << '\n'
+         << "THROUGHPUT " << streaming.generatedPerSecond << " GEN/S " << streaming.meshedPerSecond << " MESH/S\n"
+         << "GEN QUEUE " << streaming.generationQueued << " READY " << streaming.generationReady << '\n'
+         << "STREAM LIGHT " << streaming.lightingMilliseconds << " MS UPLOADS " << streaming.uploadMilliseconds << " MS\n"
+         << "LIGHT QUEUE " << streaming.lightingQueued << " RETIRED " << streaming.retiredChunks << '\n'
          << "VERTICES " << world_->uploadedVertexCount() << "  TRIANGLES "
          << world_->uploadedVertexCount() / 3 << "\n"
          << "BUILD " << world_->lastChunkRebuildMilliseconds() << " MS  UPLOAD "
@@ -2449,7 +2487,7 @@ void Game::runSurvivalSmokeTest() {
     for(int row=0;row<5;++row)
         uiLayoutPassed=uiLayoutPassed && checkMenuHit(MenuLayout::hubRow(row,logicalWidth,logicalHeight),row==3?34:row==4?33:30+row);
     settingsUi.openVideoSettings();
-    for(int row=0;row<12;++row)
+    for(int row=0;row<int(MenuLayout::VideoActions.size());++row)
         uiLayoutPassed=uiLayoutPassed && checkMenuHit(MenuLayout::videoRow(row,logicalWidth,logicalHeight),MenuLayout::VideoActions[row]);
     uiLayoutPassed=uiLayoutPassed && checkMenuHit(MenuLayout::back(logicalWidth,logicalHeight),15);
     settingsUi.openWeatherSettings();
@@ -2575,6 +2613,7 @@ void Game::runSurvivalSmokeTest() {
     testSettings.passiveMobVolume = .75f;
     testSettings.hostileMobVolume = 0.0f;
     testSettings.brightness = .75f;
+    testSettings.chunkStreamingQuality=2;
     testSettings.weatherCycle=false; testSettings.weatherQuality=1;
     testSettings.precipitationDensity=.37f; testSettings.lightningFlash=.45f;
     testSettings.snowAccumulation=false; testSettings.lightningEffects=false;
@@ -2592,6 +2631,7 @@ void Game::runSurvivalSmokeTest() {
                      reloadedSettings.passiveMobVolume == .75f &&
                      reloadedSettings.hostileMobVolume == 0.0f &&
                      reloadedSettings.brightness == .75f &&
+                     reloadedSettings.chunkStreamingQuality==2 &&
                      !reloadedSettings.weatherCycle && reloadedSettings.weatherQuality==1 &&
                      reloadedSettings.precipitationDensity==.37f && reloadedSettings.lightningFlash==.45f &&
                      !reloadedSettings.snowAccumulation && !reloadedSettings.lightningEffects &&
@@ -2717,7 +2757,10 @@ void Game::runSurvivalSmokeTest() {
         glm::ivec3* chestOutput = !structureChestLocated && terrainSeed == seed_
             ? &structureChestPosition : nullptr;
         const bool seedStructures = sampledWorld.runStructureGenerationSmokeTest(
-            seedReport, chestOutput);
+            // Continental worlds can legitimately have no structures in the
+            // old four-region survey around an ocean spawn. Match the density
+            // audit's bounded continental-scale coverage instead.
+            seedReport, chestOutput, sampledWorld.generationVersion()>=10 ? 48 : 4);
         structureChestLocated = structureChestLocated ||
                                 (chestOutput != nullptr && seedStructures);
         realStructureReport += std::to_string(terrainSeed) + ": " + seedReport + "; ";

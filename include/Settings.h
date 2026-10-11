@@ -6,6 +6,7 @@
 enum class GraphicsPreset : int { Low = 0, Medium = 1, High = 2, Custom = 3 };
 
 struct GameSettings {
+    int chunkStreamingQuality = 0; // Auto / Low / Balanced / High
     int renderDistance = 7;
     int simulationDistance = 7;
     float fov = 74.0f;

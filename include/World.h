@@ -6,6 +6,7 @@
 #include "Structure.h"
 #include "CanyonCarver.h"
 #include "Survival.h"
+#include "ChunkStreaming.h"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -13,6 +14,7 @@
 #include <atomic>
 #include <array>
 #include <condition_variable>
+#include <chrono>
 #include <cstdint>
 #include <deque>
 #include <memory>
@@ -57,6 +59,7 @@ struct WorldGenerationDebug {
     int depthBelowSurface = 0;
     int aquiferLevel = 0;
     float effectiveTemperature = .5f;
+    float surfaceTemperature = .5f;
     ClimateRegion climate = ClimateRegion::Temperate;
 };
 
@@ -186,6 +189,8 @@ public:
     MeshBounds waterBounds;
     std::uint64_t meshRevision = 0;
     std::uint64_t meshIdentity = 0;
+    std::shared_ptr<std::atomic<std::uint64_t>> meshRevisionToken =
+        std::make_shared<std::atomic<std::uint64_t>>(0);
 
     Block getLocal(int localX, int y, int localZ) const;
     void setLocal(int localX, int y, int localZ, Block block);
@@ -214,7 +219,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 11);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 12);
     ~World();
 
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
@@ -224,6 +229,9 @@ public:
         return seed_;
     }
     void updateStreaming(const glm::vec3& playerPosition, int meshBudget = 2);
+    void setStreamingQuality(ChunkStreamingQuality quality);
+    void setStreamingView(const glm::vec3& direction, float frameMilliseconds);
+    ChunkStreamingDiagnostics streamingDiagnostics() const;
     void updateFluids(float deltaTime, int updateBudget = 96);
     void updateBlockEntities(float deltaTime);
     std::vector<StructureMobMarker> takeActiveStructureMobMarkers(bool spawnAllowed = true);
@@ -252,7 +260,9 @@ public:
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
     void prepareSpawnTerrain(const glm::vec3& position);
     bool runBiomeAudit(const std::string& directory, std::string& report) const;
-    bool runDensityAudit(const std::string& directory, std::string& report) const;
+    bool runDensityAudit(const std::string& directory, std::string& report, unsigned modernVersion = 11) const;
+    bool runExplorationAudit(const std::string& directory,std::string& report) const;
+    bool runStreamingSelfTest(std::string& report);
     bool runGeographyAudit(const std::string& directory, std::string& report) const;
     bool runPatch272SelfTest(std::string& report) const;
     BiomeClimate biomeClimateAt(int worldX, int worldZ, float elevation = std::numeric_limits<float>::quiet_NaN()) const;
@@ -338,6 +348,7 @@ private:
         std::vector<StructureLootMarker> loot;
         std::vector<StructureMobMarker> mobs;
         bool hasStructure = false;
+        std::uint64_t epoch = 0;
     };
     struct MeshInput {
         int x = 0;
@@ -345,6 +356,7 @@ private:
         std::uint64_t revision = 0;
         std::uint64_t identity = 0;
         std::uint64_t epoch = 0;
+        std::shared_ptr<std::atomic<std::uint64_t>> revisionToken;
         bool climateTinted = false;
         std::array<std::array<glm::vec3,4>,3> climateColors{};
         int meshHeight = WORLD_HEIGHT;
@@ -394,7 +406,7 @@ private:
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 11;
+    std::uint32_t generationVersion_ = 12;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;
@@ -412,7 +424,15 @@ private:
 
     mutable std::mutex generationMutex_;
     std::condition_variable generationCv_;
-    std::deque<glm::ivec2> generationQueue_;
+    struct GenerationRequest { int x,y; std::uint64_t epoch; };
+    struct RetiredChunkPayload {
+        std::vector<Block> blocks;
+        std::vector<std::uint8_t> light;
+        std::vector<std::uint32_t> emitters;
+    };
+    std::deque<GenerationRequest> generationQueue_;
+    std::deque<RetiredChunkPayload> retiredChunkPayloads_;
+    std::atomic<unsigned> activePayloadReleases_{0};
     std::deque<GeneratedChunk> completedQueue_;
     std::unordered_set<std::int64_t> pendingKeys_;
     std::vector<glm::ivec2> requestOffsets_;
@@ -420,16 +440,30 @@ private:
     int requestRadius_ = -1;
     std::vector<std::thread> workers_;
     std::atomic<std::int64_t> generationCenterKey_{0};
+    std::atomic<std::uint64_t> generationEpoch_{0};
     std::atomic<int> generationLoadRadius_{7};
-    std::thread meshWorker_;
+    std::vector<std::thread> meshWorkers_;
+    std::atomic<unsigned> generationWorkerLimit_{1}, meshWorkerLimit_{1};
+    std::atomic<unsigned> activeGenerationWorkers_{0};
+    std::atomic<std::uint64_t> generationCompleted_{0}, meshCompleted_{0}, staleMeshCount_{0};
+    ChunkStreamingQuality streamingQuality_ = ChunkStreamingQuality::Auto;
+    StreamingWorkerPlan workerPlan_;
+    glm::vec2 streamingForward_{0,-1};
+    float streamingFrameMilliseconds_ = 16.f;
+    float streamingBudgetMilliseconds_ = 2.f;
+    std::chrono::steady_clock::time_point lastStreamingPriority_{};
+    std::chrono::steady_clock::time_point lastStreamingSample_{};
+    std::uint64_t sampledGeneration_=0,sampledMeshes_=0;
+    ChunkStreamingDiagnostics streamingStats_;
     std::atomic<bool> stopping_{false};
     mutable std::mutex meshMutex_;
     std::condition_variable meshCv_;
     std::deque<MeshInput> meshQueue_;
+    mutable std::deque<MeshInput> recycledMeshInputs_;
     std::deque<MeshOutput> completedMeshes_;
     // Returned only after upload/discard; the worker owns buffers while building.
     std::deque<MeshOutput> recycledMeshes_;
-    bool meshWorkerBusy_ = false;
+    unsigned meshWorkersBusy_ = 0;
     std::unordered_map<std::int64_t, std::uint64_t> pendingMeshKeys_;
     std::unordered_set<std::int64_t> priorityDirtyKeys_;
     std::uint64_t meshEpoch_ = 0;
@@ -452,6 +486,24 @@ private:
     mutable int renderedChunkCount_ = 0;
     mutable int opaqueSubmissionCount_ = 0;
     std::vector<std::shared_ptr<TerrainBufferPage>> terrainPages_;
+    bool terrainPageTrimmedThisFrame_ = false;
+    struct RetirementFence {
+        GLsync handle=nullptr;
+        bool complete=false;
+        // References exist only in main-thread retirement records.
+        ~RetirementFence() { if(handle) glDeleteSync(handle); }
+    };
+    struct RetiredTerrain {
+        std::shared_ptr<TerrainBufferPage> page;
+        std::size_t first=0,count=0;
+        GLuint vao=0,vbo=0;
+        std::vector<Block> blocks;
+        std::vector<std::uint8_t> light;
+        std::vector<std::uint32_t> emitters;
+        std::shared_ptr<RetirementFence> fence;
+    };
+    std::deque<RetiredTerrain> retiredTerrain_;
+    void releaseRetiredTerrain(bool drain=false);
     mutable std::vector<TerrainBufferPage*> drawPages_;
     mutable VisibleChunks visibleChunks_;
     float lastChunkRebuildMilliseconds_ = 0.0f;
@@ -474,11 +526,13 @@ private:
     GeneratedChunk generateChunkDataDensity(int chunkX, int chunkZ) const;
     TerrainSample sampleTerrainGeography(int worldX, int worldZ) const;
     StructureTerrain structureTerrainAt(int worldX, int worldZ) const;
+    bool explorationStructureReservedAt(int worldX,int worldZ) const;
     GeneratedChunk generateChunkData(int chunkX, int chunkZ) const;
     GeneratedChunk generateChunkDataLegacy(int chunkX, int chunkZ) const;
     GeneratedChunk generateChunkDataModern(int chunkX, int chunkZ) const;
-    void workerLoop();
-    void meshWorkerLoop();
+    void workerLoop(unsigned workerIndex);
+    void meshWorkerLoop(unsigned workerIndex);
+    void reprioritizeStreaming();
     MeshInput captureMeshInput(int chunkX, int chunkZ) const;
     static MeshOutput buildMesh(const MeshInput& input);
     static MeshOutput buildMesh(const MeshInput& input, MeshOutput result);

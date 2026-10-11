@@ -52,6 +52,7 @@ private:
         float stepTimer = 0.0f;
         float bobTime = 0.0f;
         float frameMilliseconds = 0.0f;
+        float streamingWorkMilliseconds = 16.667f;
     };
 
     struct InteractionState {
@@ -197,10 +198,16 @@ private:
     bool playerIsWalking() const;
 
     void runWeatherSmokeTest();
+    void runStreamingBenchmark();
+    std::string streamingBenchmark_;
+    int streamingFixtureDistance_=0;
+    float streamingFlightSeconds_=20.f;
+    float streamingRecoverySeconds_=40.f;
+    std::string explorationAudit_;
     std::string biomeAudit_;
     std::string geographyAudit_;
     std::string densityAudit_;
-    unsigned fixtureGenerator_ = 11;
+    unsigned fixtureGenerator_ = 12;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();

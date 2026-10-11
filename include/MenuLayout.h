@@ -4,7 +4,7 @@
 #include <algorithm>
 
 namespace MenuLayout {
-inline constexpr std::array<int, 12> VideoActions{0, 1, 2, 5, 6, 7, 8, 13, 11, 12, 9, 10};
+inline constexpr std::array<int, 13> VideoActions{0, 1, 2, 5, 6, 7, 8, 13, 11, 12, 9, 10, 35};
 inline UiRect panel(int w, int h) { return {w * .5f - 310, h * .5f - 310, 620, 620}; }
 inline UiRect tab(int index, int w, int h) { const auto p = panel(w,h); return {p.x + 20 + index * 195.0f, p.y + 58, 190, 35}; }
 inline UiRect videoRow(int index, int w, int h) { const auto p = panel(w,h); return {p.x + 24, p.y + 108 + index * 35.0f, 572, 32}; }

@@ -31,6 +31,7 @@ bool GameSettings::bindControl(ControlAction action, int key) {
 }
 
 void GameSettings::clamp() {
+    chunkStreamingQuality=std::clamp(chunkStreamingQuality,0,3);
     weatherQuality = std::clamp(weatherQuality,0,3);
     precipitationDensity = std::isfinite(precipitationDensity) ? std::clamp(precipitationDensity,0.0f,1.0f) : 1.0f;
     lightningFlash = std::isfinite(lightningFlash) ? std::clamp(lightningFlash,0.0f,1.0f) : .65f;
@@ -122,6 +123,7 @@ bool GameSettings::load(const std::string& path) {
         const std::string value = line.substr(split + 1);
         try {
             if (key == "weather_cycle") weatherCycle = std::stoi(value)!=0;
+            else if (key == "chunk_streaming_quality") chunkStreamingQuality = std::stoi(value);
             else if (key == "weather_quality") weatherQuality = std::stoi(value);
             else if (key == "precipitation_density") precipitationDensity = std::stof(value);
             else if (key == "snow_accumulation") snowAccumulation = std::stoi(value)!=0;
@@ -184,6 +186,7 @@ bool GameSettings::load(const std::string& path) {
 bool GameSettings::save(const std::string& path) const {
     return SaveFile::write(path, std::ios::out, [&](std::ofstream& output) {
     output << "weather_cycle=" << weatherCycle << '\n'
+           << "chunk_streaming_quality=" << chunkStreamingQuality << '\n'
            << "weather_quality=" << weatherQuality << '\n'
            << "precipitation_density=" << precipitationDensity << '\n'
            << "snow_accumulation=" << snowAccumulation << '\n'

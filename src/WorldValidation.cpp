@@ -22,9 +22,8 @@ bool World::runPatch272SelfTest(std::string& report) const {
     const auto elapsed=[](auto start) { return std::chrono::duration<double,std::milli>(
         std::chrono::steady_clock::now()-start).count(); };
     for(auto seed : seeds) {
-        World old(seed), fresh(seed);
-        old.generationVersion_=7;
-        fresh.generationVersion_=8; // Historical v2.7.2 fixture; v9 has its own audit.
+        // This historical fixture uses legacy vertical coordinates throughout.
+        World old(seed,7), fresh(seed,8);
         int oldMin=256,oldMax=0,newMin=256,newMax=0;
         for(int z=-2048;z<=2048;z+=32) for(int x=-2048;x<=2048;x+=32) {
             const auto a=old.sampleTerrain(x,z),b=fresh.sampleTerrain(x,z);
@@ -94,7 +93,7 @@ bool World::runPatch272SelfTest(std::string& report) const {
                     if(structureCounts[kind]==1) {
                         const auto& piece=plan.pieces.front();
                         const auto chunk=fresh.generateChunkData(floorDiv(piece.x,16),floorDiv(piece.z,16));
-                        if(!isSolid(chunk.blocks[localIndex(floorMod(piece.x,16),piece.y-1,floorMod(piece.z,16))])) {
+                        if(!isSolid(chunk.blocks[fresh.localIndex(floorMod(piece.x,16),piece.y-1,floorMod(piece.z,16))])) {
                             report="floating structure foundation";return false;
                         }
                     }
@@ -113,11 +112,11 @@ bool World::runPatch272SelfTest(std::string& report) const {
             const auto c=fresh.generateChunkData(cx,cz);
             std::unordered_map<std::int64_t,GeneratedChunk> neighbors;
             const auto at=[&](int x,int y,int z) {
-                if(x>=0 && x<16 && z>=0 && z<16)return c.blocks[localIndex(x,y,z)];
+                if(x>=0 && x<16 && z>=0 && z<16)return c.blocks[fresh.localIndex(x,y,z)];
                 const int nx=cx+floorDiv(x,16),nz=cz+floorDiv(z,16);
                 const auto key=chunkKey(nx,nz);auto it=neighbors.find(key);
                 if(it==neighbors.end())it=neighbors.emplace(key,fresh.generateChunkData(nx,nz)).first;
-                return it->second.blocks[localIndex(floorMod(x,16),y,floorMod(z,16))];
+                return it->second.blocks[fresh.localIndex(floorMod(x,16),y,floorMod(z,16))];
             };
             bool hadCane=false;
             for(int z=0;z<16;++z)for(int x=0;x<16;++x)for(int y=1;y<WORLD_HEIGHT-1;++y) {

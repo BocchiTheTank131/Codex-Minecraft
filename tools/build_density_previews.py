@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 parser = argparse.ArgumentParser()
 parser.add_argument('directory', type=Path)
+parser.add_argument('--versions', nargs=2, type=int, default=[10,11])
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 enum = (root / 'include/Biome.h').read_text().split('enum class Biome')[1].split('};')[0]
@@ -96,7 +97,7 @@ for seed in sorted({str(r['seed']) for r in metrics}):
     for extent in (30720,4096):
         panel=Image.new('RGB',(2700,1350),(24,28,34));draw=ImageDraw.Draw(panel)
         draw.text((20,12),f'Seed {seed} | {extent:,} x {extent:,} blocks | 512 x 512 samples | North at top',font=font,fill='white')
-        for row,version in enumerate((10,11)):
+        for row,version in enumerate(args.versions):
             for col,name in enumerate(('biomes','temperature','humidity','continentalness','terrain')):
                 x=20+col*536;y=78+row*558
                 draw.text((x,y-24),f'V{version} {name.upper()}',font=font,fill='white')
@@ -178,5 +179,5 @@ for ax,ore in zip(axes,('coal','iron','copper','gold','diamond')):
         ax.plot(ratio,y.reshape(-1,4).mean(1),label=seed,linewidth=1)
     ax.set_title(ore.title());ax.axhline(64,color='steelblue',linestyle=':',linewidth=.8);ax.axhline(0,color='gray',linestyle=':',linewidth=.8)
     ax.set_xlabel('% of sampled solid blocks');ax.grid(alpha=.2);ax.set_ylim(-64,320)
-axes[0].set_ylabel('World Y');axes[-1].legend(title='Seed',fontsize=8);fig.suptitle('V11 actual ore distribution | 48 regional chunks per seed | 4-block depth bins')
+axes[0].set_ylabel('World Y');axes[-1].legend(title='Seed',fontsize=8);fig.suptitle(f'V{args.versions[1]} actual ore distribution | 48 regional chunks per seed | 4-block depth bins')
 fig.tight_layout();fig.savefig(args.directory/'ore-distribution.png',dpi=140);plt.close(fig)

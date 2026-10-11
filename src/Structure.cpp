@@ -654,7 +654,10 @@ std::vector<StructurePlan> StructureGenerator::plansForChunk(
             if (candidate.x + 82 < minimumX || candidate.x - 82 > maximumX ||
                 candidate.z + 82 < minimumZ || candidate.z - 82 > maximumZ)
                 continue;
-            const StructurePlan& plan = *cachedMajorPlan(regionX, regionZ, terrain);
+            // Keep ownership while inspecting/copying the plan. Other generation
+            // workers can evict its cache entry immediately after lookup.
+            const auto ownedPlan = cachedMajorPlan(regionX, regionZ, terrain);
+            const StructurePlan& plan = *ownedPlan;
             if (!plan.pieces.empty() &&
                 plan.bounds.intersectsXZ(minimumX, minimumZ, maximumX, maximumZ))
                 plans.push_back(plan);

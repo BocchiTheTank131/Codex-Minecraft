@@ -387,6 +387,7 @@ Chunk::Chunk(int chunkX, int chunkZ, std::vector<Block> data, int low, int high)
 }
 
 Chunk::~Chunk() {
+    meshRevisionToken->store(UINT64_MAX, std::memory_order_release);
     if (opaquePage)
         opaquePage->release(opaqueFirstVertex, opaqueBufferCapacity / sizeof(VoxelVertex));
     if (waterVbo)
@@ -464,13 +465,13 @@ World::World(std::uint32_t seed, std::uint32_t generationVersion)
       cheeseNoise_(seed ^ 0x91b37d65U), spaghettiNoise_(seed ^ 0x326fa1cbU),
       noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed),
       seed_(seed) {
-    generationVersion_ = std::clamp(generationVersion, 1U, 11U);
-    const unsigned int hardware = std::thread::hardware_concurrency();
-    const unsigned int workerCount =
-        std::max(1U, std::min(3U, hardware > 2U ? hardware - 2U : 1U));
-    for (unsigned int i = 0; i < workerCount; ++i)
-        workers_.emplace_back(&World::workerLoop, this);
-    meshWorker_ = std::thread(&World::meshWorkerLoop, this);
+    generationVersion_ = std::clamp(generationVersion, 1U, 12U);
+    const auto maximum=streamingWorkerPlan(std::thread::hardware_concurrency(),ChunkStreamingQuality::High);
+    workerPlan_=streamingWorkerPlan(std::thread::hardware_concurrency(),streamingQuality_);
+    generationWorkerLimit_=workerPlan_.generation;
+    meshWorkerLimit_=workerPlan_.mesh;
+    for(unsigned i=0;i<maximum.generation;++i) workers_.emplace_back(&World::workerLoop,this,i);
+    for(unsigned i=0;i<maximum.mesh;++i) meshWorkers_.emplace_back(&World::meshWorkerLoop,this,i);
 }
 
 World::~World() {
@@ -480,8 +481,8 @@ World::~World() {
     for (std::thread& worker : workers_)
         if (worker.joinable())
             worker.join();
-    if (meshWorker_.joinable())
-        meshWorker_.join();
+    for(auto& worker:meshWorkers_) if(worker.joinable()) worker.join();
+    releaseRetiredTerrain(true);
 }
 
 std::int64_t World::chunkKey(int chunkX, int chunkZ) {
@@ -948,7 +949,8 @@ WorldGenerationDebug World::generationDebugAt(int worldX, int worldZ,
             sample.river, sample.height, biomeNameAt(worldX, worldZ)};
     if(generationVersion_>=9) {
         debug.effectiveTemperature=altitudeTemperature(sample.temperature,float(worldY)-(generationVersion_ >= 11 ? 16.f : 0.f));
-        debug.climate=climateRegion(debug.effectiveTemperature);
+        debug.surfaceTemperature=altitudeTemperature(sample.temperature,float(sample.height)-(generationVersion_ >= 11 ? 16.f : 0.f));
+        debug.climate=climateRegion(debug.surfaceTemperature);
     }
     if (!detailed)
         return debug;
@@ -1939,44 +1941,12 @@ bool World::runStructureGenerationSmokeTest(
     return valid && total > 0 && chestChecked;
 }
 
-void World::workerLoop() {
-    while (!stopping_) {
-        glm::ivec2 request;
-        {
-            std::unique_lock<std::mutex> lock(generationMutex_);
-            generationCv_.wait(lock, [&] { return stopping_ || !generationQueue_.empty(); });
-            if (stopping_)
-                return;
-            request = generationQueue_.front();
-            generationQueue_.pop_front();
-        }
-        const auto relevant = [&] {
-            const std::uint64_t center = static_cast<std::uint64_t>(
-                generationCenterKey_.load(std::memory_order_relaxed));
-            const int centerX = static_cast<std::int32_t>(center >> 32U);
-            const int centerZ = static_cast<std::int32_t>(center);
-            const int radius = generationLoadRadius_.load(std::memory_order_relaxed) + 1;
-            const std::int64_t dx = static_cast<std::int64_t>(request.x) - centerX;
-            const std::int64_t dz = static_cast<std::int64_t>(request.y) - centerZ;
-            return dx * dx + dz * dz <= radius * radius;
-        };
-        if (!relevant()) {
-            std::lock_guard<std::mutex> lock(generationMutex_);
-            pendingKeys_.erase(chunkKey(request.x, request.y));
-            continue;
-        }
-        GeneratedChunk generated = generateChunkData(request.x, request.y);
-        {
-            std::lock_guard<std::mutex> lock(generationMutex_);
-            if (relevant())
-                completedQueue_.push_back(std::move(generated));
-            else
-                pendingKeys_.erase(chunkKey(request.x, request.y));
-        }
-    }
-}
-
 void World::generate(int renderDistance, const glm::vec3& initialPosition) {
+    {
+        std::lock_guard<std::mutex> lock(generationMutex_);
+        ++generationEpoch_;
+        generationQueue_.clear();completedQueue_.clear();pendingKeys_.clear();
+    }
     ++meshEpoch_;
     {
         std::lock_guard<std::mutex> lock(meshMutex_);
@@ -2086,7 +2056,7 @@ void World::discardObsoleteRequests(int centerX, int centerZ) {
     std::lock_guard<std::mutex> lock(generationMutex_);
     generationQueue_.erase(
         std::remove_if(generationQueue_.begin(), generationQueue_.end(),
-                       [&](const glm::ivec2& request) {
+                       [&](const GenerationRequest& request) {
                            if (!obsolete(request.x, request.y))
                                return false;
                            pendingKeys_.erase(chunkKey(request.x, request.y));
@@ -2122,8 +2092,12 @@ void World::requestChunksAround(int centerX, int centerZ) {
         const int z = centerZ + offset.y;
         const std::int64_t key = chunkKey(x, z);
         if (!findChunk(x, z) && pendingKeys_.insert(key).second)
-            generationQueue_.push_back({x, z});
+            generationQueue_.push_back({x, z, generationEpoch_.load()});
     }
+    std::stable_sort(generationQueue_.begin(),generationQueue_.end(),[&](const auto& a,const auto& b) {
+        return streamingPriority(a.x-centerX,a.y-centerZ,streamingForward_)<
+               streamingPriority(b.x-centerX,b.y-centerZ,streamingForward_);
+    });
     generationCv_.notify_all();
 }
 
@@ -2187,6 +2161,7 @@ std::vector<StructureMobMarker> World::takeActiveStructureMobMarkers(bool spawnA
 }
 
 void World::integrateCompleted(int budget, int centerX, int centerZ) {
+    const auto started=std::chrono::steady_clock::now();
     for (int integrated = 0; integrated < budget; ++integrated) {
         GeneratedChunk generated;
         {
@@ -2195,6 +2170,7 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
                 break;
             generated = std::move(completedQueue_.front());
             completedQueue_.pop_front();
+            if(generated.epoch!=generationEpoch_.load()) continue;
             pendingKeys_.erase(chunkKey(generated.x, generated.z));
         }
         const int dx = generated.x - centerX;
@@ -2246,11 +2222,13 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
         markDirty(generated.x - 1, generated.z);
         markDirty(generated.x, generated.z + 1);
         markDirty(generated.x, generated.z - 1);
+        if(std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-started).count()>=streamingBudgetMilliseconds_) break;
     }
 }
 
 void World::unloadDistant(int centerX, int centerZ) {
     const int unloadDistance = std::max(renderDistance_, simulationDistance_) + 2;
+    std::shared_ptr<RetirementFence> retirementFence;
     for (auto it = chunks_.begin(); it != chunks_.end();) {
         const int dx = it->second->x - centerX;
         const int dz = it->second->z - centerZ;
@@ -2261,12 +2239,38 @@ void World::unloadDistant(int centerX, int centerZ) {
             priorityDirtyKeys_.erase(it->first);
             uploadedVertexCount_ -= static_cast<std::size_t>(
                 it->second->opaqueVertexCount + it->second->waterVertexCount);
+            auto& chunk=*it->second;
+            chunk.meshRevisionToken->store(UINT64_MAX,std::memory_order_release);
+            const bool hadGpu=chunk.opaquePage || chunk.waterVbo;
+            if(hadGpu) {
+                if(!retirementFence) {
+                    retirementFence=std::make_shared<RetirementFence>();
+                    retirementFence->handle=glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE,0);
+                    if(!retirementFence->handle) throw std::runtime_error("GPU retirement fence creation failed");
+                }
+            }
+            // Detach GPU and CPU payloads immediately from the world, but free
+            // them in small main-thread batches. Teleports otherwise cause
+            // thousands of heap frees and driver deletions in their first frame.
+            retiredTerrain_.push_back({std::move(chunk.opaquePage),chunk.opaqueFirstVertex,
+                chunk.opaqueBufferCapacity/sizeof(VoxelVertex),chunk.waterVao,chunk.waterVbo,
+                std::move(chunk.blocks),std::move(chunk.packedLight),std::move(chunk.lightEmitters),
+                hadGpu ? retirementFence : nullptr});
+            chunk.waterVao=chunk.waterVbo=0;
             it = chunks_.erase(it);
         } else {
             ++it;
         }
     }
+    // Submit the single batch fence even in developer fixtures without swaps.
+    if(retirementFence) glFlush();
     releaseEmptyTerrainPages();
+    const int lightRadius=unloadDistance+2; // Covers each solve's 3x3 destinations.
+    lightingQueue_.erase(std::remove_if(lightingQueue_.begin(),lightingQueue_.end(),[&](const auto& center) {
+        const auto dx=std::int64_t(center.x)-centerX,dz=std::int64_t(center.y)-centerZ;
+        if(dx*dx+dz*dz<=std::int64_t(lightRadius)*lightRadius) return false;
+        lightingSet_.erase(chunkKey(center.x,center.y));return true;
+    }),lightingQueue_.end());
     std::lock_guard<std::mutex> lock(meshMutex_);
     const auto obsolete = [&](int x, int z) {
         const int dx = x - centerX;
@@ -2302,92 +2306,18 @@ void World::unloadDistant(int centerX, int centerZ) {
     }
 }
 
-void World::updateStreaming(const glm::vec3& playerPosition, int meshBudget) {
-    const int centerX = floorDiv(static_cast<int>(std::floor(playerPosition.x)), CHUNK_SIZE);
-    const int centerZ = floorDiv(static_cast<int>(std::floor(playerPosition.z)), CHUNK_SIZE);
-    if (streamCenter_.x != centerX || streamCenter_.y != centerZ) {
-        streamCenter_ = {centerX, centerZ};
-        generationLoadRadius_.store(
-            std::max(renderDistance_, simulationDistance_), std::memory_order_relaxed);
-        generationCenterKey_.store(chunkKey(centerX, centerZ), std::memory_order_relaxed);
-        nextRequestOffset_ = 0;
-        discardObsoleteRequests(centerX, centerZ);
-        unloadDistant(centerX, centerZ);
-    }
-    integrateCompleted(4, centerX, centerZ);
-    if (!lightingQueue_.empty()) {
-        const glm::ivec2 update = lightingQueue_.front();
-        lightingQueue_.pop_front();
-        lightingSet_.erase(chunkKey(update.x, update.y));
-        rebuildBlockLightingNear(update.x, update.y);
-    }
-    requestChunksAround(centerX, centerZ);
-    uploadCompletedMeshes(meshBudget);
-    dispatchMeshJobs(meshBudget);
-}
-
-int World::pendingCpuMeshCount() const {
-    std::lock_guard<std::mutex> lock(meshMutex_);
-    return static_cast<int>(meshQueue_.size()) + (meshWorkerBusy_ ? 1 : 0);
-}
-
-int World::completedMeshCount() const {
-    std::lock_guard<std::mutex> lock(meshMutex_);
-    return static_cast<int>(completedMeshes_.size());
-}
-
-void World::dispatchMeshJobs(int budget) {
-    constexpr std::size_t MaximumMeshJobs = 12;
-    constexpr std::size_t MaximumBackgroundJobs = 8;
-    // Priority inserts can leave obsolete queue entries behind. Bound the
-    // number examined so a burst of edits cannot drain them in one frame.
-    int dispatched = 0;
-    int examined = 0;
-    const int maximumExamined = std::max(32, budget * 8);
-    while (dispatched < budget && examined < maximumExamined &&
-           !dirtyQueue_.empty()) {
-        ++examined;
-        const std::int64_t key = dirtyQueue_.front();
-        dirtyQueue_.pop_front();
-        if (dirtySet_.find(key) == dirtySet_.end())
-            continue;
-        const auto found = chunks_.find(key);
-        if (found == chunks_.end()) {
-            dirtySet_.erase(key);
-            priorityDirtyKeys_.erase(key);
-            continue;
-        }
-        const bool priority = priorityDirtyKeys_.find(key) != priorityDirtyKeys_.end();
-        {
-            std::lock_guard<std::mutex> lock(meshMutex_);
-            if (pendingMeshKeys_.find(key) != pendingMeshKeys_.end())
-                continue;
-            const std::size_t limit = priority ? MaximumMeshJobs : MaximumBackgroundJobs;
-            if (pendingMeshKeys_.size() >= limit) {
-                dirtyQueue_.push_front(key);
-                break;
-            }
-        }
-        MeshInput input = captureMeshInput(found->second->x, found->second->z);
-        {
-            std::lock_guard<std::mutex> lock(meshMutex_);
-            pendingMeshKeys_.emplace(key, input.identity);
-            if (priority)
-                meshQueue_.push_front(std::move(input));
-            else
-                meshQueue_.push_back(std::move(input));
-        }
-        priorityDirtyKeys_.erase(key);
-        ++dispatched;
-    }
-    if (dispatched > 0)
-        meshCv_.notify_one();
-}
-
 World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
     constexpr int sunlightHalo = 3;
     constexpr int span = CHUNK_SIZE + sunlightHalo * 2;
     MeshInput input;
+    {
+        std::lock_guard<std::mutex> lock(meshMutex_);
+        if(!recycledMeshInputs_.empty()) {
+            input.blocks=std::move(recycledMeshInputs_.front().blocks);
+            input.packedLight=std::move(recycledMeshInputs_.front().packedLight);
+            recycledMeshInputs_.pop_front();
+        }
+    }
     input.x = chunkX;
     input.z = chunkZ;
     input.epoch = meshEpoch_;
@@ -2408,12 +2338,15 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
             input.climateTinted=true; input.climateColors=center->climateColors;
         }
         input.revision = center->meshRevision;
+        input.revisionToken = center->meshRevisionToken;
         input.identity = center->meshIdentity;
         input.meshHeight = std::clamp(center->highestRenderableY + 2, minimumY() + 1, maximumY());
     }
     const std::size_t count = static_cast<std::size_t>(span * span * (input.meshHeight - input.minimumY));
     input.blocks.resize(count, Block::Air);
     input.packedLight.resize(count, 0);
+    std::fill(input.blocks.begin(),input.blocks.end(),Block::Air);
+    std::fill(input.packedLight.begin(),input.packedLight.end(),std::uint8_t{0});
     std::array<std::array<const Chunk*, 3>, 3> neighbors{};
     for (int dz = -1; dz <= 1; ++dz)
         for (int dx = -1; dx <= 1; ++dx)
@@ -2442,49 +2375,28 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
     return input;
 }
 
-void World::meshWorkerLoop() {
-    while (!stopping_) {
-        MeshInput input;
-        MeshOutput reusable;
-        {
-            std::unique_lock<std::mutex> lock(meshMutex_);
-            meshCv_.wait(lock, [&] { return stopping_ || !meshQueue_.empty(); });
-            if (stopping_)
-                return;
-            input = std::move(meshQueue_.front());
-            meshQueue_.pop_front();
-            meshWorkerBusy_ = true;
-            if (!recycledMeshes_.empty()) {
-                reusable = std::move(recycledMeshes_.front());
-                recycledMeshes_.pop_front();
-            }
-        }
-        MeshOutput result = buildMesh(input, std::move(reusable));
-        {
-            std::lock_guard<std::mutex> lock(meshMutex_);
-            meshWorkerBusy_ = false;
-            if (!stopping_)
-                completedMeshes_.push_back(std::move(result));
-        }
-    }
-}
-
-void World::recycleMeshOutput(MeshOutput result) {
-    // At most two returned outputs, at most 6 MiB total retained capacity.
-    if (result.opaque.capacity() > (2 * 1024 * 1024) / sizeof(VoxelVertex))
-        std::vector<VoxelVertex>().swap(result.opaque);
-    if (result.water.capacity() > (1024 * 1024) / sizeof(VoxelVertex))
-        std::vector<VoxelVertex>().swap(result.water);
-    result.opaque.clear();
-    result.water.clear();
-    std::lock_guard<std::mutex> lock(meshMutex_);
-    if (recycledMeshes_.size() < 2 && !stopping_)
-        recycledMeshes_.push_back(std::move(result));
-}
-
 void World::releaseEmptyTerrainPages() {
-    terrainPages_.erase(std::remove_if(terrainPages_.begin(), terrainPages_.end(),
-        [](const auto& page) { return page->allocated == 0; }), terrainPages_.end());
+    // Reuse the existing page allocator across travel/teleports. Deleting every
+    // newly empty page immediately forces driver deallocation followed by fresh
+    // allocation as destination chunks arrive. Keep a small idle reserve and
+    // trim at most one excess page per frame, after its retirement owners leave.
+    if(terrainPageTrimmedThisFrame_) return;
+    std::size_t emptyBytes=0;
+    unsigned emptyCount=0;
+    for(const auto& page:terrainPages_) if(!page->allocated && page.use_count()==1) {
+        ++emptyCount;emptyBytes+=page->capacity*sizeof(VoxelVertex);
+    }
+    if(emptyCount<=workerPlan_.mesh && emptyBytes<=workerPlan_.mesh*8U*1024U*1024U) return;
+    // Streaming can reuse pages immediately; cap that temporary reserve at
+    // 128 MiB even during uninterrupted flight. Once settled, keep 8–32 MiB.
+    if(emptyBytes<=128U*1024U*1024U &&
+       (!retiredTerrain_.empty() || pendingChunkCount() || !dirtySet_.empty())) return;
+    const auto empty=std::find_if(terrainPages_.begin(),terrainPages_.end(),
+        [](const auto& page){return !page->allocated && page.use_count()==1;});
+    if(empty!=terrainPages_.end()) {
+        terrainPageTrimmedThisFrame_=true;
+        terrainPages_.erase(empty);
+    }
 }
 
 void World::uploadOpaqueMesh(Chunk& chunk, const std::vector<VoxelVertex>& vertices) {
@@ -2558,6 +2470,7 @@ void World::uploadMeshResult(const MeshOutput& result) {
 }
 
 void World::uploadCompletedMeshes(int budget) {
+    const auto started=std::chrono::steady_clock::now();
     for (int uploaded = 0; uploaded < budget; ++uploaded) {
         MeshOutput result;
         {
@@ -2586,6 +2499,7 @@ void World::uploadCompletedMeshes(int budget) {
         }
         if (chunk->meshIdentity != result.identity ||
             chunk->meshRevision != result.revision) {
+            ++staleMeshCount_;
             if (dirtySet_.find(key) != dirtySet_.end()) {
                 priorityDirtyKeys_.insert(key);
                 dirtyQueue_.push_front(key);
@@ -2597,6 +2511,7 @@ void World::uploadCompletedMeshes(int budget) {
         priorityDirtyKeys_.erase(key);
         uploadMeshResult(result);
         recycleMeshOutput(std::move(result));
+        if(std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-started).count()>=streamingBudgetMilliseconds_) break;
     }
 }
 
@@ -2634,7 +2549,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
                        loadedGenerationVersion != 5U &&
                        loadedGenerationVersion != 6U && loadedGenerationVersion != 7U &&
                        loadedGenerationVersion != 8U && loadedGenerationVersion != 9U &&
-                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U))
+                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U && loadedGenerationVersion != 12U))
             return false;
     }
 
@@ -2817,9 +2732,19 @@ int World::pendingChunkCount() const {
 }
 
 void World::computeSunlight(Chunk& chunk) {
-    for (int localZ = 0; localZ < CHUNK_SIZE; ++localZ) {
-        for (int localX = 0; localX < CHUNK_SIZE; ++localX)
-            computeSunlightColumn(chunk, localX, localZ);
+    std::array<std::uint8_t,CHUNK_SIZE*CHUNK_SIZE> columns;
+    columns.fill(15);
+    // Preserve the independent top-to-bottom recurrence of every column,
+    // while reading/writing contiguous rows instead of 256-byte strides.
+    for(int y=chunk.allocatedMaximumY()-1;y>=minimumY();--y) {
+        const auto row=localIndex(0,y,0);
+        for(int cell=0;cell<CHUNK_SIZE*CHUNK_SIZE;++cell) {
+            const Block block=chunk.blocks[row+cell];
+            auto& light=columns[cell];
+            if(occludesLight(block)) light=0;
+            else if((isLeaf(block)||isWater(block))&&light>0) --light;
+            chunk.setSunlightLocal(row+cell,light);
+        }
     }
 }
 
@@ -4170,6 +4095,7 @@ void World::markDirty(int chunkX, int chunkZ, bool highPriority) {
     }
 
     ++chunk->meshRevision;
+    chunk->meshRevisionToken->store(chunk->meshRevision,std::memory_order_release);
     const std::int64_t key = chunkKey(chunkX, chunkZ);
     if (highPriority)
         priorityDirtyKeys_.insert(key);
@@ -4258,7 +4184,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
     thread_local std::vector<GreedyFace> greedyFaceStorage;
     thread_local std::vector<int> greedySlotStorage;
     RenderScratch<GreedyFace> faceScratch(greedyFaceStorage, 1024 * 1024);
-    RenderScratch<int> slotScratch(greedySlotStorage, 1024 * 1024);
+    RenderScratch<int> slotScratch(greedySlotStorage, 3 * 1024 * 1024);
     auto& greedyFaces = faceScratch.get();
     auto& greedySlots = slotScratch.get();
     greedySlots.assign(static_cast<std::size_t>(6 * (input.meshHeight - input.minimumY) * CHUNK_SIZE * CHUNK_SIZE), -1);

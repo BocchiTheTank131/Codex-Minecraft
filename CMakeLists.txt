@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.11.1 LANGUAGES C CXX)
-set(VOXELFRONTIER_VERSION_SUFFIX "")
+project(VoxelFrontier VERSION 2.11.2 LANGUAGES C CXX)
+set(VOXELFRONTIER_VERSION_SUFFIX "-beta")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
@@ -60,6 +60,9 @@ add_executable(VoxelFrontier
     src/Weather.cpp
     src/WeatherRenderer.cpp
     src/WeatherValidation.cpp
+    src/StreamingValidation.cpp
+    src/ChunkStreaming.cpp
+    src/WorldStreaming.cpp
     src/Farming.cpp
     src/InventoryUI.cpp
     src/Player.cpp
@@ -73,7 +76,10 @@ add_executable(VoxelFrontier
     src/WorldBiomeValidation.cpp
     src/TerrainDensity.cpp
     src/WorldDensity.cpp
+    src/TerrainExploration.cpp
     src/WorldDensityValidation.cpp
+    src/WorldExplorationValidation.cpp
+    src/WorldExploration.cpp
     src/WorldGeography.cpp
     src/WorldGeographyValidation.cpp
     src/WorldValidation.cpp

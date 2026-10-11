@@ -469,7 +469,7 @@ int UIManager::menuHit(
     }
     if (state == GameState::VideoSettings) {
         for (int i=0; i<3; ++i) if (MenuLayout::tab(i,width,height).contains(mouseX,mouseY)) return 30+i;
-        for (int i=0; i<12; ++i) if (MenuLayout::videoRow(i,width,height).contains(mouseX,mouseY)) return MenuLayout::VideoActions[i];
+        for (int i=0; i<int(MenuLayout::VideoActions.size()); ++i) if (MenuLayout::videoRow(i,width,height).contains(mouseX,mouseY)) return MenuLayout::VideoActions[i];
         return MenuLayout::back(width,height).contains(mouseX,mouseY) ? 15 : -1;
     }
     const float panelX = width * 0.5f - 220.0f;

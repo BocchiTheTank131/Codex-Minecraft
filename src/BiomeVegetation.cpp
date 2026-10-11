@@ -1,4 +1,5 @@
 #include "BiomeVegetation.h"
+#include "TerrainExploration.h"
 #include <algorithm>
 #include <cmath>
 
@@ -24,7 +25,7 @@ Wood wood(TreeStyle style) {
 void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blocks,
                         const std::function<BiomeTerrain(int,int)>& terrain,
                         const std::function<bool(int,int)>& reserved,
-                        const std::function<bool(int,int)>& supported, int minimumY, int maximumY, int seaLevel) {
+                        const std::function<bool(int,int)>& supported, int minimumY, int maximumY, int seaLevel, unsigned generatorVersion) {
     const int height = maximumY, sea = seaLevel;
     const int ox=cx*size,oz=cz*size;
     auto at=[&](int x,int y,int z)->Block& { return blocks[((y-minimumY)*size+z)*size+x]; };
@@ -63,6 +64,15 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
         }
         if(!biome.treeSpacing || h%unsigned(biome.treeSpacing) || ground.height<=sea ||
            ground.river>.10f || biome.trees==TreeStyle::None) continue;
+        if(generatorVersion>=12) {
+            bool crowded=false;
+            for(int dz=-2;dz<=2 && !crowded;++dz)for(int dx=-2;dx<=2;++dx) {
+                if(dx*dx+dz*dz>4 || (!dx&&!dz)) continue;
+                const auto neighbor=hash(x+dx,z+dz,seed);
+                if(neighbor<h && neighbor%unsigned(biome.treeSpacing)==0) {crowded=true;break;}
+            }
+            if(crowded) continue;
+        }
         if(reserved(x,z)) continue;
         const int slope=std::max({std::abs(terrain(x-1,z).height-ground.height),
             std::abs(terrain(x+1,z).height-ground.height),std::abs(terrain(x,z-1).height-ground.height),
@@ -120,8 +130,17 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
         } else if(h%100U<unsigned(biome.decorationPercent)) {
             Block plant=Block::TallGrass;
             if(biome.trees==TreeStyle::Spruce||biome.trees==TreeStyle::GiantSpruce) plant=Block::Fern;
-            else if(ground.biome==Biome::MushroomFields||ground.biome==Biome::DarkForest||ground.biome==Biome::Swamp)
-                plant=(h&1)?Block::RedMushroom:Block::BrownMushroom;
+            else if(ground.biome==Biome::MushroomFields||ground.biome==Biome::DarkForest||ground.biome==Biome::Swamp) {
+                if(generatorVersion<12 || TerrainExploration::mushroomCluster(wx,wz,seed,ground.biome))
+                    plant=(h&1)?Block::RedMushroom:Block::BrownMushroom;
+                else if(ground.biome==Biome::MushroomFields) continue;
+                else {
+                    // Leave open ground between clusters instead of replacing
+                    // the old mushroom carpet with an equally dense grass one.
+                    if(h%4U) continue;
+                    plant=ground.biome==Biome::DarkForest ? Block::Fern : Block::TallGrass;
+                }
+            }
             else if(ground.biome==Biome::FlowerForest||ground.biome==Biome::Meadow || h%7U==0)
                 plant=(h&1)?Block::RedFlower:Block::YellowFlower;
             if(ground.biome==Biome::Jungle && h%5U==0) {

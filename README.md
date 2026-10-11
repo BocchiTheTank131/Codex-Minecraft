@@ -35,7 +35,7 @@ Pressing PLAY again in the demo starts a fresh gameplay session.
 
 ## Features
 
-- Versioned procedural worlds: new Generator V11 worlds span Y=-64 through 319; legacy worlds keep Y=0 through 255
+- Versioned procedural worlds: new Generator V12 worlds span Y=-64 through 319; V11 worlds retain those bounds and generators 1–10 keep Y=0 through 255
 - Multi-noise terrain with continents, mountains, rivers, beaches, oceans, caves, ravines, and aquifers
 - Plains, deserts, snowy mountains, forests, and other terrain variations
 - Villages, pillager outposts, desert pyramids, ruins, wells, and campsites
@@ -69,7 +69,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.11.1** has **142 inventory items**, **96 placeable block families**, **160 block
+Version **2.11.2-beta** has **142 inventory items**, **96 placeable block families**, **160 block
 IDs/states including Air**, **73 crafting recipes**, and **23 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -197,9 +197,46 @@ and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in th
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
 
+## v2.11.2-beta - World Generation, Vegetation & Chunk Streaming
+
+New worlds use **Generator V12**. Worlds saved with generators **1–11** retain their
+original geography, including chunks explored after updating. No block/item IDs or save
+record layouts change. Generator V12 preserves the 384-block height, continents,
+macroclimate, 35 biomes, density overhangs, underground caves, ores and aquifers.
+
+- Medium-scale climate-compatible habitats replace rapidly alternating local variants.
+  Inland rolling relief adds foothills and valleys without shifting the continental field.
+- Swamps have rare mushroom clusters; dark forests have spaced clusters; Mushroom Fields
+  retain plentiful mushrooms. Ground decoration between clusters is sparser, and tree
+  candidates use deterministic spacing.
+- Occasional hillside passages and sinkholes connect the surface to existing dry cave
+  cavities. Structure reservations and low/wet shore terrain are protected.
+- Generation and meshing use separate adaptive worker pools. **Chunk Streaming** in Video
+  offers Auto, Low, Balanced and High; dual-core systems use one worker for each stage.
+- Nearby and forward-facing work is prioritized. Mesh revisions and world epochs discard
+  obsolete results; required neighbor arrivals are coalesced before background meshing.
+- OpenGL uploads and resource cleanup stay on the main thread under soft time budgets.
+  Teleport cleanup spreads CPU payload and GPU resource releases across frames.
+- F3 distinguishes **surface temperature** from **camera-altitude temperature**, and shows
+  worker limits/activity, generation/mesh throughput, stage queues and upload timings.
+  Weather continues using surface climate rather than Spectator altitude.
+
+Validation details and measured limitations are in
+[Generator V12 validation](docs/GENERATOR_V12_VALIDATION.md). Developer fixtures:
+`--exploration-audit=<absolute-output-directory>` exports paired V11/V12 maps, route
+diversity, vegetation counts and connected-entrance tests; `--streaming-benchmark=<directory>`
+measures RD8/16/32/64 warmup, 8× flight, recovery and teleport phases. Optional controls:
+`--generator=11|12`, `--streaming-rd=64`, `--streaming-quality=0..3`,
+`--streaming-flight-seconds=90`, `--streaming-recovery-seconds=120`. Five-second queue and
+memory samples support checking longer-flight convergence.
+
+This is a prerelease. Dense RD64 scenes still have substantial memory/rendering costs,
+and occasional teleport stalls remain; see the validation report before selecting a
+high render distance. The latest stable release remains v2.11.1.
+
 ## v2.11.1 - Generator V11: Terrain & Underground Overhaul
 
-New worlds use **terrain generator 11**, with **384 vertical blocks (Y=-64..319)** and
+This release introduced **terrain generator 11**, with **384 vertical blocks (Y=-64..319)** and
 **sea level 64**. Existing worlds keep their saved generator version **1–10**, original
 vertical coordinates, sea level, and unexplored terrain. The application release version is
 **v2.11.1**.
@@ -406,12 +443,13 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
 - Save & Return to Menu saves and unloads the full game. The standalone demo discards its
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
-Download from [Voxel Frontier v2.11.1](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.1).
+Prerelease: [Voxel Frontier v2.11.2-beta](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta).
+Latest stable: [Voxel Frontier v2.11.1](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.1).
 
-| v2.11.1 Windows build | Purpose | Persistence |
+| v2.11.2-beta Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.11.1-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.11.1-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.11.2-beta-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.11.2-beta-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -737,6 +775,7 @@ Resetting removes gameplay save data while preserving settings, screenshots, and
 Voxel Frontier uses a chunk-based rendering architecture designed for high render distances.
 
 - Terrain generation runs on background worker threads
+- Adaptive generation and mesh pools respect hardware limits and the Chunk Streaming setting
 - OpenGL uploads remain on the main thread
 - Only exposed voxel faces are generated
 - Opaque and transparent geometry use separate meshes
@@ -775,6 +814,8 @@ The F3 overlay includes FPS, coordinates, chunk, biome, facing, mode, seed, ligh
 render/simulation distances, entity/mob counts, spawn attempts, AI/navigation timings, queues,
 vertices/triangles, and build/upload/edit timings. On Windows it also reports current process
 RAM (working set) and peak usage, sampled periodically. F4 adds world-generation diagnostics.
+Streaming diagnostics include queued/ready work, active generation/mesh workers, chunks per
+second, light solves and upload batches. Surface and camera temperatures are shown separately.
 
 ## Settings
 
@@ -796,6 +837,7 @@ Available options include:
 - Brightness: 0–100%, with 50% as the normal midpoint; 100% is not Fullbright
 - Low / Medium / High graphics presets, plus Custom
 - Entity distance, particle density, effect quality, and frame limit
+- Chunk Streaming: Auto / Low / Balanced / High worker and scheduling limits
 - Audio submenu: Master, Music, SFX, Passive Mobs, and Hostile Mobs volume
 - Off / 2x / 4x MSAA
 - Fullscreen
@@ -847,6 +889,9 @@ The project is split into focused systems:
 - `Game` - initialization, main loop, simulation, rendering, saves, and shutdown
 - `World` - chunks, terrain, blocks, lighting, and world data
 - `TerrainDensity` / `WorldDensity` - versioned V11 density lattice, caves, aquifers and depth-based ores
+- `TerrainExploration` / `WorldExploration` - V12 habitat variants, spaced vegetation and connected surface cave passages
+- `ChunkStreaming` / `WorldStreaming` - hardware-aware worker plans, priorities, cancellation and bounded main-thread integration
+- `WorldExplorationValidation` / `StreamingValidation` - route, compatibility, concurrency and flight fixtures
 - `WorldDensityValidation` - V11 maps, cutaways, deterministic hashes and vertical-range regressions
 - `UndergroundContent` - appended underground block/item metadata
 - `Biome` - shared climate thresholds, biome definitions and vegetation/water colors

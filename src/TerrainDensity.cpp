@@ -13,20 +13,32 @@ Fields mix(const Fields& a, const Fields& b, float t) {
         a.tunnelA+(b.tunnelA-a.tunnelA)*t, a.tunnelB+(b.tunnelB-a.tunnelB)*t,
         a.pillar+(b.pillar-a.pillar)*t, a.vein+(b.vein-a.vein)*t};
 }
+Fields sampleNode(float wx,float wy,float wz,const PerlinNoise& surface,const PerlinNoise& chamber,
+    const PerlinNoise& tunnels,const PerlinNoise& pillars,const PerlinNoise& veins) {
+    return {
+        surface.fractal3D(wx*.019f+31.7f, wy*.028f-11.3f, wz*.019f-53.1f, 3, 2.f, .45f),
+        chamber.fractal3D(wx*.009f+47.3f, wy*.014f+13.9f, wz*.009f-97.1f, 2, 2.f, .38f),
+        tunnels.noise(wx*.013f+73.9f, wy*.020f-21.1f, wz*.013f+31.7f),
+        tunnels.noise(wx*.013f-137.7f, wy*.020f+71.3f, wz*.013f-53.9f),
+        pillars.noise(wx*.040f+17.7f, wy*.006f-3.3f, wz*.040f+91.1f),
+        veins.noise(wx*.045f-37.1f, wy*.061f+11.9f, wz*.045f+71.3f)
+    };
+}
+}
+Fields sampleAt(int x,int y,int z,const PerlinNoise& surface,const PerlinNoise& chamber,
+    const PerlinNoise& tunnels,const PerlinNoise& pillars,const PerlinNoise& veins) {
+    const int bx=x-(x%4+4)%4,bz=z-(z%4+4)%4,by=MinimumY+(y-MinimumY)/8*8;
+    const float fx=float(x-bx)*.25f,fz=float(z-bz)*.25f,fy=float(y-by)*.125f;
+    const auto n=[&](int dx,int dy,int dz){return sampleNode(float(bx+dx*4),float(by+dy*8),float(bz+dz*4),surface,chamber,tunnels,pillars,veins);};
+    return mix(mix(mix(n(0,0,0),n(1,0,0),fx),mix(n(0,0,1),n(1,0,1),fx),fz),
+               mix(mix(n(0,1,0),n(1,1,0),fx),mix(n(0,1,1),n(1,1,1),fx),fz),fy);
 }
 Grid::Grid(int cx, int cz, const PerlinNoise& surface, const PerlinNoise& chamber,
            const PerlinNoise& tunnels, const PerlinNoise& pillars, const PerlinNoise& veins, int maximumY)
     : originX_(cx*16-4), originZ_(cz*16-4) {
     for (int y=0; y<std::min(Vertical,(maximumY-MinimumY+7)/8+1); ++y) for (int z=0; z<Horizontal; ++z) for (int x=0; x<Horizontal; ++x) {
         const float wx=float(originX_+x*4), wy=float(MinimumY+y*8), wz=float(originZ_+z*4);
-        nodes_[(y*Horizontal+z)*Horizontal+x] = {
-            surface.fractal3D(wx*.019f+31.7f, wy*.028f-11.3f, wz*.019f-53.1f, 3, 2.f, .45f),
-            chamber.fractal3D(wx*.009f+47.3f, wy*.014f+13.9f, wz*.009f-97.1f, 2, 2.f, .38f),
-            tunnels.noise(wx*.013f+73.9f, wy*.020f-21.1f, wz*.013f+31.7f),
-            tunnels.noise(wx*.013f-137.7f, wy*.020f+71.3f, wz*.013f-53.9f),
-            pillars.noise(wx*.040f+17.7f, wy*.006f-3.3f, wz*.040f+91.1f),
-            veins.noise(wx*.045f-37.1f, wy*.061f+11.9f, wz*.045f+71.3f)
-        };
+        nodes_[(y*Horizontal+z)*Horizontal+x] = sampleNode(wx,wy,wz,surface,chamber,tunnels,pillars,veins);
     }
 }
 Fields Grid::at(int wx, int wy, int wz) const {

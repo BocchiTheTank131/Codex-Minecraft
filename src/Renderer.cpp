@@ -2516,9 +2516,9 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
     } else {
         for (int index=0; index<3; ++index)
             menuButton(vertices,MenuLayout::tab(index,width,height),categories[index],index==0 || hovered==30+index,width,height);
-        const std::array<std::string,12> labels{"RENDER DISTANCE","SIMULATION DISTANCE","FOV","BRIGHTNESS",
-            "ANTI ALIASING","FULLSCREEN","VSYNC","FPS LIMIT","GRAPHICS PRESET","ENTITY DISTANCE","SHOW FPS","SHOW COORDINATES"};
-        const std::array<std::string,12> values{
+        const std::array<std::string,13> labels{"RENDER DISTANCE","SIMULATION DISTANCE","FOV","BRIGHTNESS",
+            "ANTI ALIASING","FULLSCREEN","VSYNC","FPS LIMIT","GRAPHICS PRESET","ENTITY DISTANCE","SHOW FPS","SHOW COORDINATES","CHUNK STREAMING"};
+        const std::array<std::string,13> values{
             std::to_string(settings.renderDistance),std::to_string(settings.simulationDistance),
             std::to_string(static_cast<int>(std::round(settings.fov))),
             std::to_string(static_cast<int>(std::round(settings.brightness*100)))+"%",
@@ -2526,10 +2526,11 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
             settings.fullscreen ? "ON" : "OFF",settings.vsync ? "ON" : "OFF",
             settings.frameLimit ? std::to_string(settings.frameLimit) : "UNLIMITED",
             settings.graphicsPreset==GraphicsPreset::Low ? "LOW" : settings.graphicsPreset==GraphicsPreset::Medium ? "MEDIUM" : settings.graphicsPreset==GraphicsPreset::High ? "HIGH" : "CUSTOM",
-            std::to_string(settings.entityDistance),settings.showFps ? "ON" : "OFF",settings.showCoordinates ? "ON" : "OFF"};
-        const std::array<float,12> positions{(settings.renderDistance-2)/62.0f,(settings.simulationDistance-2)/30.0f,
+            std::to_string(settings.entityDistance),settings.showFps ? "ON" : "OFF",settings.showCoordinates ? "ON" : "OFF",
+            std::array<const char*,4>{"AUTO","LOW","BALANCED","HIGH"}[settings.chunkStreamingQuality]};
+        const std::array<float,13> positions{(settings.renderDistance-2)/62.0f,(settings.simulationDistance-2)/30.0f,
             (settings.fov-55)/50.0f,settings.brightness,0,0,0,0,0,(settings.entityDistance-2)/62.0f,0,0};
-        for (int index=0; index<12; ++index) {
+        for (int index=0; index<int(MenuLayout::VideoActions.size()); ++index) {
             const auto r=MenuLayout::videoRow(index,width,height);
             addRect(vertices,r.x,r.y,r.width,r.height,hovered==MenuLayout::VideoActions[index] ? glm::vec4(.27f,.32f,.25f,1) : glm::vec4(.15f,.17f,.19f,1),width,height);
             menuText(vertices,labels[index],r.x+12,r.y+11,1.35f,{1,1,1,1},width,height);
