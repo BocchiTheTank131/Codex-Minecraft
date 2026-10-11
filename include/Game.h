@@ -91,6 +91,7 @@ private:
         float previewBrightness = .5f;
         float previewYaw = -90.f, previewPitch = -42.f;
         bool previewTorch = false;
+        bool previewClean = false, previewGround = false;
         bool worldgenScreenshotTaken = false;
         bool checksPassed = true;
         double startTime = 0.0;
@@ -203,11 +204,12 @@ private:
     int streamingFixtureDistance_=0;
     float streamingFlightSeconds_=20.f;
     float streamingRecoverySeconds_=40.f;
+    std::string aestheticsAudit_;
     std::string explorationAudit_;
     std::string biomeAudit_;
     std::string geographyAudit_;
     std::string densityAudit_;
-    unsigned fixtureGenerator_ = 12;
+    unsigned fixtureGenerator_ = 13;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();

@@ -59,6 +59,7 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     const float continent = continentalNoise_.fractal2D(wx * .00010f + .371f, wz * .00010f - .613f, 2, 2.f, .23f);
     const float coast = continentalNoise_.fractal2D(wx * .00045f + 91.417f, wz * .00045f - 37.283f, 2, 2.f, .25f);
     const float naturalContinent = continent * .88f + coast * .12f;
+    sample.naturalContinentalness = naturalContinent;
     const float starter = 1.f - smooth(160000.f, 1000000.f,
         (x * x + z * z) * std::clamp(1.f + coast * 2.f, .35f, 1.8f));
     // Guarantee a gentle starter shore if the origin lies in ocean. Do not

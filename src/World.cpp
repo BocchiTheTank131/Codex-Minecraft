@@ -465,7 +465,7 @@ World::World(std::uint32_t seed, std::uint32_t generationVersion)
       cheeseNoise_(seed ^ 0x91b37d65U), spaghettiNoise_(seed ^ 0x326fa1cbU),
       noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed),
       seed_(seed) {
-    generationVersion_ = std::clamp(generationVersion, 1U, 12U);
+    generationVersion_ = std::clamp(generationVersion, 1U, 13U);
     const auto maximum=streamingWorkerPlan(std::thread::hardware_concurrency(),ChunkStreamingQuality::High);
     workerPlan_=streamingWorkerPlan(std::thread::hardware_concurrency(),streamingQuality_);
     generationWorkerLimit_=workerPlan_.generation;
@@ -2549,7 +2549,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
                        loadedGenerationVersion != 5U &&
                        loadedGenerationVersion != 6U && loadedGenerationVersion != 7U &&
                        loadedGenerationVersion != 8U && loadedGenerationVersion != 9U &&
-                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U && loadedGenerationVersion != 12U))
+                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U && loadedGenerationVersion != 12U && loadedGenerationVersion != 13U))
             return false;
     }
 

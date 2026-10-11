@@ -219,7 +219,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 12);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 13);
     ~World();
 
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
@@ -261,7 +261,8 @@ public:
     void prepareSpawnTerrain(const glm::vec3& position);
     bool runBiomeAudit(const std::string& directory, std::string& report) const;
     bool runDensityAudit(const std::string& directory, std::string& report, unsigned modernVersion = 11) const;
-    bool runExplorationAudit(const std::string& directory,std::string& report) const;
+    bool runAestheticsAudit(const std::string& directory,std::string& report) const;
+    bool runExplorationAudit(const std::string& directory,std::string& report,unsigned modernVersion=12) const;
     bool runStreamingSelfTest(std::string& report);
     bool runGeographyAudit(const std::string& directory, std::string& report) const;
     bool runPatch272SelfTest(std::string& report) const;
@@ -303,6 +304,8 @@ public:
     int pendingCpuMeshCount() const;
     int completedMeshCount() const;
     int renderedChunkCount() const { return renderedChunkCount_; }
+    struct TerrainMemory {std::size_t vertices=0,usedBytes=0,capacityBytes=0;};
+    TerrainMemory terrainMemory() const;
     int opaqueSubmissionCount() const { return opaqueSubmissionCount_; }
     float lastChunkRebuildMilliseconds() const { return lastChunkRebuildMilliseconds_; }
     float lastMeshUploadMilliseconds() const { return lastMeshUploadMilliseconds_; }
@@ -329,6 +332,7 @@ private:
         int height = SEA_LEVEL;
         Biome biome = Biome::Plains;
         float continentalness = 0.0f;
+        float naturalContinentalness = 0.0f;
         float erosion = 0.0f;
         float temperature = 0.0f;
         float humidity = 0.0f;
@@ -406,7 +410,7 @@ private:
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 12;
+    std::uint32_t generationVersion_ = 13;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;
@@ -522,6 +526,7 @@ private:
     TerrainSample sampleTerrain(int worldX, int worldZ) const;
     TerrainSample sampleTerrainLegacy(int worldX, int worldZ) const;
     TerrainSample sampleTerrainModern(int worldX, int worldZ) const;
+    TerrainSample sampleTerrainAesthetics(int x,int z) const;
     TerrainSample sampleTerrainDensity(int worldX, int worldZ) const;
     GeneratedChunk generateChunkDataDensity(int chunkX, int chunkZ) const;
     TerrainSample sampleTerrainGeography(int worldX, int worldZ) const;

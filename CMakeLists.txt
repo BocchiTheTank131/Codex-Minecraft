@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(VoxelFrontier VERSION 2.11.2 LANGUAGES C CXX)
-set(VOXELFRONTIER_VERSION_SUFFIX "-beta")
+set(VOXELFRONTIER_VERSION_SUFFIX "-beta2")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
@@ -75,6 +75,9 @@ add_executable(VoxelFrontier
     src/World.cpp
     src/WorldBiomeValidation.cpp
     src/TerrainDensity.cpp
+    src/TerrainAesthetics.cpp
+    src/WorldAesthetics.cpp
+    src/WorldAestheticsValidation.cpp
     src/WorldDensity.cpp
     src/TerrainExploration.cpp
     src/WorldDensityValidation.cpp

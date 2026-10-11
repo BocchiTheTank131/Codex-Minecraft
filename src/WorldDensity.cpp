@@ -2,6 +2,7 @@
 #include "TerrainDensity.h"
 #include "BiomeVegetation.h"
 #include "TerrainExploration.h"
+#include "TerrainAesthetics.h"
 #include <bitset>
 #include <algorithm>
 #include <array>
@@ -13,6 +14,7 @@ float smooth(float a,float b,float v) {
 }
 }
 World::TerrainSample World::sampleTerrainDensity(int x,int z) const {
+    if(generationVersion_>=13) return sampleTerrainAesthetics(x,z);
     auto s=sampleTerrainGeography(x,z);
     // Preserve V10 continents/macroclimate. Medium habitat variation only
     // chooses compatible regional variants, rather than warping the coast.
@@ -72,6 +74,16 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
         }
         return sampleTerrainDensity(x,z);
     };
+    std::array<float,Span*Span> slopes{};
+    if(generationVersion_>=13) for(int z=-1;z<=16;++z)for(int x=-1;x<=16;++x) {
+        const auto i=(z+1)*Span+x+1;
+        const int h=terrain[i].height;
+        slopes[i]=float(std::max({std::abs(terrainAt(ox+x-4,oz+z).height-h),
+            std::abs(terrainAt(ox+x+4,oz+z).height-h),std::abs(terrainAt(ox+x,oz+z-4).height-h),
+            std::abs(terrainAt(ox+x,oz+z+4).height-h),std::abs(terrainAt(ox+x-1,oz+z).height-h),
+            std::abs(terrainAt(ox+x+1,oz+z).height-h),std::abs(terrainAt(ox+x,oz+z-1).height-h),
+            std::abs(terrainAt(ox+x,oz+z+1).height-h)}))*.25f;
+    }
     const auto structureTerrain=[&](int x,int z) { return structureTerrainAt(x,z); };
     const auto plans=structures_.plansForChunk(cx,cz,structureTerrain);
     const auto reserved=[&](int x,int z) {
@@ -88,8 +100,15 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
             const float aquifer=aquiferNoise_.fractal2D(x*.0018f+113.7f,z*.0018f-67.3f,2,2.f,.3f);
             const Column c{t.height,smooth(95.f,180.f,float(t.height))*(1.f-smooth(.40f,.83f,t.erosion)),
                 aquifer,-24.f+aquifer*30.f,t.ravine};
-            return density(sampleAt(x,y,z,ridgeNoise_,cheeseNoise_,spaghettiNoise_,noodleNoise_,caveNoise_),c,y)<=0;
-        },[&](int x,int z){return explorationStructureReservedAt(x,z);});
+            const auto f=sampleAt(x,y,z,ridgeNoise_,cheeseNoise_,spaghettiNoise_,noodleNoise_,caveNoise_);
+            if(generationVersion_<13) return density(f,c,y)<=0;
+            const float slope=float(std::max({std::abs(terrainAt(x-4,z).height-t.height),
+                std::abs(terrainAt(x+4,z).height-t.height),std::abs(terrainAt(x,z-4).height-t.height),
+                std::abs(terrainAt(x,z+4).height-t.height),std::abs(terrainAt(x-1,z).height-t.height),
+                std::abs(terrainAt(x+1,z).height-t.height),std::abs(terrainAt(x,z-1).height-t.height),
+                std::abs(terrainAt(x,z+1).height-t.height)}))*.25f;
+            return TerrainAesthetics::density(f,c,y,slope)<=0;
+        },[&](int x,int z){return explorationStructureReservedAt(x,z);},generationVersion_);
         for(int z=-1;z<=16;++z)for(int x=-1;x<=16;++x) {
             if(reserved(ox+x,oz+z)) continue;
             auto& mask=entranceMask[(z+1)*Span+x+1];
@@ -101,7 +120,7 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
     }
     int highest=SeaLevel;
     for(const auto& t:terrain) highest=std::max(highest,t.height);
-    const int scanTop=std::min(MaximumY,MinimumY+((highest+53-MinimumY+15)/16)*16);
+    const int scanTop=std::min(MaximumY,MinimumY+((highest+(generationVersion_>=13?25:53)-MinimumY+15)/16)*16);
     const Grid grid(cx,cz,ridgeNoise_,cheeseNoise_,spaghettiNoise_,noodleNoise_,caveNoise_,scanTop);
     result.blocks.resize(CHUNK_SIZE*CHUNK_SIZE*(scanTop-MinimumY),Block::Air);
     // Immutable local occupancy includes a halo for exact exposed-ore tests.
@@ -109,7 +128,9 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
     const auto occupancyIndex=[](int x,int y,int z) { return ((y-MinimumY)*Span+z+1)*Span+x+1; };
     for(int y=MinimumY;y<scanTop;++y) for(int z=-1;z<=16;++z) for(int x=-1;x<=16;++x) {
         const auto& c=columns[(z+1)*Span+x+1];
-        solid[occupancyIndex(x,y,z)]=static_cast<std::uint8_t>(y<=c.height+51 && density(grid.at(ox+x,y,oz+z),c,y)>0 && !entranceMask[(z+1)*Span+x+1].test(y-MinimumY));
+        const auto f=grid.at(ox+x,y,oz+z);
+        const float field=generationVersion_>=13?TerrainAesthetics::density(f,c,y,slopes[(z+1)*Span+x+1]):density(f,c,y);
+        solid[occupancyIndex(x,y,z)]=static_cast<std::uint8_t>(y<=c.height+51 && field>0 && !entranceMask[(z+1)*Span+x+1].test(y-MinimumY));
     }
     // Ore probabilities are constant per depth and random rolls per 3^3 cell.
     // Compute both once instead of repeating seven hashes for every rock voxel.
@@ -151,8 +172,12 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
                 continue;
             }
             Block b=(y<0 || (y<8 && h%8U>static_cast<unsigned>(y)))?Block::Deepslate:Block::Stone;
-            if(y==t.height) b=biome.surface;
-            else if(y>t.height-4) b=biome.soil;
+            const float slope=slopes[(z+1)*Span+x+1];
+            const bool rock=generationVersion_>=13 && slope>1.7f && !biome.dry &&
+                t.biome!=Biome::MushroomFields && !biome.frozen;
+            const bool foothill=generationVersion_>=13 && t.biome==Biome::Mountains && slope<1.2f;
+            if(y==t.height) b=rock?Block::Stone:foothill?Block::Grass:biome.surface;
+            else if(y>t.height-(generationVersion_>=13? (slope>.85f?2:4):4)) b=rock?Block::Stone:foothill?Block::Dirt:biome.soil;
             if(b==Block::Stone || b==Block::Deepslate) {
                 const auto f=grid.at(ox+x,y,oz+z);
                 const bool deep=b==Block::Deepslate;
@@ -198,6 +223,15 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
         if(t.ravine>=.02f) return false;
         if(generationVersion_>=12) for(const auto& cave:entrances)
             if(TerrainExploration::carves(cave,x,t.height,z)) return false;
+        if(generationVersion_>=13) {
+            // V13 density guarantees an uncarved three-block surface skin.
+            // Entrance masks are the only exception at these depths; evaluate
+            // the same deterministic plans instead of resampling 3D noise.
+            if(t.height<=SeaLevel||t.height>=scanTop-24) return false;
+            for(const auto& cave:entrances)
+                if(TerrainExploration::carves(cave,x,t.height-1,z)||
+                   TerrainExploration::carves(cave,x,t.height-2,z)) return false;
+        }
         return true;
     },MinimumY,scanTop,SeaLevel,generationVersion_);
     result.hasStructure=structures_.applyToChunk(cx,cz,result.blocks,result.loot,result.mobs,structureTerrain,MinimumY,scanTop);

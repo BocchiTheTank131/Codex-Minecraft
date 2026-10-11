@@ -72,13 +72,13 @@ bool mushroomCluster(int x,int z,std::uint32_t seed,Biome biome) {
 std::vector<CaveEntrance> caveEntrances(int chunkX,int chunkZ,std::uint32_t seed,
     const std::function<SurfaceColumn(int,int)>& terrain,
     const std::function<bool(int,int,int)>& cavity,
-    const std::function<bool(int,int)>& reserved) {
+    const std::function<bool(int,int)>& reserved,unsigned generationVersion) {
     struct Cached { bool valid=false; CaveEntrance cave{}; };
     // Each generation worker owns its cache. Bounds keep long flights from
     // retaining an ever-growing exploration map. Plans depend only on seed.
-    thread_local std::uint32_t cachedSeed=0;
+    thread_local std::uint32_t cachedSeed=0,cachedVersion=0;
     thread_local std::unordered_map<std::uint64_t,Cached> cache;
-    if(cachedSeed!=seed || cache.size()>256) { cache.clear();cachedSeed=seed; }
+    if(cachedSeed!=seed || cachedVersion!=generationVersion || cache.size()>256) { cache.clear();cachedSeed=seed;cachedVersion=generationVersion; }
     std::vector<CaveEntrance> caves;
     constexpr int region=96,reach=56;
     const int ox=chunkX*16,oz=chunkZ*16;

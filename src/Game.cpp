@@ -196,9 +196,14 @@ bool Game::initialize(int argc, char** argv) {
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
                      "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
-        if (!explorationAudit_.empty()) {
+        if (!aestheticsAudit_.empty()) {
             std::string report;
-            if (!world_->runExplorationAudit(explorationAudit_,report)) throw std::runtime_error(report);
+            if(!world_->runAestheticsAudit(aestheticsAudit_,report)) throw std::runtime_error(report);
+            std::cout<<report<<std::endl;
+            glfwSetWindowShouldClose(window_,true);
+        } else if (!explorationAudit_.empty()) {
+            std::string report;
+            if (!world_->runExplorationAudit(explorationAudit_,report,fixtureGenerator_)) throw std::runtime_error(report);
             std::cout<<report<<std::endl;
             glfwSetWindowShouldClose(window_,true);
         } else if (!densityAudit_.empty()) {
@@ -353,7 +358,9 @@ void Game::parseArguments(int argc, char** argv) {
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
             } else if (argument.rfind("--generator=",0)==0) {
-                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,12));
+                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,13));
+            } else if (argument.rfind("--aesthetics-audit=",0)==0) {
+                saveOnExit_=false; aestheticsAudit_=argument.substr(19);
             } else if (argument.rfind("--exploration-audit=",0)==0) {
                 explorationAudit_=argument.substr(20); weatherSmoke_=true; saveOnExit_=false;
             } else if (argument.rfind("--density-audit=",0)==0) {
@@ -400,6 +407,10 @@ void Game::parseArguments(int argc, char** argv) {
                 smokeTest_.previewY = std::stof(argument.substr(12));
             } else if (argument.rfind("--preview-z=",0)==0) {
                 smokeTest_.previewZ = std::stof(argument.substr(12));
+            } else if (argument == "--preview-clean") {
+                smokeTest_.previewClean=true;
+            } else if (argument == "--preview-ground") {
+                smokeTest_.previewGround=true;
             } else if (argument == "--preview-torch") {
                 smokeTest_.previewTorch = true;
             } else if (argument.rfind("--preview-yaw=",0)==0) {
@@ -499,7 +510,7 @@ void Game::createWorldAndSystems() {
             static_cast<float>(world_->terrainHeight(static_cast<int>(smokeTest_.previewX),
                                                      static_cast<int>(smokeTest_.previewZ))),
             smokeTest_.previewZ + .5f};
-        spawnPosition.y = std::isnan(smokeTest_.previewY) ? spawnPosition.y + 85.f : smokeTest_.previewY;
+        spawnPosition.y = std::isnan(smokeTest_.previewY) ? spawnPosition.y + (smokeTest_.previewGround?1.01f:85.f) : smokeTest_.previewY;
         creativeMode_ = true;
         spectatorMode_ = false;
         saveOnExit_ = false;
@@ -2009,6 +2020,7 @@ void Game::renderFrame(float deltaTime) {
                 view, projection);
         }
 
+        if(!(smokeTest_.worldgenEnabled&&smokeTest_.previewClean)) {
         const std::string status =
             player_->isDead()
                 ? "YOU DIED  RESPAWNING"
@@ -2039,6 +2051,7 @@ void Game::renderFrame(float deltaTime) {
         if (!spectatorMode_ && ui_.state() == GameState::Playing) {
             renderer_->renderHeldItem(
                 width, height, inventory_->selectedStack(), interaction_.heldItemSwing);
+        }
         }
     }
     if (underwater) {

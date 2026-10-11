@@ -48,7 +48,10 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
            h%97U && h%109U && h%127U && h%137U && h%157U && h%191U && h%211U &&
            h%223U && h%251U && h%307U && h%181U && h%233U) continue;
         const auto ground=terrain(x,z);
-        const auto& biome=biomeDefinition(ground.biome);
+        auto biome=biomeDefinition(ground.biome);
+        if(generatorVersion>=13 && ground.biome==Biome::StonyPeaks && ground.height<210) {
+            biome.trees=TreeStyle::Spruce; biome.treeSpacing=211;
+        }
         if(ground.height>=height-24) continue;
         const bool spike=ground.biome==Biome::IceSpikes && h%181U==0;
         const bool berg=ground.biome==Biome::FrozenOcean && h%233U==0;
@@ -77,13 +80,23 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
         const int slope=std::max({std::abs(terrain(x-1,z).height-ground.height),
             std::abs(terrain(x+1,z).height-ground.height),std::abs(terrain(x,z-1).height-ground.height),
             std::abs(terrain(x,z+1).height-ground.height)});
-        if(slope>1) continue;
+        if(slope>(generatorVersion>=13?2:1)) continue;
         if(!supported(x,z)) continue;
         const auto w=wood(biome.trees);
         const bool giant=biome.trees==TreeStyle::GiantSpruce||biome.trees==TreeStyle::Jungle;
         const bool thick=giant||biome.trees==TreeStyle::DarkOak;
-        const int tall=giant?12+int((h>>8)%7U):biome.trees==TreeStyle::Spruce?7+int((h>>8)%3U):
+        int tall=giant?12+int((h>>8)%7U):biome.trees==TreeStyle::Spruce?7+int((h>>8)%3U):
                        biome.trees==TreeStyle::Mushroom?5+int((h>>8)%3U):5+int((h>>8)%3U);
+        if(generatorVersion>=13 && !giant && biome.trees!=TreeStyle::Mushroom && biome.trees!=TreeStyle::Acacia)
+            tall+=int((h>>17)%3U);
+        // Keep thick roots grounded on every occupied column. This predicate
+        // also rejects an entrance/ravine under any trunk, across chunk edges.
+        if(generatorVersion>=13 && thick) {
+            bool safe=true;
+            for(int dz=0;dz<2;++dz)for(int dx=0;dx<2;++dx)
+                safe &= supported(x+dx,z+dz) && std::abs(terrain(x+dx,z+dz).height-ground.height)<=1;
+            if(!safe) continue;
+        }
         for(int dz=0;dz<(thick?2:1);++dz) for(int dx=0;dx<(thick?2:1);++dx) {
             const int bottom=thick?std::min(ground.height,terrain(x+dx,z+dz).height):ground.height;
             for(int y=bottom+1;y<=ground.height+tall;++y)

@@ -1,6 +1,7 @@
 #include "World.h"
 #include "TerrainExploration.h"
 #include "TerrainDensity.h"
+#include "TerrainAesthetics.h"
 #include "BiomeVegetation.h"
 #include <algorithm>
 #include <chrono>
@@ -103,7 +104,7 @@ bool World::runStreamingSelfTest(std::string& report) {
     } catch(const std::exception& error) {report=error.what();return false;}
 }
 
-bool World::runExplorationAudit(const std::string& directory,std::string& report) const {
+bool World::runExplorationAudit(const std::string& directory,std::string& report,unsigned modernVersion) const {
     try {
         std::filesystem::create_directories(directory);
         std::ofstream routes(directory+"/routes.csv"),vegetation(directory+"/vegetation.csv"),caves(directory+"/entrances.csv");
@@ -111,7 +112,7 @@ bool World::runExplorationAudit(const std::string& directory,std::string& report
         vegetation<<"biome,version,mushrooms,decoration_blocks,columns\n";
         caves<<"seed,x,y,z,target_x,target_y,target_z,radius,sinkhole\n";
         // Flat synthetic habitats isolate spacing from changed terrain/biomes.
-        for(auto biome:{Biome::Swamp,Biome::DarkForest,Biome::MushroomFields}) for(unsigned version:{11U,12U}) {
+        for(auto biome:{Biome::Swamp,Biome::DarkForest,Biome::MushroomFields}) for(unsigned version:{modernVersion-1,modernVersion}) {
             std::uint64_t mushrooms=0,decorations=0;
             for(int cz=-4;cz<4;++cz)for(int cx=-4;cx<4;++cx) {
                 std::vector<Block> blocks(16*16*128,Block::Air);
@@ -123,8 +124,8 @@ bool World::runExplorationAudit(const std::string& directory,std::string& report
             vegetation<<biomeDefinition(biome).name<<','<<version<<','<<mushrooms<<','<<decorations<<",16384\n";
         }
         for(auto seed:{20260917U,123456789U,42U}) {
-            World modern(seed,12);
-            for(unsigned version:{11U,12U}) {
+            World modern(seed,modernVersion);
+            for(unsigned version:{modernVersion-1,modernVersion}) {
                 World probe(seed,version);
                 for(int route=0;route<64;++route) {
                     const int x=(route%8)*1600-5600,z=(route/8)*1600-5600;
@@ -144,7 +145,13 @@ bool World::runExplorationAudit(const std::string& directory,std::string& report
                 const float aquifer=modern.aquiferNoise_.fractal2D(x*.0018f+113.7f,z*.0018f-67.3f,2,2.f,.3f);
                 const auto smooth=[](float a,float b,float v){const float p=std::clamp((v-a)/(b-a),0.f,1.f);return p*p*(3-2*p);};
                 const TerrainDensity::Column c{t.height,smooth(95,180,float(t.height))*(1-smooth(.40f,.83f,t.erosion)),aquifer,-24+aquifer*30,t.ravine};
-                return TerrainDensity::density(TerrainDensity::sampleAt(x,y,z,modern.ridgeNoise_,modern.cheeseNoise_,modern.spaghettiNoise_,modern.noodleNoise_,modern.caveNoise_),c,y)<=0;
+                const auto f=TerrainDensity::sampleAt(x,y,z,modern.ridgeNoise_,modern.cheeseNoise_,modern.spaghettiNoise_,modern.noodleNoise_,modern.caveNoise_);
+                if(modernVersion<13) return TerrainDensity::density(f,c,y)<=0;
+                const float slope=float(std::max({std::abs(modern.terrainHeight(x-4,z)-t.height),std::abs(modern.terrainHeight(x+4,z)-t.height),
+                    std::abs(modern.terrainHeight(x,z-4)-t.height),std::abs(modern.terrainHeight(x,z+4)-t.height),
+                    std::abs(modern.terrainHeight(x-1,z)-t.height),std::abs(modern.terrainHeight(x+1,z)-t.height),
+                    std::abs(modern.terrainHeight(x,z-1)-t.height),std::abs(modern.terrainHeight(x,z+1)-t.height)}))*.25f;
+                return TerrainAesthetics::density(f,c,y,slope)<=0;
             };
             std::set<std::pair<int,int>> found;
             std::map<std::pair<int,int>,GeneratedChunk> entranceChunks;
@@ -156,7 +163,7 @@ bool World::runExplorationAudit(const std::string& directory,std::string& report
                 return index<it->second.blocks.size()?it->second.blocks[index]:Block::Air;
             };
             for(int z=-768;z<=768;z+=96)for(int x=-768;x<=768;x+=96) {
-                auto plans=TerrainExploration::caveEntrances(floorDiv(x,16),floorDiv(z,16),seed,[&](int wx,int wz){const auto t=modern.sampleTerrain(wx,wz);return TerrainExploration::SurfaceColumn{t.height,t.river,t.ravine};},nativeCavity,[&](int wx,int wz){return modern.explorationStructureReservedAt(wx,wz);});
+                auto plans=TerrainExploration::caveEntrances(floorDiv(x,16),floorDiv(z,16),seed,[&](int wx,int wz){const auto t=modern.sampleTerrain(wx,wz);return TerrainExploration::SurfaceColumn{t.height,t.river,t.ravine};},nativeCavity,[&](int wx,int wz){return modern.explorationStructureReservedAt(wx,wz);},modernVersion);
                 for(const auto& plan:plans) {
                     const int wx=int(std::floor(plan.mouth.x)),wz=int(std::floor(plan.mouth.z));
                     if(!found.insert({wx,wz}).second)continue;
@@ -173,7 +180,7 @@ bool World::runExplorationAudit(const std::string& directory,std::string& report
                 }
             }
             require(!found.empty(),"No discoverable cave entrances near explored area");
-            std::cout<<"V12 "<<seed<<" entrance plans in sampled 1.5km area: "<<found.size()<<'\n';
+            std::cout<<"V"<<modernVersion<<" "<<seed<<" entrance plans in sampled 1.5km area: "<<found.size()<<'\n';
             // Camera altitude diagnostics do not affect surface climate.
             for(int z=-128;z<=128;z+=16)for(int x=-128;x<=128;x+=16) {
                 const auto debug=modern.generationDebugAt(x,z,310);
@@ -208,7 +215,7 @@ bool World::runExplorationAudit(const std::string& directory,std::string& report
             require(reference.blocks==actual.blocks,"Released save geography changed");
             std::cout<<"Actual released v2.11.1 save loaded and resaved with generator 11 preserved.\n";
         }
-        if(!runDensityAudit(directory,report,12)) throw std::runtime_error(report);
+        if(!runDensityAudit(directory,report,modernVersion)) throw std::runtime_error(report);
         report+=" Exploration route/vegetation metrics, connected entrance plans, surface climate and streaming regressions passed.";
         return true;
     } catch(const std::exception& error) {report=error.what();return false;}

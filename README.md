@@ -35,7 +35,7 @@ Pressing PLAY again in the demo starts a fresh gameplay session.
 
 ## Features
 
-- Versioned procedural worlds: new Generator V12 worlds span Y=-64 through 319; V11 worlds retain those bounds and generators 1–10 keep Y=0 through 255
+- Versioned procedural worlds: new Generator V13 worlds span Y=-64 through 319; V11/V12 worlds retain those bounds and generators 1–10 keep Y=0 through 255
 - Multi-noise terrain with continents, mountains, rivers, beaches, oceans, caves, ravines, and aquifers
 - Plains, deserts, snowy mountains, forests, and other terrain variations
 - Villages, pillager outposts, desert pyramids, ruins, wells, and campsites
@@ -69,7 +69,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.11.2-beta** has **142 inventory items**, **96 placeable block families**, **160 block
+Version **2.11.2-beta2** has **142 inventory items**, **96 placeable block families**, **160 block
 IDs/states including Air**, **73 crafting recipes**, and **23 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -196,6 +196,31 @@ compares v7/v8 CPU chunk-generation time, validates shoreline Cane and old-world
 and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in that explicit
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
+
+## v2.11.2-beta2 - Generator V13: Terrain Aesthetics
+
+New source builds create **Generator V13** worlds. Existing saved worlds keep
+**generators 1-12**, including unexplored chunks; no item IDs or save layouts change.
+The v2.11.2-beta2 prerelease includes V13 for new worlds; existing worlds retain their generator.
+
+- Connected mountain envelopes replace the above-surface 3D noise lobes that produced
+  floating stone pancakes. Slope-aware protected roofs attach localized undercuts.
+- Regional ridges, rocky faces, foothills, rolling terrain and dry plateaus retain
+  the broad continents, oceans and macroclimate; inland relief cannot create tiny oceans.
+- Medium-scale compatible habitats add variety within the existing 35-biome climate system.
+- Suitable warm/wet mountains retain woodland instead of becoming stone solely because
+  of elevation. Hot dry woodland buffers sand/terracotta against wetter forests.
+- Tree roots respect neighboring terrain and cave openings; canopy heights vary,
+  while generation remains deterministic across chunks and worker order.
+- The existing 384-block world, sea level 64, underground cave fields, aquifer and ore
+  rules, weather, structures, asynchronous streaming and render-distance limits remain.
+
+See [V13 validation and limitations](docs/GENERATOR_V13_VALIDATION.md). Opt-in
+`--aesthetics-audit=<absolute-directory> --generator=13` exports paired V12/V13 maps,
+short-route statistics, actual terrain volumes and connectivity measurements, and runs
+cave, structure, parallel generation, mesh, GPU-upload and save compatibility checks.
+`--worldgen-test --generator=13 --preview-clean` captures terrain in the real renderer;
+`--preview-ground` selects a surface camera. These switches are development fixtures.
 
 ## v2.11.2-beta - World Generation, Vegetation & Chunk Streaming
 
@@ -443,13 +468,13 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
 - Save & Return to Menu saves and unloads the full game. The standalone demo discards its
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
-Prerelease: [Voxel Frontier v2.11.2-beta](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta).
+Prerelease: [Voxel Frontier v2.11.2-beta2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta2).
 Latest stable: [Voxel Frontier v2.11.1](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.1).
 
-| v2.11.2-beta Windows build | Purpose | Persistence |
+| v2.11.2-beta2 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.11.2-beta-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.11.2-beta-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.11.2-beta2-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.11.2-beta2-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -889,7 +914,8 @@ The project is split into focused systems:
 - `Game` - initialization, main loop, simulation, rendering, saves, and shutdown
 - `World` - chunks, terrain, blocks, lighting, and world data
 - `TerrainDensity` / `WorldDensity` - versioned V11 density lattice, caves, aquifers and depth-based ores
-- `TerrainExploration` / `WorldExploration` - V12 habitat variants, spaced vegetation and connected surface cave passages
+- `TerrainExploration` / `WorldExploration` - versioned habitat variants, spaced vegetation and connected surface cave passages
+- `TerrainAesthetics` / `WorldAesthetics` - V13 connected density constraints, mountain profiles and climate-compatible woodland
 - `ChunkStreaming` / `WorldStreaming` - hardware-aware worker plans, priorities, cancellation and bounded main-thread integration
 - `WorldExplorationValidation` / `StreamingValidation` - route, compatibility, concurrency and flight fixtures
 - `WorldDensityValidation` - V11 maps, cutaways, deterministic hashes and vertical-range regressions

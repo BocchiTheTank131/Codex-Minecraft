@@ -26,7 +26,7 @@ void Game::runStreamingBenchmark() {
     std::ofstream csv(fs::path(streamingBenchmark_)/"streaming.csv");
     std::ofstream samples(fs::path(streamingBenchmark_)/"streaming-samples.csv");
     samples<<"generator,rd,phase,seconds,ram_mb,private_mb,loaded,rendered,dirty,generation,mesh,uploads,retired,lighting\n";
-    csv<<"generator,rd,phase,fps,mean_ms,p99_ms,worst_ms,cpu_percent,ram_mb,loaded,rendered,dirty,generation,mesh,upload_queue,stream_ms,render_ms,mesh_ms,upload_ms,gen_active,mesh_active,gen_limit,mesh_limit,gen_per_s,mesh_per_s,integrate_ms,light_ms,snapshot_ms,upload_batch_ms,stale,peak_unload_ms,peak_retire_ms,retired,lighting_queue,recovery_seconds\n";
+    csv<<"generator,rd,phase,fps,mean_ms,p99_ms,worst_ms,cpu_percent,ram_mb,loaded,rendered,dirty,generation,mesh,upload_queue,stream_ms,render_ms,mesh_ms,upload_ms,gen_active,mesh_active,gen_limit,mesh_limit,gen_per_s,mesh_per_s,integrate_ms,light_ms,snapshot_ms,upload_batch_ms,stale,peak_unload_ms,peak_retire_ms,retired,lighting_queue,recovery_seconds,terrain_vertices,terrain_used_bytes,terrain_capacity_bytes,opaque_draws\n";
     settings_.vsync=false; settings_.frameLimit=0; settings_.antiAliasingSamples=0;
     settings_.weatherQuality=0; settings_.simulationDistance=8; glfwSwapInterval(0);
     showDebug_=false; weather_->set(WeatherType::Clear,3600);
@@ -98,6 +98,7 @@ void Game::runStreamingBenchmark() {
             if(GetProcessMemoryInfo(GetCurrentProcess(),&pm,sizeof(pm))) ram=pm.WorkingSetSize/1048576.0;
 #endif
             std::sort(frames.begin(),frames.end()); const auto n=frames.size();
+            const auto memory=world_->terrainMemory();
             csv<<world_->generationVersion()<<','<<rd<<','<<std::array<const char*,4>{"warmup","flight8x","recovery","teleport"}[phase]<<','
                 <<n/elapsed<<','<<elapsed*1000/n<<','<<frames[(n-1)*99/100]<<','<<frames.back()<<','<<cpu<<','<<ram<<','
                 <<world_->loadedChunkCount()<<','<<world_->renderedChunkCount()<<','<<world_->queuedMeshRebuildCount()<<','
@@ -105,7 +106,7 @@ void Game::runStreamingBenchmark() {
                 <<streamMs/n<<','<<renderMs/n<<','<<world_->lastChunkRebuildMilliseconds()<<','<<world_->lastMeshUploadMilliseconds()<<','
                 <<genActive/n<<','<<meshActive/n<<','<<world_->streamingDiagnostics().generationLimit<<','
                 <<world_->streamingDiagnostics().meshLimit<<','<<genRate/n<<','<<meshRate/n<<','
-                <<integrateMs/n<<','<<lightMs/n<<','<<snapshotMs/n<<','<<uploadMs/n<<','<<world_->streamingDiagnostics().staleMeshes<<','<<peakUnload<<','<<peakRetire<<','<<world_->streamingDiagnostics().retiredChunks<<','<<world_->streamingDiagnostics().lightingQueued<<','<<recovery<<'\n';
+                <<integrateMs/n<<','<<lightMs/n<<','<<snapshotMs/n<<','<<uploadMs/n<<','<<world_->streamingDiagnostics().staleMeshes<<','<<peakUnload<<','<<peakRetire<<','<<world_->streamingDiagnostics().retiredChunks<<','<<world_->streamingDiagnostics().lightingQueued<<','<<recovery<<','<<memory.vertices<<','<<memory.usedBytes<<','<<memory.capacityBytes<<','<<world_->opaqueSubmissionCount()<<'\n';
             csv.flush();
         }
     }
