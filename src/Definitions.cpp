@@ -143,6 +143,14 @@ const Items& items() {
             definition.placedBlock = content.block;
             definition.smeltedItem = content.smelt;
         }
+        put(Item::Cobweb, static_cast<std::uint8_t>(Item::Cobweb), static_cast<int>(Item::Cobweb), "Cobweb");
+        put(Item::CrackedStoneBricks, static_cast<std::uint8_t>(Item::CrackedStoneBricks), static_cast<int>(Item::CrackedStoneBricks), "CrackedStoneBricks");
+        put(Item::SurveyorToken, static_cast<std::uint8_t>(Item::SurveyorToken), static_cast<int>(Item::SurveyorToken), "SurveyorToken");
+        put(Item::CavernShard, static_cast<std::uint8_t>(Item::CavernShard), static_cast<int>(Item::CavernShard), "CavernShard");
+        put(Item::AncientSeal, static_cast<std::uint8_t>(Item::AncientSeal), static_cast<int>(Item::AncientSeal), "AncientSeal");
+        result[static_cast<std::size_t>(Item::Cobweb)].placedBlock=Block::Cobweb;
+        result[static_cast<std::size_t>(Item::CrackedStoneBricks)].placedBlock=Block::CrackedStoneBricks;
+        for(Item relic : {Item::SurveyorToken,Item::CavernShard,Item::AncientSeal}) result[static_cast<std::size_t>(relic)].maxStack=16;
         for(Item log : {Item::SpruceLog,Item::JungleLog,Item::AcaciaLog,Item::DarkOakLog})
             result[static_cast<std::size_t>(log)].smeltedItem=Item::Charcoal;
         result[static_cast<std::size_t>(Item::Clay)].smeltedItem=Item::Terracotta;
@@ -282,6 +290,12 @@ const Blocks& blocks() {
             definition.requiredHarvestTier = content.tier;
             definition.soundMaterial = SoundMaterial::Stone;
         }
+        put(Block::Cobweb, static_cast<std::uint8_t>(Block::Cobweb),104,104,104,Item::Cobweb);
+        put(Block::CrackedStoneBricks, static_cast<std::uint8_t>(Block::CrackedStoneBricks),105,105,105,Item::CrackedStoneBricks);
+        result[static_cast<std::size_t>(Block::Cobweb)].hardness=.3f;
+        result[static_cast<std::size_t>(Block::Cobweb)].correctTool=ToolKind::Sword;
+        result[static_cast<std::size_t>(Block::CrackedStoneBricks)].hardness=1.25f;
+        result[static_cast<std::size_t>(Block::CrackedStoneBricks)].correctTool=ToolKind::Pickaxe;
         put(Block::Air, 0, 3, 3, 3, Item::None);
         put(Block::Grass, 1, 0, 1, 2, Item::Grass);
         put(Block::Dirt, 2, 2, 2, 2, Item::Dirt);

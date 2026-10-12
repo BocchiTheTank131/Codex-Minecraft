@@ -131,6 +131,7 @@ enum class Item : std::uint8_t {
     RedMushroomBlock, BrownMushroomBlock,
     // Generator V11: append only; historical save IDs are unchanged.
     Deepslate, DeepslateCoalOre, DeepslateIronOre, DeepslateCopperOre, DeepslateGoldOre, DeepslateDiamondOre, Bedrock, Lava,
+    Cobweb, CrackedStoneBricks, SurveyorToken, CavernShard, AncientSeal,
     Count
 };
 

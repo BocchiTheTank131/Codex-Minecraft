@@ -45,7 +45,7 @@ const BlockDefinition& blockDefinition(Block block);
 bool itemFromSaveId(std::uint8_t id, Item& item);
 bool blockFromSaveId(std::uint8_t id, Block& block);
 int blockTexture(Block block, int faceIndex);
-inline constexpr int BlockAtlasTiles = 104;
+inline constexpr int BlockAtlasTiles = 106;
 float furnaceFuelSeconds(Item item);
 
 struct ItemAtlasLayout {

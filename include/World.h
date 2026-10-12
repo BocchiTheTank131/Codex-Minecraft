@@ -4,6 +4,7 @@
 #include "Biome.h"
 #include "Noise.h"
 #include "Structure.h"
+#include "UndergroundStructures.h"
 #include "CanyonCarver.h"
 #include "Survival.h"
 #include "ChunkStreaming.h"
@@ -219,7 +220,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 18);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 19);
     ~World();
 
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
@@ -259,6 +260,7 @@ public:
     int terrainHeight(int worldX, int worldZ) const;
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
     void prepareSpawnTerrain(const glm::vec3& position);
+    bool runUndergroundAudit(const std::string& directory,std::string& report) const;
     bool runBiomeAudit(const std::string& directory, std::string& report) const;
     bool runDensityAudit(const std::string& directory, std::string& report, unsigned modernVersion = 11) const;
     bool runAestheticsAudit(const std::string& directory,std::string& report,unsigned modernVersion=18) const;
@@ -410,8 +412,9 @@ private:
     PerlinNoise noodleNoise_;
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
+    UndergroundStructures underground_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 18;
+    std::uint32_t generationVersion_ = 19;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;
@@ -525,6 +528,10 @@ private:
     Chunk* findChunk(int chunkX, int chunkZ);
     const Chunk* findChunk(int chunkX, int chunkZ) const;
     TerrainSample sampleTerrain(int worldX, int worldZ) const;
+    std::shared_ptr<const UndergroundPlan> undergroundPlan(int rx,int rz) const;
+    bool applyUnderground(int cx,int cz,GeneratedChunk& data) const;
+    bool dryUndergroundCave(int x,int y,int z) const;
+    bool undergroundReserved(const StructureBox& box) const;
     TerrainSample sampleTerrainLegacy(int worldX, int worldZ) const;
     TerrainSample sampleTerrainModern(int worldX, int worldZ) const;
     TerrainSample sampleTerrainAesthetics(int x,int z,bool evaluateShore=true,bool drainage=true) const;

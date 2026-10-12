@@ -130,6 +130,7 @@ enum class Block : std::uint8_t {
     RedMushroomBlock, BrownMushroomBlock,
     // Generator V11: append only; historical save IDs are unchanged.
     Deepslate, DeepslateCoalOre, DeepslateIronOre, DeepslateCopperOre, DeepslateGoldOre, DeepslateDiamondOre, Bedrock, Lava,
+    Cobweb, CrackedStoneBricks,
     Count
 };
 
@@ -187,7 +188,7 @@ inline bool isLeaf(Block b) {
 inline bool isPlant(Block b) {
     return b == Block::TallGrass || b == Block::RedFlower || b == Block::YellowFlower ||
            b == Block::SugarCane || b == Block::Fire || b == Block::Bamboo ||
-           b == Block::Fern || b == Block::DeadBush || b == Block::RedMushroom || b == Block::BrownMushroom;
+           b == Block::Cobweb || b == Block::Fern || b == Block::DeadBush || b == Block::RedMushroom || b == Block::BrownMushroom;
 }
 
 inline bool isVine(Block b) {

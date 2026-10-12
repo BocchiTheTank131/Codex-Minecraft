@@ -1,4 +1,5 @@
 #include "Structure.h"
+#include "ExplorationLoot.h"
 
 #include <algorithm>
 #include <array>
@@ -798,6 +799,7 @@ bool StructureGenerator::applyToChunk(
 
 std::array<ItemStack, 27> StructureGenerator::rollLoot(
     const StructureLootMarker& marker) const {
+    if(marker.table>=StructureLoot::Mineshaft) return rollExplorationLoot(seed_,marker);
     std::array<ItemStack, 27> slots{};
     struct Entry { Item item; int minimum; int maximum; int weight; };
     static constexpr std::array<Entry, 7> village{{

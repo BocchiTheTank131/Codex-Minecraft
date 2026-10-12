@@ -239,6 +239,7 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
         return true;
     },MinimumY,featureTop,SeaLevel,generationVersion_);
     result.hasStructure=structures_.applyToChunk(cx,cz,result.blocks,result.loot,result.mobs,structureTerrain,MinimumY,featureTop);
+    if(generationVersion_>=19) result.hasStructure=applyUnderground(cx,cz,result)||result.hasStructure;
     // Shore vegetation uses actual generated water, not a biome-name heuristic.
     for(int z=0;z<16;++z) for(int x=0;x<16;++x) {
         const auto t=terrainAt(ox+x,oz+z); const int y=t.height;

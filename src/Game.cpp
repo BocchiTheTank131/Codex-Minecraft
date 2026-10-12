@@ -196,7 +196,11 @@ bool Game::initialize(int argc, char** argv) {
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
                      "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
-        if (!aestheticsAudit_.empty()) {
+        if (!undergroundAudit_.empty()) {
+            std::string report;
+            if(!world_->runUndergroundAudit(undergroundAudit_,report)) throw std::runtime_error(report);
+            std::cout<<report<<std::endl;glfwSetWindowShouldClose(window_,true);
+        } else if (!aestheticsAudit_.empty()) {
             std::string report;
             if(!world_->runAestheticsAudit(aestheticsAudit_,report,fixtureGenerator_)) throw std::runtime_error(report);
             std::cout<<report<<std::endl;
@@ -358,7 +362,9 @@ void Game::parseArguments(int argc, char** argv) {
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
             } else if (argument.rfind("--generator=",0)==0) {
-                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,18));
+                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,19));
+            } else if (argument.rfind("--underground-audit=",0)==0) {
+                undergroundAudit_=argument.substr(20); saveOnExit_=false;
             } else if (argument.rfind("--aesthetics-audit=",0)==0) {
                 saveOnExit_=false; aestheticsAudit_=argument.substr(19);
             } else if (argument.rfind("--exploration-audit=",0)==0) {

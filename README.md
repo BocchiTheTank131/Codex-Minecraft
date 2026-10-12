@@ -35,10 +35,11 @@ Pressing PLAY again in the demo starts a fresh gameplay session.
 
 ## Features
 
-- Versioned procedural worlds: new Generator V18 worlds span Y=-64 through 319, with natural generation capped at Y=256; V11–V17 worlds retain their original terrain and generators 1–10 keep Y=0 through 255
+- Versioned procedural worlds: new Generator V19 worlds span Y=-64 through 319, with natural generation capped at Y=256; V11–V18 worlds retain their original terrain and generators 1–10 keep Y=0 through 255
 - Multi-noise terrain with continents, mountains, rivers, beaches, oceans, caves, ravines, and aquifers
 - Plains, deserts, snowy mountains, forests, and other terrain variations
 - Villages, pillager outposts, desert pyramids, ruins, wells, and campsites
+- Rare abandoned mineshafts, monster dungeons and ancient underground ruins, with persistent treasure and finite encounters
 - Survival, Creative, and Spectator modes
 - Dynamic sun, moon, stars, clouds, and day/night cycle
 - Sunlight and propagated torch lighting
@@ -69,7 +70,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.11.3** has **142 inventory items**, **96 placeable block families**, **160 block
+Version **2.12.0** has **147 inventory items**, **98 placeable block families**, **162 block
 IDs/states including Air**, **73 crafting recipes**, and **23 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -196,6 +197,41 @@ compares v7/v8 CPU chunk-generation time, validates shoreline Cane and old-world
 and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in that explicit
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
+
+## v2.12.0 - The Exploration Update
+
+New worlds use **Generator V19**, adding underground structures to V18 geography.
+Saved worlds keep generators 1–18, including their unexplored chunks.
+
+- **Abandoned Mineshafts:** branching tunnels, supported wooden platforms, beams,
+  storage rooms, cobwebs, stairs, occasional collapsed dead ends and loot.
+- **Monster Dungeons:** varied cobblestone/mossy/cracked rooms, treasure and small,
+  finite groups of existing Pillagers. Deeper encounters are harder.
+- **Ancient Underground Ruins:** rare multi-room layouts, corridors, stairs,
+  collapsed corners and secluded library treasure alcoves. Deep ruins are rarer.
+- Every accepted layout connects to a verified dry cave opening. World-coordinate
+  plans cross chunk boundaries consistently and avoid existing structure footprints.
+- Weighted Common/Uncommon/Rare rewards include food, torches, materials, ores,
+  ingots, tools and occasional diamonds. Depth improves reward chances; no chest
+  receives more than one rare roll.
+- Three collectible relics: **Surveyor Token**, **Cavern Shard** and **Ancient Seal**,
+  with original 16×16 icons. They are collectibles, with no new combat powers.
+- Cobweb and Cracked Stone Bricks are appended block/item IDs. Cobwebs are
+  decorative, non-solid crossed geometry; this update adds no slowing mechanic.
+- Existing 27-slot chests preserve emptied/modified contents. Encounter markers
+  persist so saved encounters do not respawn on chunk reload. Enemies use existing
+  simulation distance rules; there is no continuous monster spawner.
+- Full builds persist worlds normally; standalone demos remain stateless.
+  Weather, terrain shapes, climate, vegetation and the 20-minute cycle are retained.
+
+See [Exploration validation and performance](docs/EXPLORATION_VALIDATION.md).
+The opt-in `--underground-audit=<absolute-directory>` fixture exports structure
+locations, depth/biome counts, deterministic generation checks, loot samples,
+legacy hashes and save tests. Supply `baseline-historical.csv` with
+`seed,version,x,z,hash` columns from the validated historical fixtures. Run
+`python tools/build_exploration_previews.py <directory>` for labeled maps.
+Use an isolated `VOXEL_FRONTIER_DATA_DIR` for all developer tests.
+Original pixel assets can be regenerated with `tools/generate_exploration_assets.py`.
 
 ## v2.11.3 - Generator V18: Geography, Rivers & Biome Balance
 
@@ -569,12 +605,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
 Prerelease: [Voxel Frontier v2.11.2-beta2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta2).
-Latest stable: [Voxel Frontier v2.11.3](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.3).
+Latest stable: [Voxel Frontier v2.12.0](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.12.0).
 
-| v2.11.3 Windows build | Purpose | Persistence |
+| v2.12.0 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.11.3-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.11.3-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.12.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.12.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -1023,6 +1059,10 @@ The project is split into focused systems:
 - `WorldExplorationValidation` / `StreamingValidation` - route, compatibility, concurrency and flight fixtures
 - `WorldDensityValidation` - V11 maps, cutaways, deterministic hashes and vertical-range regressions
 - `UndergroundContent` - appended underground block/item metadata
+- `UndergroundStructures` - Generator V19 regional layouts, cave connections and bounded plan cache
+- `UndergroundWorld` - integration with existing terrain density and surface-structure reservations
+- `ExplorationLoot` - deterministic weighted rewards and collectible relics
+- `UndergroundValidation` - opt-in structure access, compatibility, loot and persistence checks
 - `Biome` - shared climate thresholds, biome definitions and vegetation/water colors
 - `BiomeContent` / `BiomeVegetation` - biome materials and deterministic chunk decoration
 - `WorldBiomeValidation` - compatibility hashes, climate maps and content validation

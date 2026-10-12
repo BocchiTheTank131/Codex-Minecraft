@@ -206,11 +206,12 @@ private:
     float streamingFlightSeconds_=20.f;
     float streamingRecoverySeconds_=40.f;
     std::string aestheticsAudit_;
+    std::string undergroundAudit_;
     std::string explorationAudit_;
     std::string biomeAudit_;
     std::string geographyAudit_;
     std::string densityAudit_;
-    unsigned fixtureGenerator_ = 18;
+    unsigned fixtureGenerator_ = 19;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();
