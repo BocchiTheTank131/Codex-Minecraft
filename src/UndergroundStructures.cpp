@@ -25,8 +25,12 @@ std::shared_ptr<const UndergroundPlan> UndergroundStructures::plan(int rx,int rz
 }
 std::shared_ptr<const UndergroundPlan> UndergroundStructures::build(int rx,int rz,const Site& site,const Cave& cave,const Reserved& reserved) const {
     std::uint32_t rng=TerrainDensity::hash(rx,19,rz,seed_^0x4b120aU);
-    const unsigned selection=rng%100U;
-    if(selection>=34U)return {};
+    unsigned selection=rng%100U;
+    if(selection>=34U) {
+        if(version_<21 || selection>42U || (selection==42U && (TerrainDensity::hash(rx,21,rz,seed_) & 1U))) return {};
+        // 34% -> 42.5% candidate regions; retain the 12:18:4 type ratio.
+        selection=TerrainDensity::hash(rx,21,rz,seed_^0x651ceU)%34U;
+    }
     const auto next=[&]() {rng=TerrainDensity::hash(int(rng),rx,rz,seed_^0xabe9U);return rng;};
     const int x=rx*RegionSize+128+int(next()%65U)-32,z=rz*RegionSize+128+int(next()%65U)-32;
     const auto local=site(x,z);
@@ -52,8 +56,9 @@ std::shared_ptr<const UndergroundPlan> UndergroundStructures::build(int rx,int r
         }
     if(!found)return {};
     p->entrance={ex,ey+1,ez};
-    const int target=p->kind==UndergroundKind::Dungeon?1+(next()%5U==0?2:next()%3U==0?1:0):
+    int target=p->kind==UndergroundKind::Dungeon?1+(next()%5U==0?2:next()%3U==0?1:0):
                      p->kind==UndergroundKind::Mineshaft?4+int(next()%4U):3+int(next()%4U);
+    if(version_>=20) target += p->kind==UndergroundKind::Mineshaft ? 2 : p->kind==UndergroundKind::AncientRuins ? 1 : (target==1 && selection%3U==0?1:0);
     std::set<std::pair<int,int>> occupied{{0,0}};
     std::vector<std::pair<int,int>> grid{{0,0}};std::vector<int> parent{-1};
     // A bounded randomized spanning tree guarantees connectivity, with optional
@@ -66,10 +71,11 @@ std::shared_ptr<const UndergroundPlan> UndergroundStructures::build(int rx,int r
     }
     for(std::size_t i=0;i<grid.size();++i) {
         const int y=i==0?base:std::clamp(p->rooms[parent[i]].y+int(next()%5U)-2,-48,base+6);
-        const int half=p->kind==UndergroundKind::Mineshaft?3+int(next()%2U):
+        int half=p->kind==UndergroundKind::Mineshaft?3+int(next()%2U):
             p->kind==UndergroundKind::Dungeon?3+int(next()%4U):4+int(next()%2U);
-        p->rooms.push_back({x+grid[i].first*20,y,z+grid[i].second*20,half,3+int(next()%3U),
-            p->kind==UndergroundKind::Mineshaft?4:4+int(next()%2U)});
+        if(version_>=20 && (i%3==0 || p->kind!=UndergroundKind::Mineshaft)) ++half; // Distinct larger gathering/storage chambers.
+        p->rooms.push_back({x+grid[i].first*20,y,z+grid[i].second*20,half,3+int(next()%3U)+(version_>=20 && p->kind==UndergroundKind::Dungeon?1:0),
+            p->kind==UndergroundKind::Mineshaft?4:4+int(next()%2U)+(version_>=20 && p->kind==UndergroundKind::Dungeon?1:0)});
     }
     // Region margin bounds neighboring underground plans by construction.
     // Reject all surface structure footprints, including their shallow foundations.
@@ -147,7 +153,7 @@ std::shared_ptr<const UndergroundPlan> UndergroundStructures::build(int rx,int r
     for(std::size_t i=1;i<p->rooms.size();++i) {
         const auto& r=p->rooms[i];corridor(p->rooms[parent[i]],r.x,r.y,r.z,false);
     }
-    if(p->rooms.size()>4&&next()%2U==0) {
+    if(p->rooms.size()>4&&(next()%2U==0||version_>=20)) {
         for(std::size_t i=1;i<grid.size();++i)for(std::size_t j=i+1;j<grid.size();++j)
             if(int(j)!=parent[i]&&int(i)!=parent[j]&&std::abs(grid[i].first-grid[j].first)+std::abs(grid[i].second-grid[j].second)==1)
                 corridor(p->rooms[i],p->rooms[j].x,p->rooms[j].y,p->rooms[j].z,false);
@@ -160,6 +166,14 @@ std::shared_ptr<const UndergroundPlan> UndergroundStructures::build(int rx,int r
             if(occupied.count({g.first+d[0],g.second+d[1]}))continue;
             const int tx=r.x+d[0]*12,tz=r.z+d[1]*12;
             if((ex==tx&&std::abs(ez-tz)<5)||(ez==tz&&std::abs(ex-tx)<5))continue;
+            if(version_>=20) {
+                bool intersects=false;
+                for(int y=r.y-4;y<=r.y+8;++y)for(int dz=-2;dz<=2;++dz)for(int dx=-2;dx<=2;++dx) {
+                    auto it=cells.find({tx+dx,y,tz+dz});
+                    intersects |= it!=cells.end() && it->second==Block::Air;
+                }
+                if(intersects) continue; // A collapse cannot seal a different-height through route.
+            }
             const auto existing=cells.find({tx,r.y+1,tz});
             if(existing!=cells.end()&&existing->second==Block::Air)continue;
             corridor(r,tx,r.y,tz,false);
@@ -198,6 +212,16 @@ std::shared_ptr<const UndergroundPlan> UndergroundStructures::build(int rx,int r
             put(r.x+r.halfX-2,r.y+2,r.z+r.halfZ-2,Block::Bookshelf);
             put(r.x-r.halfX+1,r.y+3,r.z+r.halfZ-1,Block::Cobweb);
         }
+        if(version_>=20) {
+            const int px=r.x-r.halfX+1, pz=r.z-r.halfZ+1;
+            if(p->kind==UndergroundKind::Mineshaft) {
+                put(px,r.y+1,pz,Block::CraftingTable);
+                put(px+1,r.y+1,pz,Block::SprucePlanks);
+            } else if(p->kind==UndergroundKind::AncientRuins) {
+                put(px,r.y+1,pz,Block::Bookshelf);
+                put(px,r.y+2,pz,Block::Bookshelf);
+            } else put(px,r.y+1,pz,Block::MossyCobblestone);
+        }
         // Collapsed corners/alcoves never close the guaranteed central route.
         if(next()%3U==0) {
             put(r.x-r.halfX+1,r.y+1,r.z+r.halfZ-1,Block::Gravel);
@@ -209,6 +233,21 @@ std::shared_ptr<const UndergroundPlan> UndergroundStructures::build(int rx,int r
             p->mobs.push_back({r.x-1,r.y+1,r.z+1,true});
             if(p->kind==UndergroundKind::Dungeon&&base<0&&p->rooms.size()==1)
                 p->mobs.push_back({r.x+1,r.y+1,r.z+1,true});
+        }
+    }
+    if(version_>=21) {
+        for(std::size_t i=0;i<p->rooms.size();++i) {
+            if(i>0 && TerrainDensity::hash(rx,int(i),rz,seed_)%3U!=0) continue;
+            const auto& r=p->rooms[i];
+            const int wx=r.x-r.halfX+1,wz=r.z-r.halfZ+1,wy=r.y+r.height-1;
+            // High off-axis corners do not obstruct two-block routes or chests.
+            auto corner=cells.find({wx,wy,wz});
+            if(corner!=cells.end() && corner->second==Block::Air) corner->second=Block::Cobweb;
+        }
+        const bool hasWeb=std::any_of(cells.begin(),cells.end(),[](const auto& c){return c.second==Block::Cobweb;});
+        if(!hasWeb) {
+            const auto& r=p->rooms.front();
+            put(r.x+r.halfX-1,r.y+r.height-1,r.z-r.halfZ+1,Block::Cobweb);
         }
     }
     p->bounds={x,base,z,x,base,z};p->cells.reserve(cells.size());

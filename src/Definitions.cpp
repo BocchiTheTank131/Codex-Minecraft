@@ -296,6 +296,9 @@ const Blocks& blocks() {
         result[static_cast<std::size_t>(Block::Cobweb)].correctTool=ToolKind::Sword;
         result[static_cast<std::size_t>(Block::CrackedStoneBricks)].hardness=1.25f;
         result[static_cast<std::size_t>(Block::CrackedStoneBricks)].correctTool=ToolKind::Pickaxe;
+        for(int id=int(Block::LavaFlow1);id<=int(Block::LavaFalling);++id) {
+            const auto b=Block(id); put(b,std::uint8_t(id),103,103,103,Item::Lava); result[id].emittedLight=15;
+        }
         put(Block::Air, 0, 3, 3, 3, Item::None);
         put(Block::Grass, 1, 0, 1, 2, Item::Grass);
         put(Block::Dirt, 2, 2, 2, 2, Item::Dirt);

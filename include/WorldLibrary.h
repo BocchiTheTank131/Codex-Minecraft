@@ -13,12 +13,13 @@ struct SavedWorld {
     GameMode mode = GameMode::Survival;
     float time = WorldTime::DefaultSeconds;
     std::int64_t lastPlayed = 0;
+    bool cheats = true; // Missing legacy field preserves previous command access.
 };
 
 // World storage only; settings and the working directory remain global.
 namespace WorldLibrary {
 std::vector<SavedWorld> list();
-SavedWorld create(const std::string& name, std::uint32_t seed, GameMode mode);
+SavedWorld create(const std::string& name, std::uint32_t seed, GameMode mode, bool cheats = false);
 void importLegacy();
 bool writeMetadata(const SavedWorld& world);
 }

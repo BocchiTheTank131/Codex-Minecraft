@@ -131,10 +131,19 @@ enum class Block : std::uint8_t {
     // Generator V11: append only; historical save IDs are unchanged.
     Deepslate, DeepslateCoalOre, DeepslateIronOre, DeepslateCopperOre, DeepslateGoldOre, DeepslateDiamondOre, Bedrock, Lava,
     Cobweb, CrackedStoneBricks,
+    LavaFlow1, LavaFlow2, LavaFlow3, LavaFlow4, LavaFalling,
     Count
 };
 
-inline bool isLava(Block b) { return b == Block::Lava; }
+inline bool isLava(Block b) { return b == Block::Lava || (b>=Block::LavaFlow1 && b<=Block::LavaFalling); }
+inline bool isLavaSource(Block b) { return b==Block::Lava; }
+inline int lavaLevel(Block b) {
+    if(b==Block::Lava || b==Block::LavaFalling) return 0;
+    return isLava(b)?int(b)-int(Block::LavaFlow1)+1:5;
+}
+inline Block flowingLavaBlock(int level) {return level<1?Block::Lava:level>4?Block::Air:Block(int(Block::LavaFlow1)+level-1);}
+
+inline float lavaHeight(Block b) {return b==Block::Lava || b==Block::LavaFalling?1.f:isLava(b)?1.f-lavaLevel(b)*.125f:0.f;}
 
 inline bool isWater(Block b) {
     return b == Block::Water ||
@@ -171,7 +180,7 @@ inline bool isTorch(Block b) {
 // The existing block-light solver's source levels. Keep indexing and solving
 // on the same definition; non-emissive blocks must not enter the source index.
 inline std::uint8_t blockLightEmission(Block block) {
-    return block == Block::Torch || block == Block::Fire || block == Block::Lava ? 15U : 0U;
+    return block == Block::Torch || block == Block::Fire || isLava(block) ? 15U : 0U;
 }
 inline bool isCrop(Block b) {
     return b >= Block::Crop0 && b <= Block::Crop3;
@@ -327,7 +336,7 @@ inline BlockGeometryProperties blockGeometry(Block block) {
         geometry.aoOcclusion = 0;
     } else if (isWater(block) || isLava(block)) {
         geometry.shape = BlockShape::Fluid;
-        geometry.maxY = isLava(block) ? 1.f : waterHeight(block);
+        geometry.maxY = isLava(block) ? lavaHeight(block) : waterHeight(block);
         geometry.occludesNeighborFaces = false;
         geometry.mergeMatchingFaces = true;
         geometry.aoOcclusion = 0.0f;

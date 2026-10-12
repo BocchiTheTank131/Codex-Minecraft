@@ -23,7 +23,7 @@ struct CommandContext {
     std::uint32_t seed;
     std::function<GameMode()> gameMode;
     std::function<void(GameMode)> setGameMode;
-    bool cheatsEnabled = true; // World creation UI can expose this later.
+    bool cheatsEnabled = false;
     Weather* weather = nullptr;
     SoundSystem* sounds = nullptr;
 };

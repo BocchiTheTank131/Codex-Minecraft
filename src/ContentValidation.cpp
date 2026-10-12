@@ -35,7 +35,7 @@ void Game::updateCraftingPreview(double now) {
         } else if (stage == 1) {
             inventory_->clear();
             for (Item item : {Item::Stone, Item::CoalOre, Item::Log, Item::IronBlock,
-                              Item::Glass, Item::Bread, Item::Paper,
+                              Item::CrackedStoneBricks, Item::Bread, Item::Paper,
                               Item::DiamondPickaxe, Item::IronSword})
                 inventory_->add(item, isTool(item) ? 1 : 16);
             ui_.openInventory();
@@ -129,8 +129,8 @@ void Game::runCraftingContentSmokeTest() {
         if (!testWorld.canPlacePlant(positions[facing], static_cast<Block>(static_cast<int>(Block::VineNorth)+facing)))
             throw std::runtime_error("Vine wall support validation");
     }
-    const glm::ivec3 furnacePosition(6,240,4);
-    testWorld.setBlock(6,240,4,Block::Furnace);
+    const glm::ivec3 furnacePosition(6,240,8);
+    testWorld.setBlock(6,240,8,Block::Furnace);
     FurnaceData* furnace = testWorld.furnaceAt(furnacePosition, true);
     for (Item fuel : {Item::Coal,Item::Charcoal,Item::CoalBlock}) {
         *furnace = FurnaceData{};
@@ -175,7 +175,7 @@ void Game::runCraftingContentSmokeTest() {
         }
         for (int id = static_cast<int>(Block::CoalBlock); id < static_cast<int>(Block::Count); ++id)
             if (restoredWorld.getBlock((id-static_cast<int>(Block::CoalBlock))%CHUNK_SIZE,240,(id-static_cast<int>(Block::CoalBlock))/CHUNK_SIZE) != static_cast<Block>(id))
-                throw std::runtime_error("new block persistence");
+                throw std::runtime_error("new block persistence id "+std::to_string(id)+" actual "+std::to_string(int(restoredWorld.getBlock((id-static_cast<int>(Block::CoalBlock))%CHUNK_SIZE,240,(id-static_cast<int>(Block::CoalBlock))/CHUNK_SIZE))));
         std::remove(inventoryPath); std::remove(worldPath);
     }
     std::cout << "Content: appended item IDs/icons and block states, support, furnace fuels, "

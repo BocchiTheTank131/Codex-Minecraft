@@ -1,6 +1,7 @@
 #include "Survival.h"
 #include "Weather.h"
 #include "SaveFile.h"
+#include "Persistence.h"
 #include "Sound.h"
 #include "UiLayout.h"
 #include "Definitions.h"
@@ -419,14 +420,7 @@ const std::vector<RecipeInfo>& craftingRecipes() {
     return recipes();
 }
 
-Inventory::Inventory() {
-    add(Item::Grass, 12);
-    add(Item::Log, 4);
-    add(Item::Torch, 6);
-    add(Item::WoodPickaxe, 1);
-    add(Item::Seeds, 6);
-    add(Item::Bread, 2);
-}
+Inventory::Inventory() = default;
 void Inventory::selectSlot(int s) {
     selectedSlot_ = std::clamp(s, 0, 8);
 }
@@ -1035,7 +1029,15 @@ ItemStack Inventory::takeCursor(bool one) {
     return r;
 }
 ItemStack Inventory::takeSelected(bool entireStack) {
-    ItemStack& selected = slots_[static_cast<std::size_t>(selectedSlot_)];
+    return takeSlot(selectedSlot_,entireStack);
+}
+ItemStack Inventory::takeGuiDrop(const UiHit& hit, bool entireStack) {
+    if(!cursor_.empty()) return takeCursor(!entireStack);
+    return hit.kind==UiSlotKind::PlayerInventorySlot ? takeSlot(hit.index,entireStack) : ItemStack{};
+}
+ItemStack Inventory::takeSlot(int index, bool entireStack) {
+    if(index<0 || index>=TotalSlots) return {};
+    ItemStack& selected = slots_[static_cast<std::size_t>(index)];
     if (selected.empty())
         return {};
     ItemStack dropped = selected;
@@ -1109,6 +1111,18 @@ bool Inventory::load(const std::string& p, std::uint32_t seed) {
 }
 bool Inventory::runCraftingSelfTest(std::string& report) {
     Inventory inventory;
+    for(const auto& slot:inventory.slots_) if(!slot.empty()) {report="Starter inventory not empty";return false;}
+    inventory.add(Item::Stone,3);
+    const auto single=inventory.takeSelected(false),entire=inventory.takeSelected(true);
+    if(single.count!=1 || entire.count!=2 || !inventory.selectedStack().empty()) {report="Drop quantity/slot removal";return false;}
+    inventory.add(Item::Stone,3);
+    const auto rect=UiLayout::playerSlot(UiMode::Creative,0,1280,720);
+    const auto hit=UiLayout::hit(UiMode::Creative,rect.x+2,rect.y+2,1280,720,creativeCatalog().size());
+    if(inventory.takeGuiDrop(hit,false).count!=1 || inventory.selectedStack().count!=2 ||
+       inventory.takeGuiDrop(hit,true).count!=2 || !inventory.selectedStack().empty()) {report="Creative GUI slot drop";return false;}
+    inventory.setCreativeCursor(Item::Stone);
+    if(inventory.takeGuiDrop({},false).count!=1 || inventory.takeGuiDrop({},true).count!=63 ||
+       !inventory.cursorStack().empty() || !inventory.takeGuiDrop({UiSlotKind::CreativeItem,0},true).empty()) {report="GUI cursor/catalog distinction";return false;}
     inventory.clear();
     auto test = [&](bool table,
                     std::initializer_list<std::pair<int, Item>> ingredients,
@@ -1727,21 +1741,21 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         const bool hostile = unit(random) < HostileCandidateChance;
         if (attempt >= NaturalSpawnCandidates && !hostile)
             continue; // Bonus candidates never replace passive spawns.
-        if (hostile && daylight > 0.01f)
-            continue;
         if (hostile ? hostileCount >= HostileMobCap
                     : passiveCount >= PassiveMobCap || passiveSpawnCooldown_ > 0.0f ||
                       passiveSpawned >= 3)
             continue;
         const int terrainY = world.terrainHeight(x, z);
-        int feetY = terrainY + 1;
+        int feetY = hostile ? std::min(terrainY+1,int(std::floor(playerPosition.y))+24) : terrainY + 1;
         if (feetY < world.minimumY() + 3 || feetY >= world.maximumY() - 2)
             continue;
         // Check the terrain surface and a few blocks below it without scanning the column.
         bool valid = false;
         Block ground = Block::Air;
-        for (int probe = 0; probe < 4; ++probe) {
+        for (int probe = 0; probe < (hostile?64:4); ++probe) {
             const int candidateY = feetY - probe;
+            if(candidateY<world.minimumY()+2) break;
+            if(hostile && std::max(float(world.blockLightAt(x,candidateY+1,z)),float(world.sunlightAt(x,candidateY+1,z))*daylight)>6.f) continue;
             ground = world.getBlock(x, candidateY - 1, z);
             const BlockGeometryProperties shape = blockGeometry(ground);
             if (!isSolid(ground) || blockDefinition(ground).transparent ||
@@ -1749,7 +1763,7 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
                 continue;
             const Block feet = world.getBlock(x, candidateY, z);
             const Block head = world.getBlock(x, candidateY + 1, z);
-            if (isSolid(feet) || isWater(feet) || isSolid(head) || isWater(head))
+            if (isSolid(feet) || isWater(feet) || isLava(feet) || isSolid(head) || isWater(head) || isLava(head))
                 continue;
             feetY = candidateY;
             valid = true;
@@ -2058,6 +2072,8 @@ void SurvivalWorld::updateArrows(float dt, World& world, Player& player) {
     arrows_.erase(std::remove_if(arrows_.begin(), arrows_.end(),
         [](const Arrow& arrow) { return !arrow.active; }), arrows_.end());
 }
+
+void SurvivalWorld::burningPositions(std::vector<glm::vec3>& p) const {p.clear();for(const auto& a:animals_) if(a.deathTimer==0 && a.burning.remaining>0) p.push_back(a.position+glm::vec3(0,.6f,0));}
 
 std::vector<glm::vec3> SurvivalWorld::takeExplosionEffects() {
     std::vector<glm::vec3> result;
@@ -2425,8 +2441,10 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     const glm::vec3 mobMinimum = a.position + glm::vec3(-halfWidth, 0.0f, -halfWidth);
     const glm::vec3 mobMaximum = a.position +
         glm::vec3(halfWidth, billboard ? BillboardMobHeight : 1.15f, halfWidth);
-    if (a.hurtCooldown <= 0.0f && w.aabbTouchesBlock(mobMinimum, mobMaximum, Block::Cactus)) {
-        a.health -= 1.0f;
+    const int burnDamage=a.burning.update(dt,w.aabbTouchesBlock(mobMinimum,mobMaximum,Block::Lava),
+                                         w.aabbTouchesBlock(mobMinimum,mobMaximum,Block::Water));
+    if (burnDamage>0 || (a.hurtCooldown <= 0.0f && w.aabbTouchesBlock(mobMinimum, mobMaximum, Block::Cactus))) {
+        a.health -= burnDamage>0?float(burnDamage):1.f;
         a.hurtCooldown = 0.65f;
         a.hurtFlash = 0.22f;
         if (sounds_) {
@@ -3428,6 +3446,38 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
           legacy.diagnostics(testPlayer.position()).hostile == 0;
     if (!ok && firstFailure.empty()) firstFailure = "legacy wolf load";
     std::filesystem::remove(legacyPath);
+    {
+        Inventory gui;gui.add(Item::Stone,3);SurvivalWorld droppedWorld(seed_);
+        Player pickupPlayer(w.findSafeSpawnNear(0,0));pickupPlayer.setCreativeMode(true);
+        const auto stack=gui.takeGuiDrop({UiSlotKind::PlayerInventorySlot,0},false);
+        droppedWorld.spawnDrop(pickupPlayer.position()+glm::vec3(0,.8f,0),stack.item,stack.count,stack.durability);
+        ok &= gui.selectedStack().count==2 && droppedWorld.drops_.size()==1 && droppedWorld.drops_[0].stack.count==1;
+        droppedWorld.update(.1f,w,pickupPlayer,gui,1.f);
+        ok &= gui.count(Item::Stone)==3 && gui.selectedStack().count==3 && droppedWorld.drops_.empty();
+        if(Persistence::enabled()) {
+            const std::string path="gui-drop-inventory.vxi";Inventory reload;
+            ok &= gui.save(path,seed_) && reload.load(path,seed_) && reload.count(Item::Stone)==3;
+            std::filesystem::remove(path);
+        }
+        if(!ok && firstFailure.empty()) firstFailure="GUI drop/pickup/slot/save consistency";
+    }
+    {
+        Animal hazard;hazard.type=AnimalType::Cow;hazard.position=w.findSafeSpawnNear(4,0);
+        const auto cell=glm::ivec3(glm::floor(hazard.position));
+        const Block old=w.getBlock(cell.x,cell.y,cell.z);
+        w.setBlock(cell.x,cell.y,cell.z,Block::Lava);
+        updateAnimal(hazard,0,w,testPlayer,combatInventory,1.f);
+        ok &= hazard.burning.remaining==5;
+        w.setBlock(cell.x,cell.y,cell.z,Block::Air);
+        for(int n=0;n<52;++n) updateAnimal(hazard,.1f,w,testPlayer,combatInventory,1.f);
+        ok &= std::abs(hazard.health-5.f)<.001f && hazard.burning.remaining==0;
+        w.setBlock(cell.x,cell.y,cell.z,Block::Lava);hazard.position=glm::vec3(cell)+glm::vec3(.5f,.01f,.5f);
+        updateAnimal(hazard,0,w,testPlayer,combatInventory,1.f);
+        w.setBlock(cell.x,cell.y,cell.z,Block::Water);updateAnimal(hazard,.02f,w,testPlayer,combatInventory,1.f);
+        ok &= hazard.burning.remaining==0;
+        w.setBlock(cell.x,cell.y,cell.z,old);
+        if(!ok && firstFailure.empty()) firstFailure="mob burning/extinguishing";
+    }
     SurvivalWorld spawnProbe(seed_);
     const auto spawnWaitStart = std::chrono::steady_clock::now();
     while (w.loadedChunkCount() < 25 &&
@@ -3437,8 +3487,11 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     }
     for (int attempt = 0; attempt < 20; ++attempt)
         spawnProbe.spawnNearbyAnimals(w, testPlayer.position(), 1.0f);
-    ok &= spawnProbe.diagnostics(testPlayer.position()).hostile == 0 &&
-          spawnProbe.spawnAttemptsLastTick_ == NaturalSpawnCandidates;
+    for(const auto& a:spawnProbe.animals_) if(isBillboard(a.type)) {
+        const auto pos=glm::ivec3(glm::floor(a.position));
+        ok &= std::max(w.blockLightAt(pos.x,pos.y+1,pos.z),w.sunlightAt(pos.x,pos.y+1,pos.z))<=6;
+    }
+    ok &= spawnProbe.spawnAttemptsLastTick_ == NaturalSpawnCandidates;
     if (!ok && firstFailure.empty()) firstFailure = "daytime hostile spawn";
     spawnProbe.animals_.clear();
     std::uint8_t variantMask = 0;
@@ -3482,8 +3535,8 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     arrows_ = std::move(oldArrows);
     explosionEffects_ = std::move(oldEffects);
     spawnedChunks_ = std::move(oldSpawned);
-    report = ok ? std::to_string(terrainPhysicsCases) + " terrain physics regressions; mob combat, 1.75-block hitbox, one-block steps/stairs and headroom, night-only spawning (hostile candidate rate " +
-                  std::to_string(rateRatio) + "x), exact stacked arrow volleys, two archer sources, projectile immunity, fall damage, melee/explosion cooldowns, four named roles, old billboard/Wolf saves, and Creative immunity passed"
+    report = ok ? std::to_string(terrainPhysicsCases) + " terrain physics regressions; mob combat, 1.75-block hitbox, one-block steps/stairs and headroom, light-gated spawning (hostile candidate rate " +
+                  std::to_string(rateRatio) + "x), exact stacked arrow volleys, two archer sources, projectile immunity, fall damage, melee/explosion cooldowns, four named roles, old billboard/Wolf saves, GUI drop/pickup/save consistency, and Creative immunity passed"
                 : "combat regression: " + firstFailure;
     return ok;
 }

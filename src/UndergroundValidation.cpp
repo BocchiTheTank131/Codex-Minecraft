@@ -29,12 +29,13 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
         structureTiming<<"type,version,repeat,chunks,ms,bytes\n";
         lootStats<<"depth,table,chests,common,uncommon,rare,diamonds,relics\n";
         hashes<<"seed,version,x,z,hash\n";
-        std::array<int,3> counts{};int connectivity=0;
+        std::array<int,3> counts{}, baselineCounts{};int connectivity=0;
         using P=std::tuple<int,int,int>;
         std::array<std::shared_ptr<const UndergroundPlan>,3> captures{};
         for(unsigned seed:{123456789U,20260917U,42U}) {
-            World w(seed,19);
-            std::ofstream map(directory+"/map-"+std::to_string(seed)+"-v19-8192.bin",std::ios::binary);
+            World w(seed,generationVersion_);
+            World previous(seed,20);
+            std::ofstream map(directory+"/map-"+std::to_string(seed)+"-v"+std::to_string(generationVersion_)+"-8192.bin",std::ios::binary);
             struct Pixel {std::uint8_t biome,reserved;std::int16_t height;float t,h,c,river,mt,mh;};
             for(int z=0;z<512;++z)for(int x=0;x<512;++x) {
                 const auto t=w.sampleTerrain(x*16-4096,z*16-4096);
@@ -42,6 +43,7 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
                 map.write(reinterpret_cast<const char*>(&p),sizeof(p));
             }
             for(int rz=-16;rz<16;++rz)for(int rx=-16;rx<16;++rx) {
+                if(auto old=previous.undergroundPlan(rx,rz)) ++baselineCounts[int(old->kind)];
                 auto p=w.undergroundPlan(rx,rz);if(!p)continue;
                 ++counts[int(p->kind)];
                 const auto& r=p->rooms.front();
@@ -52,6 +54,7 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
                 require(w.dryUndergroundCave(p->entrance.x,p->entrance.y,p->entrance.z),"Cave connection not dry/navigable");
                 require(!w.undergroundReserved(p->bounds),"Surface structure overlap");
                 std::map<P,Block> cells;for(const auto& c:p->cells)require(cells.emplace(P{c.x,c.y,c.z},c.block).second,"Duplicate planned cell");
+                if(generationVersion_>=21) require(std::any_of(p->cells.begin(),p->cells.end(),[](const auto& c){return c.block==Block::Cobweb;}),"Structure without cobwebs");
                 const auto block=[&](int x,int y,int z){auto it=cells.find({x,y,z});return it==cells.end()?Block::Stone:it->second;};
                 const auto walkable=[&](int x,int y,int z){return isSolid(block(x,y-1,z))&&!isSolid(block(x,y,z))&&!isSolid(block(x,y+1,z));};
                 std::queue<P> queue;std::set<P> visited;P start{r.x,r.y+1,r.z};
@@ -104,7 +107,7 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
                    (p->kind==UndergroundKind::Dungeon&&p->rooms.front().y<0&&captures[1]->rooms.front().y>=0)))captures[int(p->kind)]=p;
             }
             // Same coordinates/version workloads isolate generation overhead.
-            for(unsigned version:{18U,19U}) {
+            for(unsigned version:{19U,20U}) {
                 World probe(seed,version);
                 for(int repeat=0;repeat<3;++repeat)for(int z=-4;z<4;++z)for(int x=-4;x<4;++x) {
                     auto start=std::chrono::steady_clock::now();auto data=probe.generateChunkData(x,z);
@@ -117,7 +120,7 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
         // Exercise the actual chunk integration queue, including negative Y.
         {
             const auto p=captures[1];require(p&&p->rooms.front().y<0,"Missing deep encounter fixture");
-            World encounters(123456789U,19);
+            World encounters(123456789U,generationVersion_);
             const auto& r=p->rooms.front();encounters.generate(2,glm::vec3(r.x,r.y+1,r.z));
             encounters.prepareSpawnTerrain(glm::vec3(r.x,r.y+1,r.z));
             require(encounters.takeActiveStructureMobMarkers(false).empty(),"Paused encounter activated");
@@ -129,7 +132,7 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
             const auto name=std::string(UndergroundStructures::name(p->kind));
             std::ofstream cells(directory+"/layout-"+name+".csv");cells<<"x,y,z,block\n";
             for(const auto& c:p->cells)cells<<c.x<<','<<c.y<<','<<c.z<<','<<int(c.block)<<'\n';
-            for(unsigned version:{18U,19U}) {
+            for(unsigned version:{19U,20U}) {
                 World probe(123456789U,version);
                 for(int repeat=0;repeat<3;++repeat) {
                     std::size_t bytes=0;int chunks=0;
@@ -164,7 +167,7 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
         while(std::getline(legacy,line)) {
             std::replace(line.begin(),line.end(),',',' ');std::istringstream in(line);unsigned seed,version;int x,z;std::uint64_t expected;
             if(!(in>>seed>>version>>x>>z>>expected))continue;
-            if(version>18)continue;
+            if(version>20)continue;
             // The historical 1–10 fixture changes the version on one probe;
             // reproduce that exact fixture/cache history rather than comparing
             // a fresh probe against its warmed surface-plan cache.
@@ -176,7 +179,7 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
         }
         require(checked>100,"Insufficient legacy hashes");
         if(Persistence::enabled()) {
-            for(unsigned version=1;version<=19;++version) {
+            for(unsigned version=1;version<=21;++version) {
                 World saved(42,version),restored(42,19);const auto path=directory+"/legacy-save.vxw";glm::vec3 pos(0,100,0);
                 require(saved.saveWorld(path,pos)&&restored.loadWorld(path,pos)&&restored.generationVersion()==int(version),"Stored generator/save compatibility");
                 require(hashBlocks(saved.generateChunkData(-3,2).blocks)==hashBlocks(restored.generateChunkData(-3,2).blocks),"Unexplored legacy terrain differs after loading");fs::remove(path);
@@ -188,7 +191,7 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
             SurvivalWorld restoredEncounters(42);require(restoredEncounters.load(mobPath,42),"Encounter load failed");
             restoredEncounters.spawnStructureMob(encounterMarker,true);
             require(restoredEncounters.diagnostics(glm::vec3(encounterMarker)).hostile==1,"Encounter respawned on reload");fs::remove(mobPath);
-            World w(123456789U,19);auto p=captures[0];require(bool(p),"Missing test mineshaft");
+            World w(123456789U,generationVersion_);auto p=captures[0];require(bool(p),"Missing test mineshaft");
             const auto marker=p->loot.front();const glm::ivec3 pos(marker.x,marker.y,marker.z);
             w.prepareSpawnTerrain(glm::vec3(pos));auto chest=w.chestAt(pos,true);require(chest&&w.getBlock(pos.x,pos.y,pos.z)==Block::Chest,"Generated chest missing");
             for(auto& slot:chest->slots)slot.clear();chest->slots[26]={Item::AncientSeal,1,0};
@@ -199,7 +202,7 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
             chest=w.chestAt(pos,false);
             require(chest&&chest->slots[26].item==Item::AncientSeal&&chest->slots[0].empty(),"Chest reset on chunk unload/reload");
             const auto path=directory+"/modified-chest.vxw";glm::vec3 spawn(pos);
-            require(w.saveWorld(path,spawn),"Chest save failed");World loaded(123456789U,18);require(loaded.loadWorld(path,spawn)&&loaded.generationVersion()==19,"New-world save load failed");
+            require(w.saveWorld(path,spawn),"Chest save failed");World loaded(123456789U,18);require(loaded.loadWorld(path,spawn)&&loaded.generationVersion()==generationVersion_,"New-world save load failed");
             loaded.prepareSpawnTerrain(glm::vec3(pos));chest=loaded.chestAt(pos,false);
             require(chest&&chest->slots[26].item==Item::AncientSeal&&chest->slots[0].empty(),"Chest contents reset on load");
             loaded.setBlock(pos.x,pos.y,pos.z,Block::Air);require(loaded.saveWorld(path,spawn),"Destroyed chest save failed");
@@ -207,6 +210,18 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
             require(destroyed.getBlock(pos.x,pos.y,pos.z)==Block::Air&&!destroyed.chestAt(pos,false),"Destroyed chest regenerated");
             fs::remove(path);
         }
+        std::ofstream frequency(directory+"/frequency.csv");frequency<<"type,v20,current\n";
+        for(int i=0;i<3;++i) frequency<<UndergroundStructures::name(UndergroundKind(i))<<','<<baselineCounts[i]<<','<<counts[i]<<'\n';
+        std::array<int,3> wideBefore{},wideAfter{};
+        for(unsigned seed:{123456789U,20260917U,42U}) {
+            World before(seed,20),after(seed,generationVersion_);
+            for(int z=-32;z<32;++z)for(int x=-32;x<32;++x) {
+                if(auto p=before.undergroundPlan(x,z)) ++wideBefore[int(p->kind)];
+                if(auto p=after.undergroundPlan(x,z)) ++wideAfter[int(p->kind)];
+            }
+        }
+        std::ofstream wide(directory+"/frequency-16384.csv");wide<<"type,v20,current\n";
+        for(int i=0;i<3;++i) wide<<UndergroundStructures::name(UndergroundKind(i))<<','<<wideBefore[i]<<','<<wideAfter[i]<<'\n';
         report="Underground audit passed: "+std::to_string(counts[0])+" mineshafts, "+std::to_string(counts[1])+" dungeons, "+std::to_string(counts[2])+" ruins; "+std::to_string(connectivity)+" connected layouts; "+std::to_string(checked)+" legacy hashes; deterministic loot; "+
             (Persistence::enabled()?"chest/encounter persistence.":"demo persistence disabled (save checks skipped).");
         return true;

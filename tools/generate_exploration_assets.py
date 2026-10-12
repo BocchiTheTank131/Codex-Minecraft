@@ -21,7 +21,21 @@ for y in range(16):
         v=65 if joint else 121+n;d.point((x,y),fill=(v,v+2,v+3,255))
 for path in [[(4,1),(5,3),(4,5),(7,7),(6,10)],[(13,6),(11,8),(12,11),(10,14)]]:
     d.line(path,fill=(49,53,55,255));d.point(path[0],fill=(178,180,174,255))
-icons={'Cobweb':web,'CrackedStoneBricks':stone}
+# Reuse the same pixel projection and face shading as every other cube icon.
+def cube(tex):
+    im=Image.new('RGBA',(16,16))
+    for origin,a,b,gain in [((8,1),(6,3),(-6,3),1),((2,4),(6,3),(0,7),.82),((8,7),(6,-3),(0,7),.64)]:
+        det=a[0]*b[1]-a[1]*b[0]
+        for y in range(1,15):
+            for x in range(1,15):
+                px,py=x+.5-origin[0],y+.5-origin[1]
+                u=(px*b[1]-py*b[0])/det;v=(a[0]*py-a[1]*px)/det
+                if 0<=u<1 and 0<=v<1:
+                    c=tex.getpixel((min(15,int(u*16)),min(15,int(v*16))))
+                    edge=.91 if min(u,v,1-u,1-v)<.06 else 1
+                    im.putpixel((x,y),tuple(round(ch*gain*edge) for ch in c[:3])+(255,))
+    return im
+icons={'Cobweb':web,'CrackedStoneBricks':cube(stone)}
 token=Image.new('RGBA',(16,16));d=ImageDraw.Draw(token)
 d.polygon([(5,2),(10,2),(13,5),(13,10),(10,13),(5,13),(2,10),(2,5)],fill=(114,69,34),outline=(45,34,28))
 d.polygon([(5,3),(10,3),(12,5),(12,10),(10,12),(5,12),(3,10),(3,5)],fill=(198,142,65))

@@ -27,7 +27,7 @@ It includes procedural terrain, streamed chunks, caves, structures, mobs, crafti
 Launch to the moving panorama main menu: **PLAY** opens **Select World** in the installed
 game, **SETTINGS** opens Video, Audio, Controls, and Weather categories, and **QUIT** closes the game.
 Select a saved world and press PLAY (or double-click it), or choose **CREATE NEW WORLD**.
-New worlds have a name, an optional numeric seed, and Survival or Creative mode.
+New worlds have a name, an optional numeric seed, Survival or Creative mode, and per-world Cheats (Off by default). Select a saved world to change its Cheats permission.
 The standalone demo skips world selection and starts a fresh temporary world.
 The world starts only after PLAY. From the pause menu, **SAVE & RETURN TO MENU** saves the
 installed game; the standalone demo's **RETURN TO MENU** discards its temporary world.
@@ -35,7 +35,7 @@ Pressing PLAY again in the demo starts a fresh gameplay session.
 
 ## Features
 
-- Versioned procedural worlds: new Generator V19 worlds span Y=-64 through 319, with natural generation capped at Y=256; V11–V18 worlds retain their original terrain and generators 1–10 keep Y=0 through 255
+- Versioned procedural worlds: new Generator V21 worlds span Y=-64 through 319, with natural generation capped at Y=256; V11–V20 worlds retain their original terrain and generators 1–10 keep Y=0 through 255
 - Multi-noise terrain with continents, mountains, rivers, beaches, oceans, caves, ravines, and aquifers
 - Plains, deserts, snowy mountains, forests, and other terrain variations
 - Villages, pillager outposts, desert pyramids, ruins, wells, and campsites
@@ -70,7 +70,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.12.0** has **147 inventory items**, **98 placeable block families**, **162 block
+Version **2.12.1** has **147 inventory items**, **98 placeable block families**, **167 block
 IDs/states including Air**, **73 crafting recipes**, and **23 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -197,6 +197,16 @@ compares v7/v8 CPU chunk-generation time, validates shoreline Cane and old-world
 and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in that explicit
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
+
+## v2.12.1 - Gameplay, Structures & Bug Fixes
+
+- Generator V21 increases underground structure frequency by about 25% and adds sparse cobwebs to every accepted structure, while preserving generators 1–20. Generator V20 expands underground room networks and chambers, adds storage/library details and more loops, and keeps generators 1–19 unchanged.
+- Water and lava use per-job lava deadlines to avoid bounded-queue tick starvation, and source activation restores missing downstream notifications. They share a bounded queued flow solver: water reaches seven horizontal blocks, lava four, with downward flow and slower lava updates. Flow is reconstructed from persistent sources after reload.
+- Lava applies one refreshable five-second burn, dealing one HP per second. Water extinguishes it. Burning uses existing batched particles; cobweb intersection slows player movement by 75%.
+- Installed worlds store Cheats individually. New worlds default Off; legacy worlds retain their previous command access. The standalone demo denies privileged commands. Pause-menu gamemode selection is removed.
+- Natural billboard hostiles use actual sky/block light, supporting dark caves in daytime while rejecting bright rooms.
+- New/reset inventories start empty. Creative gameplay and GUI dropping remove the actual selected quantity. Q/Ctrl+Q support cursor or hovered owned stacks; dragging a held stack outside drops it once. Catalogue entries remain unlimited. Cracked Stone Bricks use a shaded cube inventory icon.
+- Release regression evidence and performance limits: [Gameplay validation](docs/GAMEPLAY_VALIDATION.md).
 
 ## v2.12.0 - The Exploration Update
 
@@ -605,12 +615,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
 Prerelease: [Voxel Frontier v2.11.2-beta2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta2).
-Latest stable: [Voxel Frontier v2.12.0](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.12.0).
+Latest stable: [Voxel Frontier v2.12.1](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.12.1).
 
-| v2.12.0 Windows build | Purpose | Persistence |
+| v2.12.1 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.12.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.12.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.12.1-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.12.1-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -768,7 +778,7 @@ Keybindings can be changed from:
 
 Press `/` during gameplay to open the command overlay. **Enter** executes and closes input;
 **Escape** cancels. The world keeps simulating while you type, but movement, hotbar selection,
-and gameplay shortcuts are suppressed. Commands work in Survival, Creative, and Spectator.
+and gameplay shortcuts are suppressed. Commands work in Survival, Creative, and Spectator. Gameplay-changing commands require Cheats On in the installed world; `/help` and `/seed` remain available. The demo denies privileged commands regardless of command context. Use `/gamemode` with Cheats On to switch modes during gameplay.
 
 | Input while typing | Action |
 |---|---|
@@ -825,7 +835,7 @@ the brackets themselves.
   catalog are not implemented.
 
 Installed-world changes use the normal save system. Demo commands affect only the current
-session. Command-summoned hostiles may appear in daytime; natural spawning remains night-only except during sufficiently dark thunderstorms.
+session. Command-summoned hostiles may appear in daytime; natural spawning requires sufficiently dark sky/block light, including caves and dark thunderstorms.
 
 ## Mobs
 
@@ -848,7 +858,7 @@ Their upright camera-facing sprites and hitboxes are **1.75 blocks tall**; sprit
 original aspect ratio. Walking hostiles navigate ordinary one-block terrain; RyoYamada also
 climbs walls. They target Survival players, not Creative or Spectator players.
 
-Natural billboard spawning is night-only, uses equal initial weights, and shares a hostile cap
+Natural billboard spawning is light-gated (maximum effective light 6), uses equal initial weights, and shares a hostile cap
 of **18**. Version 2.6.0 increases nighttime hostile candidate frequency by 1.5× without raising
 the cap. Existing mobs can remain after sunrise. Pillager structure spawning remains separate.
 Normally killing a billboard hostile plays `boowomp.ogg`; a successful HitoriGotoh detonation
@@ -1059,7 +1069,7 @@ The project is split into focused systems:
 - `WorldExplorationValidation` / `StreamingValidation` - route, compatibility, concurrency and flight fixtures
 - `WorldDensityValidation` - V11 maps, cutaways, deterministic hashes and vertical-range regressions
 - `UndergroundContent` - appended underground block/item metadata
-- `UndergroundStructures` - Generator V19 regional layouts, cave connections and bounded plan cache
+- `UndergroundStructures` - versioned Generator V19/V20/V21 regional layouts, cave connections and bounded plan cache
 - `UndergroundWorld` - integration with existing terrain density and surface-structure reservations
 - `ExplorationLoot` - deterministic weighted rewards and collectible relics
 - `UndergroundValidation` - opt-in structure access, compatibility, loot and persistence checks

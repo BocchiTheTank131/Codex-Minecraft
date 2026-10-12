@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Block.h"
+#include "Burning.h"
 #include <array>
 #include <cstdint>
 #include <glm/glm.hpp>
@@ -9,6 +10,7 @@
 #include <vector>
 
 class Player;
+struct UiHit;
 class SoundSystem;
 class World;
 
@@ -229,6 +231,8 @@ public:
     bool movePlayerToExternal(int index, ItemStack* stacks, int stackCount);
     ItemStack takeCursor(bool singleItem);
     ItemStack takeSelected(bool entireStack);
+    ItemStack takeSlot(int index, bool entireStack);
+    ItemStack takeGuiDrop(const UiHit& hit, bool entireStack);
     void returnCraftingItems();
     bool load(const std::string& path, std::uint32_t seed);
     bool save(const std::string& path, std::uint32_t seed) const;
@@ -342,6 +346,7 @@ public:
     std::vector<RenderItemSprite> renderItemSprites() const;
     void renderItemSprites(std::vector<RenderItemSprite>& out) const;
     std::vector<glm::vec3> takeExplosionEffects();
+    void burningPositions(std::vector<glm::vec3>& positions) const;
     bool save(const std::string& path, std::uint32_t seed) const;
     bool load(const std::string& path, std::uint32_t seed);
     bool runCombatSelfTest(World& world, Player& player, Inventory& inventory, std::string& report);
@@ -355,6 +360,7 @@ private:
     static std::size_t billboardIndex(AnimalType type);
     static AnimalType billboardType(std::size_t index);
     struct Animal {
+        Burning burning;
         AnimalType type = AnimalType::Cow;
         glm::vec3 position{0}, velocity{0}, home{0};
         glm::vec2 heading{1, 0};

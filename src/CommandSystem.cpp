@@ -1,5 +1,6 @@
 #include "WorldTime.h"
 #include "CommandSystem.h"
+#include "Persistence.h"
 #include "Weather.h"
 #include "Definitions.h"
 #include "Player.h"
@@ -288,7 +289,7 @@ CommandResult CommandSystem::execute(const std::string& line, CommandContext& co
     if (tokens.empty()) return error("Enter a command after /");
     const Definition* definition = find(tokens.front());
     if (!definition) return error("Unknown command: " + tokens.front());
-    if (definition->cheat && !context.cheatsEnabled)
+    if (definition->cheat && (!Persistence::enabled() || !context.cheatsEnabled))
         return error("Cheats are not enabled in this world.");
     return definition->handler(tokens, context);
 }

@@ -161,7 +161,8 @@ void Game::runWeatherSmokeTest() {
     CommandContext context{*world_,*player_,*inventory_,*survival_,timing_.worldTime,seed_,
         [this]{return gameMode();},[this](GameMode m){setGameMode(m);},true,weather_.get(),sounds_.get()};
     for(const char* text : {"/weather clear 10","/weather rain 120","/weather thunder 100","/weather query"})
-        require(commands_.execute(text,context).tone!=ChatTone::Error,"weather command");
+        require((commands_.execute(text,context).tone!=ChatTone::Error)==Persistence::enabled(),"weather command permissions");
+    if(!Persistence::enabled()) weather_->set(WeatherType::Thunder,100.f);
     for(const char* text : {"/weather banana","/weather rain nan","/weather rain -1","/weather rain 999999999"})
         require(commands_.execute(text,context).tone==ChatTone::Error,"invalid weather command");
     require(!commands_.suggest("/weather t").empty(),"weather autocomplete");
@@ -198,7 +199,7 @@ void Game::runWeatherSmokeTest() {
     weather_->strike({.5f,246,.5f},*world_,target,*survival_,*sounds_);
     require(weather_->bolts().back().position==glm::vec3(3.5f,246,.5f),"rod redirects strike");
     world_->setBlock(3,245,0,rodOriginal);
-    require(commands_.execute("/summon lightning_bolt ~10 ~ ~10",context).tone!=ChatTone::Error,"summon lightning command");
+    require((commands_.execute("/summon lightning_bolt ~10 ~ ~10",context).tone!=ChatTone::Error)==Persistence::enabled(),"summon lightning command permissions");
     std::cout<<"Weather commands, cycle toggle/transition, lightning damage/immunity and rod crafting passed\n";
     player_->setCreativeMode(true);
     settings_.weatherCycle=false; settings_.snowAccumulation=false;

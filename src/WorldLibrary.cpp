@@ -23,6 +23,8 @@ SavedWorld read(const fs::path& directory) {
     std::string name;
     if (info >> std::quoted(name) && !name.empty()) result.name = name.substr(0, 48);
     info >> result.lastPlayed;
+    std::string permission; int enabled=1;
+    if(info >> permission >> enabled && permission=="CHEATS1") result.cheats=enabled!=0;
     std::ifstream seedFile(directory / "world_seed.txt");
     std::string mode;
     float storedTime = 35.f;
@@ -48,7 +50,7 @@ bool writeMetadata(const SavedWorld& world) {
     if (!Persistence::enabled()) return false;
     return SaveFile::write((world.directory / "world.info").string(), std::ios::out,
         [&](std::ofstream& output) {
-            output << std::quoted(world.name) << '\n' << world.lastPlayed << '\n';
+            output << std::quoted(world.name) << '\n' << world.lastPlayed << '\n' << "CHEATS1 " << (world.cheats?1:0) << '\n';
             return static_cast<bool>(output);
         });
 }
@@ -67,7 +69,7 @@ std::vector<SavedWorld> list() {
     return worlds;
 }
 
-SavedWorld create(const std::string& name, std::uint32_t seed, GameMode mode) {
+SavedWorld create(const std::string& name, std::uint32_t seed, GameMode mode, bool cheats) {
     if (!Persistence::enabled()) throw std::runtime_error("Demo cannot create saved worlds");
     if (name.empty() || name.size() > 48 || name.find_first_not_of(' ') == std::string::npos)
         throw std::runtime_error("Enter a world name (1-48 characters)");
@@ -76,6 +78,7 @@ SavedWorld create(const std::string& name, std::uint32_t seed, GameMode mode) {
     result.name = name;
     result.seed = seed;
     result.mode = mode;
+    result.cheats = cheats;
     // The visible name never becomes a path: slashes, reserved names and duplicates are safe.
     std::random_device random;
     for (int attempt = 0; attempt < 32; ++attempt) {

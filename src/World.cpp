@@ -1,4 +1,5 @@
 #include "World.h"
+#include "Persistence.h"
 #include "TerrainDensity.h"
 #include "BiomeVegetation.h"
 #include "AmbientOcclusion.h"
@@ -463,9 +464,9 @@ World::World(std::uint32_t seed, std::uint32_t generationVersion)
       weirdnessNoise_(seed ^ 0xe37219adU), ridgeNoise_(seed ^ 0x2f6b8053U),
       riverNoise_(seed ^ 0x7a316c5dU), aquiferNoise_(seed ^ 0xc45e1f09U),
       cheeseNoise_(seed ^ 0x91b37d65U), spaghettiNoise_(seed ^ 0x326fa1cbU),
-      noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed), underground_(seed),
+      noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed), underground_(seed), underground20_(seed,20), underground21_(seed,21),
       seed_(seed) {
-    generationVersion_ = std::clamp(generationVersion, 1U, 19U);
+    generationVersion_ = std::clamp(generationVersion, 1U, 21U);
     const auto maximum=streamingWorkerPlan(std::thread::hardware_concurrency(),ChunkStreamingQuality::High);
     workerPlan_=streamingWorkerPlan(std::thread::hardware_concurrency(),streamingQuality_);
     generationWorkerLimit_=workerPlan_.generation;
@@ -1966,7 +1967,7 @@ void World::generate(int renderDistance, const glm::vec3& initialPosition) {
     pendingStructureMobs_.clear();
     pendingStructureMobIds_.clear();
     fluidQueue_.clear();
-    fluidQueued_.clear();
+    fluidQueued_.clear(); fluidLavaDue_.clear();
     lightingQueue_.clear();
     lightingSet_.clear();
     fluidUpdateAccumulator_ = 0.0f;
@@ -2549,7 +2550,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
                        loadedGenerationVersion != 5U &&
                        loadedGenerationVersion != 6U && loadedGenerationVersion != 7U &&
                        loadedGenerationVersion != 8U && loadedGenerationVersion != 9U &&
-                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U && loadedGenerationVersion != 12U && loadedGenerationVersion != 13U && loadedGenerationVersion != 14U && loadedGenerationVersion != 15U && loadedGenerationVersion != 16U && loadedGenerationVersion != 17U && loadedGenerationVersion != 18U && loadedGenerationVersion != 19U))
+                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U && loadedGenerationVersion != 12U && loadedGenerationVersion != 13U && loadedGenerationVersion != 14U && loadedGenerationVersion != 15U && loadedGenerationVersion != 16U && loadedGenerationVersion != 17U && loadedGenerationVersion != 18U && loadedGenerationVersion != 19U && loadedGenerationVersion != 20U && loadedGenerationVersion != 21U))
             return false;
     }
 
@@ -2561,7 +2562,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         furnaces_.swap(loadedFurnaces);
         chests_.swap(loadedChests);
         fluidQueue_.clear();
-        fluidQueued_.clear();
+        fluidQueued_.clear(); fluidLavaDue_.clear();
         fluidUpdateAccumulator_ = 0.0f;
         generationVersion_ = loadedGenerationVersion;
         playerPosition = loadedPlayerPosition;
@@ -3591,7 +3592,7 @@ bool World::runFluidSmokeTest(std::string& report) {
     const bool lightingWasDirty = blockLightingDirty_;
 
     fluidQueue_.clear();
-    fluidQueued_.clear();
+    fluidQueued_.clear(); fluidLavaDue_.clear();
     fluidUpdateAccumulator_ = 0.0f;
 
     const int baseY = WORLD_HEIGHT - 8;
@@ -3682,6 +3683,82 @@ bool World::runFluidSmokeTest(std::string& report) {
     passed = passed && swimmer.position().y > static_cast<float>(baseY) + 0.7f &&
              swimmer.position().z < static_cast<float>(baseZ) + 0.2f;
 
+    // Straight bounded channel crosses the chunk boundary; no side providers.
+    for(Block source:{Block::Water,Block::Lava}) {
+        fluidQueue_.clear();fluidQueued_.clear(); fluidLavaDue_.clear();clearTestArea();
+        for(int x=baseX-1;x<=baseX+9;++x) {
+            setDirect(x,baseY,baseZ,Block::Stone);
+            setDirect(x,baseY+1,baseZ-1,Block::Stone);setDirect(x,baseY+1,baseZ+1,Block::Stone);
+        }
+        setBlock(baseX-1,baseY+1,baseZ,Block::Stone);
+        setBlock(baseX,baseY+1,baseZ,source);advanceFluid(100);
+        const int limit=isLava(source)?4:7;
+        for(int d=1;d<=limit;++d) passed &= getBlock(baseX+d,baseY+1,baseZ)==(isLava(source)?flowingLavaBlock(d):flowingWaterBlock(d));
+        passed &= getBlock(baseX+limit+1,baseY+1,baseZ)==Block::Air;
+        if(Persistence::enabled()) {
+            const std::string path="fluid-roundtrip.vxw";glm::vec3 pos(baseX+.5f,baseY+1.f,baseZ+.5f);
+            passed &= saveWorld(path,pos);
+            World restored(seed_,generationVersion_);passed &= restored.loadWorld(path,pos);
+            restored.generate(2,pos);restored.prepareSpawnTerrain(pos);
+            passed &= restored.getBlock(baseX,baseY+1,baseZ)==source;
+            for(int n=0;n<24;++n)restored.updateFluids(.11f,4096);
+            passed &= restored.getBlock(baseX,baseY,baseZ)==(isLava(source)?Block::LavaFalling:Block::WaterFalling);
+            std::filesystem::remove(path);
+        }
+        setBlock(baseX,baseY+1,baseZ,Block::Air);advanceFluid(100);
+        for(int d=0;d<=9;++d) passed &= getBlock(baseX+d,baseY+1,baseZ)==Block::Air;
+        // Exercise source-only activation and a tiny queue budget. This catches
+        // the old modulo-tick starvation rather than hiding it with budget 4096.
+        for(int repeat=0;repeat<6;++repeat) {
+            setBlock(baseX,baseY+1,baseZ,source);
+            fluidQueue_.clear();fluidQueued_.clear();fluidLavaDue_.clear();
+            queueFluidUpdate(baseX,baseY+1,baseZ);
+            for(int tick=0;tick<1800;++tick) updateFluids(.11f,1);
+            passed &= getBlock(baseX+limit,baseY+1,baseZ)==(isLava(source)?flowingLavaBlock(limit):flowingWaterBlock(limit));
+            setBlock(baseX+1,baseY+1,baseZ,Block::Stone);advanceFluid(100);
+            passed &= getBlock(baseX+2,baseY+1,baseZ)==Block::Air;
+            setBlock(baseX+1,baseY+1,baseZ,Block::Air);advanceFluid(100);
+            passed &= getBlock(baseX+limit,baseY+1,baseZ)==(isLava(source)?flowingLavaBlock(limit):flowingWaterBlock(limit));
+            setBlock(baseX,baseY+1,baseZ,Block::Air);advanceFluid(100);
+            passed &= getBlock(baseX+limit,baseY+1,baseZ)==Block::Air;
+        }
+    }
+    // One non-stacking burn is five timed half-heart ticks at varied frame rates.
+    for(float dt:{1.f/30,1.f/60,1.f/144,.75f}) {
+        Burning effect; int damage=effect.update(0,true,false);
+        for(float elapsed=0;elapsed<5.1f;elapsed+=dt) damage+=effect.update(dt,false,false);
+        passed &= damage==5 && effect.remaining==0;
+        effect.update(.1f,true,false);effect.update(.1f,true,false);
+        passed &= effect.remaining>4.8f;
+        passed &= effect.update(1.f,false,true)==0 && effect.remaining==0;
+    }
+    clearTestArea();
+    setDirect(baseX,baseY,baseZ,Block::Stone);setDirect(baseX,baseY+1,baseZ,Block::Cobweb);
+    passed &= aabbTouchesBlock({baseX+.2f,baseY+1.1f,baseZ+.2f},{baseX+.8f,baseY+2.f,baseZ+.8f},Block::Cobweb);
+    passed &= !aabbTouchesBlock({baseX+1.1f,baseY+1.1f,baseZ+.2f},{baseX+1.7f,baseY+2.f,baseZ+.8f},Block::Cobweb);
+    // Exercise actual player hazard contact, extinguishing, immunity and movement.
+    const glm::vec3 hazardFeet(baseX+.5f,baseY+1.01f,baseZ+.5f);
+    setDirect(baseX,baseY+1,baseZ,Block::LavaFlow4);
+    Player victim(hazardFeet);PlayerInput idle;
+    victim.update(.02f,idle,*this);passed &= victim.isBurning();
+    setDirect(baseX,baseY+1,baseZ,Block::Air);
+    for(int n=0;n<260;++n) victim.update(.02f,idle,*this);
+    passed &= std::abs(victim.health()-15.f)<.001f && !victim.isBurning();
+    setDirect(baseX,baseY+1,baseZ,Block::Lava);
+    victim.teleport(hazardFeet);victim.update(.02f,idle,*this);
+    setDirect(baseX,baseY+1,baseZ,Block::Water);victim.update(.02f,idle,*this);
+    passed &= !victim.isBurning();
+    setDirect(baseX,baseY+1,baseZ,Block::Lava);
+    Player spectator(hazardFeet);spectator.setSpectatorMode(true);spectator.update(1.f,idle,*this);
+    passed &= spectator.health()==20 && !spectator.isBurning();
+    setDirect(baseX,baseY+1,baseZ,Block::Cobweb);
+    Player walker(hazardFeet);PlayerInput moving;moving.enabled=true;moving.moveForward=true;
+    for(int n=0;n<10;++n){walker.teleport(hazardFeet);walker.update(.02f,moving,*this);}
+    passed &= std::abs(glm::length(glm::vec2(walker.velocity().x,walker.velocity().z))-1.55f)<.01f;
+    setDirect(baseX,baseY+1,baseZ,Block::Air);
+    for(int z=baseZ-4;z<=baseZ+4;++z)for(int x=baseX-2;x<=baseX+2;++x) setDirect(x,baseY,z,Block::Stone);
+    for(int n=0;n<30;++n) walker.update(.02f,moving,*this);
+    passed &= glm::length(glm::vec2(walker.velocity().x,walker.velocity().z))>6.1f;
     centerChunk->blocks = originalCenterBlocks;
     eastChunk->blocks = originalEastBlocks;
     centerChunk->rebuildLightEmitterIndex();
@@ -3706,7 +3783,7 @@ bool World::runFluidSmokeTest(std::string& report) {
     blockLightingDirty_ = lightingWasDirty;
 
     report = passed
-                 ? "shoreline climb, downward flow, level spread, retraction, opened-block flow, boundary flow, and water meshing passed"
+                 ? "shoreline climb, downward flow, level spread, retraction, opened-block flow, boundary flow, water/lava 7/4-block limits, repeated/source-only/one-cell-budget scheduling, blocked reopening, burn timing, cobweb volumes, and water meshing passed"
                  : "queued water behavior regression";
     return passed;
 }
@@ -3977,116 +4054,6 @@ void World::updateBlockEntities(float deltaTime) {
     }
 }
 
-void World::queueFluidUpdate(int x, int y, int z) {
-    if (y < minimumY() || y >= maximumY())
-        return;
-    if (!findChunk(floorDiv(x, CHUNK_SIZE), floorDiv(z, CHUNK_SIZE)))
-        return;
-
-    const FluidCell cell{x, y, z};
-    if (fluidQueued_.insert(cell).second)
-        fluidQueue_.push_back(cell);
-}
-
-void World::queueFluidNeighborhood(int x, int y, int z) {
-    queueFluidUpdate(x, y, z);
-    queueFluidUpdate(x, y - 1, z);
-    queueFluidUpdate(x, y + 1, z);
-    queueFluidUpdate(x - 1, y, z);
-    queueFluidUpdate(x + 1, y, z);
-    queueFluidUpdate(x, y, z - 1);
-    queueFluidUpdate(x, y, z + 1);
-}
-
-void World::updateFluidCell(const FluidCell& cell) {
-    if (!simulationActiveAt(static_cast<float>(cell.x), static_cast<float>(cell.z)))
-        return;
-    const Block current = getBlock(cell.x, cell.y, cell.z);
-    if (isWaterSource(current) || (current != Block::Air && !isWater(current)))
-        return;
-
-    Block desired = Block::Air;
-    if (isWater(getBlock(cell.x, cell.y + 1, cell.z))) {
-        desired = Block::WaterFalling;
-    } else {
-        constexpr std::array<glm::ivec3, 4> HorizontalDirections{
-            {{1, 0, 0}, {-1, 0, 0}, {0, 0, 1}, {0, 0, -1}}};
-        int bestLevel = 8;
-        for (const glm::ivec3& direction : HorizontalDirections) {
-            const int neighborX = cell.x + direction.x;
-            const int neighborZ = cell.z + direction.z;
-            const Block provider = getBlock(neighborX, cell.y, neighborZ);
-            if (!isWater(provider))
-                continue;
-
-            // A column that can still fall does not spread sideways until it reaches support.
-            const Block providerBelow = getBlock(neighborX, cell.y - 1, neighborZ);
-            if (!isSolid(providerBelow))
-                continue;
-
-            const int candidateLevel =
-                isWaterSource(provider) || provider == Block::WaterFalling
-                    ? 1
-                    : waterLevel(provider) + 1;
-            bestLevel = std::min(bestLevel, candidateLevel);
-        }
-        desired = flowingWaterBlock(bestLevel);
-    }
-
-    if (desired != current)
-        setBlockInternal(cell.x, cell.y, cell.z, desired, false);
-}
-
-void World::updateFluids(float deltaTime, int updateBudget) {
-    constexpr float FluidTickSeconds = 0.10f;
-    fluidUpdateAccumulator_ += std::max(0.0f, deltaTime);
-    int ticks = std::min(4, static_cast<int>(fluidUpdateAccumulator_ / FluidTickSeconds));
-    if (ticks <= 0)
-        return;
-    fluidUpdateAccumulator_ -= static_cast<float>(ticks) * FluidTickSeconds;
-
-    updateBudget = std::max(1, updateBudget);
-    for (int tick = 0; tick < ticks; ++tick) {
-        const int cellsThisTick =
-            std::min(updateBudget, static_cast<int>(fluidQueue_.size()));
-        for (int i = 0; i < cellsThisTick; ++i) {
-            const FluidCell cell = fluidQueue_.front();
-            fluidQueue_.pop_front();
-            fluidQueued_.erase(cell);
-            updateFluidCell(cell);
-        }
-    }
-}
-
-void World::scheduleFluidBoundaryUpdates(int chunkX, int chunkZ) {
-    constexpr std::array<glm::ivec2, 4> Directions{
-        {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}};
-    for (const glm::ivec2& direction : Directions) {
-        if (!findChunk(chunkX + direction.x, chunkZ + direction.y))
-            continue;
-
-        for (int y = minimumY(); y < maximumY(); ++y) {
-            for (int offset = 0; offset < CHUNK_SIZE; ++offset) {
-                const int localX = direction.x > 0   ? CHUNK_SIZE - 1
-                                   : direction.x < 0 ? 0
-                                                     : offset;
-                const int localZ = direction.y > 0   ? CHUNK_SIZE - 1
-                                   : direction.y < 0 ? 0
-                                                     : offset;
-                const int worldX = chunkX * CHUNK_SIZE + localX;
-                const int worldZ = chunkZ * CHUNK_SIZE + localZ;
-                const int neighborX = worldX + direction.x;
-                const int neighborZ = worldZ + direction.y;
-                const Block block = getBlock(worldX, y, worldZ);
-                const Block neighbor = getBlock(neighborX, y, neighborZ);
-                if ((isWater(block) || isWater(neighbor)) && block != neighbor) {
-                    queueFluidUpdate(worldX, y, worldZ);
-                    queueFluidUpdate(neighborX, y, neighborZ);
-                }
-            }
-        }
-    }
-}
 
 void World::markDirty(int chunkX, int chunkZ, bool highPriority) {
     Chunk* chunk = findChunk(chunkX, chunkZ);
@@ -4426,7 +4393,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
                     continue;
                 }
                 float geometryHeight =
-                    isWater(block) ? waterHeight(block) : blockCollisionHeight(block);
+                    isWater(block) ? waterHeight(block) : isLava(block)?lavaHeight(block):blockCollisionHeight(block);
                 if (isWater(block) && isWater(meshBlock(worldX, y + 1, worldZ)))
                     geometryHeight = 1.0f;
 
@@ -4893,19 +4860,21 @@ bool World::aabbTouchesBlock(const glm::vec3& minimum,
                              const glm::vec3& maximum,
                              Block wanted,
                              float tolerance) const {
+    if(wanted==Block::Cobweb || isWater(wanted) || isLava(wanted)) tolerance=-0.0001f;
     const glm::ivec3 first = glm::ivec3(glm::floor(minimum - glm::vec3(tolerance)));
     const glm::ivec3 last = glm::ivec3(glm::floor(maximum + glm::vec3(tolerance)));
     for (int y = first.y; y <= last.y; ++y) {
         for (int z = first.z; z <= last.z; ++z) {
             for (int x = first.x; x <= last.x; ++x) {
-                if (getBlock(x, y, z) != wanted)
+                const Block actual=getBlock(x,y,z);
+                if (isLava(wanted)?!isLava(actual):isWater(wanted)?!isWater(actual):actual!=wanted)
                     continue;
                 glm::vec3 blockMin;
                 glm::vec3 blockMax;
-                if (isLava(wanted)) {
+                if (isLava(wanted) || isWater(wanted) || wanted==Block::Cobweb || wanted==Block::Fire) {
                     // Contact volumes are independent from solid-body collision.
                     blockMin = glm::vec3(x,y,z);
-                    blockMax = blockMin + glm::vec3(1.f);
+                    blockMax = blockMin + glm::vec3(1.f,isWater(actual)?waterHeight(actual):isLava(actual)?lavaHeight(actual):1.f,1.f);
                 } else if (!blockCollisionBounds({x, y, z}, blockMin, blockMax))
                     continue;
                 if (blockMin.x <= maximum.x + tolerance &&

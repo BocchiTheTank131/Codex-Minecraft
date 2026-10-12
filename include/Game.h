@@ -153,6 +153,9 @@ private:
     std::vector<SavedWorld> savedWorlds_;
     int selectedWorld_ = -1, worldPage_ = 0, worldNameField_ = 0;
     std::string newWorldName_ = "New World", newWorldSeed_, menuMessage_;
+    float burningParticleTimer_=0;
+    std::vector<glm::vec3> burningPositions_;
+    bool newWorldCheats_ = false;
     GameMode newWorldMode_ = GameMode::Survival;
     double lastWorldClick_ = -1.0;
     int lastWorldClickIndex_ = -1;
@@ -207,11 +210,14 @@ private:
     float streamingRecoverySeconds_=40.f;
     std::string aestheticsAudit_;
     std::string undergroundAudit_;
+    bool fluidSmoke_=false;
+    bool hazardPreview_=false;
+    void prepareHazardPreview();
     std::string explorationAudit_;
     std::string biomeAudit_;
     std::string geographyAudit_;
     std::string densityAudit_;
-    unsigned fixtureGenerator_ = 19;
+    unsigned fixtureGenerator_ = 21;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();

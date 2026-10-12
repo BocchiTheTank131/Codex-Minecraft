@@ -13,7 +13,7 @@ inline UiRect hubRow(int index, int w, int h) { const auto p = panel(w,h); retur
 inline UiRect worldRow(int index, int w, int h) { const auto p = panel(w,h); return {p.x + 24, p.y + 92 + index * 62.0f, 572, 56}; }
 inline UiRect worldAction(int index, int w, int h) { const auto p=panel(w,h); return {p.x + 24 + index * 194.0f, p.y + 552, 184, 44}; }
 inline UiRect pageButton(int index, int w, int h) { const auto p=panel(w,h); return {p.x + 24 + index * 490.0f, p.y + 478, 82, 32}; }
-inline UiRect creationField(int index, int w, int h) { const auto p=panel(w,h); return {p.x+40,p.y+135+index*105.0f,540,52}; }
+inline UiRect creationField(int index, int w, int h) { const auto p=panel(w,h); return {p.x+40,p.y+115+index*85.0f,540,52}; }
 inline UiRect creationButton(int index, int w, int h) { const auto p=panel(w,h); return {p.x+40+index*280.0f,p.y+535,260,48}; }
 inline UiRect sensitivity(int w, int h) { return {w*.5f-185,h*.5f+170,370,36}; }
 }

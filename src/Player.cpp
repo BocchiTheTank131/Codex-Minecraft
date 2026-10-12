@@ -44,10 +44,11 @@ void Player::addMouseMovement(double x, double y) {
 }
 void Player::damage(float a, PlayerDamageSource source) {
     if (creativeMode_ || spectatorMode_ || dead_ || respawnProtection_ > 0 || a <= 0 ||
-        (source != PlayerDamageSource::Projectile && damageInvulnerability_ > 0))
+        (source == PlayerDamageSource::General && damageInvulnerability_ > 0))
         return;
-    if (source != PlayerDamageSource::Projectile)
+    if (source == PlayerDamageSource::General)
         damageInvulnerability_ = .65f;
+    lastDamageSource_=source;
     health_ = std::max(0.f, health_ - a);
     hurtFlash_ = .32f;
     regenTimer_ = 0;
@@ -105,6 +106,7 @@ void Player::respawn(const World& world) {
     velocity_ = glm::vec3(0.0f);
     health_ = hunger_ = 20.0f;
     fallDistance_ = lastFallDamage_ = exhaustion_ = regenTimer_ = 0.0f;
+    burning_.clear();
     respawnTimer_ = hurtFlash_ = damageInvulnerability_ = spaceTapTimer_ = 0.0f;
     dead_ = inWater_ = flying_ = sprinting_ = sneaking_ = jumpWasDown_ = false;
     grounded_ = true;
@@ -228,6 +230,7 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
     }
 
     if (spectatorMode_) {
+        burning_.clear();
         const glm::vec3 forward = lookDirection();
         const glm::vec3 right = glm::normalize(
             glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
@@ -336,13 +339,13 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
     const float flightSpeed = input.sprint
         ? (input.sneak ? 14.0f : 21.0f)
         : 8.5f;
-    const float speed =
+    const float speed = (world.aabbTouchesBlock(aabbMinimum(),aabbMaximum(),Block::Cobweb)?0.25f:1.f) * (
         flying_ ? flightSpeed
-                : (inWater_ ? 3.4f : (sneaking_ ? 2.3f : (sprinting_ ? 8.6f : 6.2f)));
+                : (inWater_ ? 3.4f : (sneaking_ ? 2.3f : (sprinting_ ? 8.6f : 6.2f))));
     const glm::vec2 desiredVelocity(movement.x * speed, movement.z * speed);
     const float horizontalBlend =
         1.0f - std::exp(-(flying_ ? 30.0f : (grounded_ ? 18.0f : 5.0f)) * deltaTime);
-    if (wasSprintFlying && !input.sprint) {
+    if ((wasSprintFlying && !input.sprint) || world.aabbTouchesBlock(aabbMinimum(),aabbMaximum(),Block::Cobweb)) {
         velocity_.x = desiredVelocity.x;
         velocity_.z = desiredVelocity.y;
     } else {
@@ -427,8 +430,13 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
         damage(1.0f);
     }
 
-    if (!creativeMode_ && world.aabbTouchesBlock(aabbMinimum(), aabbMaximum(), Block::Lava))
-        damage(4.0f);
+    if(creativeMode_) burning_.clear();
+    else {
+        const int ticks=burning_.update(deltaTime,
+            world.aabbTouchesBlock(aabbMinimum(),aabbMaximum(),Block::Lava),
+            world.aabbTouchesBlock(aabbMinimum(),aabbMaximum(),Block::Water));
+        for(int i=0;i<ticks;++i) damage(1.f,PlayerDamageSource::Burning);
+    }
 
     if (creativeMode_) {
         exhaustion_ = 0.0f;

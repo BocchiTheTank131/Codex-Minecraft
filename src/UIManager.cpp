@@ -34,6 +34,7 @@ void UIManager::toggleInventory(Inventory& inventory) {
 
 void UIManager::openInventory() {
     state_ = GameState::Inventory;
+    inventoryLeftWasDown_ = false;
     dragHit_ = {};
     selectedRecipe_ = -1;
     recipeBook_.searchFocused = false;
@@ -276,6 +277,24 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
     const bool rightPressed = input.mousePressed(GLFW_MOUSE_BUTTON_RIGHT);
     const bool rightDown = input.mouseDown(GLFW_MOUSE_BUTTON_RIGHT);
     const bool shiftDown = input.actionDown(ControlAction::Sneak);
+    const bool leftDown = input.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
+    const bool outside = !UiLayout::panel(mode,framebufferWidth,framebufferHeight).contains(cursor.x,cursor.y);
+    const bool dragReleasedOutside = inventoryLeftWasDown_ && !leftDown && outside;
+    inventoryLeftWasDown_ = leftDown;
+    // GUI drops have one owner; the gameplay drop handler does not run here.
+    if(input.actionPressed(ControlAction::Drop) && !recipeBook_.searchFocused) {
+        const bool entire = input.actionDown(ControlAction::Sprint) ||
+            input.keyDown(GLFW_KEY_LEFT_CONTROL) || input.keyDown(GLFW_KEY_RIGHT_CONTROL);
+        const ItemStack stack = inventory.takeGuiDrop(hit,entire);
+        if(!stack.empty()) survival.spawnDrop(player.cameraPosition()+player.lookDirection()*1.1f,
+            stack.item,stack.count,stack.durability);
+        return;
+    }
+    if(dragReleasedOutside && !inventory.cursorStack().empty()) {
+        const auto stack=inventory.takeCursor(false);
+        survival.spawnDrop(player.cameraPosition()+player.lookDirection()*1.1f,stack.item,stack.count,stack.durability);
+        return;
+    }
 
     if ((leftPressed || rightPressed) &&
         (state_ == GameState::Inventory || tableMode) && !creativeInventory) {
@@ -451,12 +470,13 @@ int UIManager::menuHit(
     if (state == GameState::WorldSelection) {
         for (int i=0; i<6; ++i) if (MenuLayout::worldRow(i,width,height).contains(mouseX,mouseY)) return i;
         for (int i=0; i<3; ++i) if (MenuLayout::worldAction(i,width,height).contains(mouseX,mouseY)) return 10+i;
+        if (UiRect{width*.5f-100,height*.5f+168,200,32}.contains(mouseX,mouseY)) return 15;
         for (int i=0; i<2; ++i) if (MenuLayout::pageButton(i,width,height).contains(mouseX,mouseY)) return 13+i;
         return -1;
     }
     if (state == GameState::CreateWorld) {
-        for (int i=0; i<3; ++i) if (MenuLayout::creationField(i,width,height).contains(mouseX,mouseY)) return i;
-        for (int i=0; i<2; ++i) if (MenuLayout::creationButton(i,width,height).contains(mouseX,mouseY)) return 3+i;
+        for (int i=0; i<4; ++i) if (MenuLayout::creationField(i,width,height).contains(mouseX,mouseY)) return i;
+        for (int i=0; i<2; ++i) if (MenuLayout::creationButton(i,width,height).contains(mouseX,mouseY)) return 4+i;
         return -1;
     }
     if (state == GameState::Settings) {
@@ -475,7 +495,7 @@ int UIManager::menuHit(
     const float panelX = width * 0.5f - 220.0f;
     const float panelY = height * 0.5f - 300.0f;
     if (state == GameState::PauseMenu) {
-        for (int index = 0; index < 7; ++index) {
+        for (int index = 0; index < 6; ++index) {
             const float y = panelY + 82.0f + index * 61.0f;
             if (mouseX >= panelX + 45.0f && mouseX < panelX + 395.0f && mouseY >= y &&
                 mouseY < y + 44.0f)

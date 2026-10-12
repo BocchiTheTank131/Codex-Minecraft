@@ -1,12 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include "Burning.h"
 #include <glm/glm.hpp>
 #include <string>
 
 class World;
 
-enum class PlayerDamageSource { General, Projectile };
+enum class PlayerDamageSource { General, Projectile, Burning };
 
 struct PlayerInput {
     bool enabled = false;
@@ -76,6 +77,8 @@ public:
     bool isFlying() const {
         return flying_;
     }
+    bool isBurning() const {return burning_.remaining>0;}
+    PlayerDamageSource lastDamageSource() const {return lastDamageSource_;}
     float health() const {
         return health_;
     }
@@ -97,6 +100,8 @@ public:
     float xpProgress() const;
 
 private:
+    Burning burning_;
+    PlayerDamageSource lastDamageSource_=PlayerDamageSource::General;
     glm::vec3 position_, velocity_{0.f};
     float yaw_ = -90.f, pitch_ = -12.f, health_ = 20.f, hunger_ = 20.f, exhaustion_ = 0.f,
           regenTimer_ = 0.f;

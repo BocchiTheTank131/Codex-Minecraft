@@ -220,7 +220,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 19);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 21);
     ~World();
 
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
@@ -316,6 +316,7 @@ public:
     bool runMeshEditSmokeTest(std::string& report);
     bool runAsyncMeshSmokeTest(std::string& report);
     bool runFluidSmokeTest(std::string& report);
+    bool runHabitatSmokeTest(std::string& report);
     bool runGenerationSmokeTest(std::string& report) const;
     bool runCraftingContentSmokeTest(std::string& report);
     WorldgenSurvey runWorldgenSurvey() const;
@@ -413,8 +414,10 @@ private:
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
     UndergroundStructures underground_;
+    UndergroundStructures underground20_;
+    UndergroundStructures underground21_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 19;
+    std::uint32_t generationVersion_ = 21;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;
@@ -428,6 +431,8 @@ private:
     std::deque<FluidCell> fluidQueue_;
     std::unordered_set<FluidCell, FluidCellHash> fluidQueued_;
     float fluidUpdateAccumulator_ = 0.0f;
+    std::uint64_t fluidTick_ = 0;
+    std::unordered_map<FluidCell, std::uint64_t, FluidCellHash> fluidLavaDue_;
     float blockEntityUpdateAccumulator_ = 0.0f;
 
     mutable std::mutex generationMutex_;

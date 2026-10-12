@@ -1502,6 +1502,12 @@ void Renderer::spawnBreakParticles(const glm::ivec3& blockPosition, Block block)
                               0.65f + std::abs(random(rng)) * 0.35f});
     }
 }
+void Renderer::spawnBurningParticles(const glm::vec3& position) {
+    if(particlePercent_==0 || particles_.size()>4096) return;
+    static std::mt19937 rng(2121);std::uniform_real_distribution<float> r(-1.f,1.f);
+    for(int i=0;i<3;++i) particles_.push_back({position+glm::vec3(r(rng)*.3f,r(rng)*.4f,r(rng)*.3f),
+        glm::vec3(r(rng)*.2f,2.f,r(rng)*.2f),i==0?glm::vec3(.4f):glm::vec3(1.f,.4f,.06f),.28f});
+}
 void Renderer::spawnHitParticles(const glm::vec3& position, bool critical) {
     static std::mt19937 rng(99173);
     std::uniform_real_distribution<float> random(-1.0f, 1.0f);
@@ -2133,7 +2139,7 @@ void Renderer::renderMenu(int width,
                           bool settingsPage,
                           int hovered,
                           const GameSettings& settings,
-                          GameMode mode,
+                          GameMode /*mode*/,
                           bool standaloneDemo,
                           bool showSaveWarning,
                           bool audioPage) const {
@@ -2205,10 +2211,9 @@ void Renderer::renderMenu(int width,
                              : glm::vec4(.20f, .20f, .23f, 1), width, height);
         drawText("BACK", panelX + 180.0f, panelY + 385.0f, 2.0f, {1, 1, 1, 1});
     } else if (!settingsPage) {
-        const std::array<std::string, 7> labels{
+        const std::array<std::string, 6> labels{
             "RESUME GAME",
             "SETTINGS",
-            std::string("MODE  ") + gameModeName(mode),
             "RESET WORLD",
             "SAVE WORLD",
             standaloneDemo ? "RETURN TO MENU" : "SAVE & RETURN TO MENU",
@@ -2514,7 +2519,7 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
             menuButton(vertices,MenuLayout::hubRow(index,width,height),hub[index],hovered==action,width,height,2.2f);
         }
     } else {
-        for (int index=0; index<3; ++index)
+        for (int index=0; index<4; ++index)
             menuButton(vertices,MenuLayout::tab(index,width,height),categories[index],index==0 || hovered==30+index,width,height);
         const std::array<std::string,13> labels{"RENDER DISTANCE","SIMULATION DISTANCE","FOV","BRIGHTNESS",
             "ANTI ALIASING","FULLSCREEN","VSYNC","FPS LIMIT","GRAPHICS PRESET","ENTITY DISTANCE","SHOW FPS","SHOW COORDINATES","CHUNK STREAMING"};
@@ -2550,7 +2555,7 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
 
 void Renderer::renderWorldMenu(int width, int height, int hovered, bool creating,
                                const std::vector<SavedWorld>& worlds, int page, int selected,
-                               const std::string& name, const std::string& seed, GameMode mode,
+                               const std::string& name, const std::string& seed, GameMode mode, bool cheats,
                                int field, const std::string& message, double now) const {
     thread_local std::vector<UiVertex> verticesStorage;
     RenderScratch<UiVertex> verticesScratch(verticesStorage, 2097152);
@@ -2558,9 +2563,9 @@ void Renderer::renderWorldMenu(int width, int height, int hovered, bool creating
     menuPanel(vertices,creating ? "CREATE NEW WORLD" : "SELECT WORLD",width,height);
     const auto p=MenuLayout::panel(width,height);
     if (creating) {
-        const std::array<std::string,3> labels{"WORLD NAME","SEED (OPTIONAL)","GAME MODE"};
-        const std::array<std::string,3> values{name,seed.empty()?"RANDOM":seed,gameModeName(mode)};
-        for (int index=0; index<3; ++index) {
+        const std::array<std::string,4> labels{"WORLD NAME","SEED (OPTIONAL)","GAME MODE","CHEATS"};
+        const std::array<std::string,4> values{name,seed.empty()?"RANDOM":seed,gameModeName(mode),cheats?"ON":"OFF"};
+        for (int index=0; index<4; ++index) {
             const auto r=MenuLayout::creationField(index,width,height);
             menuText(vertices,labels[index],r.x,r.y-24,1.6f,{.85f,.9f,.8f,1},width,height);
             addRect(vertices,r.x,r.y,r.width,r.height,field==index || hovered==index ? glm::vec4(.3f,.4f,.25f,1) : glm::vec4(.16f,.18f,.20f,1),width,height);
@@ -2570,8 +2575,8 @@ void Renderer::renderWorldMenu(int width, int height, int hovered, bool creating
             menuText(vertices,value,r.x+14,r.y+18,2,{1,1,1,1},width,height);
         }
         menuText(vertices,"TAB SWITCH FIELD   CTRL+A CLEAR",p.x+40,p.y+470,1.3f,{.65f,.72f,.75f,1},width,height);
-        menuButton(vertices,MenuLayout::creationButton(0,width,height),"CREATE WORLD",hovered==3,width,height);
-        menuButton(vertices,MenuLayout::creationButton(1,width,height),"BACK",hovered==4,width,height);
+        menuButton(vertices,MenuLayout::creationButton(0,width,height),"CREATE WORLD",hovered==4,width,height);
+        menuButton(vertices,MenuLayout::creationButton(1,width,height),"BACK",hovered==5,width,height);
     } else {
         for (int row=0; row<6; ++row) {
             const int index=page*6+row;
@@ -2591,6 +2596,7 @@ void Renderer::renderWorldMenu(int width, int height, int hovered, bool creating
             }
             menuText(vertices,details,r.x+12,r.y+35,1.2f,{.72f,.80f,.68f,1},width,height);
         }
+        if(selected>=0 && selected<int(worlds.size())) menuButton(vertices,{width*.5f-100,height*.5f+168,200,32},worlds[selected].cheats?"CHEATS: ON":"CHEATS: OFF",hovered==15,width,height,1.3f);
         if (worlds.empty()) menuText(vertices,"NO WORLDS YET. CREATE YOUR FIRST WORLD.",p.x+45,p.y+190,1.8f,{.85f,.90f,.82f,1},width,height);
         menuButton(vertices,MenuLayout::pageButton(0,width,height),"PREV",hovered==13,width,height,1.3f);
         menuButton(vertices,MenuLayout::pageButton(1,width,height),"NEXT",hovered==14,width,height,1.3f);
@@ -2717,6 +2723,6 @@ void Renderer::renderWeatherSettings(int width,int height,int hovered,const Game
         } else menuText(vertices,values[i],x,r.y+11,1.3f,{.85f,.93f,.78f,1},width,height);
     }
     menuText(vertices,"GRAPHICS OPTIONS KEEP WEATHER GAMEPLAY ACTIVE",MenuLayout::panel(width,height).x+28,MenuLayout::panel(width,height).y+430,1.15f,{.8f,.85f,.8f,1},width,height);
-    menuButton(vertices,MenuLayout::back(width,height),"BACK",hovered==48,width,height);
+    menuButton(vertices,MenuLayout::back(width,height),"BACK",hovered==58,width,height);
     drawMenuVertices(vertices.data(),vertices.size());
 }

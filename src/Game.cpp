@@ -169,6 +169,7 @@ bool Game::initialize(int argc, char** argv) {
         if (!saveOnExit_) {
             createWorldAndSystems();
             ui_.resumeGame();
+            if(hazardPreview_) prepareHazardPreview();
         } else {
             ui_.openMainMenu();
         }
@@ -196,7 +197,12 @@ bool Game::initialize(int argc, char** argv) {
                      "E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, "
                      "hold C zoom, / commands, F3 debug, 1-9 hotbar\n";
 
-        if (!undergroundAudit_.empty()) {
+        if(fluidSmoke_) {
+            std::string report;if(!world_->runFluidSmokeTest(report)) throw std::runtime_error(report);
+            std::cout<<report<<std::endl;
+            if(!world_->runHabitatSmokeTest(report))throw std::runtime_error(report);std::cout<<report<<std::endl;
+            glfwSetWindowShouldClose(window_,true);
+        } else if (!undergroundAudit_.empty()) {
             std::string report;
             if(!world_->runUndergroundAudit(undergroundAudit_,report)) throw std::runtime_error(report);
             std::cout<<report<<std::endl;glfwSetWindowShouldClose(window_,true);
@@ -351,18 +357,18 @@ void Game::parseArguments(int argc, char** argv) {
             } else if (argument == "--seed" && index + 1 < argc) {
                 seed_ = static_cast<std::uint32_t>(std::stoull(argv[++index]));
             } else if (argument == "--creative") {
-                creativeMode_ = true;
-                spectatorMode_ = false;
+                if(Persistence::enabled()) {creativeMode_ = true; spectatorMode_ = false;}
             } else if (argument == "--survival") {
                 creativeMode_ = false;
                 spectatorMode_ = false;
             } else if (argument == "--spectator") {
-                creativeMode_ = false;
-                spectatorMode_ = true;
+                if(Persistence::enabled()) {creativeMode_ = false; spectatorMode_ = true;}
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
             } else if (argument.rfind("--generator=",0)==0) {
-                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,19));
+                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,21));
+            } else if(argument=="--hazard-preview") {hazardPreview_=true;smokeTest_.worldgenEnabled=true;saveOnExit_=false;
+            } else if(argument=="--fluid-smoke") {fluidSmoke_=true;saveOnExit_=false;
             } else if (argument.rfind("--underground-audit=",0)==0) {
                 undergroundAudit_=argument.substr(20); saveOnExit_=false;
             } else if (argument.rfind("--aesthetics-audit=",0)==0) {
@@ -695,7 +701,7 @@ void Game::createNamedWorld() {
             if (value > UINT32_MAX) throw std::runtime_error("Seed must be between 0 and 4294967295");
             newSeed = static_cast<std::uint32_t>(value);
         }
-        const auto created = WorldLibrary::create(newWorldName_, newSeed, newWorldMode_);
+        const auto created = WorldLibrary::create(newWorldName_, newSeed, newWorldMode_, newWorldCheats_);
         playSavedWorld(created);
         if (world_) saveAll();
     } catch (const std::exception& error) { menuMessage_ = error.what(); }
@@ -888,7 +894,7 @@ void Game::handleGlobalInput() {
             CommandContext context{*world_, *player_, *inventory_, *survival_,
                                    timing_.worldTime, seed_,
                                    [this] { return gameMode(); },
-                                   [this](GameMode mode) { setGameMode(mode); }, true, weather_.get(), sounds_.get()};
+                                   [this](GameMode mode) { setGameMode(mode); }, Persistence::enabled() && activeWorld_.cheats, weather_.get(), sounds_.get()};
             const CommandResult result = commands_.execute(submitted, context);
             chat_.addMessage(result.text, result.tone, glfwGetTime());
         }
@@ -1181,8 +1187,9 @@ void Game::updatePauseInterface() {
                 lastWorldClick_ = glfwGetTime();
             }
         } else if (hit == 10 && selectedWorld_ >= 0) playSavedWorld(savedWorlds_[selectedWorld_]);
-        else if (hit == 11) { newWorldName_ = "New World"; newWorldSeed_.clear(); menuMessage_.clear(); worldNameField_ = 0; ui_.openCreateWorld(); }
+        else if (hit == 11) { newWorldName_ = "New World"; newWorldSeed_.clear(); newWorldCheats_=false; menuMessage_.clear(); worldNameField_ = 0; ui_.openCreateWorld(); }
         else if (hit == 12) ui_.openMainMenu();
+        else if (hit == 15 && selectedWorld_>=0 && selectedWorld_<int(savedWorlds_.size())) { auto& info=savedWorlds_[selectedWorld_]; info.cheats=!info.cheats; if(!WorldLibrary::writeMetadata(info)) {info.cheats=!info.cheats; menuMessage_="Cannot save cheat permissions";} }
         else if (hit == 13) worldPage_ = std::max(0, worldPage_-1);
         else if (hit == 14) worldPage_ = std::min(std::max(0,(static_cast<int>(savedWorlds_.size())-1)/6),worldPage_+1);
         return;
@@ -1190,8 +1197,9 @@ void Game::updatePauseInterface() {
     if (ui_.state() == GameState::CreateWorld) {
         if (hit < 2) worldNameField_ = hit;
         else if (hit == 2) newWorldMode_ = newWorldMode_ == GameMode::Survival ? GameMode::Creative : GameMode::Survival;
-        else if (hit == 3) createNamedWorld();
-        else if (hit == 4) { refreshWorlds(); ui_.openWorldSelection(); }
+        else if (hit == 3) newWorldCheats_=!newWorldCheats_;
+        else if (hit == 4) createNamedWorld();
+        else if (hit == 5) { refreshWorlds(); ui_.openWorldSelection(); }
         return;
     }
     if(ui_.state()==GameState::WeatherSettings) {
@@ -1238,23 +1246,20 @@ void Game::updatePauseInterface() {
             ui_.openSettings();
             break;
         case 2:
-            setGameMode(nextGameMode(gameMode()));
-            break;
-        case 3:
             resetSeedText_ = std::to_string(seed_);
             resetMode_ = gameMode();
             ui_.openResetWorld();
             break;
-        case 4:
+        case 3:
             if (Persistence::enabled())
                 saveAll();
             else
                 saveWarningUntil_ = glfwGetTime() + 4.0;
             break;
-        case 5:
+        case 4:
             returnToMainMenu();
             break;
-        case 6:
+        case 5:
             saveOnExit_ = false;
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
             break;
@@ -1268,7 +1273,7 @@ void Game::updatePauseInterface() {
     if (ui_.state() == GameState::ResetWorld) {
         switch (hit) {
         case 0:
-            resetMode_ = nextGameMode(resetMode_);
+            if (Persistence::enabled() && activeWorld_.cheats) resetMode_ = nextGameMode(resetMode_);
             break;
         case 1: {
             std::uint32_t newSeed = 0;
@@ -1385,6 +1390,7 @@ void Game::updateSimulation(float deltaTime) {
     const bool wasDead = player_->isDead();
     const bool wasBelowWorld = player_->position().y < world_->minimumY() - 24.0f;
     player_->update(deltaTime, input_.playerInput(playerInputEnabled), *world_);
+    if(!wasDead && player_->isDead() && player_->lastDamageSource()==PlayerDamageSource::Burning) chat_.addMessage("Burned to death",ChatTone::Error,glfwGetTime());
     if ((wasDead || wasBelowWorld) && !player_->isDead() && player_->position().y >= world_->minimumY())
         world_->prepareSpawnTerrain(player_->position());
     weather_->update(deltaTime, *world_, *player_, *survival_, *sounds_, settings_);
@@ -1450,14 +1456,7 @@ void Game::handleDropAction() {
     const bool entireStack = input_.actionDown(ControlAction::Sprint) ||
                              input_.keyDown(GLFW_KEY_LEFT_CONTROL) ||
                              input_.keyDown(GLFW_KEY_RIGHT_CONTROL);
-    ItemStack dropped;
-    if (creativeMode_) {
-        dropped = inventory_->selectedStack();
-        if (!entireStack && !dropped.empty())
-            dropped.count = 1;
-    } else {
-        dropped = inventory_->takeSelected(entireStack);
-    }
+    ItemStack dropped = inventory_->takeSelected(entireStack);
     if (dropped.empty()) {
         return;
     }
@@ -1917,6 +1916,13 @@ void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
         timing_.stepTimer = player_->isSprinting() ? 0.28f : 0.42f;
     }
 
+    burningParticleTimer_-=deltaTime;
+    if(burningParticleTimer_<=0) {
+        burningParticleTimer_=.12f;
+        survival_->burningPositions(burningPositions_);
+        if(player_->isBurning()) renderer_->spawnBurningParticles(player_->position()+glm::vec3(0,.6f,0));
+        for(const auto& p:burningPositions_) if(glm::distance(p,player_->position())<48.f) renderer_->spawnBurningParticles(p);
+    }
     renderer_->updateParticles(deltaTime);
     interaction_.heldItemSwing = std::max(0.0f, interaction_.heldItemSwing - deltaTime * 4.0f);
     if (Persistence::enabled() && glfwGetTime() - timing_.lastSave >= 12.0 &&
@@ -2325,7 +2331,13 @@ void Game::runCommandSmokeTest() {
     if (!ChatUI::runSelfTest(report)) throw std::runtime_error("Chat UI: " + report);
     CommandContext context{*world_, *player_, *inventory_, *survival_, timing_.worldTime,
                            seed_, [this] { return gameMode(); },
-                           [this](GameMode mode) { setGameMode(mode); }, true, weather_.get(), sounds_.get()};
+                           [this](GameMode mode) { setGameMode(mode); }, Persistence::enabled() && activeWorld_.cheats, weather_.get(), sounds_.get()};
+    if(!Persistence::enabled()) {
+        for(const char* command:{"/give diamond 1","/gamemode creative","/time set day","/setblock 0 70 0 stone","/summon lightning_bolt"})
+            if(commands_.execute(command,context).tone!=ChatTone::Error) throw std::runtime_error("Demo cheat bypass");
+        std::cout<<"Command smoke: demo privileged commands denied"<<std::endl;return;
+    }
+    context.cheatsEnabled=true;
     // The fixture edits the origin even when an existing profile loads far away.
     world_->generate(2, glm::vec3(10.0f,70.0f,10.0f));
     auto check = [&](const std::string& line, bool success) {
@@ -2456,8 +2468,9 @@ void Game::runSurvivalSmokeTest() {
     const bool recipeBookPassed = UIManager::runRecipeBookSelfTest(recipeBookReport);
     const bool selectedCreativeMode = player_->isCreative();
     player_->setCreativeMode(false);
-    const bool combatPassed =
-        survival_->runCombatSelfTest(*world_, *player_, *inventory_, combatReport);
+    std::string habitatReport;
+    const bool combatPassed = survival_->runCombatSelfTest(*world_, *player_, *inventory_, combatReport) && world_->runHabitatSmokeTest(habitatReport);
+    std::cout<<"Habitat spawning: "<<habitatReport<<std::endl;
     player_->setCreativeMode(selectedCreativeMode);
     const bool meshEditsPassed = world_->runMeshEditSmokeTest(meshEditReport);
     const bool aoPassed = AmbientOcclusion::runSelfTest(aoReport);
@@ -3551,7 +3564,7 @@ void Game::renderMenuInterface(int width, int height) {
     height = static_cast<int>(height / scale);
     if (ui_.state() == GameState::WorldSelection || ui_.state() == GameState::CreateWorld) {
         renderer_->renderWorldMenu(width,height,hover,ui_.state()==GameState::CreateWorld,
-            savedWorlds_,worldPage_,selectedWorld_,newWorldName_,newWorldSeed_,newWorldMode_,
+            savedWorlds_,worldPage_,selectedWorld_,newWorldName_,newWorldSeed_,newWorldMode_,newWorldCheats_,
             worldNameField_,menuMessage_,glfwGetTime());
     } else if(ui_.state()==GameState::WeatherSettings) {
         renderer_->renderWeatherSettings(width,height,hover,settings_);
@@ -3659,6 +3672,16 @@ void Game::runMainMenuSmokeTest() {
         capture();
         ui_.openCreateWorld();
         capture();
+        auto permissions=WorldLibrary::create("Permission Regression", seed_,GameMode::Survival);
+        check(!permissions.cheats,"New world cheats default Off");
+        permissions.cheats=true;check(WorldLibrary::writeMetadata(permissions),"Cheats On save");
+        auto listed=WorldLibrary::list();
+        auto match=std::find_if(listed.begin(),listed.end(),[&](const auto& w){return w.directory==permissions.directory;});
+        check(match!=listed.end()&&match->cheats,"Cheats On reload");
+        permissions.cheats=false;check(WorldLibrary::writeMetadata(permissions),"Cheats Off save");
+        {std::ofstream legacy(permissions.directory/"world.info");legacy<<"\"Permission Regression\"\n0\n";}
+        listed=WorldLibrary::list();match=std::find_if(listed.begin(),listed.end(),[&](const auto& w){return w.directory==permissions.directory;});
+        check(match!=listed.end()&&match->cheats,"Legacy command access preserved");
         testWorld = savedWorlds_.empty() ? WorldLibrary::create("Menu Test", seed_, gameMode()) : savedWorlds_.front();
         playSavedWorld(testWorld);
     } else {

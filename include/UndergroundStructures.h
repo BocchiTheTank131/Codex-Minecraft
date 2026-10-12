@@ -20,7 +20,7 @@ struct UndergroundPlan {
 class UndergroundStructures {
 public:
     static constexpr int RegionSize=256;
-    explicit UndergroundStructures(std::uint32_t seed):seed_(seed){}
+    explicit UndergroundStructures(std::uint32_t seed, unsigned version=19):seed_(seed),version_(version){}
     using Site=std::function<UndergroundSite(int,int)>;
     using Cave=std::function<bool(int,int,int)>; // dry, two-block opening with ground
     using Reserved=std::function<bool(const StructureBox&)>;
@@ -30,6 +30,7 @@ public:
     static const char* name(UndergroundKind);
 private:
     std::uint32_t seed_;
+    unsigned version_;
     mutable std::mutex mutex_;
     mutable std::unordered_map<std::int64_t,std::shared_ptr<const UndergroundPlan>> cache_;
     mutable std::deque<std::int64_t> order_;

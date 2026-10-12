@@ -101,7 +101,7 @@ public:
                                   const GameSettings& settings, bool video) const;
     void renderWorldMenu(int width, int height, int hovered, bool creating,
                          const std::vector<SavedWorld>& worlds, int page, int selected,
-                         const std::string& name, const std::string& seed, GameMode mode,
+                         const std::string& name, const std::string& seed, GameMode mode, bool cheats,
                          int field, const std::string& message, double now) const;
     void renderControlsMenu(int width, int height, int hovered,
                             const GameSettings& settings, int activeBinding) const;
@@ -134,6 +134,7 @@ public:
                           const glm::mat4& view,
                           const glm::mat4& projection) const;
     void spawnBreakParticles(const glm::ivec3& blockPosition, Block block);
+    void spawnBurningParticles(const glm::vec3& position);
     void spawnHitParticles(const glm::vec3& position, bool critical);
     void spawnExplosionParticles(const glm::vec3& position);
     void updateParticles(float deltaTime);
