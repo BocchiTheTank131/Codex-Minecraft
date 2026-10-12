@@ -1,6 +1,8 @@
 #include "World.h"
 #include "TerrainDensity.h"
 #include "TerrainAesthetics.h"
+#include "BiomeVegetation.h"
+#include "TerrainChaos.h"
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -28,16 +30,57 @@ bool rock(Block b) {
 }
 void require(bool condition,const char* message) {if(!condition)throw std::runtime_error(message);}
 }
-bool World::runAestheticsAudit(const std::string& directory,std::string& report) const {
+bool World::runAestheticsAudit(const std::string& directory,std::string& report,unsigned modernVersion) const {
     try {
         std::filesystem::create_directories(directory);
         std::ofstream metrics(directory+"/connectivity.csv"),routes(directory+"/short-routes.csv"),locations(directory+"/captures.csv"),componentsFile(directory+"/components.csv");
         metrics<<"seed,version,scene,x,z,solid,exposed_faces,detached_components,detached_blocks,boundary_components,undercut_columns,ms,bytes,surface_detached_components,surface_detached_blocks,largest_detached\n";
         componentsFile<<"seed,version,scene,blocks,min_y,max_y,min_surface_depth,boundary\n";
-        routes<<"seed,version,route,length,land_fraction,biome_types,transitions,min_height,max_height\n";
+        routes<<"seed,version,route,length,land_fraction,biome_types,transitions,min_height,max_height,height_std,mean_slope,steep_fraction,ridge_count\n";
         locations<<"seed,scene,x,z,height\n";
+        std::ofstream flowers(directory+"/flowers.csv");
+        std::ofstream climates(directory+"/climate-routes.csv");
+        climates<<"seed,version,route,length,land_fraction,temperature_std,temperature_range,climate_transitions,max_adjacent_delta\n";
+        flowers<<"seed,version,flowers,red,yellow,leaves,logs,columns\n";
+        for(auto seed:{20260917U,123456789U,42U}) for(unsigned version:{modernVersion-1,modernVersion}) {
+            std::size_t red=0,yellow=0,leaves=0,logs=0;
+            for(int cz=-8;cz<8;++cz)for(int cx=-8;cx<8;++cx) {
+                std::vector<Block> blocks(16*16*128,Block::Air);
+                for(int y=0;y<=70;++y)for(int z=0;z<16;++z)for(int x=0;x<16;++x)
+                    blocks[(y*16+z)*16+x]=y==70?Block::Grass:Block::Dirt;
+                decorateBiomeChunk(cx,cz,seed,blocks,[](int,int){return BiomeTerrain{70,Biome::FlowerForest,0};},
+                    [](int,int){return false;},[](int,int){return true;},0,128,64,version);
+                for(auto b:blocks) {red+=b==Block::RedFlower;yellow+=b==Block::YellowFlower;leaves+=b==Block::Leaves;logs+=b==Block::Log;}
+            }
+            flowers<<seed<<','<<version<<','<<red+yellow<<','<<red<<','<<yellow<<','<<leaves<<','<<logs<<",65536\n";
+        }
+        if(modernVersion>=17) {
+            std::ofstream vegetation(directory+"/vegetation-refinement.csv");
+            vegetation<<"seed,version,biome,trees,bamboo,other_plants,columns\n";
+            for(auto seed:{20260917U,123456789U,42U})for(int b=0;b<35;++b) {
+                std::array<VegetationCounts,2> total{};
+                std::array<std::size_t,2> other{};
+                const int radius=Biome(b)==Biome::Jungle?16:4;
+                for(int cz=-radius;cz<radius;++cz)for(int cx=-radius;cx<radius;++cx) {
+                    std::array<std::vector<Block>,2> pair;
+                    for(int v=0;v<2;++v) {
+                        auto& blocks=pair[v];blocks.assign(16*16*128,Block::Air);
+                        for(int y=0;y<=80;++y)for(int z=0;z<16;++z)for(int x=0;x<16;++x)
+                            blocks[(y*16+z)*16+x]=y==80?Block::Grass:Block::Dirt;
+                        decorateBiomeChunk(cx,cz,seed,blocks,[&](int,int){return BiomeTerrain{80,Biome(b),0};},
+                            [](int,int){return false;},[](int,int){return true;},0,128,64,16+v,&total[v]);
+                        for(auto block:blocks)other[v]+=isPlant(block)&&block!=Block::Bamboo;
+                    }
+                    for(int i=0;i<int(pair[0].size());++i)
+                        require(!(isPlant(pair[1][i])&&pair[1][i]!=Block::Bamboo&&pair[1][i]!=pair[0][i]),
+                            "Tree/bamboo thinning introduced replacement decoration");
+                }
+                for(int v=0;v<2;++v)vegetation<<seed<<','<<16+v<<','<<biomeDefinition(Biome(b)).name<<','
+                    <<total[v].trees<<','<<total[v].bamboo<<','<<other[v]<<','<<radius*radius*1024<<'\n';
+            }
+        }
         for(auto seed:{20260917U,123456789U,42U}) {
-            World modern(seed,13);
+            World modern(seed,modernVersion);
             // Find representative terrain, not a single hand-picked summit.
             std::array<glm::ivec2,10> scenes{};
             std::array<float,5> scores{};scores.fill(-1e9f);
@@ -68,7 +111,7 @@ bool World::runAestheticsAudit(const std::string& directory,std::string& report)
                 require(scene>=4||scores[scene]>-1e8f,"Representative biome terrain missing");
                 const auto center=scenes[scene];
                 locations<<seed<<','<<scene<<','<<center.x<<','<<center.y<<','<<modern.terrainHeight(center.x,center.y)<<'\n';
-                for(unsigned version:{12U,13U}) {
+                for(unsigned version:{modernVersion-1,modernVersion}) {
                     World probe(seed,version);
                     constexpr int n=96,h=384;
                     const int cx=floorDiv(center.x,16)-3,cz=floorDiv(center.y,16)-3;
@@ -77,8 +120,10 @@ bool World::runAestheticsAudit(const std::string& directory,std::string& report)
                     std::size_t bytes=0;
                     for(int z=0;z<6;++z)for(int x=0;x<6;++x) {
                         const auto data=probe.generateChunkData(cx+x,cz+z);bytes+=data.blocks.size();
-                        for(std::size_t i=0;i<data.blocks.size();++i)
+                        for(std::size_t i=0;i<data.blocks.size();++i) {
+                            if(version>=15) require(i/256<321||data.blocks[i]==Block::Air,"Natural ceiling in terrain volume");
                             volume[(i/256*n+z*16+(i/16)%16)*n+x*16+i%16]=data.blocks[i];
+                        }
                     }
                     const float ms=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-start).count();
                     const auto id=[](int x,int y,int z){return (y*n+z)*n+x;};
@@ -129,17 +174,38 @@ bool World::runAestheticsAudit(const std::string& directory,std::string& report)
                     require(bool(file),"Terrain volume export failed");
                 }
             }
-            for(unsigned version:{12U,13U}) {
+            for(unsigned version:{modernVersion-1,modernVersion}) {
                 World probe(seed,version);
                 for(int route=0;route<64;++route)for(int length:{500,1000,1500}) {
                     const int x=(route%8)*1600-5600,z=(route/8)*1600-5600;
                     std::set<Biome> biomes;int transitions=0,land=0,minY=320,maxY=-64,count=0;Biome previous=Biome::Count;
+                    std::vector<int> heights;heights.reserve(190);double sum=0,sumSq=0,slope=0;int steep=0,ridges=0;
+                    double thermalSum=0,thermalSquares=0,maxDelta=0;
+                    float minT=1,maxT=0,lastT=0;int climateTransitions=0;
                     for(int d=0;d<=length;d+=8) {
                         const auto t=probe.sampleTerrain(x+d,z+d/3);biomes.insert(t.biome);
+                        if(count) {
+                            climateTransitions+=climateRegion(lastT)!=climateRegion(t.temperature);
+                            maxDelta=std::max(maxDelta,double(std::abs(t.temperature-lastT)));
+                        }
+                        lastT=t.temperature;minT=std::min(minT,lastT);maxT=std::max(maxT,lastT);
+                        thermalSum+=lastT;thermalSquares+=lastT*lastT;
                         transitions+=previous!=Biome::Count&&previous!=t.biome;previous=t.biome;
                         land+=t.height>=64;++count;minY=std::min(minY,t.height);maxY=std::max(maxY,t.height);
+                        if(!heights.empty()) {const double rise=std::abs(t.height-heights.back())/8.;slope+=rise;steep+=rise>=1.;}
+                        heights.push_back(t.height);sum+=t.height;sumSq+=t.height*t.height;
                     }
-                    routes<<seed<<','<<version<<','<<route<<','<<length<<','<<float(land)/count<<','<<biomes.size()<<','<<transitions<<','<<minY<<','<<maxY<<'\n';
+                    for(std::size_t i=3;i+3<heights.size();++i) {
+                        const auto h=heights[i];bool peak=h>heights[i-1];
+                        for(int j=-3;j<=3;++j)peak&=h>=heights[i+j];
+                        ridges+=peak&&h-std::min(heights[i-3],heights[i+3])>=4;
+                    }
+                    const double deviation=std::sqrt(std::max(0.,sumSq/count-(sum/count)*(sum/count)));
+                    routes<<seed<<','<<version<<','<<route<<','<<length<<','<<float(land)/count<<','<<biomes.size()<<','<<transitions<<','<<minY<<','<<maxY<<','
+                        <<deviation<<','<<slope/(count-1)<<','<<double(steep)/(count-1)<<','<<ridges<<'\n';
+                    climates<<seed<<','<<version<<','<<route<<','<<length<<','<<float(land)/count<<','
+                        <<std::sqrt(std::max(0.,thermalSquares/count-std::pow(thermalSum/count,2)))<<','
+                        <<maxT-minT<<','<<climateTransitions<<','<<maxDelta<<'\n';
                 }
             }
             // Analytical surface constraint: no density island can be added
@@ -153,8 +219,8 @@ bool World::runAestheticsAudit(const std::string& directory,std::string& report)
         }
         metrics.flush();routes.flush();locations.flush();
         require(bool(metrics)&&bool(routes)&&bool(locations),"Aesthetic measurements write failed");
-        if(!runExplorationAudit(directory,report,13)) throw std::runtime_error(report);
-        report+=" V12/V13 connectivity, exposure, short routes and concurrent streaming measured.";
+        if(!runExplorationAudit(directory,report,modernVersion)) throw std::runtime_error(report);
+        report+=" Versioned terrain connectivity, exposure, short routes and concurrent streaming measured.";
         return true;
     } catch(const std::exception& e) {report=e.what();return false;}
 }

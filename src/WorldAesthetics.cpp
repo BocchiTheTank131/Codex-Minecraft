@@ -1,22 +1,29 @@
 #include "World.h"
 #include "TerrainAesthetics.h"
+#include "TerrainChaos.h"
+#include "RegionalClimate.h"
 #include <algorithm>
 #include <cmath>
 
 namespace {
 float smooth(float a,float b,float v) {const float t=std::clamp((v-a)/(b-a),0.f,1.f);return t*t*(3-2*t);}
 }
-World::TerrainSample World::sampleTerrainAesthetics(int x,int z) const {
+World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateShore) const {
     auto s=sampleTerrainGeography(x,z);
-    const float local=biomeNoise_.fractal2D(x*.0045f+71.3f,z*.0045f-19.7f,2,2.f,.28f);
+    const bool refined=generationVersion_>=14;
+    const bool chaos=generationVersion_>=15;
+    const float habitatScale=chaos?.0060f:.0045f;
+    const float local=biomeNoise_.fractal2D(x*habitatScale+71.3f,z*habitatScale-19.7f,2,2.f,.28f);
     const float wet=humidityNoise_.noise(x*.0029f-31.7f,0,z*.0029f+73.9f);
     s.humidity=std::clamp(s.macroHumidity+wet*.27f+local*.10f,0.f,1.f);
-    s.temperature=std::clamp(s.macroTemperature+local*.014f,0.f,1.f);
+    const float thermal=refined?temperatureNoise_.noise(x*.0013f+183.7f,0,z*.0013f-91.3f):0.f;
+    s.temperature=std::clamp(s.macroTemperature+(refined?thermal*.14f+local*.04f:local*.014f),0.f,1.f);
     const float inland=smooth(.015f,.16f,s.continentalness);
     const float rugged=1-s.erosion;
     const float belt=1-smooth(.08f,.34f,std::abs(s.weirdness));
     const float mountain=smooth(.015f,.16f,s.naturalContinentalness)*belt*(1-smooth(.40f,.80f,s.erosion));
-    const float broad=ridgeNoise_.fractal2D(x*.0016f-137.613f,z*.0016f+39.347f,2,2.f,.30f);
+    const float ridgeScale=chaos?.0040f:refined?.0024f:.0016f;
+    const float broad=ridgeNoise_.fractal2D(x*ridgeScale-137.613f,z*ridgeScale+39.347f,2,2.f,.30f);
     const float rolling=terrainNoise_.fractal2D(x*.0030f+43.449f,z*.0030f-119.273f,2,2.f,.32f);
     const float ridge=1-std::abs(broad);
     const float crest=smooth(.48f,.97f,ridge);
@@ -30,6 +37,19 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z) const {
     height+=mountain*rugged*(smooth(-.08f,.06f,broad)*20.f+crest*crag*26.f);
     height+=mountain*rugged*crest*(smooth(-.03f,.08f,crag)*34.f-17.f);
     height+=inland*belt*rugged*(8.f+rolling*12.f);
+    if(refined) {
+        // Medium relief is strongest inland and fades into beaches/rivers.
+        // Reuse the existing crag sample; no per-voxel terrain noise is added.
+        height+=inland*(rolling*12.f+crag*(14.f+14.f*rugged))*(1.f-mountain*.35f);
+    }
+    if(chaos) {
+        const float detail=terrainNoise_.noise(x*.018f+137.9f,.671f,z*.018f-83.1f);
+        height=TerrainChaos::height(s.continentalness,s.erosion,mountain,broad,rolling,crag,detail);
+    }
+    // Reuse sampled medium relief to break up eroded inland lowlands.
+    // Coastal and river datums below still take precedence.
+    if(generationVersion_>=17)
+        height+=inland*s.erosion*(1.f-mountain)*(rolling*6.f+crag*8.f);
     // Erosion broadens the summits; dry uplands retain rolling plateaus.
     const float plateau=smooth(.60f,.82f,s.temperature)*(1-smooth(.28f,.48f,s.humidity))*inland;
     height=glm::mix(height,88.f+s.continentalness*45.f+rolling*12.f,plateau*.32f);
@@ -40,11 +60,28 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z) const {
     else height=std::max(height,66.f+smooth(.025f,.10f,s.continentalness)*3.f);
     const float valley=smooth(.0f,.55f,s.river);
     height=glm::mix(height,std::min(height,62.f),valley);
-    if(height>264.f) height=264.f+38.f*(1-std::exp(-(height-264.f)/38.f));
+    if(chaos) height=TerrainChaos::compress(height);
+    else if(height>264.f) height=264.f+38.f*(1-std::exp(-(height-264.f)/38.f));
     s.unclampedHeight=height;
-    s.height=std::clamp(int(std::round(height)),-48,302);
+    s.height=std::clamp(int(std::round(height)),-48,chaos?255:302);
     s.peakValley=profile*2-1;
-    s.biome=selectGeographicalBiome(s.temperature,s.humidity,s.continentalness,s.erosion,local,s.river,s.height-16,s.mushroomIsland);
+    if(!evaluateShore) return s;
+    // Climate refinement must not feed back into V15 plateau/height shaping.
+    if(generationVersion_>=16)
+        s.temperature=RegionalClimate::temperature(temperatureNoise_,x,z,s.macroTemperature,thermal,local);
+    s.biome=selectGeographicalBiome(s.temperature,s.humidity,s.continentalness,s.erosion,local,s.river,s.height-16,s.mushroomIsland,refined?0:3);
+    if(refined && s.continentalness<.045f && s.height>=62 && s.height<=100 && s.river<.62f) {
+        // Actual coastal relief, not erosion, identifies a rocky cliff foot.
+        // Height-only neighboring evaluations cannot recurse into this test.
+        const int coastSlope=std::max({std::abs(sampleTerrainAesthetics(x-64,z,false).height-s.height),
+            std::abs(sampleTerrainAesthetics(x+64,z,false).height-s.height),
+            std::abs(sampleTerrainAesthetics(x,z-64,false).height-s.height),
+            std::abs(sampleTerrainAesthetics(x,z+64,false).height-s.height)});
+        if(altitudeTemperature(s.temperature,float(s.height-16))>=.17f) {
+            if(coastSlope>=6) s.biome=Biome::StonyShore;
+            else if(s.biome==Biome::StonyShore) s.biome=Biome::Beach;
+        }
+    }
     // Elevation alone is not a bare-rock biome. Warm/wet foothills retain
     // their climate's vegetation up the mountain, with snowlines unchanged.
     const float effective=altitudeTemperature(s.temperature,float(s.height-16));

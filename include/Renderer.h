@@ -21,7 +21,8 @@ const std::array<std::uint8_t, 7>& uiGlyph(char character);
 struct FurnaceData;
 struct ChestData;
 struct RecipeBookView;
-inline constexpr float DayNightCycleSeconds = 420.0f;
+#include "WorldTime.h"
+inline constexpr float DayNightCycleSeconds = WorldTime::CycleSeconds;
 
 class Renderer {
 public:

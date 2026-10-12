@@ -167,7 +167,7 @@ bool World::runExplorationAudit(const std::string& directory,std::string& report
                 for(const auto& plan:plans) {
                     const int wx=int(std::floor(plan.mouth.x)),wz=int(std::floor(plan.mouth.z));
                     if(!found.insert({wx,wz}).second)continue;
-                    require(nativeCavity(int(plan.target.x),int(plan.target.y)-1,int(plan.target.z)),"Entrance misses native cave");
+                    require(nativeCavity(int(std::floor(plan.target.x)),int(plan.target.y)-1,int(std::floor(plan.target.z))),"Entrance misses native cave");
                     // Dense samples prove a continuous >=2-block bore along the
                     // two real carved segments, rather than a decorative hole.
                     for(auto segment:{std::pair<glm::vec3,glm::vec3>{plan.mouth,plan.bend},{plan.bend,plan.target}})

@@ -465,7 +465,7 @@ World::World(std::uint32_t seed, std::uint32_t generationVersion)
       cheeseNoise_(seed ^ 0x91b37d65U), spaghettiNoise_(seed ^ 0x326fa1cbU),
       noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed),
       seed_(seed) {
-    generationVersion_ = std::clamp(generationVersion, 1U, 13U);
+    generationVersion_ = std::clamp(generationVersion, 1U, 17U);
     const auto maximum=streamingWorkerPlan(std::thread::hardware_concurrency(),ChunkStreamingQuality::High);
     workerPlan_=streamingWorkerPlan(std::thread::hardware_concurrency(),streamingQuality_);
     generationWorkerLimit_=workerPlan_.generation;
@@ -808,7 +808,7 @@ StructureTerrain World::structureTerrainAt(int worldX, int worldZ) const {
     case Biome::SnowyPeaks: biome = StructureBiome::Mountains; break;
     default: break;
     }
-    return {sample.height, biome, sample.river, seaLevel(), maximumY(), generationVersion_ < 11 || sample.ravine < .02f};
+    return {sample.height, biome, sample.river, seaLevel(), generationVersion_>=15?257:maximumY(), generationVersion_ < 11 || sample.ravine < .02f, generationVersion_>=15};
 }
 
 glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
@@ -2549,7 +2549,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
                        loadedGenerationVersion != 5U &&
                        loadedGenerationVersion != 6U && loadedGenerationVersion != 7U &&
                        loadedGenerationVersion != 8U && loadedGenerationVersion != 9U &&
-                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U && loadedGenerationVersion != 12U && loadedGenerationVersion != 13U))
+                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U && loadedGenerationVersion != 12U && loadedGenerationVersion != 13U && loadedGenerationVersion != 14U && loadedGenerationVersion != 15U && loadedGenerationVersion != 16U && loadedGenerationVersion != 17U))
             return false;
     }
 

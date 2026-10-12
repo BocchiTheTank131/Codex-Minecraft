@@ -1,4 +1,4 @@
-"""Label v10/v11 density audit maps and quantify fragmentation (development only)."""
+"""Label versioned density audit maps and quantify fragmentation (development only)."""
 from pathlib import Path
 from collections import deque
 import argparse, csv, json, re
@@ -7,7 +7,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 parser = argparse.ArgumentParser()
 parser.add_argument('directory', type=Path)
-parser.add_argument('--versions', nargs=2, type=int, default=[10,11])
+parser.add_argument('--maps-only', action='store_true')
+parser.add_argument('--versions', nargs='+', type=int, default=[10,11])
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[1]
 enum = (root / 'include/Biome.h').read_text().split('enum class Biome')[1].split('};')[0]
@@ -95,7 +96,8 @@ with (args.directory/'metrics.csv').open('w',newline='') as file:
 (args.directory/'metrics.json').write_text(json.dumps(metrics,indent=2))
 for seed in sorted({str(r['seed']) for r in metrics}):
     for extent in (30720,4096):
-        panel=Image.new('RGB',(2700,1350),(24,28,34));draw=ImageDraw.Draw(panel)
+        legendY=83+len(args.versions)*558
+        panel=Image.new('RGB',(2700,legendY+160),(24,28,34));draw=ImageDraw.Draw(panel)
         draw.text((20,12),f'Seed {seed} | {extent:,} x {extent:,} blocks | 512 x 512 samples | North at top',font=font,fill='white')
         for row,version in enumerate(args.versions):
             for col,name in enumerate(('biomes','temperature','humidity','continentalness','terrain')):
@@ -103,10 +105,13 @@ for seed in sorted({str(r['seed']) for r in metrics}):
                 draw.text((x,y-24),f'V{version} {name.upper()}',font=font,fill='white')
                 panel.paste(Image.open(args.directory/f'map-{seed}-v{version}-{extent}-{name}.png'),(x,y))
         for i,name in enumerate(names):
-            x=20+(i%7)*380;y=1199+(i//7)*26
+            x=20+(i%7)*380;y=legendY+(i//7)*26
             draw.rectangle((x,y,x+14,y+14),fill=tuple(palette[i]));draw.text((x+22,y-2),re.sub(r'(?<!^)(?=[A-Z])',' ',name),font=small,fill='white')
-        draw.text((20,1330),'T/H: 0 blue -> 0.5 green -> 1 red | Continentalness: -0.5 blue -> +0.5 red | Elevation: black low -> white high; water blue',font=small,fill='white')
+        draw.text((20,legendY+133),'T/H: 0 blue -> 0.5 green -> 1 red | Continentalness: -0.5 blue -> +0.5 red | Elevation: black low -> white high; water blue',font=small,fill='white')
         panel.save(args.directory/f'{seed}-{extent}-comparison.png')
+
+if args.maps_only:
+    raise SystemExit(0)
 
 # Cross-sections use the generated block IDs, with air transparent black and
 # separate colors for aquifers/lava/ores. Source data is at native block scale.
@@ -179,5 +184,5 @@ for ax,ore in zip(axes,('coal','iron','copper','gold','diamond')):
         ax.plot(ratio,y.reshape(-1,4).mean(1),label=seed,linewidth=1)
     ax.set_title(ore.title());ax.axhline(64,color='steelblue',linestyle=':',linewidth=.8);ax.axhline(0,color='gray',linestyle=':',linewidth=.8)
     ax.set_xlabel('% of sampled solid blocks');ax.grid(alpha=.2);ax.set_ylim(-64,320)
-axes[0].set_ylabel('World Y');axes[-1].legend(title='Seed',fontsize=8);fig.suptitle(f'V{args.versions[1]} actual ore distribution | 48 regional chunks per seed | 4-block depth bins')
+axes[0].set_ylabel('World Y');axes[-1].legend(title='Seed',fontsize=8);fig.suptitle(f'V{args.versions[-1]} actual ore distribution | 48 regional chunks per seed | 4-block depth bins')
 fig.tight_layout();fig.savefig(args.directory/'ore-distribution.png',dpi=140);plt.close(fig)

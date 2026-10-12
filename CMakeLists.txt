@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(VoxelFrontier VERSION 2.11.2 LANGUAGES C CXX)
-set(VOXELFRONTIER_VERSION_SUFFIX "-beta2")
+set(VOXELFRONTIER_VERSION_SUFFIX "")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
 option(VOXEL_STANDALONE "Embed runtime assets and link the Windows runtime statically" OFF)
@@ -50,6 +50,7 @@ add_executable(VoxelFrontier
     src/AmbientOcclusion.cpp
     src/Screenshot.cpp
     src/UIManager.cpp
+    src/WorldTimeValidation.cpp
     src/WorldLibrary.cpp
     src/Biome.cpp
     src/BiomeVegetation.cpp
@@ -76,6 +77,8 @@ add_executable(VoxelFrontier
     src/WorldBiomeValidation.cpp
     src/TerrainDensity.cpp
     src/TerrainAesthetics.cpp
+    src/TerrainChaos.cpp
+    src/RegionalClimate.cpp
     src/WorldAesthetics.cpp
     src/WorldAestheticsValidation.cpp
     src/WorldDensity.cpp

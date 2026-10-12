@@ -48,7 +48,7 @@ private:
         bool memorySampleAvailable = false;
         int framesInSample = 0;
         float fps = 0.0f;
-        float worldTime = 35.0f;
+        float worldTime = WorldTime::DefaultSeconds;
         float stepTimer = 0.0f;
         float bobTime = 0.0f;
         float frameMilliseconds = 0.0f;
@@ -89,6 +89,7 @@ private:
         float previewX = 0, previewZ = 0;
         float previewY = std::numeric_limits<float>::quiet_NaN();
         float previewBrightness = .5f;
+        float previewTime = WorldTime::DefaultSeconds;
         float previewYaw = -90.f, previewPitch = -42.f;
         bool previewTorch = false;
         bool previewClean = false, previewGround = false;
@@ -209,7 +210,7 @@ private:
     std::string biomeAudit_;
     std::string geographyAudit_;
     std::string densityAudit_;
-    unsigned fixtureGenerator_ = 13;
+    unsigned fixtureGenerator_ = 17;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();

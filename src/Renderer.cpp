@@ -493,7 +493,7 @@ struct CelestialState {
 
 CelestialState celestial(float worldTime) {
 
-    const float angle = worldTime / DayNightCycleSeconds * glm::two_pi<float>() + 0.35f;
+    const float angle = WorldTime::angle(worldTime);
     const glm::vec3 sun =
         glm::normalize(glm::vec3(std::cos(angle) * 0.72f, std::sin(angle), -0.42f));
     const float daylight = glm::smoothstep(-0.18f, 0.22f, sun.y);

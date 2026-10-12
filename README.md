@@ -35,7 +35,7 @@ Pressing PLAY again in the demo starts a fresh gameplay session.
 
 ## Features
 
-- Versioned procedural worlds: new Generator V13 worlds span Y=-64 through 319; V11/V12 worlds retain those bounds and generators 1–10 keep Y=0 through 255
+- Versioned procedural worlds: new Generator V17 worlds span Y=-64 through 319, with natural generation capped at Y=256; V11–V16 worlds retain their original terrain and generators 1–10 keep Y=0 through 255
 - Multi-noise terrain with continents, mountains, rivers, beaches, oceans, caves, ravines, and aquifers
 - Plains, deserts, snowy mountains, forests, and other terrain variations
 - Villages, pillager outposts, desert pyramids, ruins, wells, and campsites
@@ -69,7 +69,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.11.2-beta2** has **142 inventory items**, **96 placeable block families**, **160 block
+Version **2.11.2** has **142 inventory items**, **96 placeable block families**, **160 block
 IDs/states including Air**, **73 crafting recipes**, and **23 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -197,9 +197,91 @@ and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in th
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
 
+## v2.11.2 - Generator V17: Terrain & Vegetation Refinement
+
+New worlds use **Generator V17**. Existing worlds continue using their
+stored generator, including unexplored chunks from generators 1–16.
+
+- Smaller continental features and stronger regional coastal/erosion variation
+  produce more bays, peninsulas, islands and inland basins without V9 fragmentation.
+- Moderate extra inland relief reuses existing samples; mountain density,
+  connected overhangs, caves and the natural Y=256 ceiling remain intact.
+- V16's temperature, humidity and macroclimate samples are preserved exactly.
+- Valid woody tree roots are thinned by approximately 20%, independent of species.
+  Jungle bamboo uses deterministic groves with occasional isolated stalks and
+  approximately 50% fewer stalks. Removed candidates do not become extra plants.
+- The existing worker, mesh, lighting and rendering pipelines are unchanged.
+
+See [V17 validation and performance](docs/GENERATOR_V17_REFINEMENT.md).
+`--aesthetics-audit=<absolute-directory> --generator=17` exports V9/V16/V17 maps,
+paired terrain routes, vegetation counts and compatibility regressions.
+
+## v2.11.2 foundation - Generator V16: Climate Distribution Refinement
+
+Generator V16 introduced regional climate refinement. Existing worlds retain generators
+**1–15**, including their climate, weather classification and unexplored chunks.
+These changes are included in stable v2.11.2.
+
+- An unchanged broad macroclimate now contains stronger, smooth regional temperature
+  pockets, with restrained fine detail. Altitude cooling remains separate.
+- Biomes, vegetation, precipitation, freezing and climate colors use the same
+  versioned temperature field. All 35 biomes remain available.
+- V15 height shaping, density fields, mountains, underground rules, humidity,
+  continents, rivers, height limits and the 20-minute cycle remain unchanged.
+- One additional noise sample per cached terrain column; no new per-block climate
+  evaluation, rendering pass or save layout.
+
+See [V16 validation and performance](docs/GENERATOR_V16_CLIMATE_VALIDATION.md).
+`--aesthetics-audit=<absolute-directory> --generator=16` exports paired V9/V15/V16
+maps at 4,096 and 30,720 blocks plus route, terrain and generation measurements.
+`tools/analyze_climate_distribution.py` measures climate boundaries, region sizes,
+multi-scale temperature differences and exploration diversity from those fixtures.
+
+## v2.11.2 foundation - Generator V15: Controlled Chaos
+
+Generator V15 introduced the following terrain changes. Saved V15 worlds retain
+their geography, as do worlds using generators **1–14**, including their
+unexplored chunks. Release metadata remains
+`2.11.2-beta2` until the update is approved for publication.
+
+- Narrow contour ridges, compact mountain groups, stronger medium-scale hills and
+  valley shoulders replace V14's broad uplifted mountain masses.
+- Restrained small-scale rock detail supplements the existing large-scale continents,
+  drainage and climate. Compatible local habitats vary within the broad climate regions.
+- Existing attached overhangs, caves, ravines, aquifers, ores and all 35 biomes remain.
+- Natural terrain, vegetation and structures stay at or below **Y=256**. Smooth peak
+  compression avoids flat clipped summits; high-altitude trees require room for their
+  complete models. Player construction still reaches **Y=319**.
+- V14's narrower coastal selection, woodland clearings, reduced Flower Forest density,
+  shared climate/weather data and **20-minute day/night cycle** remain in place.
+
+See [V15 validation and performance](docs/GENERATOR_V15_VALIDATION.md) for paired
+maps, actual game captures, exact historical hashes, benchmarks and limitations.
+`--aesthetics-audit=<absolute-directory> --generator=15` exports V9/V14/V15 maps
+and V14/V15 terrain, route, connectivity and generation measurements.
+
+## v2.11.2 foundation - Terrain refinement and 20-minute day/night cycle
+
+The published v2.11.2-beta2 includes Generator V13. The V14 refinement introduced
+a separate generator so existing V13 worlds remain geographically unchanged.
+V15 builds include these changes while preserving V14 geography for V14 saves.
+
+- Narrower mountain ridges retain similar peak elevations, with more inland rolling relief.
+- Smooth medium-scale temperature variation supplements the unchanged macroclimate.
+- Narrower beach bands and relief-aware Stony Shores retain continuous coastlines.
+- Flower Forest decoration produces approximately half as many flowers, preserving both
+  flower colors. Deterministic woodland clearings vary canopy coverage.
+- The full day/night cycle now lasts **1,200 seconds (20 minutes)**: 600 seconds of
+  daylight and 600 seconds of night, with the existing smooth sunrise/sunset lighting.
+- Legacy 420-second saved times are converted by cycle phase. An optional `TIME_CYCLE1`
+  metadata tail prevents repeated conversion; weather timers and terrain versions are independent.
+
+See [terrain refinement validation](docs/GENERATOR_V14_REFINEMENT.md) for measured
+results, comparisons and limitations. These changes are included in stable v2.11.2.
+
 ## v2.11.2-beta2 - Generator V13: Terrain Aesthetics
 
-New source builds create **Generator V13** worlds. Existing saved worlds keep
+This prerelease creates **Generator V13** worlds. Existing saved worlds keep
 **generators 1-12**, including unexplored chunks; no item IDs or save layouts change.
 The v2.11.2-beta2 prerelease includes V13 for new worlds; existing worlds retain their generator.
 
@@ -469,12 +551,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
 Prerelease: [Voxel Frontier v2.11.2-beta2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta2).
-Latest stable: [Voxel Frontier v2.11.1](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.1).
+Latest stable: [Voxel Frontier v2.11.2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2).
 
-| v2.11.2-beta2 Windows build | Purpose | Persistence |
+| v2.11.2 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.11.2-beta2-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.11.2-beta2-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.11.2-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.11.2-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -678,8 +760,10 @@ the brackets themselves.
   does not fit rather than silently discarding it.
 - `/setblock` and `/fill` require loaded chunks and valid world-height coordinates. `/fill`
   rejects oversized or partly unloaded regions before editing. Use `air` to remove blocks.
-- Time uses **seconds**, not Minecraft ticks. The cycle wraps every **420 seconds**:
-  Day = 35, Noon = 105, Night = 245, Midnight = 315.
+- Time uses **seconds**, not Minecraft ticks. Current source builds wrap the cycle every **1,200 seconds**:
+  Day = 100, Noon ≈ 233.155, Night = 700, Midnight ≈ 833.155.
+  Noon/midnight match the retained solar phase offset. Published beta2 uses the prior
+  420-second cycle; old saved times retain their phase when loaded by current source builds.
 - Gameplay-changing commands have an internal cheat permission check. Cheats currently default
   to enabled; no world-creation permission toggle is exposed yet. `/help` and `/seed` remain
   available if permission is disabled.
@@ -916,6 +1000,7 @@ The project is split into focused systems:
 - `TerrainDensity` / `WorldDensity` - versioned V11 density lattice, caves, aquifers and depth-based ores
 - `TerrainExploration` / `WorldExploration` - versioned habitat variants, spaced vegetation and connected surface cave passages
 - `TerrainAesthetics` / `WorldAesthetics` - V13 connected density constraints, mountain profiles and climate-compatible woodland
+- `TerrainChaos` - V15 cached-column ridge shaping, medium-scale relief and smooth natural-height ceiling
 - `ChunkStreaming` / `WorldStreaming` - hardware-aware worker plans, priorities, cancellation and bounded main-thread integration
 - `WorldExplorationValidation` / `StreamingValidation` - route, compatibility, concurrency and flight fixtures
 - `WorldDensityValidation` - V11 maps, cutaways, deterministic hashes and vertical-range regressions

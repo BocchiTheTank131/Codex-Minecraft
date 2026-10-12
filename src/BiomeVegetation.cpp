@@ -1,6 +1,7 @@
 #include "BiomeVegetation.h"
 #include "TerrainExploration.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 
 namespace {
@@ -8,6 +9,16 @@ constexpr int size=16, reach=6;
 std::uint32_t hash(int x,int z,std::uint32_t seed) {
     std::uint32_t h=seed ^ (std::uint32_t(x)*0x9e3779b9U) ^ (std::uint32_t(z)*0x85ebca6bU);
     h ^= h>>16; h*=0x7feb352dU; h ^= h>>15; h*=0x846ca68bU; return h^(h>>16);
+}
+// Smooth, world-coordinate density field. The same roots are accepted in
+// adjoining chunks; this creates small openings rather than thinning all trees.
+float woodlandDensity(int x,int z,std::uint32_t seed) {
+    const int gx=int(std::floor(float(x)/96.f)),gz=int(std::floor(float(z)/96.f));
+    const float fx=float(x-gx*96)/96.f,fz=float(z-gz*96)/96.f;
+    const float u=fx*fx*(3-2*fx),v=fz*fz*(3-2*fz);
+    const auto sample=[&](int a,int b){return float(hash(a,b,seed^0xc1eaU)&65535U)/65535.f;};
+    return (sample(gx,gz)*(1-u)+sample(gx+1,gz)*u)*(1-v)+
+           (sample(gx,gz+1)*(1-u)+sample(gx+1,gz+1)*u)*v;
 }
 struct Wood { Block log, leaves; };
 Wood wood(TreeStyle style) {
@@ -25,9 +36,10 @@ Wood wood(TreeStyle style) {
 void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blocks,
                         const std::function<BiomeTerrain(int,int)>& terrain,
                         const std::function<bool(int,int)>& reserved,
-                        const std::function<bool(int,int)>& supported, int minimumY, int maximumY, int seaLevel, unsigned generatorVersion) {
+                        const std::function<bool(int,int)>& supported, int minimumY, int maximumY, int seaLevel, unsigned generatorVersion, VegetationCounts* counts) {
     const int height = maximumY, sea = seaLevel;
     const int ox=cx*size,oz=cz*size;
+    std::array<bool,256> removedRoots{};
     auto at=[&](int x,int y,int z)->Block& { return blocks[((y-minimumY)*size+z)*size+x]; };
     auto place=[&](int x,int y,int z,Block value) {
         if(x<ox||x>=ox+size||z<oz||z>=oz+size||y<minimumY+1||y>=height||reserved(x,z)) return;
@@ -67,6 +79,7 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
         }
         if(!biome.treeSpacing || h%unsigned(biome.treeSpacing) || ground.height<=sea ||
            ground.river>.10f || biome.trees==TreeStyle::None) continue;
+        if(generatorVersion>=14 && woodlandDensity(x,z,seed)>.73f) continue;
         if(generatorVersion>=12) {
             bool crowded=false;
             for(int dz=-2;dz<=2 && !crowded;++dz)for(int dx=-2;dx<=2;++dx) {
@@ -97,6 +110,17 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
                 safe &= supported(x+dx,z+dz) && std::abs(terrain(x+dx,z+dz).height-ground.height)<=1;
             if(!safe) continue;
         }
+        // Thin the already valid roots independently of species and spacing.
+        // Neighbor priority is unchanged: rejecting a root cannot admit replacements.
+        if(generatorVersion>=17 && biome.trees!=TreeStyle::Mushroom &&
+           hash(x,z,seed^0x17eeU)%5U==0) {
+            for(int dz=0;dz<(thick?2:1);++dz)for(int dx=0;dx<(thick?2:1);++dx)
+                if(x+dx>=ox&&x+dx<ox+size&&z+dz>=oz&&z+dz<oz+size)
+                    removedRoots[(z+dz-oz)*size+x+dx-ox]=true;
+            continue;
+        }
+        if(counts && x>=ox&&x<ox+size&&z>=oz&&z<oz+size && biome.trees!=TreeStyle::Mushroom)
+            ++counts->trees;
         for(int dz=0;dz<(thick?2:1);++dz) for(int dx=0;dx<(thick?2:1);++dx) {
             const int bottom=thick?std::min(ground.height,terrain(x+dx,z+dz).height):ground.height;
             for(int y=bottom+1;y<=ground.height+tall;++y)
@@ -131,7 +155,7 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
         const int wx=ox+x,wz=oz+z;
         const auto ground=terrain(wx,wz); const auto& biome=biomeDefinition(ground.biome);
         const auto h=hash(wx,wz,seed^0xdec0U);
-        if(reserved(wx,wz)) continue;
+        if(reserved(wx,wz)||removedRoots[z*size+x]) continue;
         if(ground.biome==Biome::Swamp && ground.height<sea && h%17U==0 && at(x,sea,z)==Block::Water &&
            at(x,sea+1,z)==Block::Air) place(wx,sea+1,wz,Block::LilyPad);
         const int y=ground.height+1;
@@ -156,7 +180,16 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
             }
             else if(ground.biome==Biome::FlowerForest||ground.biome==Biome::Meadow || h%7U==0)
                 plant=(h&1)?Block::RedFlower:Block::YellowFlower;
+            if(generatorVersion>=14 && ground.biome==Biome::FlowerForest &&
+               (hash(wx,wz,seed^0xf10eU)&1U)) continue;
             if(ground.biome==Biome::Jungle && h%5U==0) {
+                if(generatorVersion>=17) {
+                    const float grove=woodlandDensity(wx,wz,seed^0xba17U);
+                    const float t=std::clamp((grove-.28f)/.44f,0.f,1.f);
+                    const float probability=.05f+.90f*t*t*(3.f-2.f*t);
+                    if(float(hash(wx,wz,seed^0xbab0U)&65535U)/65536.f>=probability) continue;
+                }
+                if(counts) ++counts->bamboo;
                 for(int dy=0;dy<3+int((h>>8)%4);++dy) place(wx,y+dy,wz,Block::Bamboo);
             } else place(wx,y,wz,plant);
         }

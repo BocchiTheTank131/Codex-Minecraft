@@ -3,6 +3,8 @@
 #include "Definitions.h"
 #include "Player.h"
 #include "Weather.h"
+#include "TerrainChaos.h"
+#include "BiomeVegetation.h"
 #include <array>
 #include <chrono>
 #include <filesystem>
@@ -46,12 +48,25 @@ bool World::runDensityAudit(const std::string& directory,std::string& report,uns
         if(!value) throw std::runtime_error(message);
     };
     try {
+        if(modernVersion>=15) {
+            float previous=TerrainChaos::compress(199.f);
+            for(int i=1;i<20000;++i) {
+                const float value=TerrainChaos::compress(199.f+i*.05f);
+                require(std::isfinite(value)&&value>=previous&&value<=255.f,"Natural ceiling compression");
+                previous=value;
+            }
+            require(std::abs((TerrainChaos::compress(200.01f)-200.f)/.01f-1.f)<.01f,"Compression shoulder is discontinuous");
+        }
         for(auto seed:{20260917U,123456789U,42U}) {
             std::array<int,35> totalBiomes{};
             glm::ivec2 mountain(0);
             World modern(seed,modernVersion);
+            World previousClimate(seed,15);
+            World preservedClimate(seed,16);
             require(modern.minimumY()==-64&&modern.maximumY()==320&&modern.seaLevel()==64,"V11 vertical bounds");
-            for(unsigned version:{modernVersion-1,modernVersion}) {
+            std::vector<unsigned> mapVersions{modernVersion-1,modernVersion};
+            if(modernVersion>=15) mapVersions.insert(mapVersions.begin(),9);
+            for(unsigned version:mapVersions) {
                 World probe(seed,version);
                 for(int extent:{4096,30720}) {
                     std::ofstream map(directory+"/map-"+std::to_string(seed)+"-v"+std::to_string(version)+"-"+std::to_string(extent)+".bin",std::ios::binary);
@@ -59,12 +74,37 @@ bool World::runDensityAudit(const std::string& directory,std::string& report,uns
                     for(int z=0;z<512;++z) for(int x=0;x<512;++x) {
                         const int wx=x*(extent/512)-extent/2,wz=z*(extent/512)-extent/2;
                         const auto t=probe.sampleTerrain(wx,wz); ++counts[int(t.biome)];
+                        if(version==16) {
+                            const auto old=previousClimate.sampleTerrain(wx,wz);
+                            require(t.height==old.height&&t.unclampedHeight==old.unclampedHeight&&
+                                t.humidity==old.humidity&&t.macroHumidity==old.macroHumidity&&
+                                t.macroTemperature==old.macroTemperature&&t.continentalness==old.continentalness&&
+                                t.naturalContinentalness==old.naturalContinentalness&&t.erosion==old.erosion&&
+                                t.weirdness==old.weirdness&&t.peakValley==old.peakValley&&
+                                t.river==old.river&&t.ravine==old.ravine&&t.mushroomIsland==old.mushroomIsland,
+                                "V16 changed a non-temperature terrain field");
+                            require(t.temperature>=0&&t.temperature<=1,"V16 normalized temperature");
+                            if(x%64==0&&z%64==0) {
+                                const auto climate=probe.biomeClimateAt(wx,wz);
+                                require(climate.temperature==t.temperature&&climate.humidity==t.humidity&&
+                                    climate.biome==t.biome&&climate.dry==biomeDefinition(t.biome).dry&&
+                                    climate.effectiveTemperature==altitudeTemperature(t.temperature,float(t.height-16)),
+                                    "V16 biome/weather climate disagreement");
+                            }
+                        }
+                        if(version==17) {
+                            const auto old=preservedClimate.sampleTerrain(wx,wz);
+                            require(t.temperature==old.temperature && t.humidity==old.humidity &&
+                                t.macroTemperature==old.macroTemperature && t.macroHumidity==old.macroHumidity,
+                                "V17 changed V16 climate sampling");
+                        }
                         if(version==modernVersion) {
                             ++totalBiomes[int(t.biome)];
                             if(totalBiomes[int(t.biome)]==1) sites<<seed<<','<<biomeDefinition(t.biome).name<<','<<wx<<','<<wz<<','<<t.height<<'\n';
                             if(t.height>modern.terrainHeight(mountain.x,mountain.y)&&t.ravine<.02f) mountain={wx,wz};
                         }
                         require(t.height>=probe.minimumY()&&t.height<=probe.maximumY()-12,"Density map height bounds");
+                        if(version>=15) require(t.height<=255,"Surface exceeds natural height ceiling");
                         const Pixel p{std::uint8_t(t.biome),0,std::int16_t(t.height),t.temperature,t.humidity,t.continentalness,t.river,t.macroTemperature,t.macroHumidity};
                         map.write(reinterpret_cast<const char*>(&p),sizeof(p));
                     }
@@ -96,6 +136,7 @@ bool World::runDensityAudit(const std::string& directory,std::string& report,uns
                             auto& row=histogram[y+64];
                             const int surface=surfaceHeights[z*16+x];
                             require(y<316 || b==Block::Air,"Generated geometry touches world ceiling");
+                            if(version>=15) require(y<TerrainChaos::NaturalMaximumY||b==Block::Air,"Natural blocks exceed Y256");
                             if(isSolid(b)) { ++row[0];++solid; if(y>surface)++above; }
                             int ore=-1;
                             if(b==Block::CoalOre||b==Block::DeepslateCoalOre)ore=1;
@@ -114,6 +155,32 @@ bool World::runDensityAudit(const std::string& directory,std::string& report,uns
                     require(parallel.wait_for(std::chrono::seconds(30))==std::future_status::ready,"Parallel density timeout");
                     require(parallel.get()==expected,"Parallel density mismatch");
                 }
+            }
+            if(modernVersion>=15) {
+                int highestNatural=-64;
+                for(int dz=-2;dz<=2;++dz)for(int dx=-2;dx<=2;++dx) {
+                    const int cx=floorDiv(mountain.x,16)+dx,cz=floorDiv(mountain.y,16)+dz;
+                    const auto data=modern.generateChunkData(cx,cz);
+                    for(std::size_t i=0;i<data.blocks.size();++i) if(data.blocks[i]!=Block::Air) {
+                        const int y=-64+int(i/256);highestNatural=std::max(highestNatural,y);
+                        require(y<TerrainChaos::NaturalMaximumY,"High peak feature ceiling");
+                    }
+                    for(const auto& plan:modern.structures_.plansForChunk(cx,cz,[&](int x,int z){return modern.structureTerrainAt(x,z);}))
+                        for(const auto& piece:plan.pieces) require(piece.bounds.maxY<257,"Structure truncated at natural ceiling");
+                }
+                for(int root:{231,232,240,255}) {
+                    std::vector<Block> blocks(256*(272+64),Block::Air);
+                    for(int y=-64;y<=root;++y)for(int i=0;i<256;++i) blocks[(y+64)*256+i]=Block::Grass;
+                    decorateBiomeChunk(-1,-1,seed,blocks,[&](int,int){return BiomeTerrain{root,Biome::Jungle,0};},
+                        [](int,int){return false;},[](int,int){return true;},-64,257,64,modernVersion);
+                    for(std::size_t i=0;i<blocks.size();++i)
+                        require(i/256<321||blocks[i]==Block::Air,"Vegetation above Y256");
+                    if(root>=233) for(int y=root+1;y<272;++y)for(int i=0;i<256;++i) {
+                        const Block b=blocks[(y+64)*256+i];
+                        require(b!=Block::JungleLog&&b!=Block::JungleLeaves,"High root generated a clipped tree");
+                    }
+                }
+                std::cout<<"V15 "<<seed<<" high-peak natural ceiling: Y"<<highestNatural<<"; 25 chunks, full vegetation models and structure bounds passed\n";
             }
             for(int y=-64;y<320;++y) {
                 oreCounts<<seed<<','<<y; for(auto value:histogram[y+64])oreCounts<<','<<value; oreCounts<<'\n';

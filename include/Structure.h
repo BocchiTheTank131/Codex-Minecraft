@@ -24,6 +24,7 @@ struct StructureTerrain {
     int seaLevel = 48;
     int maximumY = 256;
     bool supported = true;
+    bool enforceNaturalHeight = false;
 };
 
 enum class StructureKind : std::uint8_t {

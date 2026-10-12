@@ -25,11 +25,14 @@ SavedWorld read(const fs::path& directory) {
     info >> result.lastPlayed;
     std::ifstream seedFile(directory / "world_seed.txt");
     std::string mode;
-    seedFile >> result.seed >> mode >> result.time;
+    float storedTime = 35.f;
+    seedFile >> result.seed >> mode;
+    if (!(seedFile >> storedTime)) storedTime=35.f;
+    seedFile.clear();
+    result.time = WorldTime::restore(storedTime, seedFile);
     result.mode = mode == "creative" ? GameMode::Creative :
                   mode == "spectator" ? GameMode::Spectator : GameMode::Survival;
-    if (!std::isfinite(result.time) || result.time < 0) result.time = 35.0f;
-    result.time = std::fmod(result.time, 420.0f);
+
     return result;
 }
 bool equalFiles(const fs::path& a, const fs::path& b) {
@@ -81,7 +84,7 @@ SavedWorld create(const std::string& name, std::uint32_t seed, GameMode mode) {
         if (!writeMetadata(result)) throw std::runtime_error("Cannot write world metadata");
         const auto path = (result.directory / "world_seed.txt").string();
         if (!SaveFile::write(path, std::ios::out, [&](std::ofstream& output) {
-            output << seed << '\n' << (mode == GameMode::Creative ? "creative" : "survival") << "\n35\n";
+            output << seed << '\n' << (mode == GameMode::Creative ? "creative" : "survival") << "\n" << WorldTime::DefaultSeconds << "\nTIME_CYCLE1 " << WorldTime::CycleSeconds << '\n';
             return static_cast<bool>(output);
         })) throw std::runtime_error("Cannot write world seed");
         return result;

@@ -53,7 +53,7 @@ void Game::runStreamingBenchmark() {
             double nextMemorySample=0;
             while(glfwGetTime()-start<duration) {
                 const double t=glfwGetTime(); const float dt=static_cast<float>(t-previous); previous=t;
-                glfwPollEvents(); timing_.worldTime=35;
+                glfwPollEvents(); timing_.worldTime=WorldTime::DefaultSeconds;
                 // Player spectator base speed 8.5 * maximum multiplier 8.
                 if(phase==1) player_->teleport(origin+glm::vec3(float(t-start)*68.f,0,-float(t-start)*17.f));
                 world_->setStreamingView(player_->lookDirection(),dt*1000);

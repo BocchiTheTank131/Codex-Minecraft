@@ -3,6 +3,7 @@
 #include "BiomeVegetation.h"
 #include "TerrainExploration.h"
 #include "TerrainAesthetics.h"
+#include "TerrainChaos.h"
 #include <bitset>
 #include <algorithm>
 #include <array>
@@ -120,7 +121,8 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
     }
     int highest=SeaLevel;
     for(const auto& t:terrain) highest=std::max(highest,t.height);
-    const int scanTop=std::min(MaximumY,MinimumY+((highest+(generationVersion_>=13?25:53)-MinimumY+15)/16)*16);
+    const int generationTop=generationVersion_>=15?272:MaximumY; // aligned band containing Y256
+    const int scanTop=std::min(generationTop,MinimumY+((highest+(generationVersion_>=13?25:53)-MinimumY+15)/16)*16);
     const Grid grid(cx,cz,ridgeNoise_,cheeseNoise_,spaghettiNoise_,noodleNoise_,caveNoise_,scanTop);
     result.blocks.resize(CHUNK_SIZE*CHUNK_SIZE*(scanTop-MinimumY),Block::Air);
     // Immutable local occupancy includes a halo for exact exposed-ore tests.
@@ -216,6 +218,7 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
         if(biome.frozen && t.height>SeaLevel && t.height+1<MaximumY && at(x,t.height,z)!=Block::Air)
             at(x,t.height+1,z)=Block::Snow;
     }
+    const int featureTop=generationVersion_>=15?std::min(scanTop,TerrainChaos::NaturalMaximumY):scanTop;
     decorateBiomeChunk(cx,cz,seed_,result.blocks,[&](int x,int z) {
         const auto t=terrainAt(x,z); return BiomeTerrain{t.height,t.biome,t.river};
     },reserved,[&](int x,int z) {
@@ -233,8 +236,8 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
                    TerrainExploration::carves(cave,x,t.height-2,z)) return false;
         }
         return true;
-    },MinimumY,scanTop,SeaLevel,generationVersion_);
-    result.hasStructure=structures_.applyToChunk(cx,cz,result.blocks,result.loot,result.mobs,structureTerrain,MinimumY,scanTop);
+    },MinimumY,featureTop,SeaLevel,generationVersion_);
+    result.hasStructure=structures_.applyToChunk(cx,cz,result.blocks,result.loot,result.mobs,structureTerrain,MinimumY,featureTop);
     // Shore vegetation uses actual generated water, not a biome-name heuristic.
     for(int z=0;z<16;++z) for(int x=0;x<16;++x) {
         const auto t=terrainAt(ox+x,oz+z); const int y=t.height;

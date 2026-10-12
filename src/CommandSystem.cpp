@@ -1,3 +1,4 @@
+#include "WorldTime.h"
 #include "CommandSystem.h"
 #include "Weather.h"
 #include "Definitions.h"
@@ -132,22 +133,22 @@ CommandSystem::CommandSystem() {
             c.setGameMode(selected); return ok("Game mode set to " + modeName(selected));
         }});
     definitions_.push_back({"time", "", "/time <set <day|noon|night|midnight|seconds>|add <seconds>>",
-        "Set or advance the 420-second day cycle", true,
+        "Set or advance the 1200-second day cycle", true,
         [](const auto& a, CommandContext& c) -> CommandResult {
             if (a.size() != 3) return error("Usage: /time <set|add> <value>");
             double value = 0;
             const std::string word = lower(a[2]);
             if (lower(a[1]) == "set") {
-                if (word == "day") value = 35;
-                else if (word == "noon") value = 105;
-                else if (word == "night") value = 245;
-                else if (word == "midnight") value = 315;
+                if (word == "day") value = WorldTime::DefaultSeconds;
+                else if (word == "noon") value = WorldTime::NoonSeconds;
+                else if (word == "night") value = WorldTime::NightSeconds;
+                else if (word == "midnight") value = WorldTime::MidnightSeconds;
                 else if (!real(a[2], value)) return error("Invalid time: " + a[2]);
             } else if (lower(a[1]) == "add") {
                 if (!real(a[2], value)) return error("Invalid seconds: " + a[2]);
                 value += c.worldTime;
             } else return error("Usage: /time <set|add> <value>");
-            c.worldTime = static_cast<float>(std::fmod(std::fmod(value, 420.0) + 420.0, 420.0));
+            c.worldTime = WorldTime::wrap(value);
             if (lower(a[1]) == "set" &&
                 (word == "day" || word == "noon" || word == "night" || word == "midnight")) {
                 std::string label = word;

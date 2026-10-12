@@ -79,7 +79,7 @@ glm::mat4 applyHitRecoil(const glm::mat4& baseView, float recoilDegrees) {
 }
 
 float daylight(float worldTime) {
-    const float angle = worldTime / DayNightCycleSeconds * glm::two_pi<float>() + 0.35f;
+    const float angle = WorldTime::angle(worldTime);
     return glm::smoothstep(-0.13f, 0.17f, std::sin(angle));
 }
 
@@ -198,7 +198,7 @@ bool Game::initialize(int argc, char** argv) {
 
         if (!aestheticsAudit_.empty()) {
             std::string report;
-            if(!world_->runAestheticsAudit(aestheticsAudit_,report)) throw std::runtime_error(report);
+            if(!world_->runAestheticsAudit(aestheticsAudit_,report,fixtureGenerator_)) throw std::runtime_error(report);
             std::cout<<report<<std::endl;
             glfwSetWindowShouldClose(window_,true);
         } else if (!explorationAudit_.empty()) {
@@ -208,7 +208,7 @@ bool Game::initialize(int argc, char** argv) {
             glfwSetWindowShouldClose(window_,true);
         } else if (!densityAudit_.empty()) {
             std::string report;
-            if (!world_->runDensityAudit(densityAudit_, report)) throw std::runtime_error(report);
+            if (!world_->runDensityAudit(densityAudit_, report,fixtureGenerator_)) throw std::runtime_error(report);
             std::cout << report << std::endl;
             glfwSetWindowShouldClose(window_, true);
         } else if (!geographyAudit_.empty()) {
@@ -335,7 +335,7 @@ void Game::parseArguments(int argc, char** argv) {
             float savedWorldTime = 35.0f;
             if (seedFile >> savedWorldTime && std::isfinite(savedWorldTime) &&
                 savedWorldTime >= 0.0f)
-                timing_.worldTime = std::fmod(savedWorldTime, DayNightCycleSeconds);
+                timing_.worldTime = WorldTime::restore(savedWorldTime, seedFile);
         }
     }
 
@@ -358,7 +358,7 @@ void Game::parseArguments(int argc, char** argv) {
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
             } else if (argument.rfind("--generator=",0)==0) {
-                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,13));
+                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,17));
             } else if (argument.rfind("--aesthetics-audit=",0)==0) {
                 saveOnExit_=false; aestheticsAudit_=argument.substr(19);
             } else if (argument.rfind("--exploration-audit=",0)==0) {
@@ -407,6 +407,8 @@ void Game::parseArguments(int argc, char** argv) {
                 smokeTest_.previewY = std::stof(argument.substr(12));
             } else if (argument.rfind("--preview-z=",0)==0) {
                 smokeTest_.previewZ = std::stof(argument.substr(12));
+            } else if (argument.rfind("--preview-time=",0)==0) {
+                smokeTest_.previewTime=WorldTime::wrap(std::stod(argument.substr(15)));
             } else if (argument == "--preview-clean") {
                 smokeTest_.previewClean=true;
             } else if (argument == "--preview-ground") {
@@ -495,7 +497,7 @@ void Game::createWorldAndSystems() {
         throw std::runtime_error("Cannot load this world. Original save files were preserved.");
     }
     if (!loadedWorld)
-        timing_.worldTime = 35.0f;
+        timing_.worldTime = WorldTime::DefaultSeconds;
     const glm::vec3 safeSpawn = world_->findSafeSpawnNear(0, 0);
     const float spawnDeltaX = spawnPosition.x - safeSpawn.x;
     const float spawnDeltaZ = spawnPosition.z - safeSpawn.z;
@@ -506,6 +508,7 @@ void Game::createWorldAndSystems() {
         spawnPosition = safeSpawn;
     }
     if (smokeTest_.worldgenEnabled) {
+        timing_.worldTime=smokeTest_.previewTime;
         spawnPosition = {smokeTest_.previewX + .5f,
             static_cast<float>(world_->terrainHeight(static_cast<int>(smokeTest_.previewX),
                                                      static_cast<int>(smokeTest_.previewZ))),
@@ -625,6 +628,7 @@ bool Game::saveWorldMetadata() const {
                << std::setprecision(std::numeric_limits<float>::max_digits10)
                << std::fmod(std::max(0.0f, timing_.worldTime), DayNightCycleSeconds) << '\n';
         if (weather_) weather_->write(output);
+        output << "TIME_CYCLE1 " << WorldTime::CycleSeconds << '\n';
         return static_cast<bool>(output);
     });
     if (!activeWorld_.directory.empty()) {
@@ -793,7 +797,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     seed_ = newSeed;
     creativeMode_ = mode == GameMode::Creative;
     spectatorMode_ = mode == GameMode::Spectator;
-    timing_.worldTime = 35.0f;
+    timing_.worldTime = WorldTime::DefaultSeconds;
     saveWorldMetadata();
 
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
@@ -818,7 +822,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     survival_->setWeather(weather_.get());
     farming_ = std::make_unique<FarmingSystem>();
 
-    timing_.worldTime = 35.0f;
+    timing_.worldTime = WorldTime::DefaultSeconds;
     timing_.lastSave = glfwGetTime();
     interaction_ = {};
     wasInWater_ = false;
@@ -2306,6 +2310,9 @@ bool Game::playerIsWalking() const {
 }
 
 void Game::runCommandSmokeTest() {
+    std::string timeReport;
+    if(!WorldTime::selfTest(timeReport)) throw std::runtime_error(timeReport);
+    std::cout << timeReport << '\n';
     runCraftingContentSmokeTest();
     std::string report;
     if (!CommandSystem::runSelfTest(report)) throw std::runtime_error("Command parser: " + report);
@@ -2328,9 +2335,19 @@ void Game::runCommandSmokeTest() {
     check("/gamemode survival", true);
     check("/time set day", true);
     check("/time set night", true);
-    if (std::abs(timing_.worldTime - 245.0f) > 0.01f) throw std::runtime_error("time set");
+    if (std::abs(timing_.worldTime - WorldTime::NightSeconds) > 0.01f) throw std::runtime_error("time set");
     check("/time add 30", true);
-    if (std::abs(timing_.worldTime - 275.0f) > 0.01f) throw std::runtime_error("time add");
+    if (std::abs(timing_.worldTime - (WorldTime::NightSeconds+30.f)) > 0.01f) throw std::runtime_error("time add");
+    check("/time set noon", true);
+    if(timing_.worldTime!=WorldTime::NoonSeconds) throw std::runtime_error("time noon");
+    check("/time set midnight", true);
+    if(timing_.worldTime!=WorldTime::MidnightSeconds) throw std::runtime_error("time midnight");
+    check("/time set 1199.5", true);
+    check("/time add 1", true);
+    if(timing_.worldTime!=.5f) throw std::runtime_error("time wrap");
+    check("/time set -30", true);
+    if(timing_.worldTime!=1170.f) throw std::runtime_error("time negative");
+    check("/time set day", true);
     inventory_->clear();
     check("/give @s stone 64", true);
     check("/give @s torch 1", true);
@@ -3566,7 +3583,7 @@ void Game::returnToMainMenu() {
     activeSettingsSlider_ = activeControlBinding_ = -1;
     saveWarningUntil_ = 0.0;
     if (!Persistence::enabled()) {
-        timing_.worldTime = 35.0f;
+        timing_.worldTime = WorldTime::DefaultSeconds;
         creativeMode_ = spectatorMode_ = false;
     }
     activeWorld_ = {};
@@ -3663,7 +3680,7 @@ void Game::runMainMenuSmokeTest() {
               inventory_->count(Item::Diamond) == initialDiamonds + 1 &&
               weather_->type()==WeatherType::Thunder && weather_->remaining()==179, "Full game save/load/weather");
     } else {
-        check(timing_.worldTime == 35.0f && weather_->type()==WeatherType::Clear && weather_->intensity()==0 && gameMode() == GameMode::Survival &&
+        check(timing_.worldTime == WorldTime::DefaultSeconds && weather_->type()==WeatherType::Clear && weather_->intensity()==0 && gameMode() == GameMode::Survival &&
               inventory_->count(Item::Diamond) == initialDiamonds,
               "Demo did not reset its session");
     }

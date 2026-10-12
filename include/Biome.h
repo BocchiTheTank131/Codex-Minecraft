@@ -38,4 +38,4 @@ glm::vec3 climateWaterColor(const BiomeClimate& climate);
 
 // Regional selector shared by V10 and V11; height is relative to the legacy sea datum.
 Biome selectGeographicalBiome(float t, float h, float c, float e, float habitat,
-                             float river, int y, float island);
+                             float river, int y, float island, int shoreHeightBand = 3);

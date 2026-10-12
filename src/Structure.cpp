@@ -413,6 +413,7 @@ bool canPlaceStructure(const StructureBox& footprint, int maximumSlope,
                        const std::function<StructureTerrain(int, int)>& terrain) {
     const auto heights = terrainHeightForFootprint(footprint, terrain);
     const auto center = terrain((footprint.minX + footprint.maxX) / 2, (footprint.minZ + footprint.maxZ) / 2);
+    if(center.enforceNaturalHeight && footprint.maxY>=center.maximumY) return false;
     if (!center.supported || heights[0] <= center.seaLevel + 2 || heights[1] - heights[0] > maximumSlope ||
         heights[2] + footprint.maxY - footprint.minY >= center.maximumY - 3)
         return false;

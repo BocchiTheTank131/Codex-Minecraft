@@ -13,7 +13,7 @@ float smooth(float a, float b, float value) {
 // Regional climate chooses the biome family; elevation and regional habitat
 // choose compatible sub-biomes. This is deliberately separate from the v9 selector.
 Biome selectGeographicalBiome(float t, float h, float c, float e, float habitat,
-                         float river, int y, float island) {
+                         float river, int y, float island, int shoreHeightBand) {
     const float effective = altitudeTemperature(t, static_cast<float>(y));
     if (island > .40f && c < -.10f && y >= SEA_LEVEL + 1) return Biome::MushroomFields;
     // Marshes include shallow water in warm/wet inland basins, so existing
@@ -23,8 +23,8 @@ Biome selectGeographicalBiome(float t, float h, float c, float e, float habitat,
     if (y < SEA_LEVEL - 2) return t < .17f ? Biome::FrozenOcean :
         t < .34f ? Biome::ColdOcean : t > .72f ? Biome::WarmOcean : Biome::Ocean;
     if (river > .62f && y <= SEA_LEVEL + 5) return effective < .17f ? Biome::FrozenRiver : Biome::River;
-    if (y <= SEA_LEVEL + 3 && c < .045f) return effective < .17f ? Biome::SnowyBeach :
-        (e < .30f && y >= SEA_LEVEL + 1) ? Biome::StonyShore : Biome::Beach;
+    if (y <= SEA_LEVEL + shoreHeightBand && c < .045f) return effective < .17f ? Biome::SnowyBeach :
+        (e < .30f && y >= SEA_LEVEL + (shoreHeightBand<3?-1:1)) ? Biome::StonyShore : Biome::Beach;
     if (y >= 140) return effective < .17f ? Biome::SnowyPeaks : Biome::StonyPeaks;
     if (y >= 100 && effective < .17f) return Biome::SnowySlopes;
     if (y >= 108 && e < .53f) return Biome::Mountains;
@@ -56,9 +56,10 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     const float warpX = erosionNoise_.noise(x * .00014f + 17.31f, 0, z * .00014f - 29.73f) * 700.f;
     const float warpZ = erosionNoise_.noise(x * .00014f - 63.19f, 0, z * .00014f + 41.57f) * 700.f;
     const float wx = x + warpX, wz = z + warpZ;
-    const float continent = continentalNoise_.fractal2D(wx * .00010f + .371f, wz * .00010f - .613f, 2, 2.f, .23f);
+    const float continent = continentalNoise_.fractal2D(wx * (generationVersion_>=17?.00014f:.00010f) + .371f, wz * (generationVersion_>=17?.00014f:.00010f) - .613f, 2, 2.f, .23f);
     const float coast = continentalNoise_.fractal2D(wx * .00045f + 91.417f, wz * .00045f - 37.283f, 2, 2.f, .25f);
-    const float naturalContinent = continent * .88f + coast * .12f;
+    // V17 strengthens regional geography without moving the climate sampling domain.
+    const float naturalContinent = generationVersion_>=17 ? continent * .70f + coast * .30f : continent * .88f + coast * .12f;
     sample.naturalContinentalness = naturalContinent;
     const float starter = 1.f - smooth(160000.f, 1000000.f,
         (x * x + z * z) * std::clamp(1.f + coast * 2.f, .35f, 1.8f));
@@ -71,7 +72,7 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     sample.macroHumidity = std::clamp(.5f + humidityNoise_.fractal2D(
         wx * .00013f - 211.381f, wz * .00013f + 47.527f, 2, 2.f, .20f) * 1.65f, 0.f, 1.f);
     sample.erosion = smooth(-.38f, .38f, erosionNoise_.fractal2D(
-        wx * .00022f - 53.271f, wz * .00022f + 117.439f, 2, 2.f, .25f));
+        wx * (generationVersion_>=17?.00032f:.00022f) - 53.271f, wz * (generationVersion_>=17?.00032f:.00022f) + 117.439f, 2, 2.f, .25f));
     sample.weirdness = weirdnessNoise_.fractal2D(wx * .00020f + 67.673f, wz * .00020f + 173.291f, 2, 2.f, .25f);
     const float habitat = biomeNoise_.noise(wx * .00042f + 7.13f, 0, wz * .00042f - 73.19f);
     const float rolling = ridgeNoise_.fractal2D(x * .0009f + 43.449f, z * .0009f - 119.273f, 2, 2.f, .35f);
@@ -94,7 +95,11 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     height += inland * ridgeNoise_.noise(x * .0125f + 179.427f, 0, z * .0125f - 211.629f) * .8f;
     // Only deep ocean can form these rare secondary islands; ordinary coast
     // detail cannot lower inland terrain below sea level.
-    sample.mushroomIsland = smooth(.27f, .41f, coast) * (1.f - smooth(-.22f, -.13f, sample.continentalness));
+    // Independent regional island signal avoids coupling rare ocean habitat
+    // to the stronger V17 coastal field. No inland water holes are introduced.
+    const float island = generationVersion_>=17 ? continentalNoise_.noise(
+        wx*.00055f+191.417f,.371f,wz*.00055f-137.283f) : coast;
+    sample.mushroomIsland = smooth(.27f, .41f, island) * (1.f - smooth(-.22f, -.13f, sample.continentalness));
     height = glm::mix(height, SEA_LEVEL + 5.f + rolling * 3.f, sample.mushroomIsland);
     const float plateau = smooth(.72f, .88f, sample.temperature) *
         (1.f - smooth(.25f, .45f, sample.humidity)) * inland * smooth(.04f, .23f, habitat);

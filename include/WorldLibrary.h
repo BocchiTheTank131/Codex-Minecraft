@@ -1,5 +1,6 @@
 #pragma once
 #include "GameMode.h"
+#include "WorldTime.h"
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -10,7 +11,7 @@ struct SavedWorld {
     std::string name;
     std::uint32_t seed = 20260917;
     GameMode mode = GameMode::Survival;
-    float time = 35.0f;
+    float time = WorldTime::DefaultSeconds;
     std::int64_t lastPlayed = 0;
 };
 
