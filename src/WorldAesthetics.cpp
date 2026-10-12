@@ -2,13 +2,15 @@
 #include "TerrainAesthetics.h"
 #include "TerrainChaos.h"
 #include "RegionalClimate.h"
+#include "RiverNetwork.h"
+#include "BiomeBalance.h"
 #include <algorithm>
 #include <cmath>
 
 namespace {
 float smooth(float a,float b,float v) {const float t=std::clamp((v-a)/(b-a),0.f,1.f);return t*t*(3-2*t);}
 }
-World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateShore) const {
+World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateShore,bool drainage) const {
     auto s=sampleTerrainGeography(x,z);
     const bool refined=generationVersion_>=14;
     const bool chaos=generationVersion_>=15;
@@ -60,6 +62,17 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
     else height=std::max(height,66.f+smooth(.025f,.10f,s.continentalness)*3.f);
     const float valley=smooth(.0f,.55f,s.river);
     height=glm::mix(height,std::min(height,62.f),valley);
+    const bool riverOverland=height>=64.f;
+    if(generationVersion_>=18 && drainage && s.continentalness>-.08f && s.mushroomIsland<.1f) {
+        const auto river=RiverNetwork::sample(x,z,seed_,[&](int rx,int rz) {
+            return RiverNetwork::Ground{drainageContinent(rx,rz)};
+        },height);
+        s.river=river.channel;
+        s.riverWaterY=int(std::floor(river.waterLevel));
+        const float bank=std::min(height,river.waterLevel+2.f);
+        height=glm::mix(height,bank,river.valley);
+        height=glm::mix(height,std::min(height,river.waterLevel-3.f),s.river);
+    }
     if(chaos) height=TerrainChaos::compress(height);
     else if(height>264.f) height=264.f+38.f*(1-std::exp(-(height-264.f)/38.f));
     s.unclampedHeight=height;
@@ -73,10 +86,10 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
     if(refined && s.continentalness<.045f && s.height>=62 && s.height<=100 && s.river<.62f) {
         // Actual coastal relief, not erosion, identifies a rocky cliff foot.
         // Height-only neighboring evaluations cannot recurse into this test.
-        const int coastSlope=std::max({std::abs(sampleTerrainAesthetics(x-64,z,false).height-s.height),
-            std::abs(sampleTerrainAesthetics(x+64,z,false).height-s.height),
-            std::abs(sampleTerrainAesthetics(x,z-64,false).height-s.height),
-            std::abs(sampleTerrainAesthetics(x,z+64,false).height-s.height)});
+        const int coastSlope=std::max({std::abs(sampleTerrainAesthetics(x-64,z,false,drainage).height-s.height),
+            std::abs(sampleTerrainAesthetics(x+64,z,false,drainage).height-s.height),
+            std::abs(sampleTerrainAesthetics(x,z-64,false,drainage).height-s.height),
+            std::abs(sampleTerrainAesthetics(x,z+64,false,drainage).height-s.height)});
         if(altitudeTemperature(s.temperature,float(s.height-16))>=.17f) {
             if(coastSlope>=6) s.biome=Biome::StonyShore;
             else if(s.biome==Biome::StonyShore) s.biome=Biome::Beach;
@@ -100,7 +113,13 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
        s.river<.10f&&s.continentalness>.045f&&effective>=.34f&&
        s.biome!=Biome::StonyPeaks&&s.biome!=Biome::SnowyPeaks&&s.biome!=Biome::MushroomFields)
         s.biome=s.height>100?Biome::SavannaPlateau:Biome::Savanna;
-    s.biome=TerrainAesthetics::variant(s.biome,s.temperature,s.humidity,local,s.height-16);
+    s.biome=generationVersion_>=18?BiomeBalance::variant(s.biome,s.temperature,s.humidity,local,s.height-16):
+        TerrainAesthetics::variant(s.biome,s.temperature,s.humidity,local,s.height-16);
+    // The legacy selector labels low beds as ocean before testing rivers.
+    // A channel carved into dry terrain remains a river even near sea level;
+    // reaches already submerged in a genuine ocean retain their ocean biome.
+    if(generationVersion_>=18 && riverOverland && s.river>.01f && s.height<s.riverWaterY)
+        s.biome=effective<.17f?Biome::FrozenRiver:Biome::River;
     const float contour=riverNoise_.noise(x*.0012f+63.7f,.713f,z*.0012f-131.9f);
     const float region=erosionNoise_.noise(x*.0007f-217.3f,0,z*.0007f+97.7f);
     s.ravine=(1-smooth(.003f,.016f,std::abs(contour)))*smooth(.05f,.19f,region)*

@@ -35,7 +35,7 @@ Pressing PLAY again in the demo starts a fresh gameplay session.
 
 ## Features
 
-- Versioned procedural worlds: new Generator V17 worlds span Y=-64 through 319, with natural generation capped at Y=256; V11–V16 worlds retain their original terrain and generators 1–10 keep Y=0 through 255
+- Versioned procedural worlds: new Generator V18 worlds span Y=-64 through 319, with natural generation capped at Y=256; V11–V17 worlds retain their original terrain and generators 1–10 keep Y=0 through 255
 - Multi-noise terrain with continents, mountains, rivers, beaches, oceans, caves, ravines, and aquifers
 - Plains, deserts, snowy mountains, forests, and other terrain variations
 - Villages, pillager outposts, desert pyramids, ruins, wells, and campsites
@@ -69,7 +69,7 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.11.2** has **142 inventory items**, **96 placeable block families**, **160 block
+Version **2.11.3** has **142 inventory items**, **96 placeable block families**, **160 block
 IDs/states including Air**, **73 crafting recipes**, and **23 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
@@ -196,6 +196,24 @@ compares v7/v8 CPU chunk-generation time, validates shoreline Cane and old-world
 and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in that explicit
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
+
+## v2.11.3 - Generator V18: Geography, Rivers & Biome Balance
+
+New worlds use **Generator V18**. Saved worlds retain generators 1–17,
+including unexplored chunks.
+
+- Smaller regional landmasses, more varied bays and straits, and connected oceans.
+- Deterministic downhill river networks with tributaries, shared junctions,
+  narrow headwaters, wider main channels, local water elevations and sloping banks.
+- Climate-compatible habitat balance favors ordinary Forest, Plains and Taiga;
+  Flower Forest, Old Growth Taiga and ocean Mushroom Fields are less common.
+- V17 temperature/humidity, vegetation density, mountain shaping, caves, weather,
+  the 20-minute cycle, natural Y256 ceiling and player building to Y319 remain.
+- Bounded caches belong to each generation worker; no renderer or save-format rewrite.
+
+See [V18 validation, measurements and limitations](docs/GENERATOR_V18_GEOGRAPHY.md).
+`--aesthetics-audit=<absolute-directory> --generator=18` exports identical-seed
+V17/V18 overview maps, native river windows, river gradients/widths and regression data.
 
 ## v2.11.2 - Generator V17: Terrain & Vegetation Refinement
 
@@ -551,12 +569,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
 Prerelease: [Voxel Frontier v2.11.2-beta2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta2).
-Latest stable: [Voxel Frontier v2.11.2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2).
+Latest stable: [Voxel Frontier v2.11.3](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.3).
 
-| v2.11.2 Windows build | Purpose | Persistence |
+| v2.11.3 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.11.2-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.11.2-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.11.3-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.11.3-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The

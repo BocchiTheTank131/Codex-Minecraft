@@ -168,7 +168,7 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
             if(!solid[occupancyIndex(x,y,z)]) {
                 // Sea water fills only genuinely open surface columns. Local
                 // underground aquifers are sparse and independent of sea level.
-                if(y>t.height && y<=SeaLevel) at(x,y,z)=Block::Water;
+                if(y>t.height && y<=(generationVersion_>=18 && t.river>.01f?std::max(SeaLevel,t.riverWaterY):SeaLevel)) at(x,y,z)=Block::Water;
                 else if(y<t.height-18 && c.aquifer>.20f && y<=c.aquiferLevel) at(x,y,z)=Block::Water;
                 else if(y<-54 && c.aquifer<-.16f) at(x,y,z)=Block::Lava;
                 continue;
@@ -214,8 +214,9 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
             }
             at(x,y,z)=b;
         }
-        if(t.height<SeaLevel && biome.frozen) at(x,SeaLevel,z)=Block::Ice;
-        if(biome.frozen && t.height>SeaLevel && t.height+1<MaximumY && at(x,t.height,z)!=Block::Air)
+        const int waterTop=generationVersion_>=18 && t.river>.01f?std::max(SeaLevel,t.riverWaterY):SeaLevel;
+        if(t.height<waterTop && biome.frozen) at(x,waterTop,z)=Block::Ice;
+        if(biome.frozen && t.height>waterTop && t.height+1<MaximumY && at(x,t.height,z)!=Block::Air)
             at(x,t.height+1,z)=Block::Snow;
     }
     const int featureTop=generationVersion_>=15?std::min(scanTop,TerrainChaos::NaturalMaximumY):scanTop;

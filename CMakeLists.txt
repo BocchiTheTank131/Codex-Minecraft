@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.11.2 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.11.3 LANGUAGES C CXX)
 set(VOXELFRONTIER_VERSION_SUFFIX "")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
@@ -79,6 +79,8 @@ add_executable(VoxelFrontier
     src/TerrainAesthetics.cpp
     src/TerrainChaos.cpp
     src/RegionalClimate.cpp
+    src/RiverNetwork.cpp
+    src/BiomeBalance.cpp
     src/WorldAesthetics.cpp
     src/WorldAestheticsValidation.cpp
     src/WorldDensity.cpp

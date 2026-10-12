@@ -5,6 +5,7 @@
 #include "Weather.h"
 #include "TerrainChaos.h"
 #include "BiomeVegetation.h"
+#include "RiverNetwork.h"
 #include <array>
 #include <chrono>
 #include <filesystem>
@@ -64,6 +65,74 @@ bool World::runDensityAudit(const std::string& directory,std::string& report,uns
             World previousClimate(seed,15);
             World preservedClimate(seed,16);
             require(modern.minimumY()==-64&&modern.maximumY()==320&&modern.seaLevel()==64,"V11 vertical bounds");
+            if(modernVersion>=18) {
+                std::ofstream reaches(directory+"/rivers-"+std::to_string(seed)+".csv");
+                reaches<<"x,z,end_x,end_z,from_y,to_y,length,width,incoming,actual_water_width\n";
+                int inspected=0;bool windowWritten=false;
+                std::ofstream windowSite(directory+"/river-window-"+std::to_string(seed)+".csv");
+                windowSite<<"seed,x,z,water_y\n";
+                for(int rz=-8192;rz<8192;rz+=256)for(int rx=-8192;rx<8192;rx+=256) {
+                    const auto edges=RiverNetwork::inspectCell(rx,rz,seed,[&](int x,int z){
+                        const float c=modern.drainageContinent(x,z);
+                        require(c==modern.sampleTerrainGeography(x,z).continentalness,"Drainage potential differs from geography");
+                        return RiverNetwork::Ground{c};
+                    });
+                    for(const auto& edge:edges) {
+                        require(edge.from>=edge.to && edge.to>=64 && edge.from<=100,"Uphill river gradient");
+                        if(edge.to>64) {
+                            const auto downstream=RiverNetwork::inspectCell(int(edge.p[8].x),int(edge.p[8].z),seed,
+                                [&](int x,int z){return RiverNetwork::Ground{modern.drainageContinent(x,z)};});
+                            const auto next=std::find_if(downstream.begin(),downstream.end(),[&](const RiverNetwork::Reach& r){
+                                return r.p[0].x==edge.p[8].x&&r.p[0].z==edge.p[8].z;
+                            });
+                            require(next!=downstream.end() && next->halfWidth>=edge.halfWidth,"Disconnected or narrowing downstream reach");
+                        }
+                        double length=0;
+                        for(int i=0;i<8;++i)length+=std::hypot(edge.p[i+1].x-edge.p[i].x,edge.p[i+1].z-edge.p[i].z);
+                        for(int i=1;i<8;++i) {
+                            const int x=int(std::round(edge.p[i].x)),z=int(std::round(edge.p[i].z));
+                            const auto field=RiverNetwork::sample(x,z,seed,[&](int a,int b){return RiverNetwork::Ground{modern.drainageContinent(a,b)};});
+                            require(field.channel>.75f,"Curved reach lost at cache/cell boundary");
+                        }
+                        const auto center=edge.p[4];
+                        if(!windowWritten && edge.incoming>=2 && edge.from>70 && edge.from<82) {
+                            windowWritten=true;
+                            windowSite<<seed<<','<<int(center.x)<<','<<int(center.z)<<','<<int((edge.from+edge.to)/2)<<'\n';
+                            for(unsigned version:{17U,18U}) {
+                                World window(seed,version);
+                                std::ofstream file(directory+"/river-window-"+std::to_string(seed)+"-v"+std::to_string(version)+".bin",std::ios::binary);
+                                for(int z=-256;z<256;++z)for(int x=-256;x<256;++x) {
+                                    const auto t=window.sampleTerrain(int(center.x)+x,int(center.z)+z);
+                                    const Pixel pixel{std::uint8_t(t.biome),std::uint8_t(version>=18 && t.river>.01f?std::max(64,t.riverWaterY):64),std::int16_t(t.height),t.temperature,t.humidity,t.continentalness,t.river,t.macroTemperature,t.macroHumidity};
+                                    file.write(reinterpret_cast<const char*>(&pixel),sizeof(pixel));
+                                }
+                                require(bool(file),"Native river window write failed");
+                            }
+                        }
+                        const float dx=edge.p[5].x-edge.p[3].x,dz=edge.p[5].z-edge.p[3].z,norm=std::hypot(dx,dz);
+                        int width=0;
+                        for(int d=-24;d<=24;++d) {
+                            const auto t=modern.sampleTerrain(int(std::round(center.x-dz/norm*d)),int(std::round(center.z+dx/norm*d)));
+                            width+=t.river>.01f&&t.height<std::max(64,t.riverWaterY);
+                        }
+                        reaches<<edge.p[0].x<<','<<edge.p[0].z<<','<<edge.p[8].x<<','<<edge.p[8].z<<','
+                            <<edge.from<<','<<edge.to<<','<<length<<','<<2*edge.halfWidth<<','<<edge.incoming<<','<<width<<'\n';
+                        if(inspected++<48) {
+                            const int cx=floorDiv(int(center.x),16),cz=floorDiv(int(center.z),16);
+                            const auto data=modern.generateChunkData(cx,cz);
+                            for(int z=0;z<16;++z)for(int x=0;x<16;++x) {
+                                const auto t=modern.sampleTerrain(cx*16+x,cz*16+z);
+                                if(t.river>.95f&&t.height<t.riverWaterY&&t.riverWaterY>=64) {
+                                    const auto index=modern.localIndex(x,t.riverWaterY,z);
+                                    require(index<data.blocks.size()&&
+                                        (isWater(data.blocks[index])||data.blocks[index]==Block::Ice),"River channel lacks native water");
+                                }
+                            }
+                        }
+                    }
+                }
+                require(inspected>100 && windowWritten,"Connected drainage network missing");
+            }
             std::vector<unsigned> mapVersions{modernVersion-1,modernVersion};
             if(modernVersion>=15) mapVersions.insert(mapVersions.begin(),9);
             for(unsigned version:mapVersions) {
@@ -92,11 +161,11 @@ bool World::runDensityAudit(const std::string& directory,std::string& report,uns
                                     "V16 biome/weather climate disagreement");
                             }
                         }
-                        if(version==17) {
+                        if(version>=17) {
                             const auto old=preservedClimate.sampleTerrain(wx,wz);
                             require(t.temperature==old.temperature && t.humidity==old.humidity &&
                                 t.macroTemperature==old.macroTemperature && t.macroHumidity==old.macroHumidity,
-                                "V17 changed V16 climate sampling");
+                                "New geography changed V16 climate sampling");
                         }
                         if(version==modernVersion) {
                             ++totalBiomes[int(t.biome)];

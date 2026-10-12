@@ -105,6 +105,13 @@ std::vector<CaveEntrance> caveEntrances(int chunkX,int chunkZ,std::uint32_t seed
                         for(int step=0;step<=8;++step) {
                             const int px=x+(tx-x)*step/8,pz=z+(tz-z)*step/8;
                             protectedRoute|=terrain(px,pz).height<70 || reserved(px,pz);
+                            if(generationVersion>=18) {
+                                // Elevated rivers can cross an otherwise dry entrance
+                                // bore. Reserve its full width, including the mouth,
+                                // rather than opening an underwater connection.
+                                for(int dz=-5;dz<=5;dz+=5) for(int dx=-5;dx<=5;dx+=5)
+                                    protectedRoute|=terrain(px+dx,pz+dz).river>.01f;
+                            }
                         }
                         if(protectedRoute) continue;
                         for(int depth=20;depth<=40;depth+=4) {

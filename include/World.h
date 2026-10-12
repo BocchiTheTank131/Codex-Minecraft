@@ -219,7 +219,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 17);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 18);
     ~World();
 
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
@@ -261,7 +261,7 @@ public:
     void prepareSpawnTerrain(const glm::vec3& position);
     bool runBiomeAudit(const std::string& directory, std::string& report) const;
     bool runDensityAudit(const std::string& directory, std::string& report, unsigned modernVersion = 11) const;
-    bool runAestheticsAudit(const std::string& directory,std::string& report,unsigned modernVersion=17) const;
+    bool runAestheticsAudit(const std::string& directory,std::string& report,unsigned modernVersion=18) const;
     bool runExplorationAudit(const std::string& directory,std::string& report,unsigned modernVersion=12) const;
     bool runStreamingSelfTest(std::string& report);
     bool runGeographyAudit(const std::string& directory, std::string& report) const;
@@ -339,6 +339,7 @@ private:
         float weirdness = 0.0f;
         float peakValley = 0.0f;
         float river = 0.0f;
+        int riverWaterY = 64;
         float ravine = 0.0f;
         float mushroomIsland = 0.0f;
         float macroTemperature = 0.5f;
@@ -410,7 +411,7 @@ private:
     CanyonCarver canyonCarver_;
     StructureGenerator structures_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 17;
+    std::uint32_t generationVersion_ = 18;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;
@@ -526,10 +527,11 @@ private:
     TerrainSample sampleTerrain(int worldX, int worldZ) const;
     TerrainSample sampleTerrainLegacy(int worldX, int worldZ) const;
     TerrainSample sampleTerrainModern(int worldX, int worldZ) const;
-    TerrainSample sampleTerrainAesthetics(int x,int z,bool evaluateShore=true) const;
+    TerrainSample sampleTerrainAesthetics(int x,int z,bool evaluateShore=true,bool drainage=true) const;
     TerrainSample sampleTerrainDensity(int worldX, int worldZ) const;
     GeneratedChunk generateChunkDataDensity(int chunkX, int chunkZ) const;
     TerrainSample sampleTerrainGeography(int worldX, int worldZ) const;
+    float drainageContinent(int x,int z) const;
     StructureTerrain structureTerrainAt(int worldX, int worldZ) const;
     bool explorationStructureReservedAt(int worldX,int worldZ) const;
     GeneratedChunk generateChunkData(int chunkX, int chunkZ) const;

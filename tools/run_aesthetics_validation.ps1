@@ -1,7 +1,7 @@
 param(
  [string]$Executable='build/installed-release/Release/VoxelFrontier.exe',
  [string]$Output='build/aesthetics-validation',
- [ValidateRange(13,17)][int]$Generator=17
+ [ValidateRange(13,18)][int]$Generator=18
 )
 $ErrorActionPreference='Stop'
 $repo=(Resolve-Path "$PSScriptRoot/..").Path

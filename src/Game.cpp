@@ -358,7 +358,7 @@ void Game::parseArguments(int argc, char** argv) {
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
             } else if (argument.rfind("--generator=",0)==0) {
-                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,17));
+                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,18));
             } else if (argument.rfind("--aesthetics-audit=",0)==0) {
                 saveOnExit_=false; aestheticsAudit_=argument.substr(19);
             } else if (argument.rfind("--exploration-audit=",0)==0) {

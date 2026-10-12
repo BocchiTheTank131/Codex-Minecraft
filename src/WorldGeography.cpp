@@ -56,10 +56,16 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     const float warpX = erosionNoise_.noise(x * .00014f + 17.31f, 0, z * .00014f - 29.73f) * 700.f;
     const float warpZ = erosionNoise_.noise(x * .00014f - 63.19f, 0, z * .00014f + 41.57f) * 700.f;
     const float wx = x + warpX, wz = z + warpZ;
-    const float continent = continentalNoise_.fractal2D(wx * (generationVersion_>=17?.00014f:.00010f) + .371f, wz * (generationVersion_>=17?.00014f:.00010f) - .613f, 2, 2.f, .23f);
-    const float coast = continentalNoise_.fractal2D(wx * .00045f + 91.417f, wz * .00045f - 37.283f, 2, 2.f, .25f);
+    // A non-lattice slice removes the zero-height lattice's preferred land
+    // bridges. The regional octave remains subordinate to the continent field.
+    const float continent = generationVersion_>=18 ? continentalNoise_.fractal3D(
+        wx*.00019f+.371f,.371f,wz*.00019f-.613f,2,2.f,.23f) :
+        continentalNoise_.fractal2D(wx*(generationVersion_>=17?.00014f:.00010f)+.371f,
+        wz*(generationVersion_>=17?.00014f:.00010f)-.613f,2,2.f,.23f);
+    const float coast = continentalNoise_.fractal2D(wx * (generationVersion_>=18?.00055f:.00045f) + 91.417f, wz * (generationVersion_>=18?.00055f:.00045f) - 37.283f, 2, 2.f, .25f);
     // V17 strengthens regional geography without moving the climate sampling domain.
-    const float naturalContinent = generationVersion_>=17 ? continent * .70f + coast * .30f : continent * .88f + coast * .12f;
+    const float naturalContinent = generationVersion_>=18 ? continent*.70f+coast*.30f-.01f :
+        generationVersion_>=17 ? continent * .70f + coast * .30f : continent * .88f + coast * .12f;
     sample.naturalContinentalness = naturalContinent;
     const float starter = 1.f - smooth(160000.f, 1000000.f,
         (x * x + z * z) * std::clamp(1.f + coast * 2.f, .35f, 1.8f));
@@ -99,7 +105,7 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     // to the stronger V17 coastal field. No inland water holes are introduced.
     const float island = generationVersion_>=17 ? continentalNoise_.noise(
         wx*.00055f+191.417f,.371f,wz*.00055f-137.283f) : coast;
-    sample.mushroomIsland = smooth(.27f, .41f, island) * (1.f - smooth(-.22f, -.13f, sample.continentalness));
+    sample.mushroomIsland = smooth(generationVersion_>=18?.43f:.27f, generationVersion_>=18?.57f:.41f, island) * (1.f - smooth(-.22f, -.13f, sample.continentalness));
     height = glm::mix(height, SEA_LEVEL + 5.f + rolling * 3.f, sample.mushroomIsland);
     const float plateau = smooth(.72f, .88f, sample.temperature) *
         (1.f - smooth(.25f, .45f, sample.humidity)) * inland * smooth(.04f, .23f, habitat);
@@ -113,7 +119,7 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     // fade gradually instead of carving vertical trenches down from summits.
     // A rotated, non-lattice slice avoids axis-aligned zero contours from
     // the Perlin gradient lattice without adding fragmenting fine octaves.
-    const float riverField = riverNoise_.noise((wx * .8660254f + wz * .5f) * .00038f + 241.359f,
+    const float riverField = generationVersion_>=18?1.f:riverNoise_.noise((wx * .8660254f + wz * .5f) * .00038f + 241.359f,
         .371f, (-wx * .5f + wz * .8660254f) * .00038f - 197.473f);
     const float eligibility = smooth(-.12f, .025f, sample.continentalness) * (1.f - smooth(105.f, 180.f, height));
     const float core = 1.f - smooth(.003f, .014f, std::abs(riverField));
@@ -127,4 +133,17 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     sample.biome = selectGeographicalBiome(sample.temperature, sample.humidity, sample.continentalness,
         sample.erosion, habitat, sample.river, sample.height, sample.mushroomIsland);
     return sample;
+}
+
+// Only the V18 drainage lattice requests this light-weight coarse sample.
+// It shares the exact geographical potential, without climate/terrain/rivers.
+float World::drainageContinent(int worldX,int worldZ) const {
+    const float x=float(worldX),z=float(worldZ);
+    const float wx=x+erosionNoise_.noise(x*.00014f+17.31f,0,z*.00014f-29.73f)*700.f;
+    const float wz=z+erosionNoise_.noise(x*.00014f-63.19f,0,z*.00014f+41.57f)*700.f;
+    const float continent=continentalNoise_.fractal3D(wx*.00019f+.371f,.371f,wz*.00019f-.613f,2,2.f,.23f);
+    const float coast=continentalNoise_.fractal2D(wx*.00055f+91.417f,wz*.00055f-37.283f,2,2.f,.25f);
+    const float natural=continent*.70f+coast*.30f-.01f;
+    const float starter=1.f-smooth(160000.f,1000000.f,(x*x+z*z)*std::clamp(1.f+coast*2.f,.35f,1.8f));
+    return natural+std::max(0.f,.10f+coast*.10f-natural)*starter;
 }

@@ -68,14 +68,15 @@ bool World::runAestheticsAudit(const std::string& directory,std::string& report,
                         for(int y=0;y<=80;++y)for(int z=0;z<16;++z)for(int x=0;x<16;++x)
                             blocks[(y*16+z)*16+x]=y==80?Block::Grass:Block::Dirt;
                         decorateBiomeChunk(cx,cz,seed,blocks,[&](int,int){return BiomeTerrain{80,Biome(b),0};},
-                            [](int,int){return false;},[](int,int){return true;},0,128,64,16+v,&total[v]);
+                            [](int,int){return false;},[](int,int){return true;},0,128,64,modernVersion-1+v,&total[v]);
                         for(auto block:blocks)other[v]+=isPlant(block)&&block!=Block::Bamboo;
                     }
+                    if(modernVersion>=18) require(pair[0]==pair[1],"V18 changed vegetation within identical habitat");
                     for(int i=0;i<int(pair[0].size());++i)
                         require(!(isPlant(pair[1][i])&&pair[1][i]!=Block::Bamboo&&pair[1][i]!=pair[0][i]),
                             "Tree/bamboo thinning introduced replacement decoration");
                 }
-                for(int v=0;v<2;++v)vegetation<<seed<<','<<16+v<<','<<biomeDefinition(Biome(b)).name<<','
+                for(int v=0;v<2;++v)vegetation<<seed<<','<<modernVersion-1+v<<','<<biomeDefinition(Biome(b)).name<<','
                     <<total[v].trees<<','<<total[v].bamboo<<','<<other[v]<<','<<radius*radius*1024<<'\n';
             }
         }

@@ -210,7 +210,7 @@ private:
     std::string biomeAudit_;
     std::string geographyAudit_;
     std::string densityAudit_;
-    unsigned fixtureGenerator_ = 17;
+    unsigned fixtureGenerator_ = 18;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();
