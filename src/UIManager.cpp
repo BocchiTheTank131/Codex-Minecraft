@@ -280,6 +280,9 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
     const bool leftDown = input.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
     const bool outside = !UiLayout::panel(mode,framebufferWidth,framebufferHeight).contains(cursor.x,cursor.y);
     const bool dragReleasedOutside = inventoryLeftWasDown_ && !leftDown && outside;
+    const bool dragReleasedInside = inventoryLeftWasDown_ && !leftDown && !outside &&
+                                    hit!=inventoryLeftDragStart_;
+    if(leftPressed) inventoryLeftDragStart_=hit;
     inventoryLeftWasDown_ = leftDown;
     // GUI drops have one owner; the gameplay drop handler does not run here.
     if(input.actionPressed(ControlAction::Drop) && !recipeBook_.searchFocused) {
@@ -346,6 +349,7 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
     }
 
     auto handleContainerClick = [&](bool rightClick) {
+        if(hit.kind==UiSlotKind::EquipmentSlot) return inventory.clickEquipment(hit.index,rightClick,shiftDown);
         if (furnaceOpen()) {
             FurnaceData* furnace = world.furnaceAt(worldContainerPosition_, true);
             if (!furnace)
@@ -399,6 +403,15 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
         return inventory.clickPlayerSlot(playerSlot, rightClick);
     };
 
+    if(dragReleasedInside && !inventory.cursorStack().empty()) {
+        // Release onto owned slots only. Catalog/output entries never consume a drag.
+        if(hit.kind==UiSlotKind::EquipmentSlot) inventory.clickEquipment(hit.index,false);
+        else if(hit.kind==UiSlotKind::PlayerInventorySlot) inventory.clickPlayerSlot(hit.index,false);
+        else if(furnaceOpen() || chestOpen()) handleContainerClick(false);
+        else if(!creativeInventory && hit.kind==UiSlotKind::CraftingSlot)
+            inventory.handleInventoryClick(cursor.x,cursor.y,framebufferWidth,framebufferHeight,false,tableMode);
+        return;
+    }
     if (leftPressed || rightPressed) {
         const bool doubleClick = leftPressed && !shiftDown &&
             (hit.kind == UiSlotKind::PlayerInventorySlot ||
@@ -412,6 +425,7 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
             dragHit_ = hit;
             return;
         }
+        if (shiftDown && hit.kind==UiSlotKind::PlayerInventorySlot && inventory.equipFromSlot(hit.index)) { dragHit_=hit;return; }
         if (shiftDown && !creativeInventory && selectedRecipe_ >= 0 &&
             hit.kind == UiSlotKind::PlayerInventorySlot &&
             inventory.shiftIngredientToCrafting(hit.index, selectedRecipe_, tableMode)) {
@@ -423,7 +437,7 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
                 ? handleContainerClick(rightPressed)
                 : creativeInventory
                 ? inventory.handleCreativeClick(cursor.x, cursor.y, framebufferWidth,
-                                                framebufferHeight, rightPressed)
+                                                framebufferHeight, rightPressed,shiftDown)
                 : inventory.handleInventoryClick(cursor.x, cursor.y, framebufferWidth,
                                                  framebufferHeight, rightPressed, tableMode,
                                                  shiftDown);
@@ -521,9 +535,9 @@ int UIManager::menuHit(
         if (MenuLayout::sensitivity(width,height).contains(mouseX,mouseY)) return ControlActionCount+2;
         const float controlsY = height * 0.5f - 350.0f;
         for (int index = 0; index < ControlActionCount; ++index) {
-            const float y = controlsY + 75.0f + index * 32.0f;
+            const float y = controlsY + 75.0f + index * 29.0f;
             if (mouseX >= panelX + 35.0f && mouseX < panelX + 405.0f &&
-                mouseY >= y && mouseY < y + 29.0f)
+                mouseY >= y && mouseY < y + 26.0f)
                 return index;
         }
         if (mouseX >= panelX + 45.0f && mouseX < panelX + 395.0f) {

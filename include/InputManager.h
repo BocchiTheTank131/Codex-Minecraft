@@ -11,7 +11,7 @@ struct PlayerInput;
 enum class ControlAction : int {
     Forward, Backward, Left, Right, Jump, Sprint, Sneak,
     Inventory, Drop, PickBlock, Zoom, Fullbright, Debug, Screenshot,
-    Count
+    SwapOffhand, Count
 };
 inline constexpr int ControlActionCount = static_cast<int>(ControlAction::Count);
 using ControlBindings = std::array<int, ControlActionCount>;

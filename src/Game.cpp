@@ -186,7 +186,8 @@ bool Game::initialize(int argc, char** argv) {
         }
         if (smokeTest_.craftingPreview) {
             smokeTest_.startTime = glfwGetTime();
-            updateCraftingPreview(smokeTest_.startTime);
+            if(equipmentPreview_) updateEquipmentPreview(smokeTest_.startTime);
+            else updateCraftingPreview(smokeTest_.startTime);
         }
         if (smokeTest_.menuEnabled) {
             runMainMenuSmokeTest();
@@ -367,6 +368,7 @@ void Game::parseArguments(int argc, char** argv) {
                 smokeTest_.uiEnabled = true;
             } else if (argument.rfind("--generator=",0)==0) {
                 fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,21));
+            } else if(argument=="--equipment-preview") {equipmentPreview_=true;smokeTest_.craftingPreview=true;saveOnExit_=false;
             } else if(argument=="--hazard-preview") {hazardPreview_=true;smokeTest_.worldgenEnabled=true;saveOnExit_=false;
             } else if(argument=="--fluid-smoke") {fluidSmoke_=true;saveOnExit_=false;
             } else if (argument.rfind("--underground-audit=",0)==0) {
@@ -553,6 +555,7 @@ void Game::createWorldAndSystems() {
     inventory_ = std::make_unique<Inventory>();
     if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
         inventory_->load(worldSavePath(InventorySavePath), seed_);
+    player_->setEquipment(inventory_.get());
     survival_ = std::make_unique<SurvivalWorld>(seed_);
     if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
         survival_->load(worldSavePath(MobSavePath), seed_);
@@ -826,6 +829,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     inventory_ = std::make_unique<Inventory>();
     if (creativeMode_ || spectatorMode_)
         inventory_->clear();
+    player_->setEquipment(inventory_.get());
     survival_ = std::make_unique<SurvivalWorld>(seed_);
     survival_->setSoundSystem(sounds_.get());
     weather_ = std::make_unique<Weather>(seed_);
@@ -985,7 +989,7 @@ void Game::handleGlobalInput() {
     if (smokeTest_.uiEnabled) {
         updateUiSmokeTest(glfwGetTime());
     }
-    if (smokeTest_.craftingPreview) updateCraftingPreview(glfwGetTime());
+    if (smokeTest_.craftingPreview) {if(equipmentPreview_)updateEquipmentPreview(glfwGetTime());else updateCraftingPreview(glfwGetTime());}
     synchronizeCursorCapture();
 }
 
@@ -1389,6 +1393,7 @@ void Game::updateSimulation(float deltaTime) {
         ui_.state() == GameState::Playing && input_.cursorCaptured() && weatherBenchmark_.empty();
     const bool wasDead = player_->isDead();
     const bool wasBelowWorld = player_->position().y < world_->minimumY() - 24.0f;
+    updateEquipmentInput(playerInputEnabled);
     player_->update(deltaTime, input_.playerInput(playerInputEnabled), *world_);
     if(!wasDead && player_->isDead() && player_->lastDamageSource()==PlayerDamageSource::Burning) chat_.addMessage("Burned to death",ChatTone::Error,glfwGetTime());
     if ((wasDead || wasBelowWorld) && !player_->isDead() && player_->position().y >= world_->minimumY())
@@ -1484,7 +1489,7 @@ void Game::damageSelectedToolWithSound() {
 
 void Game::updateMobAttack() {
     if (!input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT) || !interaction_.mobTarget.valid() ||
-        interaction_.attackCooldown > 0.0f) {
+        interaction_.attackCooldown > 0.0f || player_->isBlocking()) {
         return;
     }
 
@@ -1609,11 +1614,14 @@ void Game::updateMining(float deltaTime) {
 }
 
 void Game::handleUseAction() {
-    if (!input_.mousePressed(GLFW_MOUSE_BUTTON_RIGHT)) {
+    if (player_->isBlocking() || !input_.mousePressed(GLFW_MOUSE_BUTTON_RIGHT)) {
         return;
     }
 
-    const Item heldItem = inventory_->selectedItem();
+    const bool useOffhand=inventory_->selectedStack().empty() ||
+        (!inventory_->equipment(4).empty() && !hasMainHandUse(inventory_->selectedItem()));
+    const Item heldItem = useOffhand?inventory_->equipment(4).item:inventory_->selectedItem();
+    const auto consume=[&] {return useOffhand?inventory_->consumeOffhand():inventory_->consumeSelected();};
     bool used = false;
     bool placed = false;
 
@@ -1665,7 +1673,7 @@ void Game::handleUseAction() {
     if (!used &&
         survival_->feedAnimal(player_->cameraPosition(), player_->lookDirection(), heldItem)) {
         if (!creativeMode_) {
-            inventory_->consumeSelected();
+            consume();
         }
         interaction_.heldItemSwing = 1.0f;
         used = true;
@@ -1674,7 +1682,7 @@ void Game::handleUseAction() {
         player_->eat(foodValue(heldItem));
         sounds_->playEat();
         if (!creativeMode_) {
-            inventory_->consumeSelected();
+            consume();
         }
         interaction_.heldItemSwing = 1.0f;
         used = true;
@@ -1690,7 +1698,7 @@ void Game::handleUseAction() {
                 Block::Air) {
             farming_->plant(*world_, adjacentPosition);
             if (!creativeMode_) {
-                inventory_->consumeSelected();
+                consume();
             }
             used = true;
             placed = true;
@@ -1701,7 +1709,8 @@ void Game::handleUseAction() {
                    interaction_.blockTarget.normal.y > 0) {
             world_->setBlock(targetPosition.x, targetPosition.y, targetPosition.z, Block::Farmland);
             if (!creativeMode_) {
-                damageSelectedToolWithSound();
+                if(useOffhand) inventory_->damageOffhandTool();
+                else damageSelectedToolWithSound();
             }
             used = true;
             placed = true;
@@ -1726,7 +1735,7 @@ void Game::handleUseAction() {
                                  targetPosition.z,
                                  combinedBlock);
                 if (!creativeMode_)
-                    inventory_->consumeSelected();
+                    consume();
                 renderer_->spawnBreakParticles(targetPosition, combinedBlock);
                 used = true;
                 placed = true;
@@ -1849,7 +1858,7 @@ void Game::handleUseAction() {
                                      adjacentPosition.z,
                                      upperDoor);
                     if (!creativeMode_)
-                        inventory_->consumeSelected();
+                        consume();
                     renderer_->spawnBreakParticles(adjacentPosition, lowerDoor);
                     used = true;
                     placed = true;
@@ -1861,7 +1870,7 @@ void Game::handleUseAction() {
                 world_->setBlock(
                     adjacentPosition.x, adjacentPosition.y, adjacentPosition.z, placedBlock);
                 if (!creativeMode_) {
-                    inventory_->consumeSelected();
+                    consume();
                 }
                 renderer_->spawnBreakParticles(adjacentPosition, placedBlock);
                 used = true;
@@ -1885,6 +1894,7 @@ void Game::handleUseAction() {
 void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
     sounds_->setListener(player_->cameraPosition(), player_->lookDirection());
     survival_->update(deltaTime, *world_, *player_, *inventory_, weather_->stormSpawning() ? 0.0f : daylight(timing_.worldTime));
+    if(inventory_->takeEquipmentBreak()) sounds_->playToolBreak();
     for (const glm::vec3& center : survival_->takeExplosionEffects())
         renderer_->spawnExplosionParticles(center);
 
@@ -2066,7 +2076,7 @@ void Game::renderFrame(float deltaTime) {
 
         if (!spectatorMode_ && ui_.state() == GameState::Playing) {
             renderer_->renderHeldItem(
-                width, height, inventory_->selectedStack(), interaction_.heldItemSwing);
+                width, height, inventory_->selectedStack(), interaction_.heldItemSwing, inventory_->equipment(4),player_->isBlocking(),player_->shieldFeedback());
         }
         }
     }

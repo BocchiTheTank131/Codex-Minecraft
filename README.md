@@ -51,6 +51,7 @@ Pressing PLAY again in the demo starts a fresh gameplay session.
 - Farming with farmland, seeds, crops, wheat, bread, and food
 - Wooden through diamond tools and swords
 - Tool durability, mining speeds, combat cooldowns, and critical hits
+- Leather, Gold, Iron and Diamond armor, directional shields, and dedicated equipment slots
 - 36-slot inventory with a 9-slot hotbar
 - Stack splitting, merging, drag distribution, shift-clicking, and item dropping
 - 2x2 player crafting and 3x3 crafting tables
@@ -70,8 +71,8 @@ provides Cobblestone for stone tools and the eight Cobblestone Furnace recipe; s
 Cobblestone produces Stone for Stone Bricks and Stone Slabs.
 Andesite crafts from Diorite and Cobblestone.
 
-Version **2.12.1** has **147 inventory items**, **98 placeable block families**, **167 block
-IDs/states including Air**, **73 crafting recipes**, and **23 furnace recipes**. Existing item
+Version **2.13.0** has **164 inventory items**, **98 placeable block families**, **167 block
+IDs/states including Air**, **90 crafting recipes**, and **23 furnace recipes**. Existing item
 and block IDs remain unchanged; all new IDs are appended.
 
 ### Crafting expansion
@@ -89,6 +90,11 @@ Sandstone, Polished Granite, Polished Diorite, Polished Andesite, Sugar Cane, Vi
 | Eight generic Planks around an empty center | Chest | 3×3 |
 | Seven Sticks in an H pattern | 3 Ladders | 3×3 |
 | Six matching Planks in two columns | 3 Wooden Doors | 3×3 |
+| Five Leather / Gold Ingots / Iron Ingots / Diamonds in a helmet pattern | Matching Helmet | 3×3 |
+| Eight matching armor materials, empty top center | Matching Chestplate | 3×3 |
+| Seven matching armor materials, empty lower centers | Matching Leggings | 3×3 |
+| Four matching armor materials in two separated columns | Matching Boots | 3×3 |
+| Six generic Planks around an Iron Ingot | Shield | 3×3 |
 | Three generic Planks / Stone horizontally | 6 Wooden Slabs / Stone Slabs | 3×3 |
 | Coal or Charcoal above a Stick | 4 Torches | 2×2 |
 | Three Sugar Cane horizontally | 3 Paper | 3×3 |
@@ -197,6 +203,17 @@ compares v7/v8 CPU chunk-generation time, validates shoreline Cane and old-world
 and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in that explicit
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
+
+## v2.13.0 - The Equipment & Combat Update
+
+- Leather, Gold, Iron and Diamond armor: helmet, chestplate, leggings and boots, with 7/11/15/20 armor points for complete sets. Four dedicated armor slots, material durability, breakage, 16×16 icons, crafting and Recipe Book support.
+- One offhand slot and a craftable shield. Hold RMB with a sword/empty hand to block frontal melee, arrows and explosions. Rear and environmental damage bypass shields. Blocking slows movement by 35%. Primary food, placement and container interactions retain priority.
+- **F** swaps the selected stack and offhand (configurable in Controls). Equipment supports clicks, drag release, shift-click, Q/Ctrl+Q drops, and normal pickup. Creative catalog copies remain unlimited; owned stacks are transferred, never copied.
+- The HUD shows armor protection, offhand items and durability. First-person shields use the existing item batch, with brief block feedback and equipment-break audio.
+- Swords deal 4/5/6/4/7 HP for Wood/Stone/Iron/Gold/Diamond, with a 0.625-second shared attack cooldown. Existing critical hits, knockback, mob behavior and animations are retained.
+- New-world underground loot occasionally includes worn armor or shields; deep Diamond helmets are very rare. Existing chest contents and legacy world loot rules remain unchanged. All gear can be crafted in existing worlds.
+- Inventory V5 stores five equipment stacks; V4 inventories load with empty equipment. World saves append an independent loot-rule marker. No terrain generator change: generators 1–21 remain intact. Demo persistence and cheats restrictions remain intact.
+- Release builds and validation results: [Equipment validation](docs/EQUIPMENT_VALIDATION.md).
 
 ## v2.12.1 - Gameplay, Structures & Bug Fixes
 
@@ -615,12 +632,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
 Prerelease: [Voxel Frontier v2.11.2-beta2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta2).
-Latest stable: [Voxel Frontier v2.12.1](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.12.1).
+Latest stable: [Voxel Frontier v2.13.0](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.13.0).
 
-| v2.12.1 Windows build | Purpose | Persistence |
+| v2.13.0 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.12.1-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.12.1-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.13.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.13.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The
@@ -751,7 +768,8 @@ cmake --build build -j
 | `Left Ctrl` | Sprint / faster flight |
 | `Left Shift` | Sneak / swim downward / fly downward |
 | Left Mouse | Attack or mine |
-| Right Mouse | Place/use item or interact |
+| Right Mouse | Place/use item, interact, or hold to raise offhand shield |
+| `F` | Swap selected hotbar stack and offhand |
 | `Shift + Right Mouse` | Place blocks against interactive blocks |
 | Middle Mouse / `R` | Pick targeted block |
 | `1-9` / Mouse Wheel | Select hotbar slot |

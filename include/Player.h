@@ -6,8 +6,9 @@
 #include <string>
 
 class World;
+class Inventory;
 
-enum class PlayerDamageSource { General, Projectile, Burning };
+enum class PlayerDamageSource { General, Projectile, Burning, Melee, Explosion, Fall, Cactus, Starvation, Void };
 
 struct PlayerInput {
     bool enabled = false;
@@ -30,6 +31,11 @@ public:
         mouseSensitivity_ = value;
     }
     void damage(float amount, PlayerDamageSource source = PlayerDamageSource::General);
+    void setEquipment(Inventory* inventory) { equipment_ = inventory; }
+    void setBlocking(bool enabled);
+    bool isBlocking() const;
+    float shieldFeedback() const { return shieldFeedback_; }
+    bool damagePhysical(float amount, PlayerDamageSource source, const glm::vec3& origin);
     void killByCommand();
     void applyImpulse(const glm::vec3& impulse);
     void heal(float amount);
@@ -100,6 +106,9 @@ public:
     float xpProgress() const;
 
 private:
+    Inventory* equipment_ = nullptr;
+    bool blocking_ = false;
+    float shieldFeedback_ = 0;
     Burning burning_;
     PlayerDamageSource lastDamageSource_=PlayerDamageSource::General;
     glm::vec3 position_, velocity_{0.f};

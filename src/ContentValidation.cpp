@@ -93,9 +93,13 @@ void Game::updateCraftingPreview(double now) {
 // Explicit developer smoke mode only; normal/demo startup never writes test data.
 void Game::runCraftingContentSmokeTest() {
     std::string report;
+    if (!Inventory::runEquipmentSelfTest(report)) throw std::runtime_error(report);
+    std::cout << report << std::endl;
     if (!Inventory::runCraftingSelfTest(report)) throw std::runtime_error(report);
     if (!UIManager::runRecipeBookSelfTest(report)) throw std::runtime_error(report);
     World testWorld(seed_);
+    if(!testWorld.runEquipmentWorldSelfTest(report)) throw std::runtime_error(report);
+    std::cout<<report<<std::endl;
     testWorld.generate(2, glm::vec3(.5f, 240, .5f));
     if (!testWorld.runCraftingContentSmokeTest(report)) throw std::runtime_error(report);
     std::cout << "Crafting expansion: " << craftingRecipes().size() << " recipes; " << report << '\n';

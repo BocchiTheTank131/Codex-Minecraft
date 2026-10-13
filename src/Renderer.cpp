@@ -2414,8 +2414,8 @@ void Renderer::renderControlsMenu(int width, int height, int hovered,
     drawText("CONTROLS", panelX + 105.0f, panelY + 28.0f,
              3.0f, {1, .92f, .68f, 1});
     for (int index = 0; index < ControlActionCount; ++index) {
-        const float y = panelY + 75.0f + index * 32.0f;
-        addRect(vertices, panelX + 35.0f, y, 370.0f, 29.0f,
+        const float y = panelY + 75.0f + index * 29.0f;
+        addRect(vertices, panelX + 35.0f, y, 370.0f, 26.0f,
                 index == hovered ? glm::vec4(.35f, .44f, .29f, 1)
                                  : glm::vec4(.19f, .19f, .22f, 1), width, height);
         drawText(controlActionName(static_cast<ControlAction>(index)),

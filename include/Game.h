@@ -190,6 +190,7 @@ private:
     void updateMobAttack();
     void updateMining(float deltaTime);
     void handleUseAction();
+    void updateEquipmentInput(bool enabled);
     void handleDropAction();
     void damageSelectedToolWithSound();
     void finishSimulationFrame(float deltaTime, float oldHealth);
@@ -212,6 +213,8 @@ private:
     std::string undergroundAudit_;
     bool fluidSmoke_=false;
     bool hazardPreview_=false;
+    bool equipmentPreview_=false;
+    void updateEquipmentPreview(double now);
     void prepareHazardPreview();
     std::string explorationAudit_;
     std::string biomeAudit_;

@@ -148,6 +148,30 @@ const Items& items() {
         put(Item::SurveyorToken, static_cast<std::uint8_t>(Item::SurveyorToken), static_cast<int>(Item::SurveyorToken), "SurveyorToken");
         put(Item::CavernShard, static_cast<std::uint8_t>(Item::CavernShard), static_cast<int>(Item::CavernShard), "CavernShard");
         put(Item::AncientSeal, static_cast<std::uint8_t>(Item::AncientSeal), static_cast<int>(Item::AncientSeal), "AncientSeal");
+        put(Item::LeatherHelmet, static_cast<std::uint8_t>(Item::LeatherHelmet), static_cast<int>(Item::LeatherHelmet), "LeatherHelmet");
+        put(Item::LeatherChestplate, static_cast<std::uint8_t>(Item::LeatherChestplate), static_cast<int>(Item::LeatherChestplate), "LeatherChestplate");
+        put(Item::LeatherLeggings, static_cast<std::uint8_t>(Item::LeatherLeggings), static_cast<int>(Item::LeatherLeggings), "LeatherLeggings");
+        put(Item::LeatherBoots, static_cast<std::uint8_t>(Item::LeatherBoots), static_cast<int>(Item::LeatherBoots), "LeatherBoots");
+        put(Item::GoldHelmet, static_cast<std::uint8_t>(Item::GoldHelmet), static_cast<int>(Item::GoldHelmet), "GoldHelmet");
+        put(Item::GoldChestplate, static_cast<std::uint8_t>(Item::GoldChestplate), static_cast<int>(Item::GoldChestplate), "GoldChestplate");
+        put(Item::GoldLeggings, static_cast<std::uint8_t>(Item::GoldLeggings), static_cast<int>(Item::GoldLeggings), "GoldLeggings");
+        put(Item::GoldBoots, static_cast<std::uint8_t>(Item::GoldBoots), static_cast<int>(Item::GoldBoots), "GoldBoots");
+        put(Item::IronHelmet, static_cast<std::uint8_t>(Item::IronHelmet), static_cast<int>(Item::IronHelmet), "IronHelmet");
+        put(Item::IronChestplate, static_cast<std::uint8_t>(Item::IronChestplate), static_cast<int>(Item::IronChestplate), "IronChestplate");
+        put(Item::IronLeggings, static_cast<std::uint8_t>(Item::IronLeggings), static_cast<int>(Item::IronLeggings), "IronLeggings");
+        put(Item::IronBoots, static_cast<std::uint8_t>(Item::IronBoots), static_cast<int>(Item::IronBoots), "IronBoots");
+        put(Item::DiamondHelmet, static_cast<std::uint8_t>(Item::DiamondHelmet), static_cast<int>(Item::DiamondHelmet), "DiamondHelmet");
+        put(Item::DiamondChestplate, static_cast<std::uint8_t>(Item::DiamondChestplate), static_cast<int>(Item::DiamondChestplate), "DiamondChestplate");
+        put(Item::DiamondLeggings, static_cast<std::uint8_t>(Item::DiamondLeggings), static_cast<int>(Item::DiamondLeggings), "DiamondLeggings");
+        put(Item::DiamondBoots, static_cast<std::uint8_t>(Item::DiamondBoots), static_cast<int>(Item::DiamondBoots), "DiamondBoots");
+        put(Item::Shield, static_cast<std::uint8_t>(Item::Shield), static_cast<int>(Item::Shield), "Shield");
+        constexpr int armorDurability[4][4]={{55,80,75,65},{77,112,105,91},{165,240,225,195},{363,528,495,429}};
+        for(int material=0;material<4;++material) for(int part=0;part<4;++part) {
+            auto& d=result[static_cast<std::size_t>(Item::LeatherHelmet)+material*4+part];
+            d.maxStack=1;d.durability=armorDurability[material][part];
+        }
+        result[static_cast<std::size_t>(Item::Shield)].maxStack=1;
+        result[static_cast<std::size_t>(Item::Shield)].durability=336;
         result[static_cast<std::size_t>(Item::Cobweb)].placedBlock=Block::Cobweb;
         result[static_cast<std::size_t>(Item::CrackedStoneBricks)].placedBlock=Block::CrackedStoneBricks;
         for(Item relic : {Item::SurveyorToken,Item::CavernShard,Item::AncientSeal}) result[static_cast<std::size_t>(relic)].maxStack=16;
@@ -237,11 +261,11 @@ const Items& items() {
                  item == Item::DiamondAxe ? ToolKind::Axe : ToolKind::Shovel, 4, 1561,
                  item == Item::DiamondPickaxe ? 7.5f : item == Item::DiamondAxe ? 12.0f : 6.0f,
                  item == Item::DiamondAxe ? .85f : item == Item::DiamondPickaxe ? .58f : .48f);
-        tool(Item::WoodSword, ToolKind::Sword, 1, 60, 5.0f, .55f);
-        tool(Item::StoneSword, ToolKind::Sword, 2, 132, 6.0f, .55f);
-        tool(Item::IronSword, ToolKind::Sword, 3, 251, 7.0f, .55f);
-        tool(Item::GoldSword, ToolKind::Sword, 1, 33, 5.0f, .55f);
-        tool(Item::DiamondSword, ToolKind::Sword, 4, 1561, 8.0f, .55f);
+        tool(Item::WoodSword, ToolKind::Sword, 1, 60, 4.0f, .625f);
+        tool(Item::StoneSword, ToolKind::Sword, 2, 132, 5.0f, .625f);
+        tool(Item::IronSword, ToolKind::Sword, 3, 251, 6.0f, .625f);
+        tool(Item::GoldSword, ToolKind::Sword, 1, 33, 4.0f, .625f);
+        tool(Item::DiamondSword, ToolKind::Sword, 4, 1561, 7.0f, .625f);
         result[static_cast<std::size_t>(Item::None)].maxStack = 0;
         for (Item item : {Item::RawMeat, Item::RawBeef, Item::RawPork, Item::RawMutton})
             result[static_cast<std::size_t>(item)].foodValue = 3.0f;

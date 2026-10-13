@@ -16,6 +16,7 @@ inline Item hoveredItem(UiMode mode, int width, int height, double x, double y,
                                    book ? book->entries.size() : 0, book ? book->page : 0);
     const auto itemOf=[](const ItemStack& stack) { return stack.empty()?Item::None:stack.item; };
     switch (hit.kind) {
+    case UiSlotKind::EquipmentSlot: return itemOf(inventory.equipment(hit.index));
     case UiSlotKind::PlayerInventorySlot: return itemOf(inventory.slot(hit.index));
     case UiSlotKind::CreativeItem: return catalog[hit.index];
     case UiSlotKind::CraftingSlot: return itemOf(inventory.craftSlot(hit.index));

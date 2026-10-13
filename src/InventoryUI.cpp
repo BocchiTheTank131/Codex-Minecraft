@@ -141,12 +141,34 @@ void tooltip(std::vector<V>& vertices, UiMode mode, int W, int H,
              const ChestData* chest = nullptr) {
     const Item item = InventoryTooltip::hoveredItem(mode,W,H,mouseX,mouseY,inventory,book,furnace,chest);
     if (item == Item::None) return;
-    const std::string& name = itemDefinition(item).displayName;
+    std::string name = itemDefinition(item).displayName;
+    const auto hit=UiLayout::hit(mode,mouseX,mouseY,W,H,creativeCatalog().size());
+    const ItemStack* stack=hit.kind==UiSlotKind::EquipmentSlot ? &inventory.equipment(hit.index) :
+        hit.kind==UiSlotKind::PlayerInventorySlot ? &inventory.slot(hit.index) : nullptr;
+    if(hit.kind==UiSlotKind::CraftingSlot) stack=&inventory.craftSlot(hit.index);
+    if(chest && hit.kind==UiSlotKind::ChestSlot) stack=&chest->slots[hit.index];
+    if(furnace) {
+        if(hit.kind==UiSlotKind::FurnaceInput) stack=&furnace->input;
+        if(hit.kind==UiSlotKind::FurnaceFuel) stack=&furnace->fuel;
+        if(hit.kind==UiSlotKind::FurnaceOutput) stack=&furnace->output;
+    }
+    if(armorDefense(item)>0) name+="  ARMOR "+std::to_string(armorDefense(item));
+    if(isDurable(item)) name+="  "+std::to_string(stack?stack->durability:Inventory::maxDurability(item))+"/"+std::to_string(Inventory::maxDurability(item));
     const float scale = std::min(1.5f, (W-24.0f)/std::max(1.0f,name.size()*6.0f));
     const UiRect b = InventoryTooltip::bounds(W,H,mouseX,mouseY,name.size()*6.0f*scale);
     rect(vertices,b.x,b.y,b.width,b.height,{.29f,.23f,.35f,.98f},W,H);
     rect(vertices,b.x+2,b.y+2,b.width-4,b.height-4,{.055f,.045f,.07f,.97f},W,H);
     text(vertices,name,b.x+8,b.y+7,scale,{1,1,1,1},W,H);
+}
+void equipmentSlots(std::vector<V>& vertices,UiMode mode,int W,int H,const Inventory& inv) {
+    constexpr const char* labels[]={"H","C","L","B","O"};
+    for(int i=0;i<5;++i) {
+        const auto b=UiLayout::equipmentSlot(mode,i,W,H);
+        slot(vertices,inv.equipment(i),b.x,b.y,b.width,W,H);
+        if(inv.equipment(i).empty()) text(vertices,labels[i],b.x+17,b.y+17,1.3f,{.65f,.7f,.75f,1},W,H);
+    }
+    const auto p=UiLayout::panel(mode,W,H);
+    text(vertices,"ARMOR "+std::to_string(inv.armorPoints()),p.x+22,p.y+(mode==UiMode::Creative?490.f:272.f),1.1f,{.9f,.95f,1,1},W,H);
 }
 void flush(std::vector<V>& vertices, GLuint vbo, GLuint vao, GLuint program, GLuint texture,
            GLint atlasUniform) {
@@ -201,6 +223,13 @@ void Renderer::renderSurvivalUi(
          W,
          H);
     number(v, std::to_string(level), W * .5f - 5, y - 23, 1.5f, {.45f, 1, .28f, 1}, W, H);
+    const int protection=inv.armorPoints();
+    if(protection>0) for(int i=0;i<10;++i) {
+        const float x=start+i*18,fill=std::clamp(protection-i*2,0,2)*.5f;
+        rect(v,x,y-40,14,12,{.16f,.18f,.22f,.9f},W,H);
+        rect(v,x+2,y-38,10*fill,8,{.69f,.8f,.9f,1},W,H);
+    }
+    if(!inv.equipment(4).empty()) slot(v,inv.equipment(4),start-56,y,44,W,H);
     if (fullbright) {
         rect(v, static_cast<float>(W) - 144.f, 12.f, 132.f, 22.f, {.08f, .08f, .04f, .82f}, W, H);
         number(v, "1", static_cast<float>(W) - 26.f, 16.f, 1.5f, {1, .88f, .2f, 1}, W, H);
@@ -228,6 +257,7 @@ void Renderer::renderInventory(
         slot(v, inv.slot(index), bounds.x, bounds.y, bounds.width, W, H,
              index == inv.selectedSlot());
     }
+    equipmentSlots(v,mode,W,H,inv);
     int n = table ? 3 : 2;
     for (int y = 0; y < n; ++y)
         for (int x = 0; x < n; ++x) {
@@ -313,9 +343,10 @@ void Renderer::renderCreativeInventory(
     rect(vertices, panelX + 10, panelY + 10, panel.width - 20, panel.height - 20,
          {.34f, .34f, .34f, .98f}, W, H);
     const auto& catalog = creativeCatalog();
+    equipmentSlots(vertices,UiMode::Creative,W,H,inv);
     const float catalogHeight = 22.0f +
-        ((catalog.size() + UiLayout::CreativeColumns - 1) / UiLayout::CreativeColumns) * 43.0f;
-    const float catalogWidth = UiLayout::CreativeColumns * 43.0f + 21.0f;
+        ((catalog.size() + UiLayout::CreativeColumns - 1) / UiLayout::CreativeColumns) * 35.0f;
+    const float catalogWidth = UiLayout::CreativeColumns * 35.0f + 21.0f;
     rect(vertices, panelX + (panel.width - catalogWidth) * .5f, panelY + 34,
          catalogWidth, catalogHeight, {.16f, .16f, .18f, 1}, W, H);
     for (int index = 0; index < static_cast<int>(catalog.size()); ++index) {
@@ -373,6 +404,7 @@ void Renderer::renderFurnace(int W,
         slot(vertices, inv.slot(index), bounds.x, bounds.y, bounds.width, W, H,
              index == inv.selectedSlot());
     }
+    equipmentSlots(vertices,UiMode::Furnace,W,H,inv);
     const UiRect input = UiLayout::furnaceSlot(UiSlotKind::FurnaceInput, W, H);
     const UiRect fuel = UiLayout::furnaceSlot(UiSlotKind::FurnaceFuel, W, H);
     const UiRect output = UiLayout::furnaceSlot(UiSlotKind::FurnaceOutput, W, H);
@@ -426,6 +458,7 @@ void Renderer::renderChest(int W,
          {.08f, .075f, .07f, .97f}, W, H);
     rect(vertices, panelX + 10, panelY + 10, panel.width - 20, panel.height - 20,
          {.34f, .34f, .34f, .98f}, W, H);
+    equipmentSlots(vertices,UiMode::Chest,W,H,inv);
     for (int index = 0; index < 27; ++index) {
         const UiRect bounds = UiLayout::chestSlot(index, W, H);
         slot(vertices, chest.slots[static_cast<std::size_t>(index)],
@@ -450,13 +483,20 @@ void Renderer::renderChest(int W,
     tooltip(vertices,UiMode::Chest,W,H,inv,mouseX,mouseY,nullptr,nullptr,&chest);
     flush(vertices, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
-void Renderer::renderHeldItem(int W, int H, const ItemStack& stack, float swing) const {
-    if (stack.empty())
+void Renderer::renderHeldItem(int W, int H, const ItemStack& stack, float swing, const ItemStack& offhand, bool blocking, float shieldFeedback) const {
+    if (stack.empty() && offhand.empty())
         return;
-    std::vector<V> v;
+    static thread_local std::vector<V> v;
+    v.clear();
+    v.reserve(1024); // Bounded held-item/feedback batch, reused on the render thread.
     float wave = std::sin(std::clamp(swing, 0.f, 1.f) * 3.1415926f), size = 168.f,
           x = W - size - 28.f + wave * 28.f, y = H - size + 25.f + wave * 34.f;
-    sprite(v, stack.item, x, y, size, size, W, H, .98f);
+    if(!stack.empty()) sprite(v, stack.item, x, y, size, size, W, H, .98f);
+    if(!offhand.empty()) {
+        const float shieldSize=blocking?225.f:150.f;
+        sprite(v,offhand.item,blocking?W*.30f:28.f,H-shieldSize+(blocking?-115.f:22.f),shieldSize,shieldSize,W,H);
+        if(shieldFeedback>0) text(v,"BLOCKED",W*.5f-36,H*.65f,1.5f,{.8f,.9f,1,1},W,H);
+    }
     flush(v, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 void Renderer::renderUnderwaterOverlay(int W, int H) const {

@@ -16,6 +16,27 @@ constexpr WeightedLootEntry rare[] = {
     {Item::Diamond,1,2,52,LootRarity::Rare}, {Item::SurveyorToken,1,1,20,LootRarity::Rare},
     {Item::CavernShard,1,1,16,LootRarity::Rare}, {Item::AncientSeal,1,1,12,LootRarity::Rare}};
 }
+void addEquipmentLoot(std::array<ItemStack,27>& slots,std::uint32_t seed,const StructureLootMarker& marker) {
+    // Independent RNG does not perturb historical chest rolls or regenerate persisted chests.
+    auto state=TerrainDensity::hash(marker.x,marker.y,marker.z,seed^marker.salt^0xe9130U);
+    const auto next=[&] {state=TerrainDensity::hash(int(state),0,int(state>>16),0x6ea1U);return state;};
+    const int deep=std::clamp((32-marker.y)/24,0,3);
+    if(next()%100U>=unsigned(12+deep*3+(marker.table==StructureLoot::Ancient?5:0))) return;
+    const WeightedLootEntry equipment[]={
+        {Item::LeatherHelmet,1,1,22,LootRarity::Common},{Item::LeatherBoots,1,1,22,LootRarity::Common},
+        {Item::LeatherChestplate,1,1,13,LootRarity::Common},{Item::LeatherLeggings,1,1,13,LootRarity::Common},
+        {Item::Shield,1,1,20,LootRarity::Uncommon},{Item::GoldHelmet,1,1,6,LootRarity::Uncommon},
+        {Item::IronHelmet,1,1,4+deep*2,LootRarity::Uncommon},{Item::IronBoots,1,1,4+deep*2,LootRarity::Uncommon},
+        {Item::IronChestplate,1,1,2+deep,LootRarity::Uncommon},{Item::IronLeggings,1,1,2+deep,LootRarity::Uncommon},
+        {Item::DiamondHelmet,1,1,deep==3?1:0,LootRarity::Rare}};
+    int weight=0;for(const auto& e:equipment)weight+=e.weight;
+    int pick=int(next()%unsigned(weight));Item item=Item::Shield;
+    for(const auto& e:equipment) {pick-=e.weight;if(pick<0){item=e.item;break;}}
+    for(auto& slot:slots) if(slot.empty()) {
+        const int max=Inventory::maxDurability(item);
+        slot={item,1,max*(35+int(next()%56U))/100};break;
+    }
+}
 std::array<ItemStack,27> rollExplorationLoot(std::uint32_t seed,const StructureLootMarker& marker) {
     std::array<ItemStack,27> out{};
     auto state=TerrainDensity::hash(marker.x,marker.y,marker.z,seed^marker.salt^0x10a712U);

@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "Survival.h"
 #include "SaveFile.h"
 #include "World.h"
 #include <algorithm>
@@ -44,9 +45,9 @@ void Player::addMouseMovement(double x, double y) {
 }
 void Player::damage(float a, PlayerDamageSource source) {
     if (creativeMode_ || spectatorMode_ || dead_ || respawnProtection_ > 0 || a <= 0 ||
-        (source == PlayerDamageSource::General && damageInvulnerability_ > 0))
+        (source != PlayerDamageSource::Projectile && source != PlayerDamageSource::Burning && damageInvulnerability_ > 0))
         return;
-    if (source == PlayerDamageSource::General)
+    if (source != PlayerDamageSource::Projectile && source != PlayerDamageSource::Burning)
         damageInvulnerability_ = .65f;
     lastDamageSource_=source;
     health_ = std::max(0.f, health_ - a);
@@ -107,6 +108,7 @@ void Player::respawn(const World& world) {
     health_ = hunger_ = 20.0f;
     fallDistance_ = lastFallDamage_ = exhaustion_ = regenTimer_ = 0.0f;
     burning_.clear();
+    blocking_=false;shieldFeedback_=0;
     respawnTimer_ = hurtFlash_ = damageInvulnerability_ = spaceTapTimer_ = 0.0f;
     dead_ = inWater_ = flying_ = sprinting_ = sneaking_ = jumpWasDown_ = false;
     grounded_ = true;
@@ -279,7 +281,7 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
         if (creativeMode_)
             respawn(world);
         else
-            damage(100.0f);
+            damage(100.0f,PlayerDamageSource::Void);
         return;
     }
 
@@ -339,7 +341,7 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
     const float flightSpeed = input.sprint
         ? (input.sneak ? 14.0f : 21.0f)
         : 8.5f;
-    const float speed = (world.aabbTouchesBlock(aabbMinimum(),aabbMaximum(),Block::Cobweb)?0.25f:1.f) * (
+    const float speed = (isBlocking()?0.65f:1.f) * (world.aabbTouchesBlock(aabbMinimum(),aabbMaximum(),Block::Cobweb)?0.25f:1.f) * (
         flying_ ? flightSpeed
                 : (inWater_ ? 3.4f : (sneaking_ ? 2.3f : (sprinting_ ? 8.6f : 6.2f))));
     const glm::vec2 desiredVelocity(movement.x * speed, movement.z * speed);
@@ -420,7 +422,7 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
     if (!creativeMode_ && !inWater_ && grounded_ && !wasGrounded) {
         if (fallDistance_ > 3.5f) {
             const float healthBefore = health_;
-            damage((fallDistance_ - 3.5f) * 1.65f);
+            damage((fallDistance_ - 3.5f) * 1.65f,PlayerDamageSource::Fall);
             lastFallDamage_ = healthBefore - health_;
         }
         fallDistance_ = 0.0f;
@@ -430,6 +432,7 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
         damage(1.0f);
     }
 
+    shieldFeedback_=std::max(0.f,shieldFeedback_-deltaTime);
     if(creativeMode_) burning_.clear();
     else {
         const int ticks=burning_.update(deltaTime,

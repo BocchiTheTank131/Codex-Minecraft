@@ -24,7 +24,7 @@
 #include <thread>
 
 namespace {
-constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '4', '\0', '\0'};
+constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '5', '\0', '\0'};
 constexpr char MobMagic[8] = {'V', 'X', 'M', 'O', 'B', '1', '\0', '\0'};
 constexpr int PassiveMobCap = 26;
 constexpr int HostileMobCap = 18;
@@ -238,7 +238,7 @@ Recipe recipe(int w, int h, std::initializer_list<Ingredient> cells, Item output
     r.table = table;
     r.allowMirror = allowMirror;
     r.shapeless = shapeless;
-    r.category = isTool(output) || isSword(output) ? RecipeCategory::Tools
+    r.category = isTool(output) || isSword(output) || isDurable(output) ? RecipeCategory::Tools
                  : isFood(output) ? RecipeCategory::Food
                  : output == Item::Torch ? RecipeCategory::Misc
                  : itemToBlock(output) != Block::Air ? RecipeCategory::Building
@@ -249,6 +249,17 @@ Recipe recipe(int w, int h, std::initializer_list<Ingredient> cells, Item output
 const std::vector<Recipe>& recipes() {
     static const std::vector<Recipe> all = []() {
         std::vector<Recipe> r;
+        for(int material=0;material<4;++material) {
+            const Item ingredient=std::array<Item,4>{Item::Leather,Item::GoldIngot,Item::IronIngot,Item::Diamond}[material];
+            const auto item=[&](int part){return static_cast<Item>(static_cast<int>(Item::LeatherHelmet)+material*4+part);};
+            r.push_back(recipe(3,2,{ingredient,ingredient,ingredient,ingredient,Item::None,ingredient},item(0),1,true));
+            r.push_back(recipe(3,3,{ingredient,Item::None,ingredient,ingredient,ingredient,ingredient,ingredient,ingredient,ingredient},item(1),1,true));
+            r.push_back(recipe(3,3,{ingredient,ingredient,ingredient,ingredient,Item::None,ingredient,ingredient,Item::None,ingredient},item(2),1,true));
+            r.push_back(recipe(3,2,{ingredient,Item::None,ingredient,ingredient,Item::None,ingredient},item(3),1,true));
+        }
+        r.push_back(recipe(3,3,{IngredientGroup::Planks,Item::IronIngot,IngredientGroup::Planks,
+            IngredientGroup::Planks,IngredientGroup::Planks,IngredientGroup::Planks,
+            Item::None,IngredientGroup::Planks,Item::None},Item::Shield,1,true));
         r.push_back(recipe(1, 1, {Item::Log}, Item::Planks, 4, false));
         r.push_back(recipe(1, 2, {IngredientGroup::Planks, IngredientGroup::Planks}, Item::Stick, 4, false));
         r.push_back(recipe(1, 2, {Item::Coal, Item::Stick}, Item::Torch, 4, false));
@@ -451,7 +462,7 @@ bool Inventory::pickBlock(Item item, bool creativeMode) {
         }
     }
     slots_[static_cast<std::size_t>(destination)] =
-        {item, isTool(item) ? 1 : maxStack(item), maxDurability(item)};
+        {item, isDurable(item) ? 1 : maxStack(item), maxDurability(item)};
     selectedSlot_ = destination;
     return true;
 }
@@ -492,13 +503,13 @@ void Inventory::normalize(ItemStack& s) {
     s.durability = d ? std::clamp(s.durability, 1, d) : 0;
 }
 bool Inventory::canMerge(const ItemStack& a, const ItemStack& b) {
-    return !a.empty() && !b.empty() && a.item == b.item && !isTool(a.item);
+    return !a.empty() && !b.empty() && a.item == b.item && !isDurable(a.item);
 }
 int Inventory::add(Item item, int amount, int durability) {
     if (item == Item::None || amount <= 0)
         return amount;
     int max = maxStack(item);
-    if (!isTool(item))
+    if (!isDurable(item))
         for (auto& s : slots_)
             if (s.item == item && s.count < max) {
                 int n = std::min(amount, max - s.count);
@@ -510,7 +521,7 @@ int Inventory::add(Item item, int amount, int durability) {
     for (auto& s : slots_)
         if (s.empty()) {
             int n = std::min(amount, max);
-            s = {item, n, isTool(item) ? (durability < 0 ? maxDurability(item) : durability) : 0};
+            s = {item, n, isDurable(item) ? (durability < 0 ? maxDurability(item) : durability) : 0};
             normalize(s);
             amount -= n;
             if (!amount)
@@ -549,6 +560,8 @@ bool Inventory::damageSelectedTool(int n) {
 }
 
 void Inventory::clear() {
+    cachedArmorPoints_=-1;equipmentBroke_=false;
+    for (auto& stack : equipment_) stack.clear();
     for (ItemStack& stack : slots_)
         stack.clear();
     for (ItemStack& stack : crafting_)
@@ -563,21 +576,31 @@ void Inventory::setCreativeCursor(Item item) {
         return;
     }
     cursor_ = {item,
-               isTool(item) ? 1 : maxStack(item),
-               isTool(item) ? maxDurability(item) : 0};
+               isDurable(item) ? 1 : maxStack(item),
+               isDurable(item) ? maxDurability(item) : 0};
 }
 
 bool Inventory::handleCreativeClick(
-    double mouseX, double mouseY, int width, int height, bool rightClick) {
+    double mouseX, double mouseY, int width, int height, bool rightClick, bool shiftClick) {
     const UiHit hit = UiLayout::hit(
         UiMode::Creative, mouseX, mouseY, width, height, creativeCatalog().size());
+    if (hit.kind == UiSlotKind::EquipmentSlot) return clickEquipment(hit.index,rightClick,shiftClick);
     if (hit.kind == UiSlotKind::CreativeItem) {
+        const Item item=creativeCatalog()[static_cast<std::size_t>(hit.index)];
+        const int target=item==Item::Shield ? OffhandSlot : armorSlot(item);
+        if(shiftClick && target>=0) {
+            if(equipment_[target].empty()) {
+                equipment_[target]={item,1,maxDurability(item)};cachedArmorPoints_=-1;
+            }
+            return true;
+        }
         setCreativeCursor(creativeCatalog()[static_cast<std::size_t>(hit.index)]);
-        if (rightClick && !cursor_.empty() && !isTool(cursor_.item))
+        if (rightClick && !cursor_.empty() && !isDurable(cursor_.item))
             cursor_.count = 1;
         return true;
     }
     if (hit.kind == UiSlotKind::PlayerInventorySlot) {
+        if(shiftClick && equipFromSlot(hit.index)) return true;
         clickStack(slots_[static_cast<std::size_t>(hit.index)], cursor_, rightClick);
         return true;
     }
@@ -875,7 +898,7 @@ bool Inventory::shiftIngredientToCrafting(int playerSlot, int recipeIndex, bool 
 }
 
 bool Inventory::gatherMatchingToCursor() {
-    if (cursor_.empty() || isTool(cursor_.item))
+    if (cursor_.empty() || isDurable(cursor_.item))
         return false;
     const int capacity = maxStack(cursor_.item) - cursor_.count;
     if (capacity <= 0)
@@ -904,7 +927,7 @@ bool Inventory::handleInventoryClick(
         ItemStack moving = slots_[source];
         if (moving.empty())
             return true;
-        if (!isTool(moving.item))
+        if (!isDurable(moving.item))
             for (int i = first; i < last && moving.count; ++i)
                 if (canMerge(slots_[i], moving)) {
                     int n = std::min(moving.count, maxStack(moving.item) - slots_[i].count);
@@ -922,6 +945,7 @@ bool Inventory::handleInventoryClick(
         normalize(slots_[source]);
         return true;
     };
+    if (hit.kind == UiSlotKind::EquipmentSlot) return clickEquipment(hit.index,right,shift);
     if (hit.kind == UiSlotKind::CraftingOutput) {
         if (shift)
             craftOutputToInventory(table);
@@ -939,6 +963,7 @@ bool Inventory::handleInventoryClick(
         return true;
     }
     if (hit.kind == UiSlotKind::PlayerInventorySlot) {
+        if (shift && equipFromSlot(hit.index)) return true;
         if (shift)
             return hit.index >= HotbarSlots
                        ? quick(hit.index, 0, HotbarSlots)
@@ -993,7 +1018,7 @@ bool Inventory::movePlayerToExternal(int index, ItemStack* stacks, int stackCoun
     if (source.empty())
         return false;
     const int before = source.count;
-    if (!isTool(source.item)) {
+    if (!isDurable(source.item)) {
         for (int i = 0; i < stackCount && source.count > 0; ++i) {
             if (!canMerge(stacks[i], source))
                 continue;
@@ -1033,6 +1058,7 @@ ItemStack Inventory::takeSelected(bool entireStack) {
 }
 ItemStack Inventory::takeGuiDrop(const UiHit& hit, bool entireStack) {
     if(!cursor_.empty()) return takeCursor(!entireStack);
+    if(hit.kind==UiSlotKind::EquipmentSlot) return takeEquipment(hit.index,entireStack);
     return hit.kind==UiSlotKind::PlayerInventorySlot ? takeSlot(hit.index,entireStack) : ItemStack{};
 }
 ItemStack Inventory::takeSlot(int index, bool entireStack) {
@@ -1075,18 +1101,23 @@ bool Inventory::save(const std::string& p, std::uint32_t seed) const {
     for (const auto& s : crafting_)
         if (!ws(s))
             return false;
-    return ws(cursor_);
+    if(!ws(cursor_)) return false;
+    for(const auto& stack:equipment_) if(!ws(stack)) return false;
+    return true;
     });
 }
 bool Inventory::load(const std::string& p, std::uint32_t seed) {
     std::ifstream f(p, std::ios::binary);
     if (!f)
         return false;
+    Inventory loaded;
     char m[8]{};
     std::uint32_t stored = 0;
     f.read(m, 8);
-    if (std::memcmp(m, InventoryMagic, 8) || !rd(f, stored) || stored != seed ||
-        !rd(f, selectedSlot_))
+    const char legacy[8]={'V','X','I','N','V','4','\0','\0'};
+    const bool old=std::memcmp(m,legacy,8)==0;
+    if ((!old && std::memcmp(m, InventoryMagic, 8)) || !rd(f, stored) || stored != seed ||
+        !rd(f, loaded.selectedSlot_))
         return false;
     auto rs = [&](ItemStack& s) {
         std::uint8_t i;
@@ -1098,15 +1129,21 @@ bool Inventory::load(const std::string& p, std::uint32_t seed) {
         normalize(s);
         return true;
     };
-    for (auto& s : slots_)
+    for (auto& s : loaded.slots_)
         if (!rs(s))
             return false;
-    for (auto& s : crafting_)
+    for (auto& s : loaded.crafting_)
         if (!rs(s))
             return false;
-    if (!rs(cursor_))
+    if (!rs(loaded.cursor_))
         return false;
-    selectSlot(selectedSlot_);
+    for(int i=0;i<EquipmentSlots;++i) {
+        loaded.equipment_[i].clear();
+        if(!old && (!rs(loaded.equipment_[i]) || (!loaded.equipment_[i].empty() &&
+            (i<4 && armorSlot(loaded.equipment_[i].item)!=i)))) return false;
+    }
+    loaded.selectSlot(loaded.selectedSlot_);
+    *this=loaded;
     return true;
 }
 bool Inventory::runCraftingSelfTest(std::string& report) {
@@ -1620,7 +1657,7 @@ void SurvivalWorld::spawnDrop(const glm::vec3& p,
     d.velocity = velocity;
     d.stack = {item,
                amount,
-               isTool(item) ? (durability < 0 ? Inventory::maxDurability(item) : durability) : 0};
+               isDurable(item) ? (durability < 0 ? Inventory::maxDurability(item) : durability) : 0};
     d.pickupDelay = std::max(0.0f, pickupDelay);
     drops_.push_back(d);
 }
@@ -1993,8 +2030,8 @@ void SurvivalWorld::detonate(const glm::vec3& center, World& world, Player& play
         const float exposure = explosionExposure(world, center, playerCenter);
         const float damage = explosionDamage(blast, distance, exposure);
         if (damage > 0.0f) {
-            player.damage(damage);
-            player.applyImpulse(glm::normalize(delta + glm::vec3(0, .25f, 0)) *
+            const bool blocked=player.damagePhysical(damage,PlayerDamageSource::Explosion,center);
+            if(!blocked) player.applyImpulse(glm::normalize(delta + glm::vec3(0, .25f, 0)) *
                                 std::min(8.0f, damage * .8f));
         }
     }
@@ -2060,8 +2097,8 @@ void SurvivalWorld::updateArrows(float dt, World& world, Player& player) {
                 break;
             }
             if (playerHit) {
-                player.damage(3.0f, PlayerDamageSource::Projectile);
-                player.applyImpulse(glm::normalize(movement) * 1.8f);
+                const bool blocked=player.damagePhysical(3.0f, PlayerDamageSource::Projectile,arrow.position);
+                if(!blocked) player.applyImpulse(glm::normalize(movement) * 1.8f);
                 arrow.active = false;
                 break;
             }
@@ -2341,8 +2378,8 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
                          definition->behavior != BillboardBehavior::RangedAttack)) &&
         canSeePlayer(a, w, player)) {
         const float previousHealth = player.health();
-        player.damage(isBillboard(a.type)
-                          ? billboardMobDefinitions()[billboardIndex(a.type)].damage : 2.0f);
+        player.damagePhysical(isBillboard(a.type)
+                          ? billboardMobDefinitions()[billboardIndex(a.type)].damage : 2.0f, PlayerDamageSource::Melee,a.position+glm::vec3(0,1,0));
         if (definition && player.health() < previousHealth && distance > .01f)
             player.applyImpulse(glm::normalize(delta + glm::vec3(0, .15f, 0)) * 1.6f);
         a.attackCooldown = isBillboard(a.type)
@@ -3030,6 +3067,20 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
                                glm::vec3(0, 0, -17.0f), 0.0f, true,
                                static_cast<std::uint8_t>(billboardType(2))});
     };
+    {
+        arrows_.clear();Inventory gear;gear.add(Item::Shield,1,100);gear.equipFromSlot(0);
+        Player defender(lane);defender.setEquipment(&gear);defender.setBlocking(true);
+        for(int i=0;i<10;++i) arrows_.push_back({lane+glm::vec3(0,1.1f,-2),glm::vec3(0,0,17)});
+        updateArrows(.15f,w,defender);
+        ok &= arrows_.empty() && defender.health()==20 && gear.equipment(4).durability==70 && glm::length(defender.velocity())==0;
+        Player rear(lane);rear.setEquipment(&gear);rear.setBlocking(true);queueSureHit(1);updateArrows(.15f,w,rear);
+        ok &= rear.health()==17 && gear.equipment(4).durability==70;
+        Inventory armor;
+        for(int part=0;part<4;++part) {armor.add(static_cast<Item>(int(Item::IronHelmet)+part));armor.equipFromSlot(0);}
+        Player armored(lane);armored.setEquipment(&armor);queueSureHit(1);updateArrows(.15f,w,armored);
+        ok &= std::abs(armored.health()-18.62f)<.001f && armor.equipment(0).durability==Inventory::maxDurability(Item::IronHelmet)-1;
+        if(!ok && firstFailure.empty()) firstFailure="Shield/armor real projectile routing";
+    }
     for (int count : {1, 2, 3, 5, 10}) {
         arrows_.clear();
         Player volleyVictim(lane);
@@ -3460,6 +3511,13 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
             std::filesystem::remove(path);
         }
         if(!ok && firstFailure.empty()) firstFailure="GUI drop/pickup/slot/save consistency";
+        gui.clear();gui.add(Item::Shield,1,81);gui.equipFromSlot(0);
+        const auto shield=gui.takeGuiDrop({UiSlotKind::EquipmentSlot,4},true);
+        droppedWorld.spawnDrop(pickupPlayer.position()+glm::vec3(0,.8f,0),shield.item,shield.count,shield.durability);
+        ok &= gui.equipment(4).empty() && droppedWorld.drops_.size()==1 && droppedWorld.drops_[0].stack.durability==81;
+        droppedWorld.update(.1f,w,pickupPlayer,gui,1.f);
+        ok &= gui.selectedStack().item==Item::Shield && gui.selectedStack().durability==81 && droppedWorld.drops_.empty();
+        if(!ok && firstFailure.empty()) firstFailure="Equipment drop/pickup durability";
     }
     {
         Animal hazard;hazard.type=AnimalType::Cow;hazard.position=w.findSafeSpawnNear(4,0);

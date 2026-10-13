@@ -319,6 +319,7 @@ public:
     bool runHabitatSmokeTest(std::string& report);
     bool runGenerationSmokeTest(std::string& report) const;
     bool runCraftingContentSmokeTest(std::string& report);
+    bool runEquipmentWorldSelfTest(std::string& report);
     WorldgenSurvey runWorldgenSurvey() const;
     bool runStructureGenerationSmokeTest(std::string& report,
                                          glm::ivec3* representativeChest = nullptr,
@@ -412,6 +413,7 @@ private:
     PerlinNoise spaghettiNoise_;
     PerlinNoise noodleNoise_;
     CanyonCarver canyonCarver_;
+    bool equipmentLoot_ = true;
     StructureGenerator structures_;
     UndergroundStructures underground_;
     UndergroundStructures underground20_;

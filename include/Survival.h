@@ -134,6 +134,7 @@ enum class Item : std::uint8_t {
     // Generator V11: append only; historical save IDs are unchanged.
     Deepslate, DeepslateCoalOre, DeepslateIronOre, DeepslateCopperOre, DeepslateGoldOre, DeepslateDiamondOre, Bedrock, Lava,
     Cobweb, CrackedStoneBricks, SurveyorToken, CavernShard, AncientSeal,
+    LeatherHelmet, LeatherChestplate, LeatherLeggings, LeatherBoots, GoldHelmet, GoldChestplate, GoldLeggings, GoldBoots, IronHelmet, IronChestplate, IronLeggings, IronBoots, DiamondHelmet, DiamondChestplate, DiamondLeggings, DiamondBoots, Shield,
     Count
 };
 
@@ -188,7 +189,20 @@ const std::vector<RecipeInfo>& craftingRecipes();
 class Inventory {
 public:
     static constexpr int HotbarSlots = 9, TotalSlots = 36, CraftSlots = 9;
+    static constexpr int EquipmentSlots = 5, OffhandSlot = 4;
     Inventory();
+    const ItemStack& equipment(int index) const;
+    bool clickEquipment(int index, bool rightClick, bool shiftClick = false);
+    bool equipFromSlot(int index);
+    void swapOffhand();
+    ItemStack takeEquipment(int index, bool entireStack = true);
+    bool consumeOffhand(int count = 1);
+    bool damageOffhandTool(int amount = 1);
+    int armorPoints() const;
+    bool takeEquipmentBreak() { const bool value=equipmentBroke_;equipmentBroke_=false;return value; }
+    float mitigatePhysical(float damage, bool blockable, const glm::vec3& incoming,
+                          const glm::vec3& facing, bool blocking, bool& blocked);
+    static bool runEquipmentSelfTest(std::string& report);
     int selectedSlot() const {
         return selectedSlot_;
     }
@@ -210,7 +224,7 @@ public:
     void clear();
     void setCreativeCursor(Item item);
     bool handleCreativeClick(
-        double mouseX, double mouseY, int width, int height, bool rightClick);
+        double mouseX, double mouseY, int width, int height, bool rightClick, bool shiftClick = false);
     ItemStack craftingOutput(bool tableMode) const;
     bool takeCraftingOutput(bool tableMode);
     int craftOutputToInventory(bool tableMode);
@@ -241,6 +255,9 @@ public:
     static bool runCraftingSelfTest(std::string& report);
 
 private:
+    std::array<ItemStack, EquipmentSlots> equipment_{};
+    mutable int cachedArmorPoints_ = -1;
+    bool equipmentBroke_ = false;
     std::array<ItemStack, TotalSlots> slots_{};
     std::array<ItemStack, CraftSlots> crafting_{};
     ItemStack cursor_{};
@@ -255,6 +272,10 @@ Block itemToBlock(Item item);
 Item blockToItem(Block block);
 const std::vector<Item>& creativeCatalog();
 bool isTool(Item item);
+bool isDurable(Item item);
+bool hasMainHandUse(Item item);
+int armorSlot(Item item);
+int armorDefense(Item item);
 bool isSword(Item item);
 bool canHarvestBlock(Item item, Block block);
 Item smeltingResult(Item item);

@@ -110,7 +110,7 @@ public:
                          int hovered,
                          const std::string& seedText,
                          GameMode mode) const;
-    void renderHeldItem(int width, int height, const ItemStack& stack, float swing) const;
+    void renderHeldItem(int width, int height, const ItemStack& stack, float swing, const ItemStack& offhand, bool blocking, float shieldFeedback) const;
     void renderUnderwaterOverlay(int width, int height) const;
     void renderEntities(const std::vector<RenderCuboid>& cuboids,
                         const glm::mat4& view,

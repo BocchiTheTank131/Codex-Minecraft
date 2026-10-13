@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.12.1 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.13.0 LANGUAGES C CXX)
 set(VOXELFRONTIER_VERSION_SUFFIX "")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
@@ -70,6 +70,10 @@ add_executable(VoxelFrontier
     src/Renderer.cpp
     src/Settings.cpp
     src/Sound.cpp
+    src/Equipment.cpp
+    src/EquipmentValidation.cpp
+    src/EquipmentPreview.cpp
+    src/EquipmentInput.cpp
     src/Survival.cpp
     src/UndergroundStructures.cpp
     src/UndergroundWorld.cpp

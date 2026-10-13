@@ -1,4 +1,5 @@
 #include "World.h"
+#include "ExplorationLoot.h"
 #include "Persistence.h"
 #include "TerrainDensity.h"
 #include "BiomeVegetation.h"
@@ -2115,6 +2116,7 @@ void World::initializeGeneratedLoot(const GeneratedChunk& generated) {
             continue;
         ChestData chest;
         chest.slots = structures_.rollLoot(marker);
+        if(equipmentLoot_ && marker.table>=StructureLoot::Mineshaft) addEquipmentLoot(chest.slots,seed_,marker);
         chests_.emplace(key, std::move(chest));
     }
 }
@@ -2554,10 +2556,12 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
             return false;
     }
 
+    bool loadedEquipmentLoot=false;
     decltype(edits_) loadedEdits;
     decltype(furnaces_) loadedFurnaces;
     decltype(chests_) loadedChests;
     const auto commit = [&] {
+        equipmentLoot_=loadedEquipmentLoot;
         edits_.swap(loadedEdits);
         furnaces_.swap(loadedFurnaces);
         chests_.swap(loadedChests);
@@ -2647,6 +2651,12 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
                 return false;
         loadedChests[position] = chest;
     }
+    if(input.peek()!=std::char_traits<char>::eof()) {
+        char extension[8]{};std::uint8_t enabled=0;
+        input.read(extension,8);input.read(reinterpret_cast<char*>(&enabled),1);
+        if(!input || std::memcmp(extension,"VXGEAR1",8)!=0 || enabled>1) return false;
+        loadedEquipmentLoot=enabled!=0;
+    }
     commit();
     return true;
 }
@@ -2724,6 +2734,9 @@ bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) 
         for (const ItemStack& stack : entry.second.slots)
             writeStack(stack);
     }
+    output.write("VXGEAR1",8);
+    const std::uint8_t equipmentLoot=equipmentLoot_?1:0;
+    output.write(reinterpret_cast<const char*>(&equipmentLoot),1);
     return output.good();
     });
 }

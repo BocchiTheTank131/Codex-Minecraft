@@ -101,6 +101,7 @@ private:
     glm::ivec3 worldContainerPosition_{0};
     UiHit dragHit_{};
     bool inventoryLeftWasDown_ = false;
+    UiHit inventoryLeftDragStart_{};
     RecipeBookView recipeBook_{};
     int selectedRecipe_ = -1;
     double lastLeftClickTime_ = -1.0;
