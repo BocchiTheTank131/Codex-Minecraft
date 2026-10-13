@@ -8,11 +8,13 @@
 #include "CanyonCarver.h"
 #include "Survival.h"
 #include "ChunkStreaming.h"
+#include "TerrainVertex.h"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
 #include <atomic>
+#include <climits>
 #include <array>
 #include <condition_variable>
 #include <chrono>
@@ -134,7 +136,7 @@ struct MeshBounds {
 class TerrainBufferPage {
 public:
     struct Range { std::size_t first, count; };
-    explicit TerrainBufferPage(std::size_t vertices);
+    explicit TerrainBufferPage(std::size_t vertices,unsigned indexBytes=0);
     ~TerrainBufferPage();
     TerrainBufferPage(const TerrainBufferPage&) = delete;
     TerrainBufferPage& operator=(const TerrainBufferPage&) = delete;
@@ -142,13 +144,18 @@ public:
     void release(std::size_t first, std::size_t count) noexcept;
 
     GLuint vao = 0;
-    GLuint vbo = 0;
+    GLuint vbo = 0,ebo=0;
+    unsigned indexBytes=0;
+    std::size_t byteStride() const {return sizeof(PackedTerrainVertex)+2*indexBytes;}
+    std::uint64_t drawStamp=0;
     std::size_t capacity = 0;
     std::size_t allocated = 0;
     std::size_t allocationCount = 0;
     std::vector<Range> freeRanges;
     mutable std::vector<GLint> drawFirst;
     mutable std::vector<GLsizei> drawCount;
+    mutable std::vector<const void*> drawOffsets;
+    mutable std::vector<GLint> drawBase;
 };
 
 class Chunk {
@@ -176,9 +183,13 @@ public:
     mutable std::array<std::array<glm::vec3,4>,3> climateColors{};
     std::vector<std::uint32_t> lightEmitters;
     void rebuildLightEmitterIndex();
+    int requestedLod=0,meshLod=0;
     int highestRenderableY = -1;
     std::array<std::int16_t, CHUNK_SIZE * CHUNK_SIZE> precipitationTop{};
     std::shared_ptr<TerrainBufferPage> opaquePage;
+    std::shared_ptr<TerrainBufferPage> waterPage;
+    std::size_t waterFirstVertex=0;
+    GLsizei opaqueUniqueVertices=0,waterUniqueVertices=0;
     std::size_t opaqueFirstVertex = 0;
     GLsizei opaqueVertexCount = 0;
     std::size_t opaqueBufferCapacity = 0;
@@ -223,6 +234,9 @@ public:
     explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 21);
     ~World();
 
+    std::array<glm::vec3,6> optimizationScenes() const;
+    std::uint64_t visibilityIdentity() const {return visibilityIdentity_;}
+    std::uint64_t visibilityRevision() const {return visibilityRevision_;}
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
     bool loadWorld(const std::string& path, glm::vec3& playerPosition);
     bool saveWorld(const std::string& path, const glm::vec3& playerPosition) const;
@@ -231,6 +245,9 @@ public:
     }
     void updateStreaming(const glm::vec3& playerPosition, int meshBudget = 2);
     void setStreamingQuality(ChunkStreamingQuality quality);
+    void setTerrainLod(int strength);
+    void setTerrainMemoryBudget(int preset);
+    std::size_t terrainMemoryTarget() const {return (terrainMemoryBudget_==1?512ULL:terrainMemoryBudget_==3?4096ULL:2048ULL)*1024ULL*1024ULL;}
     void setStreamingView(const glm::vec3& direction, float frameMilliseconds);
     ChunkStreamingDiagnostics streamingDiagnostics() const;
     void updateFluids(float deltaTime, int updateBudget = 96);
@@ -266,6 +283,9 @@ public:
     bool runAestheticsAudit(const std::string& directory,std::string& report,unsigned modernVersion=18) const;
     bool runExplorationAudit(const std::string& directory,std::string& report,unsigned modernVersion=12) const;
     bool runStreamingSelfTest(std::string& report);
+    bool runOptimizationSelfTest(std::string& report);
+    void writeOptimizationChunkHashes(const std::string& path) const;
+    void setWaterBatchingForValidation(bool enabled) {waterBatching_=enabled;}
     bool runGeographyAudit(const std::string& directory, std::string& report) const;
     bool runPatch272SelfTest(std::string& report) const;
     BiomeClimate biomeClimateAt(int worldX, int worldZ, float elevation = std::numeric_limits<float>::quiet_NaN()) const;
@@ -305,8 +325,17 @@ public:
     }
     int pendingCpuMeshCount() const;
     int completedMeshCount() const;
+    std::size_t renderedTriangleCount() const {return renderedTriangleCount_;}
+    std::size_t renderedVertexCount() const {return renderedVertexCount_;}
+    const std::array<std::size_t,4>& renderedLodCounts() const {return renderedLodCounts_;}
+    std::size_t frustumCulledCount() const {return frustumCulledCount_;}
+    int waterSubmissionCount() const {return waterSubmissionCount_;}
     int renderedChunkCount() const { return renderedChunkCount_; }
-    struct TerrainMemory {std::size_t vertices=0,usedBytes=0,capacityBytes=0;};
+    struct TerrainMemory {
+        std::size_t vertices=0,uniqueVertices=0,indexCount=0,usedBytes=0,capacityBytes=0;
+        std::size_t reservedBytes=0,freeBytes=0,largestFreeBytes=0,retiredBytes=0,budgetBytes=0,pages=0;
+        std::size_t vertexBytes=0,indexBytes=0,vertexCapacityBytes=0,indexCapacityBytes=0;
+    };
     TerrainMemory terrainMemory() const;
     int opaqueSubmissionCount() const { return opaqueSubmissionCount_; }
     float lastChunkRebuildMilliseconds() const { return lastChunkRebuildMilliseconds_; }
@@ -366,6 +395,7 @@ private:
         std::uint64_t identity = 0;
         std::uint64_t epoch = 0;
         std::shared_ptr<std::atomic<std::uint64_t>> revisionToken;
+        int lod=0;
         bool climateTinted = false;
         std::array<std::array<glm::vec3,4>,3> climateColors{};
         int meshHeight = WORLD_HEIGHT;
@@ -379,8 +409,11 @@ private:
         std::uint64_t revision = 0;
         std::uint64_t identity = 0;
         std::uint64_t epoch = 0;
+        int lod=0;
         std::vector<VoxelVertex> opaque;
         std::vector<VoxelVertex> water;
+        std::vector<PackedTerrainVertex> packedOpaque, packedWater;
+        std::vector<std::uint32_t> opaqueIndices,waterIndices;
         MeshBounds opaqueBounds;
         MeshBounds waterBounds;
         float buildMilliseconds = 0.0f;
@@ -461,6 +494,7 @@ private:
     std::atomic<unsigned> generationWorkerLimit_{1}, meshWorkerLimit_{1};
     std::atomic<unsigned> activeGenerationWorkers_{0};
     std::atomic<std::uint64_t> generationCompleted_{0}, meshCompleted_{0}, staleMeshCount_{0};
+    std::atomic<std::uint64_t> generationMicroseconds_{0};
     ChunkStreamingQuality streamingQuality_ = ChunkStreamingQuality::Auto;
     StreamingWorkerPlan workerPlan_;
     glm::vec2 streamingForward_{0,-1};
@@ -498,8 +532,19 @@ private:
     // its fixed calculation region; unusually large queues are released.
     std::vector<std::uint8_t> blockLightScratch_;
     std::vector<BlockLightNode> blockLightQueueScratch_;
+    mutable std::size_t renderedVertexCount_=0,renderedTriangleCount_=0,frustumCulledCount_=0;
+    mutable std::array<std::size_t,4> renderedLodCounts_{};
+    mutable int waterSubmissionCount_=0;
+    bool waterBatching_=true;
     mutable int renderedChunkCount_ = 0;
     mutable int opaqueSubmissionCount_ = 0;
+    const std::uint64_t visibilityIdentity_=[] {static std::atomic<std::uint64_t> next{1};return next.fetch_add(1);}();
+    std::uint64_t visibilityRevision_=0;
+    int terrainMemoryBudget_=0;
+    int terrainLod_=0;glm::vec3 lodCamera_{0};glm::ivec2 lodNearCenter_{INT_MAX,INT_MAX};
+    std::size_t lodDisableRemaining_=0;
+    std::int64_t lodCursor_=0;
+    void updateTerrainLod(const glm::vec3& camera);
     std::vector<std::shared_ptr<TerrainBufferPage>> terrainPages_;
     bool terrainPageTrimmedThisFrame_ = false;
     struct RetirementFence {
@@ -516,11 +561,19 @@ private:
         std::vector<std::uint8_t> light;
         std::vector<std::uint32_t> emitters;
         std::shared_ptr<RetirementFence> fence;
+        std::shared_ptr<TerrainBufferPage> waterPage;
+        std::size_t waterFirst=0,waterCount=0;
     };
     std::deque<RetiredTerrain> retiredTerrain_;
     void releaseRetiredTerrain(bool drain=false);
     mutable std::vector<TerrainBufferPage*> drawPages_;
+    mutable std::uint64_t drawStamp_=0;
     mutable VisibleChunks visibleChunks_;
+    mutable glm::mat4 visibleViewProjection_{0};
+    mutable glm::vec3 visibleCamera_{0};
+    mutable glm::ivec2 visibleCenter_{INT_MAX,INT_MAX};
+    mutable int visibleDistance_=-1;
+    mutable std::uint64_t visibleRevision_=~std::uint64_t(0);
     float lastChunkRebuildMilliseconds_ = 0.0f;
     float lastMeshUploadMilliseconds_ = 0.0f;
     float lastBlockEditMilliseconds_ = 0.0f;
@@ -559,7 +612,9 @@ private:
     static MeshOutput buildMesh(const MeshInput& input, MeshOutput result);
     void recycleMeshOutput(MeshOutput result);
     void uploadMeshResult(const MeshOutput& result);
-    void uploadOpaqueMesh(Chunk& chunk, const std::vector<VoxelVertex>& vertices);
+    static void packMeshOutput(MeshOutput& result);
+    void uploadSharedMesh(Chunk& chunk,const std::vector<PackedTerrainVertex>& vertices,
+                          const std::vector<std::uint32_t>& indices,bool transparent);
     void releaseEmptyTerrainPages();
     void dispatchMeshJobs(int budget);
     void uploadCompletedMeshes(int budget);

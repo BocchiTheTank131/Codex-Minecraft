@@ -6,6 +6,9 @@
 enum class GraphicsPreset : int { Low = 0, Medium = 1, High = 2, Custom = 3 };
 
 struct GameSettings {
+    int terrainLod=0; // Off / Low / Medium / High (explicit far-detail strength)
+    int occlusionCulling=0; // Off / Auto / On
+    int terrainMemoryBudget=0; // Auto / Low / Balanced / High
     int chunkStreamingQuality = 0; // Auto / Low / Balanced / High
     int renderDistance = 7;
     int simulationDistance = 7;

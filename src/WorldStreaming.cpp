@@ -45,7 +45,9 @@ void World::workerLoop(unsigned workerIndex) {
             continue;
         }
         ++activeGenerationWorkers_;
+        const auto generationStart=std::chrono::steady_clock::now();
         GeneratedChunk generated = generateChunkData(request.x, request.y);
+        generationMicroseconds_.fetch_add(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()-generationStart).count(),std::memory_order_relaxed);
         generated.epoch=request.epoch;
         --activeGenerationWorkers_;
         ++generationCompleted_;
@@ -62,6 +64,7 @@ void World::workerLoop(unsigned workerIndex) {
 void World::updateStreaming(const glm::vec3& playerPosition, int meshBudget) {
     using Clock=std::chrono::steady_clock;
     const auto start=Clock::now();
+    updateTerrainLod(playerPosition);
     terrainPageTrimmedThisFrame_=false;
     streamingStats_.unloadMilliseconds=0;
     // A soft budget: individual sunlight/GL operations remain indivisible.
@@ -143,6 +146,7 @@ void World::releaseRetiredTerrain(bool drain) {
         }
         auto mesh=std::move(retiredTerrain_.front());retiredTerrain_.pop_front();
         if(mesh.page) mesh.page->release(mesh.first,mesh.count);
+        if(mesh.waterPage)mesh.waterPage->release(mesh.waterFirst,mesh.waterCount);
         if(mesh.vbo) glDeleteBuffers(1,&mesh.vbo);
         if(mesh.vao) glDeleteVertexArrays(1,&mesh.vao);
         if(!drain && !stopping_) {
@@ -182,6 +186,7 @@ ChunkStreamingDiagnostics World::streamingDiagnostics() const {
     stats.generationLimit=generationWorkerLimit_; stats.meshLimit=meshWorkerLimit_;
     stats.retiredChunks+=int(retiredTerrain_.size());stats.lightingQueued=int(lightingQueue_.size());
     stats.generated=generationCompleted_;stats.meshed=meshCompleted_;stats.staleMeshes=staleMeshCount_;
+    stats.generationMilliseconds=stats.generated?float(generationMicroseconds_.load())/float(stats.generated)/1000.f:0;
     return stats;
 }
 
@@ -286,7 +291,12 @@ void World::dispatchMeshJobs(int budget) {
     if (dispatched > 0) meshCv_.notify_all();
 }
 
+void World::packMeshOutput(MeshOutput& result) {
+    TerrainPacking::indexQuads(result.opaque,result.packedOpaque,result.opaqueIndices);
+    TerrainPacking::indexQuads(result.water,result.packedWater,result.waterIndices);
+}
 void World::meshWorkerLoop(unsigned workerIndex) {
+    MeshOutput scratch; // Private full-precision build storage, never queued/shared.
     while (!stopping_) {
         MeshInput input;
         MeshOutput reusable;
@@ -308,7 +318,16 @@ void World::meshWorkerLoop(unsigned workerIndex) {
             result.x=input.x; result.z=input.z; result.identity=input.identity;
             result.revision=input.revision; result.epoch=input.epoch;
         } else {
-            result=buildMesh(input,std::move(reusable));
+            scratch.packedOpaque=std::move(reusable.packedOpaque);
+            scratch.packedWater=std::move(reusable.packedWater);
+            scratch.opaqueIndices=std::move(reusable.opaqueIndices);scratch.waterIndices=std::move(reusable.waterIndices);
+            result=buildMesh(input,std::move(scratch));
+            const auto packingStart=std::chrono::steady_clock::now();
+            packMeshOutput(result);
+            result.buildMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-packingStart).count();
+            scratch.opaque=std::move(result.opaque);scratch.water=std::move(result.water);
+            if(scratch.opaque.capacity()>2U*1024U*1024U/sizeof(VoxelVertex)) std::vector<VoxelVertex>().swap(scratch.opaque);
+            if(scratch.water.capacity()>1024U*1024U/sizeof(VoxelVertex)) std::vector<VoxelVertex>().swap(scratch.water);
             ++meshCompleted_;
         }
         {
@@ -334,6 +353,12 @@ void World::recycleMeshOutput(MeshOutput result) {
         std::vector<VoxelVertex>().swap(result.water);
     result.opaque.clear();
     result.water.clear();
+    result.packedOpaque.clear();result.packedWater.clear();
+    result.opaqueIndices.clear();result.waterIndices.clear();
+    if(result.opaqueIndices.capacity()>1024U*1024U/4)std::vector<std::uint32_t>().swap(result.opaqueIndices);
+    if(result.waterIndices.capacity()>512U*1024U/4)std::vector<std::uint32_t>().swap(result.waterIndices);
+    if(result.packedOpaque.capacity()>2U*1024U*1024U/sizeof(PackedTerrainVertex)) std::vector<PackedTerrainVertex>().swap(result.packedOpaque);
+    if(result.packedWater.capacity()>1024U*1024U/sizeof(PackedTerrainVertex)) std::vector<PackedTerrainVertex>().swap(result.packedWater);
     std::lock_guard<std::mutex> lock(meshMutex_);
     if (recycledMeshes_.size() < meshWorkers_.size()*2 && !stopping_)
         recycledMeshes_.push_back(std::move(result));

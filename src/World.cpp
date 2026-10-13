@@ -2,6 +2,7 @@
 #include "ExplorationLoot.h"
 #include "Persistence.h"
 #include "TerrainDensity.h"
+#include "TerrainLod.h"
 #include "BiomeVegetation.h"
 #include "AmbientOcclusion.h"
 
@@ -205,109 +206,36 @@ MeshBounds meshBounds(const std::vector<VoxelVertex>& vertices) {
 }
 
 void configureTerrainAttributes() {
-    const std::size_t offsets[] = {offsetof(VoxelVertex, position), offsetof(VoxelVertex, uv),
-        offsetof(VoxelVertex, normal), offsetof(VoxelVertex, sunLight),
-        offsetof(VoxelVertex, blockLight), offsetof(VoxelVertex, ao),
-        offsetof(VoxelVertex, atlasTile)};
-    const GLint sizes[] = {3, 2, 3, 1, 1, 1, 1};
-    for (GLuint attribute = 0; attribute < 6; ++attribute) {
-        glEnableVertexAttribArray(attribute);
-        glVertexAttribPointer(attribute, sizes[attribute], GL_FLOAT, GL_FALSE,
-                              sizeof(VoxelVertex), reinterpret_cast<void*>(offsets[attribute]));
-    }
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,sizeof(PackedTerrainVertex),reinterpret_cast<void*>(offsetof(PackedTerrainVertex,position)));
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,sizeof(PackedTerrainVertex),reinterpret_cast<void*>(offsetof(PackedTerrainVertex,uv)));
+    glEnableVertexAttribArray(2);
+    glVertexAttribIPointer(2,1,GL_UNSIGNED_INT,sizeof(PackedTerrainVertex),reinterpret_cast<void*>(offsetof(PackedTerrainVertex,shade)));
     glEnableVertexAttribArray(6);
-    glVertexAttribIPointer(6,1,GL_UNSIGNED_INT,sizeof(VoxelVertex),
-                          reinterpret_cast<void*>(offsetof(VoxelVertex,atlasTile)));
+    glVertexAttribIPointer(6,1,GL_UNSIGNED_INT,sizeof(PackedTerrainVertex),reinterpret_cast<void*>(offsetof(PackedTerrainVertex,material)));
 }
 
-void uploadMesh(GLuint& vao,
-                GLuint& vbo,
-                GLsizei& count,
-                std::size_t& capacity,
-                const std::vector<VoxelVertex>& vertices) {
-    if (vertices.empty()) {
-        count = 0;
-        return;
-    }
-    if (vao == 0)
-        glGenVertexArrays(1, &vao);
-    if (vbo == 0)
-        glGenBuffers(1, &vbo);
-    glBindVertexArray(vao);
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    const std::size_t bytes = vertices.size() * sizeof(VoxelVertex);
-    if (bytes > capacity) {
-        capacity = std::max(bytes, capacity + capacity / 2);
-        glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(capacity), nullptr, GL_DYNAMIC_DRAW);
-    }
-    if (bytes > 0)
-        glBufferSubData(GL_ARRAY_BUFFER, 0, static_cast<GLsizeiptr>(bytes), vertices.data());
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0,
-                          3,
-                          GL_FLOAT,
-                          GL_FALSE,
-                          sizeof(VoxelVertex),
-                          reinterpret_cast<void*>(offsetof(VoxelVertex, position)));
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1,
-                          2,
-                          GL_FLOAT,
-                          GL_FALSE,
-                          sizeof(VoxelVertex),
-                          reinterpret_cast<void*>(offsetof(VoxelVertex, uv)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2,
-                          3,
-                          GL_FLOAT,
-                          GL_FALSE,
-                          sizeof(VoxelVertex),
-                          reinterpret_cast<void*>(offsetof(VoxelVertex, normal)));
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3,
-                          1,
-                          GL_FLOAT,
-                          GL_FALSE,
-                          sizeof(VoxelVertex),
-                          reinterpret_cast<void*>(offsetof(VoxelVertex, sunLight)));
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(4,
-                          1,
-                          GL_FLOAT,
-                          GL_FALSE,
-                          sizeof(VoxelVertex),
-                          reinterpret_cast<void*>(offsetof(VoxelVertex, blockLight)));
-    glEnableVertexAttribArray(5);
-    glVertexAttribPointer(5,
-                          1,
-                          GL_FLOAT,
-                          GL_FALSE,
-                          sizeof(VoxelVertex),
-                          reinterpret_cast<void*>(offsetof(VoxelVertex, ao)));
-    glEnableVertexAttribArray(6);
-    glVertexAttribIPointer(6,
-                          1,
-                          GL_UNSIGNED_INT,
-                          sizeof(VoxelVertex),
-                          reinterpret_cast<void*>(offsetof(VoxelVertex, atlasTile)));
-    glBindVertexArray(0);
-    count = static_cast<GLsizei>(vertices.size());
-}
 } // namespace
 
-TerrainBufferPage::TerrainBufferPage(std::size_t vertices) : capacity(vertices) {
+TerrainBufferPage::TerrainBufferPage(std::size_t vertices,unsigned bytes) : indexBytes(bytes),capacity(vertices) {
     freeRanges.push_back({0, capacity});
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
     glBindVertexArray(vao);
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(capacity * sizeof(VoxelVertex)),
+    glBufferData(GL_ARRAY_BUFFER, static_cast<GLsizeiptr>(capacity * sizeof(PackedTerrainVertex)),
                  nullptr, GL_DYNAMIC_DRAW);
     configureTerrainAttributes();
+    if(indexBytes) {
+        glGenBuffers(1,&ebo);glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,ebo);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER,capacity*2*indexBytes,nullptr,GL_DYNAMIC_DRAW);
+    }
     glBindVertexArray(0);
 }
 
 TerrainBufferPage::~TerrainBufferPage() {
+    if(ebo)glDeleteBuffers(1,&ebo);
     if (vbo) glDeleteBuffers(1, &vbo);
     if (vao) glDeleteVertexArrays(1, &vao);
 }
@@ -389,9 +317,10 @@ Chunk::Chunk(int chunkX, int chunkZ, std::vector<Block> data, int low, int high)
 }
 
 Chunk::~Chunk() {
+    if(waterPage)waterPage->release(waterFirstVertex,waterBufferCapacity/sizeof(PackedTerrainVertex));
     meshRevisionToken->store(UINT64_MAX, std::memory_order_release);
     if (opaquePage)
-        opaquePage->release(opaqueFirstVertex, opaqueBufferCapacity / sizeof(VoxelVertex));
+        opaquePage->release(opaqueFirstVertex, opaqueBufferCapacity / sizeof(PackedTerrainVertex));
     if (waterVbo)
         glDeleteBuffers(1, &waterVbo);
     if (waterVao)
@@ -1666,6 +1595,7 @@ World::GeneratedChunk World::generateChunkDataModern(int chunkX, int chunkZ) con
 }
 
 bool World::runCraftingContentSmokeTest(std::string& report) {
+    if(!TerrainPacking::selfTest()) {report="Terrain packing round trip failed";return false;}
     constexpr int span = CHUNK_SIZE + 6;
     MeshInput input;
     input.meshHeight = 8;
@@ -1944,6 +1874,7 @@ bool World::runStructureGenerationSmokeTest(
 }
 
 void World::generate(int renderDistance, const glm::vec3& initialPosition) {
+    ++visibilityRevision_;
     {
         std::lock_guard<std::mutex> lock(generationMutex_);
         ++generationEpoch_;
@@ -2197,6 +2128,7 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
         queueGeneratedMobs(generated);
         auto loadedChunk =
             std::make_unique<Chunk>(generated.x, generated.z, std::move(generated.blocks), minimumY(), maximumY());
+        loadedChunk->requestedLod=TerrainLod::desired(glm::length(glm::vec2(generated.x*16+8.f-lodCamera_.x,generated.z*16+8.f-lodCamera_.z)),renderDistance_,terrainLod_);
         loadedChunk->meshIdentity = nextMeshIdentity_++;
         computeSunlight(*loadedChunk);
         bool generatedEmitter = !loadedChunk->lightEmitters.empty();
@@ -2244,7 +2176,7 @@ void World::unloadDistant(int centerX, int centerZ) {
                 it->second->opaqueVertexCount + it->second->waterVertexCount);
             auto& chunk=*it->second;
             chunk.meshRevisionToken->store(UINT64_MAX,std::memory_order_release);
-            const bool hadGpu=chunk.opaquePage || chunk.waterVbo;
+            const bool hadGpu=chunk.opaquePage || chunk.waterPage || chunk.waterVbo;
             if(hadGpu) {
                 if(!retirementFence) {
                     retirementFence=std::make_shared<RetirementFence>();
@@ -2256,10 +2188,12 @@ void World::unloadDistant(int centerX, int centerZ) {
             // them in small main-thread batches. Teleports otherwise cause
             // thousands of heap frees and driver deletions in their first frame.
             retiredTerrain_.push_back({std::move(chunk.opaquePage),chunk.opaqueFirstVertex,
-                chunk.opaqueBufferCapacity/sizeof(VoxelVertex),chunk.waterVao,chunk.waterVbo,
+                chunk.opaqueBufferCapacity/sizeof(PackedTerrainVertex),chunk.waterVao,chunk.waterVbo,
                 std::move(chunk.blocks),std::move(chunk.packedLight),std::move(chunk.lightEmitters),
-                hadGpu ? retirementFence : nullptr});
+                hadGpu ? retirementFence : nullptr,std::move(chunk.waterPage),chunk.waterFirstVertex,
+                chunk.waterBufferCapacity/sizeof(PackedTerrainVertex)});
             chunk.waterVao=chunk.waterVbo=0;
+            ++visibilityRevision_;
             it = chunks_.erase(it);
         } else {
             ++it;
@@ -2340,6 +2274,7 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
             }
             input.climateTinted=true; input.climateColors=center->climateColors;
         }
+        input.lod=center->requestedLod;
         input.revision = center->meshRevision;
         input.revisionToken = center->meshRevisionToken;
         input.identity = center->meshIdentity;
@@ -2384,15 +2319,16 @@ void World::releaseEmptyTerrainPages() {
     // allocation as destination chunks arrive. Keep a small idle reserve and
     // trim at most one excess page per frame, after its retirement owners leave.
     if(terrainPageTrimmedThisFrame_) return;
-    std::size_t emptyBytes=0;
-    unsigned emptyCount=0;
-    for(const auto& page:terrainPages_) if(!page->allocated && page.use_count()==1) {
-        ++emptyCount;emptyBytes+=page->capacity*sizeof(VoxelVertex);
+    std::size_t emptyBytes=0,totalBytes=0;
+    for(const auto& page:terrainPages_) {
+        totalBytes+=page->capacity*page->byteStride();
+        if(!page->allocated && page.use_count()==1)emptyBytes+=page->capacity*page->byteStride();
     }
-    if(emptyCount<=workerPlan_.mesh && emptyBytes<=workerPlan_.mesh*8U*1024U*1024U) return;
+    const std::size_t reserve=totalBytes>terrainMemoryTarget() || terrainMemoryBudget_==1?0:terrainMemoryBudget_==3?64U*1024U*1024U:16U*1024U*1024U;
+    if(emptyBytes<=reserve) return;
     // Streaming can reuse pages immediately; cap that temporary reserve at
-    // 128 MiB even during uninterrupted flight. Once settled, keep 8–32 MiB.
-    if(emptyBytes<=128U*1024U*1024U &&
+    // twice the preset reserve during flight; settled pages use the lower limit.
+    if(terrainMemoryBudget_!=1 && emptyBytes<=reserve*2 &&
        (!retiredTerrain_.empty() || pendingChunkCount() || !dirtySet_.empty())) return;
     const auto empty=std::find_if(terrainPages_.begin(),terrainPages_.end(),
         [](const auto& page){return !page->allocated && page.use_count()==1;});
@@ -2402,74 +2338,93 @@ void World::releaseEmptyTerrainPages() {
     }
 }
 
-void World::uploadOpaqueMesh(Chunk& chunk, const std::vector<VoxelVertex>& vertices) {
-    const std::size_t bytes = vertices.size() * sizeof(VoxelVertex);
-    if (vertices.empty()) {
-        if (chunk.opaquePage) {
-            chunk.opaquePage->release(chunk.opaqueFirstVertex,
-                                      chunk.opaqueBufferCapacity / sizeof(VoxelVertex));
-            chunk.opaquePage.reset();
-        }
-        chunk.opaqueFirstVertex = chunk.opaqueBufferCapacity = 0;
-        chunk.opaqueVertexCount = 0;
-        releaseEmptyTerrainPages();
-        return;
+void World::setTerrainMemoryBudget(int preset) {
+    terrainMemoryBudget_=std::clamp(preset,0,3);
+}
+
+void World::uploadSharedMesh(Chunk& chunk,const std::vector<PackedTerrainVertex>& input,
+                             const std::vector<std::uint32_t>& indices,bool transparent) {
+    auto& page=transparent?chunk.waterPage:chunk.opaquePage;
+    auto& first=transparent?chunk.waterFirstVertex:chunk.opaqueFirstVertex;
+    auto& reserved=transparent?chunk.waterBufferCapacity:chunk.opaqueBufferCapacity;
+    auto& count=transparent?chunk.waterVertexCount:chunk.opaqueVertexCount;
+    auto& unique=transparent?chunk.waterUniqueVertices:chunk.opaqueUniqueVertices;
+    if(input.empty()) {
+        if(page){page->release(first,reserved/sizeof(PackedTerrainVertex));page.reset();}
+        first=reserved=0;count=unique=0;releaseEmptyTerrainPages();return;
     }
-    if (vertices.size() > static_cast<std::size_t>(std::numeric_limits<GLsizei>::max()))
-        throw std::length_error("Terrain mesh exceeds OpenGL vertex count");
-    if (!chunk.opaquePage || bytes > chunk.opaqueBufferCapacity) {
-        // A small aligned growth margin avoids relocating on every small edit.
-        constexpr std::size_t alignment = 256;
-        const std::size_t needed = (vertices.size() + vertices.size() / 8 + alignment - 1) /
-                                   alignment * alignment;
-        if (needed > static_cast<std::size_t>(std::numeric_limits<GLint>::max()))
-            throw std::length_error("Terrain allocation exceeds OpenGL first-vertex range");
-        std::shared_ptr<TerrainBufferPage> page;
-        std::size_t first = 0;
-        for (const auto& candidate : terrainPages_) {
-            if (candidate->allocate(needed, first)) { page = candidate; break; }
+    const bool indexed=glMultiDrawElementsBaseVertex!=nullptr;
+    const unsigned indexBytes=indexed?(input.size()<=65536?2:4):0;
+    thread_local std::vector<PackedTerrainVertex> expanded;
+    const auto* vertices=&input;
+    if(!indexed){expanded.clear();for(auto i:indices)expanded.push_back(input[i]);vertices=&expanded;}
+    const auto bytes=vertices->size()*sizeof(PackedTerrainVertex);
+    if(!page || page->indexBytes!=indexBytes || bytes>reserved) {
+        constexpr std::size_t alignment=256;
+        const auto growth=terrainMemoryBudget_==1?0:vertices->size()/(terrainMemoryBudget_==3?8:16);
+        const auto needed=(vertices->size()+growth+alignment-1)/alignment*alignment;
+        if(needed>std::size_t(INT_MAX) || indices.size()>std::size_t(INT_MAX))throw std::length_error("Terrain indexed mesh range overflow");
+        std::shared_ptr<TerrainBufferPage> destination;std::size_t offset=0;
+        for(const auto& candidate:terrainPages_)if(candidate->indexBytes==indexBytes && candidate->allocate(needed,offset)){destination=candidate;break;}
+        if(!destination){
+            const auto capacity=(8U*1024U*1024U/(sizeof(PackedTerrainVertex)+2*indexBytes))/alignment*alignment;
+            destination=std::make_shared<TerrainBufferPage>(std::max(capacity,needed),indexBytes);
+            terrainPages_.push_back(destination);if(!destination->allocate(needed,offset))throw std::logic_error("Terrain page allocation failed");
         }
-        if (!page) {
-            // Fixed 8 MiB pages; only an oversized individual mesh gets a larger page.
-            constexpr std::size_t pageVertices = (8 * 1024 * 1024 / sizeof(VoxelVertex)) /
-                                                 alignment * alignment;
-            page = std::make_shared<TerrainBufferPage>(std::max(pageVertices, needed));
-            terrainPages_.push_back(page);
-            const bool allocated = page->allocate(needed, first);
-            assert(allocated);
-            (void)allocated;
-        }
-        if (chunk.opaquePage)
-            chunk.opaquePage->release(chunk.opaqueFirstVertex,
-                                      chunk.opaqueBufferCapacity / sizeof(VoxelVertex));
-        chunk.opaquePage = std::move(page);
-        chunk.opaqueFirstVertex = first;
-        chunk.opaqueBufferCapacity = needed * sizeof(VoxelVertex);
-        releaseEmptyTerrainPages();
+        if(page)page->release(first,reserved/sizeof(PackedTerrainVertex));
+        page=std::move(destination);first=offset;reserved=needed*sizeof(PackedTerrainVertex);
     }
-    glBindBuffer(GL_ARRAY_BUFFER, chunk.opaquePage->vbo);
-    glBufferSubData(GL_ARRAY_BUFFER,
-        static_cast<GLintptr>(chunk.opaqueFirstVertex * sizeof(VoxelVertex)),
-        static_cast<GLsizeiptr>(bytes), vertices.data());
-    chunk.opaqueVertexCount = static_cast<GLsizei>(vertices.size());
+    glBindBuffer(GL_ARRAY_BUFFER,page->vbo);
+    glBufferSubData(GL_ARRAY_BUFFER,first*sizeof(PackedTerrainVertex),bytes,vertices->data());
+    if(indexed) {
+        glBindVertexArray(page->vao);glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,page->ebo);
+        if(indexBytes==2) {
+            thread_local std::vector<std::uint16_t> shortIndices;shortIndices.clear();shortIndices.reserve(indices.size());
+            for(auto i:indices){if(i>65535)throw std::logic_error("16-bit terrain index overflow");shortIndices.push_back(std::uint16_t(i));}
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,first*2*indexBytes,indices.size()*indexBytes,shortIndices.data());
+            if(shortIndices.capacity()>512U*1024U/2)std::vector<std::uint16_t>().swap(shortIndices);
+        } else glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,first*2*indexBytes,indices.size()*indexBytes,indices.data());
+        glBindVertexArray(0);
+    }
+    count=GLsizei(indices.size());unique=GLsizei(vertices->size());
+    if(expanded.capacity()>2U*1024U*1024U/sizeof(PackedTerrainVertex))std::vector<PackedTerrainVertex>().swap(expanded);
 }
 
 void World::uploadMeshResult(const MeshOutput& result) {
+    ++visibilityRevision_;
     Chunk* chunk = findChunk(result.x, result.z);
     if (!chunk)
         return;
     const auto uploadStart = std::chrono::steady_clock::now();
+    // Production workers supply packed buffers. Synchronous smoke/edit fixtures
+    // reuse a main-thread conversion buffer and keep their reference geometry.
+    thread_local MeshOutput converted;
+    const MeshOutput* gpu=&result;
+    if((result.packedOpaque.empty() && !result.opaque.empty()) ||
+       (result.packedWater.empty() && !result.water.empty())) {
+        converted.packedOpaque.clear();converted.packedWater.clear();
+        TerrainPacking::indexQuads(result.opaque,converted.packedOpaque,converted.opaqueIndices);
+        TerrainPacking::indexQuads(result.water,converted.packedWater,converted.waterIndices);
+        gpu=&converted;
+    }
     uploadedVertexCount_ -= static_cast<std::size_t>(
         chunk->opaqueVertexCount + chunk->waterVertexCount);
-    uploadOpaqueMesh(*chunk, result.opaque);
-    uploadMesh(chunk->waterVao, chunk->waterVbo, chunk->waterVertexCount,
-               chunk->waterBufferCapacity, result.water);
+    uploadSharedMesh(*chunk,gpu->packedOpaque,gpu->opaqueIndices,false);
+    uploadSharedMesh(*chunk,gpu->packedWater,gpu->waterIndices,true);
+    chunk->meshLod=result.lod;
     chunk->opaqueBounds = result.opaqueBounds;
     chunk->waterBounds = result.waterBounds;
-    uploadedVertexCount_ += result.opaque.size() + result.water.size();
+    uploadedVertexCount_ += gpu->opaqueIndices.size() + gpu->waterIndices.size();
     lastChunkRebuildMilliseconds_ = result.buildMilliseconds;
     lastMeshUploadMilliseconds_ = std::chrono::duration<float, std::milli>(
         std::chrono::steady_clock::now() - uploadStart).count();
+    converted.packedOpaque.clear();converted.packedWater.clear();converted.opaqueIndices.clear();converted.waterIndices.clear();
+    if(converted.opaqueIndices.capacity()>1024U*1024U/4)std::vector<std::uint32_t>().swap(converted.opaqueIndices);
+    if(converted.waterIndices.capacity()>512U*1024U/4)std::vector<std::uint32_t>().swap(converted.waterIndices);
+    if(converted.packedOpaque.capacity()>2U*1024U*1024U/sizeof(PackedTerrainVertex))
+        std::vector<PackedTerrainVertex>().swap(converted.packedOpaque);
+    if(converted.packedWater.capacity()>1024U*1024U/sizeof(PackedTerrainVertex))
+        std::vector<PackedTerrainVertex>().swap(converted.packedWater);
 }
 
 void World::uploadCompletedMeshes(int budget) {
@@ -4069,6 +4024,7 @@ void World::updateBlockEntities(float deltaTime) {
 
 
 void World::markDirty(int chunkX, int chunkZ, bool highPriority) {
+    ++visibilityRevision_;
     Chunk* chunk = findChunk(chunkX, chunkZ);
     if (!chunk) {
         return;
@@ -4145,6 +4101,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
     result.water.clear();
     result.x = chunkX;
     result.z = chunkZ;
+    result.lod=input.lod;
     result.revision = input.revision;
     result.identity = input.identity;
     result.epoch = input.epoch;
@@ -4259,6 +4216,7 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
                 const int worldX = chunkX * CHUNK_SIZE + localX;
                 const int worldZ = chunkZ * CHUNK_SIZE + localZ;
                 const Block block = meshBlock(worldX, y, worldZ);
+                if(TerrainLod::omitDecoration(block,input.lod))continue;
                 if (!isRenderable(block))
                     continue;
                 if (isPlant(block) || isWallAttachment(block)) {
@@ -4649,6 +4607,12 @@ void World::rebuildChunk(int chunkX, int chunkZ) {
 
 const World::VisibleChunks& World::collectVisibleChunks(
     const glm::mat4& viewProjection, const glm::vec3& cameraPosition) const {
+    if(visibleRevision_==visibilityRevision_ && visibleDistance_==renderDistance_ &&
+       visibleCenter_==streamCenter_ && visibleCamera_==cameraPosition &&
+       std::memcmp(&visibleViewProjection_,&viewProjection,sizeof(glm::mat4))==0)
+        return visibleChunks_;
+    visibleRevision_=visibilityRevision_;visibleDistance_=renderDistance_;
+    visibleCenter_=streamCenter_;visibleCamera_=cameraPosition;visibleViewProjection_=viewProjection;
     const auto planes = frustumPlanes(viewProjection);
     auto& visible = visibleChunks_;
     const auto reset = [](std::vector<const Chunk*>& list) {
@@ -4658,6 +4622,7 @@ const World::VisibleChunks& World::collectVisibleChunks(
     };
     reset(visible.opaque);
     reset(visible.water);
+    frustumCulledCount_=0;
     visible.traversed = visible.distanceAccepted = visible.legacyVisible = 0;
     for (const auto& entry : chunks_) {
         ++visible.traversed;
@@ -4667,10 +4632,12 @@ const World::VisibleChunks& World::collectVisibleChunks(
         if (dx * dx + dz * dz > renderDistance_ * renderDistance_) continue;
         ++visible.distanceAccepted;
         if ((!chunk.opaqueVertexCount && !chunk.waterVertexCount) ||
-            !chunkInFrustum(chunk, planes)) continue;
+            !chunkInFrustum(chunk, planes)) {if(chunk.opaqueVertexCount || chunk.waterVertexCount)++frustumCulledCount_;continue;}
         ++visible.legacyVisible;
-        if (chunk.opaqueVertexCount && meshInFrustum(chunk.opaqueBounds, planes))
-            visible.opaque.push_back(&chunk);
+        if (chunk.opaqueVertexCount) {
+            if(meshInFrustum(chunk.opaqueBounds,planes))visible.opaque.push_back(&chunk);
+            else ++frustumCulledCount_;
+        }
         // Preserve the original sort input, including off-screen mesh bounds.
         // Removing candidates before std::sort can reorder equal-distance ties.
         if (chunk.waterVertexCount) visible.water.push_back(&chunk);
@@ -4690,41 +4657,43 @@ const World::VisibleChunks& World::collectVisibleChunks(
 }
 
 void World::drawOpaque(const VisibleChunks& visible) const {
-    renderedChunkCount_ = 0;
-    opaqueSubmissionCount_ = 0;
-    const auto clearDrawList = [](auto& list) {
-        list.clear();
-        if (list.capacity() > 4096) {
-            using List = std::decay_t<decltype(list)>;
-            List().swap(list);
+    renderedVertexCount_=renderedTriangleCount_=0;renderedLodCounts_={};
+    renderedChunkCount_=opaqueSubmissionCount_=0;drawPages_.clear();++drawStamp_;
+    for(const Chunk* chunk:visible.opaque) {
+        auto* page=chunk->opaquePage.get();
+        assert(page && chunk->opaqueFirstVertex+chunk->opaqueUniqueVertices<=page->capacity);
+        if(page->drawStamp!=drawStamp_) {
+            page->drawStamp=drawStamp_;page->drawFirst.clear();page->drawCount.clear();page->drawOffsets.clear();page->drawBase.clear();drawPages_.push_back(page);
         }
-    };
-    clearDrawList(drawPages_);
-    for (const auto& page : terrainPages_) {
-        clearDrawList(page->drawFirst);
-        clearDrawList(page->drawCount);
+        page->drawFirst.push_back(GLint(chunk->opaqueFirstVertex));page->drawCount.push_back(chunk->opaqueVertexCount);
+        page->drawOffsets.push_back(reinterpret_cast<const void*>(chunk->opaqueFirstVertex*2*page->indexBytes));page->drawBase.push_back(GLint(chunk->opaqueFirstVertex));
+        renderedVertexCount_+=chunk->opaqueUniqueVertices;renderedTriangleCount_+=chunk->opaqueVertexCount/3;
+        ++renderedLodCounts_[chunk->meshLod];++renderedChunkCount_;
     }
-    for (const Chunk* chunk : visible.opaque) {
-        auto* page = chunk->opaquePage.get();
-        assert(page && chunk->opaqueFirstVertex + chunk->opaqueVertexCount <= page->capacity);
-        if (page->drawFirst.empty()) drawPages_.push_back(page);
-        page->drawFirst.push_back(static_cast<GLint>(chunk->opaqueFirstVertex));
-        page->drawCount.push_back(chunk->opaqueVertexCount);
-        ++renderedChunkCount_;
-    }
-    for (const auto* page : drawPages_) {
+    for(const auto* page:drawPages_) {
         glBindVertexArray(page->vao);
-        glMultiDrawArrays(GL_TRIANGLES, page->drawFirst.data(), page->drawCount.data(),
-                          static_cast<GLsizei>(page->drawCount.size()));
+        if(page->indexBytes)glMultiDrawElementsBaseVertex(GL_TRIANGLES,page->drawCount.data(),page->indexBytes==2?GL_UNSIGNED_SHORT:GL_UNSIGNED_INT,
+            page->drawOffsets.data(),GLsizei(page->drawCount.size()),page->drawBase.data());
+        else glMultiDrawArrays(GL_TRIANGLES,page->drawFirst.data(),page->drawCount.data(),GLsizei(page->drawCount.size()));
         ++opaqueSubmissionCount_;
     }
-    // The paired transparent pass restores VAO 0 once after both terrain passes.
 }
-
 void World::drawWater(const VisibleChunks& visible) const {
-    for (const Chunk* chunk : visible.water) {
-        glBindVertexArray(chunk->waterVao);
-        glDrawArrays(GL_TRIANGLES, 0, chunk->waterVertexCount);
+    waterSubmissionCount_=0;
+    thread_local std::vector<GLsizei> counts;thread_local std::vector<GLint> bases;
+    thread_local std::vector<const void*> offsets;
+    for(std::size_t i=0;i<visible.water.size();) {
+        const auto* page=visible.water[i]->waterPage.get();counts.clear();bases.clear();offsets.clear();
+        // Consecutive runs only: the original back-to-front chunk sequence is exact.
+        do {
+            const auto* chunk=visible.water[i++];counts.push_back(chunk->waterVertexCount);bases.push_back(GLint(chunk->waterFirstVertex));
+            offsets.push_back(reinterpret_cast<const void*>(chunk->waterFirstVertex*2*page->indexBytes));
+            renderedVertexCount_+=chunk->waterUniqueVertices;renderedTriangleCount_+=chunk->waterVertexCount/3;
+        } while(waterBatching_ && i<visible.water.size() && visible.water[i]->waterPage.get()==page);
+        glBindVertexArray(page->vao);
+        if(page->indexBytes)glMultiDrawElementsBaseVertex(GL_TRIANGLES,counts.data(),page->indexBytes==2?GL_UNSIGNED_SHORT:GL_UNSIGNED_INT,offsets.data(),GLsizei(counts.size()),bases.data());
+        else glMultiDrawArrays(GL_TRIANGLES,bases.data(),counts.data(),GLsizei(counts.size()));
+        ++waterSubmissionCount_;
     }
     glBindVertexArray(0);
 }

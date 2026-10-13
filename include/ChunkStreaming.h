@@ -10,6 +10,7 @@ struct ChunkStreamingDiagnostics {
     int generationQueued=0,generationReady=0,generationActive=0,meshQueued=0,meshReady=0,meshActive=0;
     unsigned generationLimit=1,meshLimit=1;
     float generatedPerSecond=0,meshedPerSecond=0;
+    float generationMilliseconds=0;
     float integrateMilliseconds=0,lightingMilliseconds=0,snapshotMilliseconds=0,uploadMilliseconds=0;
     float unloadMilliseconds=0,retireMilliseconds=0;
     int retiredChunks=0,lightingQueued=0;

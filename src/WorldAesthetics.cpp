@@ -128,13 +128,28 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
 }
 
 World::TerrainMemory World::terrainMemory() const {
-    TerrainMemory result;
-    for(const auto& page:terrainPages_) result.capacityBytes+=page->capacity*sizeof(VoxelVertex);
-    for(const auto& entry:chunks_) {
-        const auto& c=*entry.second;
-        result.vertices+=c.opaqueVertexCount+c.waterVertexCount;
-        result.capacityBytes+=c.waterBufferCapacity;
+    TerrainMemory result;result.pages=terrainPages_.size();
+    // Soft residency targets: visible meshes are never evicted to meet a budget.
+    result.budgetBytes=terrainMemoryTarget();
+    for(const auto& page:terrainPages_) {
+        result.capacityBytes+=page->capacity*page->byteStride();
+        result.vertexCapacityBytes+=page->capacity*sizeof(PackedTerrainVertex);
+        result.indexCapacityBytes+=page->capacity*2*page->indexBytes;
+        result.reservedBytes+=page->allocated*page->byteStride();
+        for(const auto& range:page->freeRanges){const auto bytes=range.count*page->byteStride();result.freeBytes+=bytes;result.largestFreeBytes=std::max(result.largestFreeBytes,bytes);}
     }
-    result.usedBytes=result.vertices*sizeof(VoxelVertex);
+    for(const auto& entry:chunks_) {
+        const auto& c=*entry.second;result.vertices+=c.opaqueVertexCount+c.waterVertexCount;
+        result.uniqueVertices+=c.opaqueUniqueVertices+c.waterUniqueVertices;
+        result.usedBytes+=std::size_t(c.opaqueUniqueVertices+c.waterUniqueVertices)*sizeof(PackedTerrainVertex);
+        if(c.opaquePage && c.opaquePage->indexBytes){result.indexCount+=c.opaqueVertexCount;result.usedBytes+=std::size_t(c.opaqueVertexCount)*c.opaquePage->indexBytes;}
+        if(c.waterPage && c.waterPage->indexBytes){result.indexCount+=c.waterVertexCount;result.usedBytes+=std::size_t(c.waterVertexCount)*c.waterPage->indexBytes;}
+    }
+    for(const auto& mesh:retiredTerrain_) {
+        if(mesh.page)result.retiredBytes+=mesh.count*mesh.page->byteStride();
+        if(mesh.waterPage)result.retiredBytes+=mesh.waterCount*mesh.waterPage->byteStride();
+    }
+    result.vertexBytes=result.uniqueVertices*sizeof(PackedTerrainVertex);
+    result.indexBytes=result.usedBytes-result.vertexBytes;
     return result;
 }

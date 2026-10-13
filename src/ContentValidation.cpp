@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "Renderer.h"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
 #include "InventoryTooltip.h"
@@ -93,6 +94,7 @@ void Game::updateCraftingPreview(double now) {
 // Explicit developer smoke mode only; normal/demo startup never writes test data.
 void Game::runCraftingContentSmokeTest() {
     std::string report;
+    if(!renderer_->validateTerrainPacking()) throw std::runtime_error("Packed terrain GPU pixels differ");
     if (!Inventory::runEquipmentSelfTest(report)) throw std::runtime_error(report);
     std::cout << report << std::endl;
     if (!Inventory::runCraftingSelfTest(report)) throw std::runtime_error(report);

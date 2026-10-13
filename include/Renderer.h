@@ -17,6 +17,7 @@
 #include <vector>
 
 class World;
+class TerrainOcclusion;
 const std::array<std::uint8_t, 7>& uiGlyph(char character);
 struct FurnaceData;
 struct ChestData;
@@ -31,6 +32,11 @@ public:
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
 
+    bool validateTerrainPacking() const;
+    unsigned occlusionCulledCount() const;
+    unsigned occlusionQueryCount() const;
+    float terrainRenderMilliseconds() const {return terrainRenderMilliseconds_;}
+    void setOcclusionMode(int mode) {occlusionMode_=mode;}
     void setWeather(float rain,float storm,float flash,bool fog,float wetness) {
         weather_={rain,storm,flash,fog ? 1.0f : 0.0f}; weatherWetness_=wetness;
     }
@@ -147,6 +153,9 @@ public:
     int visibleEntityCount() const { return visibleEntityCount_; }
 
 private:
+    std::unique_ptr<TerrainOcclusion> occlusion_;
+    int occlusionMode_=0;
+    mutable float terrainRenderMilliseconds_=0;
     struct TextGeometryCache;
     std::unique_ptr<TextGeometryCache> textGeometry_;
     struct ProgramUniforms {

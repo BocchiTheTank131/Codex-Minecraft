@@ -31,6 +31,9 @@ bool GameSettings::bindControl(ControlAction action, int key) {
 }
 
 void GameSettings::clamp() {
+    terrainLod=std::clamp(terrainLod,0,3);
+    occlusionCulling=std::clamp(occlusionCulling,0,2);
+    terrainMemoryBudget=std::clamp(terrainMemoryBudget,0,3);
     chunkStreamingQuality=std::clamp(chunkStreamingQuality,0,3);
     weatherQuality = std::clamp(weatherQuality,0,3);
     precipitationDensity = std::isfinite(precipitationDensity) ? std::clamp(precipitationDensity,0.0f,1.0f) : 1.0f;
@@ -122,7 +125,10 @@ bool GameSettings::load(const std::string& path) {
         const std::string key = line.substr(0, split);
         const std::string value = line.substr(split + 1);
         try {
-            if (key == "weather_cycle") weatherCycle = std::stoi(value)!=0;
+            if(key=="terrain_lod") terrainLod=std::stoi(value);
+            else if(key=="occlusion_culling") occlusionCulling=std::stoi(value);
+            else if(key=="terrain_memory_budget") terrainMemoryBudget=std::stoi(value);
+            else if (key == "weather_cycle") weatherCycle = std::stoi(value)!=0;
             else if (key == "chunk_streaming_quality") chunkStreamingQuality = std::stoi(value);
             else if (key == "weather_quality") weatherQuality = std::stoi(value);
             else if (key == "precipitation_density") precipitationDensity = std::stof(value);
@@ -185,7 +191,10 @@ bool GameSettings::load(const std::string& path) {
 
 bool GameSettings::save(const std::string& path) const {
     return SaveFile::write(path, std::ios::out, [&](std::ofstream& output) {
-    output << "weather_cycle=" << weatherCycle << '\n'
+    output << "terrain_lod=" << terrainLod << '\n'
+           << "occlusion_culling=" << occlusionCulling << '\n'
+           << "terrain_memory_budget=" << terrainMemoryBudget << '\n'
+           << "weather_cycle=" << weatherCycle << '\n'
            << "chunk_streaming_quality=" << chunkStreamingQuality << '\n'
            << "weather_quality=" << weatherQuality << '\n'
            << "precipitation_density=" << precipitationDensity << '\n'

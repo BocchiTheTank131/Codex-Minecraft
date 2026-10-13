@@ -200,6 +200,12 @@ private:
     void prepareRenderTarget(int width, int height);
     void resolveRenderTarget(int width, int height);
     void destroyRenderTarget();
+    std::string optimizationBenchmark_,optimizationScene_="all";
+    int optimizationDistance_=8,optimizationLod_=0,optimizationOcclusion_=0;
+    void runOptimizationBenchmark();
+    bool optimizationGpuQueryActive_=false;
+    std::string optimizationSmoke_;
+    void runOptimizationSmoke();
     std::string buildDebugText() const;
     bool playerIsWalking() const;
 

@@ -232,6 +232,10 @@ bool Game::initialize(int argc, char** argv) {
             if (!world_->runBiomeAudit(biomeAudit_, report)) throw std::runtime_error(report);
             std::cout << report << std::endl;
             glfwSetWindowShouldClose(window_, true);
+        } else if(!optimizationSmoke_.empty()) {
+            runOptimizationSmoke();glfwSetWindowShouldClose(window_,true);
+        } else if(!optimizationBenchmark_.empty()) {
+            runOptimizationBenchmark();glfwSetWindowShouldClose(window_,true);
         } else if (!streamingBenchmark_.empty()) {
             runStreamingBenchmark();
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
@@ -387,6 +391,18 @@ void Game::parseArguments(int argc, char** argv) {
                 weatherSmoke_=true; saveOnExit_=false;
             } else if (argument.rfind("--weather-benchmark=",0)==0) {
                 weatherSmoke_=true; saveOnExit_=false; weatherBenchmark_=argument.substr(20);
+            } else if(argument.rfind("--optimization-smoke=",0)==0) {
+                optimizationSmoke_=argument.substr(21);saveOnExit_=false;
+            } else if(argument.rfind("--optimization-benchmark=",0)==0) {
+                optimizationBenchmark_=argument.substr(25);saveOnExit_=false;
+            } else if(argument.rfind("--optimization-scene=",0)==0) {
+                optimizationScene_=argument.substr(21);
+            } else if(argument.rfind("--optimization-rd=",0)==0) {
+                optimizationDistance_=std::clamp(std::stoi(argument.substr(18)),2,64);
+            } else if(argument.rfind("--optimization-lod=",0)==0) {
+                optimizationLod_=std::clamp(std::stoi(argument.substr(19)),0,3);
+            } else if(argument.rfind("--optimization-occlusion=",0)==0) {
+                optimizationOcclusion_=std::clamp(std::stoi(argument.substr(25)),0,2);
             } else if (argument.rfind("--streaming-benchmark=",0)==0) {
                 weatherSmoke_=true; saveOnExit_=false; streamingBenchmark_=argument.substr(22);
             } else if (argument.rfind("--streaming-quality=",0)==0) {
@@ -501,6 +517,8 @@ void Game::createPresentationSystems() {
 void Game::createWorldAndSystems() {
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
+    world_->setTerrainLod(settings_.terrainLod);
+    world_->setTerrainMemoryBudget(settings_.terrainMemoryBudget);
     world_->setSimulationDistance(settings_.simulationDistance);
     glm::vec3 spawnPosition(0.5f, 0.0f, 0.5f);
     const bool loadedWorld = Persistence::enabled() && !smokeTest_.worldgenEnabled &&
@@ -817,6 +835,8 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
 
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
+    world_->setTerrainLod(settings_.terrainLod);
+    world_->setTerrainMemoryBudget(settings_.terrainMemoryBudget);
     world_->setSimulationDistance(settings_.simulationDistance);
     const glm::vec3 spawnPosition = world_->findSafeSpawnNear(0, 0);
     world_->generate(settings_.renderDistance, spawnPosition);
@@ -1345,6 +1365,17 @@ void Game::updatePauseInterface() {
                                           : (settings_.frameLimit == 60 ? 120 : 0));
         settings_.graphicsPreset = GraphicsPreset::Custom;
         break;
+    case 36:
+        settings_.terrainLod=(settings_.terrainLod+1)%4;
+        if(world_)world_->setTerrainLod(settings_.terrainLod);
+        break;
+    case 37:
+        settings_.occlusionCulling=(settings_.occlusionCulling+1)%3;
+        break;
+    case 38:
+        settings_.terrainMemoryBudget=(settings_.terrainMemoryBudget+1)%4;
+        if(world_)world_->setTerrainMemoryBudget(settings_.terrainMemoryBudget);
+        break;
     case 35:
         settings_.chunkStreamingQuality=(settings_.chunkStreamingQuality+1)%4;
         if(world_) world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
@@ -1390,7 +1421,7 @@ void Game::updateSimulation(float deltaTime) {
     world_->updateFluids(deltaTime);
     world_->updateBlockEntities(deltaTime);
     const bool playerInputEnabled =
-        ui_.state() == GameState::Playing && input_.cursorCaptured() && weatherBenchmark_.empty();
+        ui_.state() == GameState::Playing && input_.cursorCaptured() && weatherBenchmark_.empty() && optimizationBenchmark_.empty();
     const bool wasDead = player_->isDead();
     const bool wasBelowWorld = player_->position().y < world_->minimumY() - 24.0f;
     updateEquipmentInput(playerInputEnabled);
@@ -2001,6 +2032,7 @@ void Game::renderFrame(float deltaTime) {
         settings_.lightningEffects && settings_.weatherQuality > 0 ? weather_->flash()*settings_.lightningFlash : 0,
         settings_.weatherFog && settings_.weatherQuality >= 2, weather_->wetness());
     renderer_->renderSky(view, projection, timing_.worldTime);
+    renderer_->setOcclusionMode(settings_.occlusionCulling);
     renderer_->renderWorld(*world_,
                            view,
                            projection,
@@ -2122,6 +2154,8 @@ void Game::renderFrame(float deltaTime) {
         }
     }
     timing_.streamingWorkMilliseconds = static_cast<float>((glfwGetTime()-timing_.previousFrame)*1000.0);
+    // Fixture GPU timing ends before presentation/compositor waits.
+    if(optimizationGpuQueryActive_){glEndQuery(GL_TIME_ELAPSED);optimizationGpuQueryActive_=false;}
     glfwSwapBuffers(window_);
 
     if (smokeTest_.uiEnabled && glfwGetTime() - smokeTest_.startTime > 22.0) {
@@ -2232,6 +2266,7 @@ std::string Game::buildDebugText() const {
         static_cast<int>(std::floor(position.y)), showWorldgenDebug_);
     const SurvivalWorld::MobDiagnostics mobs = survival_->diagnostics(position);
     const auto streaming=world_->streamingDiagnostics();
+    const auto memory=world_->terrainMemory();const auto lod=world_->renderedLodCounts();
     text << "BIOME " << generation.biome << '\n'
          << "FACING " << facingDirection(direction) << '\n'
          << "MODE " << gameModeName(gameMode()) << '\n';
@@ -2311,8 +2346,12 @@ std::string Game::buildDebugText() const {
          << "GEN QUEUE " << streaming.generationQueued << " READY " << streaming.generationReady << '\n'
          << "STREAM LIGHT " << streaming.lightingMilliseconds << " MS UPLOADS " << streaming.uploadMilliseconds << " MS\n"
          << "LIGHT QUEUE " << streaming.lightingQueued << " RETIRED " << streaming.retiredChunks << '\n'
-         << "VERTICES " << world_->uploadedVertexCount() << "  TRIANGLES "
-         << world_->uploadedVertexCount() / 3 << "\n"
+         << "LOD " << lod[0] << "/" << lod[1] << "/" << lod[2] << "/" << lod[3] << "\n"
+         << "CULLED FRUSTUM " << world_->frustumCulledCount() << " OCCLUSION " << renderer_->occlusionCulledCount() << " QUERIES " << renderer_->occlusionQueryCount() << "\n"
+         << "DRAW VERTICES " << world_->renderedVertexCount() << " TRIANGLES " << world_->renderedTriangleCount() << " CALLS " << world_->opaqueSubmissionCount()+world_->waterSubmissionCount() << "\n"
+         << "TERRAIN GPU " << memory.usedBytes/1048576 << " USED / " << memory.capacityBytes/1048576 << " ALLOC MB TARGET " << memory.budgetBytes/1048576 << "\n"
+         << "FREE " << memory.freeBytes/1048576 << " MB LARGEST " << memory.largestFreeBytes/1048576 << " RETIRED " << memory.retiredBytes/1048576 << " MB\n"
+         << "RENDER CPU " << renderer_->terrainRenderMilliseconds() << " MS GEN " << streaming.generationMilliseconds << " MS\n"
          << "BUILD " << world_->lastChunkRebuildMilliseconds() << " MS  UPLOAD "
          << world_->lastMeshUploadMilliseconds() << " MS\n"
          << "EDIT "
@@ -2673,6 +2712,7 @@ void Game::runSurvivalSmokeTest() {
     testSettings.hostileMobVolume = 0.0f;
     testSettings.brightness = .75f;
     testSettings.chunkStreamingQuality=2;
+    testSettings.terrainLod=3;testSettings.occlusionCulling=2;testSettings.terrainMemoryBudget=1;
     testSettings.weatherCycle=false; testSettings.weatherQuality=1;
     testSettings.precipitationDensity=.37f; testSettings.lightningFlash=.45f;
     testSettings.snowAccumulation=false; testSettings.lightningEffects=false;
@@ -2691,6 +2731,7 @@ void Game::runSurvivalSmokeTest() {
                      reloadedSettings.hostileMobVolume == 0.0f &&
                      reloadedSettings.brightness == .75f &&
                      reloadedSettings.chunkStreamingQuality==2 &&
+                     reloadedSettings.terrainLod==3 && reloadedSettings.occlusionCulling==2 && reloadedSettings.terrainMemoryBudget==1 &&
                      !reloadedSettings.weatherCycle && reloadedSettings.weatherQuality==1 &&
                      reloadedSettings.precipitationDensity==.37f && reloadedSettings.lightningFlash==.45f &&
                      !reloadedSettings.snowAccumulation && !reloadedSettings.lightningEffects &&

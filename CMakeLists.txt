@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.13.0 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.13.1 LANGUAGES C CXX)
 set(VOXELFRONTIER_VERSION_SUFFIX "")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
@@ -70,6 +70,12 @@ add_executable(VoxelFrontier
     src/Renderer.cpp
     src/Settings.cpp
     src/Sound.cpp
+    src/OptimizationBenchmark.cpp
+    src/OptimizationValidation.cpp
+    src/TerrainLod.cpp
+    src/TerrainOcclusion.cpp
+    src/TerrainVertex.cpp
+    src/TerrainValidation.cpp
     src/Equipment.cpp
     src/EquipmentValidation.cpp
     src/EquipmentPreview.cpp
@@ -102,6 +108,8 @@ add_executable(VoxelFrontier
     src/WorldGeographyValidation.cpp
     src/WorldValidation.cpp
 )
+target_compile_definitions(VoxelFrontier PRIVATE VOXEL_RENDER_OPTIMIZATION)
+
 target_include_directories(VoxelFrontier PRIVATE include ${miniaudio_SOURCE_DIR})
 target_compile_definitions(VoxelFrontier PRIVATE VOXELFRONTIER_VERSION="${VOXELFRONTIER_DISPLAY_VERSION}")
 target_link_libraries(VoxelFrontier PRIVATE glfw glad glm::glm OpenGL::GL Threads::Threads)

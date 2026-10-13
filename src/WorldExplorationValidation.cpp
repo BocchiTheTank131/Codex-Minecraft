@@ -96,7 +96,19 @@ bool World::runStreamingSelfTest(std::string& report) {
         require(std::size_t(chunk->opaqueVertexCount)==expected.opaque.size(),"Stale opaque upload");
         std::vector<VoxelVertex> actual(expected.opaque.size());
         glBindBuffer(GL_ARRAY_BUFFER,chunk->opaquePage->vbo);
-        glGetBufferSubData(GL_ARRAY_BUFFER,chunk->opaqueFirstVertex*sizeof(VoxelVertex),actual.size()*sizeof(VoxelVertex),actual.data());
+        std::vector<PackedTerrainVertex> packed(chunk->opaqueUniqueVertices);
+        glGetBufferSubData(GL_ARRAY_BUFFER,chunk->opaqueFirstVertex*sizeof(PackedTerrainVertex),packed.size()*sizeof(PackedTerrainVertex),packed.data());
+        std::vector<std::uint32_t> indices(actual.size());
+        if(chunk->opaquePage->indexBytes) {
+            glBindBuffer(GL_COPY_READ_BUFFER,chunk->opaquePage->ebo);
+            if(chunk->opaquePage->indexBytes==2) {
+                std::vector<std::uint16_t> narrow(actual.size());
+                glGetBufferSubData(GL_COPY_READ_BUFFER,chunk->opaqueFirstVertex*4,narrow.size()*2,narrow.data());
+                for(std::size_t i=0;i<indices.size();++i)indices[i]=narrow[i];
+            } else glGetBufferSubData(GL_COPY_READ_BUFFER,chunk->opaqueFirstVertex*8,indices.size()*4,indices.data());
+            glBindBuffer(GL_COPY_READ_BUFFER,0);
+        } else for(std::size_t i=0;i<indices.size();++i)indices[i]=std::uint32_t(i);
+        for(std::size_t i=0;i<actual.size();++i){require(indices[i]<packed.size(),"GPU terrain index range");actual[i]=TerrainPacking::unpack(packed[indices[i]]);}
         require(hashBytes(actual.data(),actual.size()*sizeof(VoxelVertex))==hashBytes(expected.opaque.data(),expected.opaque.size()*sizeof(VoxelVertex)),"Stale GPU attributes or upload order");
         require(glGetError()==GL_NO_ERROR,"Streaming OpenGL validation error");
         report="Streaming passed: worker plans, 8 parallel byte-identical meshes, negative coordinates, teleports, epoch/revision cancellation, bounded queues and exact GPU upload.";

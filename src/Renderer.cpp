@@ -6,6 +6,7 @@
 #include "SpriteManifest.h"
 
 #include "World.h"
+#include "TerrainOcclusion.h"
 
 #include <glm/gtc/constants.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
@@ -13,6 +14,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <array>
 #include <cctype>
 #include <cmath>
@@ -162,10 +164,8 @@ constexpr const char* WorldVertexShader = R"GLSL(
 #version 330 core
 layout(location=0) in vec3 aPosition;
 layout(location=1) in vec2 aUv;
-layout(location=2) in vec3 aNormal;
-layout(location=3) in float aSunLight;
-layout(location=4) in float aBlockLight;
-layout(location=5) in float aAo;
+layout(location=2) in uint aShade;
+uniform uint uSunBits[64];
 layout(location=6) in uint aMaterial;
 uniform mat4 uView;
 uniform mat4 uProjection;
@@ -181,8 +181,14 @@ out vec3 vClimateTint;
 void main() {
     vec4 viewPosition = uView * vec4(aPosition, 1.0);
     gl_Position = uProjection * viewPosition;
-    vUv = aUv; vNormal = aNormal;
-    vSunLight = aSunLight; vBlockLight = aBlockLight; vAo = aAo;
+    float d=uintBitsToFloat(0x3f3504f3u);
+    vec3 normals[10]=vec3[10](vec3(1,0,0),vec3(-1,0,0),vec3(0,1,0),vec3(0,-1,0),vec3(0,0,1),vec3(0,0,-1),
+        vec3(-d,0,d),vec3(d,0,-d),vec3(d,0,d),vec3(-d,0,-d));
+    vUv=aUv;vNormal=normals[aShade&15u];
+    for(uint axis=0u;axis<3u;++axis) if((aShade&(1u<<(23u+axis)))!=0u) vNormal[axis]=uintBitsToFloat(0x80000000u);
+    vSunLight=uintBitsToFloat(uSunBits[(aShade>>4u)&63u]);
+    vBlockLight=uintBitsToFloat(uSunBits[(aShade>>10u)&15u]);
+    vAo=float((aShade>>14u)&127u)/64.0;
     vDistance = length(viewPosition.xyz);
     vWorldPosition = aPosition;
     uint tile = aMaterial & 255u;
@@ -782,7 +788,11 @@ Renderer::Renderer() {
         glDeleteShader(f);
         return p;
     };
+    occlusion_=std::make_unique<TerrainOcclusion>();
     worldProgram_ = makeProgram(WorldVertexShader, WorldFragmentShader);
+    glUseProgram(worldProgram_);
+    glUniform1uiv(glGetUniformLocation(worldProgram_,"uSunBits"),64,TerrainPacking::sunBits().data());
+    glUseProgram(0);
     skyProgram_ = makeProgram(SkyVertexShader, SkyFragmentShader);
     uiProgram_ = makeProgram(UiVertexShader, UiFragmentShader);
     panoramaProgram_ = makeProgram(UiVertexShader, PanoramaFragmentShader);
@@ -1443,6 +1453,7 @@ void Renderer::renderWorld(const World& world,
                            bool fullbright,
                            bool underwater,
                            bool spectatorInsideBlock) const {
+    const auto terrainStart=std::chrono::steady_clock::now();
     const CelestialState state = celestial(worldTime);
     const glm::mat4 vp = projection * view;
     glUseProgram(worldProgram_);
@@ -1476,7 +1487,7 @@ void Renderer::renderWorld(const World& world,
     glBindTexture(GL_TEXTURE_2D, atlasTexture_);
     glUniform1i(worldUniforms_.waterPass, GL_FALSE);
     const auto& visible = world.collectVisibleChunks(vp, camera);
-    world.drawOpaque(visible);
+    occlusion_->draw(world,visible,view,projection,camera,worldProgram_,spectatorInsideBlock?0:occlusionMode_);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     if (!visible.water.empty()) {
         glEnable(GL_BLEND);
@@ -1486,6 +1497,7 @@ void Renderer::renderWorld(const World& world,
     world.drawWater(visible);
     glDepthMask(GL_TRUE);
     glDisable(GL_BLEND);
+    terrainRenderMilliseconds_=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-terrainStart).count();
 }
 
 void Renderer::spawnBreakParticles(const glm::ivec3& blockPosition, Block block) {
@@ -1887,15 +1899,17 @@ void Renderer::renderHud(int width,
                 ++current;
         }
         maxChars = std::max(maxChars, current);
+        const float debugScale=std::clamp(std::min((height-130.f)/(lines*9.f),
+            (width-28.f)/std::max(1.f,maxChars*6.f)),1.f,2.f);
         addRect(vertices,
                 8,
                 8,
-                static_cast<float>(maxChars * 12 + 12),
-                static_cast<float>(lines * 18 + 10),
+                maxChars*6.f*debugScale+12,
+                lines*9.f*debugScale+10,
                 {0, 0, 0, 0.62f},
                 width,
                 height);
-        drawText(debugText, 14, 14, 2.0f, {0.92f, 0.96f, 1.0f, 1});
+        drawText(debugText, 14, 14, debugScale, {0.92f, 0.96f, 1.0f, 1});
     }
     if (!craftingText.empty()) {
         const float panelW = std::min(680.0f, static_cast<float>(width) - 32.0f),
@@ -2521,9 +2535,9 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
     } else {
         for (int index=0; index<4; ++index)
             menuButton(vertices,MenuLayout::tab(index,width,height),categories[index],index==0 || hovered==30+index,width,height);
-        const std::array<std::string,13> labels{"RENDER DISTANCE","SIMULATION DISTANCE","FOV","BRIGHTNESS",
-            "ANTI ALIASING","FULLSCREEN","VSYNC","FPS LIMIT","GRAPHICS PRESET","ENTITY DISTANCE","SHOW FPS","SHOW COORDINATES","CHUNK STREAMING"};
-        const std::array<std::string,13> values{
+        const std::array<std::string,16> labels{"RENDER DISTANCE","SIMULATION DISTANCE","FOV","BRIGHTNESS",
+            "ANTI ALIASING","FULLSCREEN","VSYNC","FPS LIMIT","GRAPHICS PRESET","ENTITY DISTANCE","SHOW FPS","SHOW COORDINATES","CHUNK STREAMING","TERRAIN LOD","OCCLUSION","TERRAIN MEMORY TARGET"};
+        const std::array<std::string,16> values{
             std::to_string(settings.renderDistance),std::to_string(settings.simulationDistance),
             std::to_string(static_cast<int>(std::round(settings.fov))),
             std::to_string(static_cast<int>(std::round(settings.brightness*100)))+"%",
@@ -2532,19 +2546,22 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
             settings.frameLimit ? std::to_string(settings.frameLimit) : "UNLIMITED",
             settings.graphicsPreset==GraphicsPreset::Low ? "LOW" : settings.graphicsPreset==GraphicsPreset::Medium ? "MEDIUM" : settings.graphicsPreset==GraphicsPreset::High ? "HIGH" : "CUSTOM",
             std::to_string(settings.entityDistance),settings.showFps ? "ON" : "OFF",settings.showCoordinates ? "ON" : "OFF",
-            std::array<const char*,4>{"AUTO","LOW","BALANCED","HIGH"}[settings.chunkStreamingQuality]};
-        const std::array<float,13> positions{(settings.renderDistance-2)/62.0f,(settings.simulationDistance-2)/30.0f,
+            std::array<const char*,4>{"AUTO","LOW","BALANCED","HIGH"}[settings.chunkStreamingQuality],
+            std::array<const char*,4>{"OFF","LOW","MEDIUM","HIGH"}[settings.terrainLod],
+            std::array<const char*,3>{"OFF","AUTO","ON"}[settings.occlusionCulling],
+            std::array<const char*,4>{"AUTO","LOW","BALANCED","HIGH"}[settings.terrainMemoryBudget]};
+        const std::array<float,16> positions{(settings.renderDistance-2)/62.0f,(settings.simulationDistance-2)/30.0f,
             (settings.fov-55)/50.0f,settings.brightness,0,0,0,0,0,(settings.entityDistance-2)/62.0f,0,0};
         for (int index=0; index<int(MenuLayout::VideoActions.size()); ++index) {
             const auto r=MenuLayout::videoRow(index,width,height);
             addRect(vertices,r.x,r.y,r.width,r.height,hovered==MenuLayout::VideoActions[index] ? glm::vec4(.27f,.32f,.25f,1) : glm::vec4(.15f,.17f,.19f,1),width,height);
-            menuText(vertices,labels[index],r.x+12,r.y+11,1.35f,{1,1,1,1},width,height);
+            menuText(vertices,labels[index],r.x+12,r.y+8,1.25f,{1,1,1,1},width,height);
             if (index<4 || index==9) {
                 const float x=MenuLayout::panel(width,height).x+340;
                 const float normalized=std::clamp(positions[index],0.0f,1.0f);
-                addRect(vertices,x,r.y+15,170,5,{.07f,.08f,.09f,1},width,height);
-                addRect(vertices,x,r.y+15,170*normalized,5,{.48f,.70f,.34f,1},width,height);
-                addRect(vertices,x+170*normalized-4,r.y+8,8,19,{.88f,.92f,.78f,1},width,height);
+                addRect(vertices,x,r.y+12,170,5,{.07f,.08f,.09f,1},width,height);
+                addRect(vertices,x,r.y+12,170*normalized,5,{.48f,.70f,.34f,1},width,height);
+                addRect(vertices,x+170*normalized-4,r.y+5,8,18,{.88f,.92f,.78f,1},width,height);
                 menuText(vertices,values[index],x+185,r.y+11,1.2f,{1,.93f,.70f,1},width,height);
             } else menuText(vertices,values[index],r.x+350,r.y+11,1.3f,{.85f,.93f,.78f,1},width,height);
         }
@@ -2726,3 +2743,8 @@ void Renderer::renderWeatherSettings(int width,int height,int hovered,const Game
     menuButton(vertices,MenuLayout::back(width,height),"BACK",hovered==58,width,height);
     drawMenuVertices(vertices.data(),vertices.size());
 }
+
+bool Renderer::validateTerrainPacking() const {return validateTerrainPackingGpu(WorldVertexShader,WorldFragmentShader,atlasTexture_);}
+
+unsigned Renderer::occlusionCulledCount() const {return occlusion_->diagnostics().culled;}
+unsigned Renderer::occlusionQueryCount() const {return occlusion_->diagnostics().queries;}

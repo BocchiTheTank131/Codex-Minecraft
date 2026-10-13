@@ -204,6 +204,15 @@ and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in th
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
 
+## v2.13.1 - The Optimization Update
+
+- Lossless 28-byte terrain vertices and exact quad indexing: approximately 57% less live terrain/upload data, without changing full-detail geometry, UVs, lighting or AO. Shared opaque/water VBO+EBO pages retain the original transparent draw sequence.
+- Reused stationary visibility lists, touched-page batching, smaller allocation slack, bounded idle-page reserves and paired GPU retirement.
+- Video options: Terrain LOD Off/Low/Medium/High, Occlusion Off/Auto/On, Terrain Memory Target Auto/Low/Balanced/High. LOD and occlusion default Off. Current LOD reduces distant tiny decorations only; full terrain/canopies/structures/transparent surfaces remain exact. Memory targets are soft and never discard visible geometry.
+- F3 adds LOD/culling counts, drawn geometry/calls, terrain memory, worker/queue/throughput and generation/mesh/upload/render diagnostics.
+- No generator, ID, save, gameplay, physics, weather or billboard mob changes. Full/demo Release builds and exact historical/pixel checks passed.
+- [Measured results, reproduction, limitations and deferred techniques](docs/OPTIMIZATION_VALIDATION.md). RD8–32 forest frame times improved materially; occlusion showed no reliable general gain and worst teleport spikes remain. Full surface/horizon LOD and hard VRAM residency limits are deferred.
+
 ## v2.13.0 - The Equipment & Combat Update
 
 - Leather, Gold, Iron and Diamond armor: helmet, chestplate, leggings and boots, with 7/11/15/20 armor points for complete sets. Four dedicated armor slots, material durability, breakage, 16×16 icons, crafting and Recipe Book support.
