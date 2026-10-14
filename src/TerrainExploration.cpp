@@ -73,6 +73,7 @@ std::vector<CaveEntrance> caveEntrances(int chunkX,int chunkZ,std::uint32_t seed
     const std::function<SurfaceColumn(int,int)>& terrain,
     const std::function<bool(int,int,int)>& cavity,
     const std::function<bool(int,int)>& reserved,unsigned generationVersion) {
+    if(generationVersion>=22) return diverseCaveEntrances(chunkX,chunkZ,seed,terrain,cavity,reserved);
     struct Cached { bool valid=false; CaveEntrance cave{}; };
     // Each generation worker owns its cache. Bounds keep long flights from
     // retaining an ever-growing exploration map. Plans depend only on seed.
@@ -142,6 +143,9 @@ std::vector<CaveEntrance> caveEntrances(int chunkX,int chunkZ,std::uint32_t seed
 bool carves(const CaveEntrance& cave,int x,int y,int z) {
     const glm::vec3 p(float(x)+.5f,float(y)+.5f,float(z)+.5f);
     if(y>cave.mouth.y+6 || y<cave.target.y-5) return false;
+    // V22's supported native landing must survive the enlarged terminal
+    // chamber. Older plans retain their exact historical carving shape.
+    if(cave.preserveFloor && y<=int(std::floor(cave.target.y-cave.radius-1.f)))return false;
     const auto tube=[&](glm::vec3 a,glm::vec3 b,float radius) {
         const auto delta=b-a;
         const auto nearest=a+delta*std::clamp(glm::dot(p-a,delta)/glm::dot(delta,delta),0.f,1.f);

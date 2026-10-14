@@ -203,6 +203,10 @@ bool Game::initialize(int argc, char** argv) {
             std::cout<<report<<std::endl;
             if(!world_->runHabitatSmokeTest(report))throw std::runtime_error(report);std::cout<<report<<std::endl;
             glfwSetWindowShouldClose(window_,true);
+        } else if (!diversityAudit_.empty()) {
+            std::string report;
+            if(!world_->runDiversityAudit(diversityAudit_,report,diversitySpawnsOnly_)) throw std::runtime_error(report);
+            std::cout<<report<<std::endl;glfwSetWindowShouldClose(window_,true);
         } else if (!undergroundAudit_.empty()) {
             std::string report;
             if(!world_->runUndergroundAudit(undergroundAudit_,report)) throw std::runtime_error(report);
@@ -371,10 +375,14 @@ void Game::parseArguments(int argc, char** argv) {
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
             } else if (argument.rfind("--generator=",0)==0) {
-                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,21));
+                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,22));
             } else if(argument=="--equipment-preview") {equipmentPreview_=true;smokeTest_.craftingPreview=true;saveOnExit_=false;
             } else if(argument=="--hazard-preview") {hazardPreview_=true;smokeTest_.worldgenEnabled=true;saveOnExit_=false;
             } else if(argument=="--fluid-smoke") {fluidSmoke_=true;saveOnExit_=false;
+            } else if (argument.rfind("--diversity-audit=",0)==0) {
+                diversityAudit_=argument.substr(18); saveOnExit_=false;
+            } else if (argument.rfind("--diversity-spawns=",0)==0) {
+                diversityAudit_=argument.substr(19); diversitySpawnsOnly_=true;saveOnExit_=false;
             } else if (argument.rfind("--underground-audit=",0)==0) {
                 undergroundAudit_=argument.substr(20); saveOnExit_=false;
             } else if (argument.rfind("--aesthetics-audit=",0)==0) {
@@ -530,7 +538,16 @@ void Game::createWorldAndSystems() {
     }
     if (!loadedWorld)
         timing_.worldTime = WorldTime::DefaultSeconds;
-    const glm::vec3 safeSpawn = world_->findSafeSpawnNear(0, 0);
+    const glm::vec3 safeSpawn = [&] {
+        if(loadedWorld && world_->generationVersion()>=22) return spawnPosition;
+        if(!loadedWorld && world_->generationVersion()>=22 && !creativeMode_ && !spectatorMode_)
+            return world_->findSurvivalSpawnNear(0,0);
+        try {return world_->findSafeSpawnNear(0,0);}
+        catch(const std::runtime_error&) {
+            if(world_->generationVersion()<22) throw;
+            return world_->findSurvivalSpawnNear(0,0);
+        }
+    }();
     const float spawnDeltaX = spawnPosition.x - safeSpawn.x;
     const float spawnDeltaZ = spawnPosition.z - safeSpawn.z;
     const bool legacyBadSpawn = loadedWorld &&
@@ -838,7 +855,15 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     world_->setTerrainLod(settings_.terrainLod);
     world_->setTerrainMemoryBudget(settings_.terrainMemoryBudget);
     world_->setSimulationDistance(settings_.simulationDistance);
-    const glm::vec3 spawnPosition = world_->findSafeSpawnNear(0, 0);
+    const glm::vec3 spawnPosition = [&] {
+        if(world_->generationVersion()>=22 && !creativeMode_ && !spectatorMode_)
+            return world_->findSurvivalSpawnNear(0,0);
+        try {return world_->findSafeSpawnNear(0,0);}
+        catch(const std::runtime_error&) {
+            if(world_->generationVersion()<22) throw;
+            return world_->findSurvivalSpawnNear(0,0);
+        }
+    }();
     world_->generate(settings_.renderDistance, spawnPosition);
     player_ = std::make_unique<Player>(spawnPosition);
     player_->setMouseSensitivity(settings_.mouseSensitivity);

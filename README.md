@@ -204,6 +204,15 @@ and exercises respawn and tooltip bounds. It exports `terrain272.csv` only in th
 validation mode. `--worldgen-test --seed=<seed> --preview-x=<x> --preview-z=<z>` captures a
 terrain preview; `--crafting-preview` exercises the actual inventory/container tooltip UI.
 
+## v2.13.2 - The Geographic Diversity Update
+
+- New worlds use V22: shorter continental/erosion wavelengths, natural coasts without the radial starter island, compatible regional habitats, denser winding drainage and occasional connected inland lakes.
+- More accessible cave approaches select supported native floors, retain their landing beds, avoid rivers/surface structures and prevent nearby vegetation from obstructing the bore.
+- Survival selects natural land using bounded resource/variety/cave checks. Ocean-heavy seeds use a bounded second search; respawn rechecks collision safety. Existing saves retain generators 1-21 and their geography.
+- Temperature/humidity, vegetation placement rules, mountain/density profiles, height limits, weather, mobs and the optimized renderer remain intact.
+- Release validation: `--diversity-audit=<directory> --generator=22` exports three-seed V9/V18/V21/V22 maps at 4,096/15,360/46,080 blocks and validates generation, rivers, entrances, 50 paired spawns and real on-foot cave walks. `--diversity-spawns=<directory>` runs the spawn/walking subset. `tools/build_diversity_previews.py` renders the maps; `tools/run_geographic_diversity_benchmarks.ps1` compares fixed streaming paths.
+- [Measurements, captures, compatibility checks and limitations](docs/GEOGRAPHIC_DIVERSITY_VALIDATION.md).
+
 ## v2.13.1 - The Optimization Update
 
 - Lossless 28-byte terrain vertices and exact quad indexing: approximately 57% less live terrain/upload data, without changing full-detail geometry, UVs, lighting or AO. Shared opaque/water VBO+EBO pages retain the original transparent draw sequence.

@@ -43,6 +43,8 @@ bool Weather::runSelfTest(World& world,SoundSystem& sounds,SurvivalWorld& surviv
     std::stringstream oldSave; Weather old(world.seed()); require(!old.read(oldSave) && old.type()==WeatherType::Clear,"old weather metadata");
     std::stringstream corrupt("WEATHER1 2 nan 0 0 0 8 1"); require(!old.read(corrupt),"invalid weather metadata");
     const int x=0,z=0,y=240;
+    // A natural-land spawn may be far from the fixed roof fixture at origin.
+    world.prepareSpawnTerrain({.5f,float(y),.5f});
     require(world.hasLoadedChunkAt(x,z),"weather fixture chunk missing");
     const float prior=world.precipitationHeight(x,z);
     const Block original=world.getBlock(x,y,z);
@@ -199,6 +201,7 @@ void Game::runWeatherSmokeTest() {
     weather_->strike({.5f,246,.5f},*world_,target,*survival_,*sounds_);
     require(weather_->bolts().back().position==glm::vec3(3.5f,246,.5f),"rod redirects strike");
     world_->setBlock(3,245,0,rodOriginal);
+    world_->prepareSpawnTerrain(player_->position()+glm::vec3(10,0,10));
     require((commands_.execute("/summon lightning_bolt ~10 ~ ~10",context).tone!=ChatTone::Error)==Persistence::enabled(),"summon lightning command permissions");
     std::cout<<"Weather commands, cycle toggle/transition, lightning damage/immunity and rod crafting passed\n";
     player_->setCreativeMode(true);

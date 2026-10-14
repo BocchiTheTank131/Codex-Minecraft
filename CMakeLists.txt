@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.13.1 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.13.2 LANGUAGES C CXX)
 set(VOXELFRONTIER_VERSION_SUFFIX "")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
@@ -104,6 +104,11 @@ add_executable(VoxelFrontier
     src/WorldDensityValidation.cpp
     src/WorldExplorationValidation.cpp
     src/WorldExploration.cpp
+    src/GeographicDiversity.cpp
+    src/DiverseCaveEntrances.cpp
+    src/WorldDiversity.cpp
+    src/WorldDiversityValidation.cpp
+    src/RiverNetworkV22.cpp
     src/WorldGeography.cpp
     src/WorldGeographyValidation.cpp
     src/WorldValidation.cpp

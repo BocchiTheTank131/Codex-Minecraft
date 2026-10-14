@@ -102,8 +102,9 @@ void Player::addExperience(int a) {
 }
 void Player::respawn(const World& world) {
     // The loaded player position is not a world spawn point. Resolve current
-    // terrain and saved edits around the original origin on every respawn.
-    position_ = world.findSafeSpawnNear(0, 0);
+    // terrain and saved edits at the versioned world spawn on every respawn.
+    position_ = world.generationVersion()>=22 && !creativeMode_ && !spectatorMode_ ?
+        world.findSurvivalSpawnNear(0,0) : world.findSafeSpawnNear(0, 0);
     velocity_ = glm::vec3(0.0f);
     health_ = hunger_ = 20.0f;
     fallDistance_ = lastFallDamage_ = exhaustion_ = regenTimer_ = 0.0f;

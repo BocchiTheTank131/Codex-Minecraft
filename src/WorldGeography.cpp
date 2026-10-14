@@ -1,4 +1,5 @@
 #include "World.h"
+#include "GeographicDiversity.h"
 #include <algorithm>
 #include <cmath>
 
@@ -58,27 +59,29 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     const float wx = x + warpX, wz = z + warpZ;
     // A non-lattice slice removes the zero-height lattice's preferred land
     // bridges. The regional octave remains subordinate to the continent field.
-    const float continent = generationVersion_>=18 ? continentalNoise_.fractal3D(
+    const auto geography22 = generationVersion_>=22 ? GeographicDiversity::coast(continentalNoise_,wx,wz) : GeographicDiversity::Coast{};
+    const float continent = generationVersion_>=22 ? geography22.continent : generationVersion_>=18 ? continentalNoise_.fractal3D(
         wx*.00019f+.371f,.371f,wz*.00019f-.613f,2,2.f,.23f) :
         continentalNoise_.fractal2D(wx*(generationVersion_>=17?.00014f:.00010f)+.371f,
         wz*(generationVersion_>=17?.00014f:.00010f)-.613f,2,2.f,.23f);
-    const float coast = continentalNoise_.fractal2D(wx * (generationVersion_>=18?.00055f:.00045f) + 91.417f, wz * (generationVersion_>=18?.00055f:.00045f) - 37.283f, 2, 2.f, .25f);
+    const float coast = generationVersion_>=22 ? geography22.detail : continentalNoise_.fractal2D(wx * (generationVersion_>=18?.00055f:.00045f) + 91.417f, wz * (generationVersion_>=18?.00055f:.00045f) - 37.283f, 2, 2.f, .25f);
     // V17 strengthens regional geography without moving the climate sampling domain.
-    const float naturalContinent = generationVersion_>=18 ? continent*.70f+coast*.30f-.01f :
+    const float naturalContinent = generationVersion_>=22 ? geography22.continent : generationVersion_>=18 ? continent*.70f+coast*.30f-.01f :
         generationVersion_>=17 ? continent * .70f + coast * .30f : continent * .88f + coast * .12f;
-    sample.naturalContinentalness = naturalContinent;
+    const auto diverse = generationVersion_>=22 ? geography22 : GeographicDiversity::Coast{naturalContinent,coast};
+    sample.naturalContinentalness = diverse.continent;
     const float starter = 1.f - smooth(160000.f, 1000000.f,
         (x * x + z * z) * std::clamp(1.f + coast * 2.f, .35f, 1.8f));
     // Guarantee a gentle starter shore if the origin lies in ocean. Do not
     // add a large artificial continental mountain on top of existing land.
-    sample.continentalness = naturalContinent +
+    sample.continentalness = generationVersion_>=22 ? diverse.continent : naturalContinent +
         std::max(0.f, .10f + coast * .10f - naturalContinent) * starter;
     sample.macroTemperature = std::clamp(.5f + temperatureNoise_.fractal2D(
         wx * .00012f + 129.337f, wz * .00012f - 83.719f, 2, 2.f, .20f) * 1.55f, 0.f, 1.f);
     sample.macroHumidity = std::clamp(.5f + humidityNoise_.fractal2D(
         wx * .00013f - 211.381f, wz * .00013f + 47.527f, 2, 2.f, .20f) * 1.65f, 0.f, 1.f);
     sample.erosion = smooth(-.38f, .38f, erosionNoise_.fractal2D(
-        wx * (generationVersion_>=17?.00032f:.00022f) - 53.271f, wz * (generationVersion_>=17?.00032f:.00022f) + 117.439f, 2, 2.f, .25f));
+        wx * (generationVersion_>=22?.00048f:generationVersion_>=17?.00032f:.00022f) - 53.271f, wz * (generationVersion_>=22?.00048f:generationVersion_>=17?.00032f:.00022f) + 117.439f, 2, 2.f, .25f));
     sample.weirdness = weirdnessNoise_.fractal2D(wx * .00020f + 67.673f, wz * .00020f + 173.291f, 2, 2.f, .25f);
     const float habitat = biomeNoise_.noise(wx * .00042f + 7.13f, 0, wz * .00042f - 73.19f);
     const float rolling = ridgeNoise_.fractal2D(x * .0009f + 43.449f, z * .0009f - 119.273f, 2, 2.f, .35f);
@@ -89,7 +92,7 @@ World::TerrainSample World::sampleTerrainGeography(int worldX, int worldZ) const
     const float inland = smooth(.015f, .16f, sample.continentalness);
     const float rugged = 1.f - sample.erosion;
     const float belt = 1.f - smooth(.08f, .34f, std::abs(sample.weirdness));
-    const float mountain = smooth(.015f, .16f, naturalContinent) * belt *
+    const float mountain = smooth(.015f, .16f, sample.naturalContinentalness) * belt *
         (1.f - smooth(.40f, .80f, sample.erosion));
     const float ridge = 1.f - std::abs(ridgeNoise_.fractal2D(wx * .0013f - 137.613f, wz * .0013f + 39.347f, 2, 2.f, .35f));
     const float ridgeProfile = smooth(.58f, .97f, ridge);
@@ -141,6 +144,7 @@ float World::drainageContinent(int worldX,int worldZ) const {
     const float x=float(worldX),z=float(worldZ);
     const float wx=x+erosionNoise_.noise(x*.00014f+17.31f,0,z*.00014f-29.73f)*700.f;
     const float wz=z+erosionNoise_.noise(x*.00014f-63.19f,0,z*.00014f+41.57f)*700.f;
+    if(generationVersion_>=22) return GeographicDiversity::coast(continentalNoise_,wx,wz).continent;
     const float continent=continentalNoise_.fractal3D(wx*.00019f+.371f,.371f,wz*.00019f-.613f,2,2.f,.23f);
     const float coast=continentalNoise_.fractal2D(wx*.00055f+91.417f,wz*.00055f-37.283f,2,2.f,.25f);
     const float natural=continent*.70f+coast*.30f-.01f;

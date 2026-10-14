@@ -225,8 +225,10 @@ private:
     std::string explorationAudit_;
     std::string biomeAudit_;
     std::string geographyAudit_;
+    std::string diversityAudit_;
+    bool diversitySpawnsOnly_=false;
     std::string densityAudit_;
-    unsigned fixtureGenerator_ = 21;
+    unsigned fixtureGenerator_ = 22;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();

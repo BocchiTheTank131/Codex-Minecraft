@@ -1,0 +1,170 @@
+{
+  "historical_records": 567,
+  "climate_bit_values": 9437184,
+  "cache_chunk_records": 288,
+  "performance": [
+    {
+      "rd": 8,
+      "version": "V21",
+      "runs": 1,
+      "fps": 5550.19,
+      "mean_ms": 0.180174,
+      "p99_ms": 0.2861,
+      "worst_ms": 4.6379,
+      "ram_mb": 271.773,
+      "terrain_vertices": 4646928.0,
+      "terrain_used_bytes": 96036512.0,
+      "terrain_capacity_bytes": 134217728.0,
+      "recovery_seconds": 0.30461
+    },
+    {
+      "rd": 8,
+      "version": "V22",
+      "runs": 1,
+      "fps": 3318.74,
+      "mean_ms": 0.30132,
+      "p99_ms": 0.3775,
+      "worst_ms": 3.9061,
+      "ram_mb": 260.246,
+      "terrain_vertices": 3884040.0,
+      "terrain_used_bytes": 80270160.0,
+      "terrain_capacity_bytes": 125829120.0,
+      "recovery_seconds": 0.20228
+    },
+    {
+      "rd": 16,
+      "version": "V21",
+      "runs": 1,
+      "fps": 1684.72,
+      "mean_ms": 0.593571,
+      "p99_ms": 0.7158,
+      "worst_ms": 5.1812,
+      "ram_mb": 346.242,
+      "terrain_vertices": 16413600.0,
+      "terrain_used_bytes": 339214400.0,
+      "terrain_capacity_bytes": 452984832.0,
+      "recovery_seconds": 0.22351
+    },
+    {
+      "rd": 16,
+      "version": "V22",
+      "runs": 1,
+      "fps": 1695.39,
+      "mean_ms": 0.589835,
+      "p99_ms": 0.6527,
+      "worst_ms": 3.8485,
+      "ram_mb": 318.133,
+      "terrain_vertices": 14004684.0,
+      "terrain_used_bytes": 289430136.0,
+      "terrain_capacity_bytes": 419430400.0,
+      "recovery_seconds": 0.176237
+    },
+    {
+      "rd": 32,
+      "version": "V21",
+      "runs": 2,
+      "fps": 509.509,
+      "mean_ms": 1.96271,
+      "p99_ms": 2.126,
+      "worst_ms": 8.108450000000001,
+      "ram_mb": 631.1855,
+      "terrain_vertices": 58650024.0,
+      "terrain_used_bytes": 1212100496.0,
+      "terrain_capacity_bytes": 1501560832.0,
+      "recovery_seconds": 0.25694
+    },
+    {
+      "rd": 32,
+      "version": "V22",
+      "runs": 2,
+      "fps": 553.5635,
+      "mean_ms": 1.806485,
+      "p99_ms": 1.9973999999999998,
+      "worst_ms": 6.6465,
+      "ram_mb": 628.1890000000001,
+      "terrain_vertices": 54176043.0,
+      "terrain_used_bytes": 1119638222.0,
+      "terrain_capacity_bytes": 1400897536.0,
+      "recovery_seconds": 0.2624835
+    },
+    {
+      "rd": 64,
+      "version": "V21",
+      "runs": 1,
+      "fps": 138.772,
+      "mean_ms": 7.20607,
+      "p99_ms": 19.4206,
+      "worst_ms": 28.6962,
+      "ram_mb": 1655.78,
+      "terrain_vertices": 233519310.0,
+      "terrain_used_bytes": 4826065740.0,
+      "terrain_capacity_bytes": 5452595200.0,
+      "recovery_seconds": 6.57941
+    },
+    {
+      "rd": 64,
+      "version": "V22",
+      "runs": 1,
+      "fps": 142.566,
+      "mean_ms": 7.01428,
+      "p99_ms": 8.1675,
+      "worst_ms": 20.7577,
+      "ram_mb": 1698.93,
+      "terrain_vertices": 227548782.0,
+      "terrain_used_bytes": 4702674828.0,
+      "terrain_capacity_bytes": 5351931904.0,
+      "recovery_seconds": 4.3845
+    }
+  ],
+  "spawns": {
+    "21": {
+      "seeds": 50,
+      "caves_within600": 27,
+      "median_cave_m": 520.384,
+      "median_spawn_ms": 13.9113,
+      "mean_reachable_biomes": 9.66,
+      "mean_longest_ray": 305.84,
+      "min_land_samples": 241
+    },
+    "22": {
+      "seeds": 50,
+      "caves_within600": 50,
+      "median_cave_m": 229.7045,
+      "median_spawn_ms": 72.7487,
+      "mean_reachable_biomes": 13.54,
+      "mean_longest_ray": 197.2,
+      "min_land_samples": 457
+    }
+  },
+  "generation": {
+    "21": {
+      "cold_ms": 3.8877125,
+      "warm_ms": 3.167989583333333
+    },
+    "22": {
+      "cold_ms": 5.103766666666667,
+      "warm_ms": 3.2610953125
+    }
+  },
+  "regions": {
+    "21": {
+      "land_percent": 54.927571614583336,
+      "weighted_land_km2": 884.8885695582195,
+      "weighted_ocean_km2": 251.1237564310501,
+      "largest_ocean_fraction": 0.41310321137543143,
+      "coastline_km": 1068.0
+    },
+    "22": {
+      "land_percent": 54.83309427897135,
+      "weighted_land_km2": 675.702829899991,
+      "weighted_ocean_km2": 179.52357275824392,
+      "largest_ocean_fraction": 0.3312448728353008,
+      "coastline_km": 1778.58
+    }
+  },
+  "walks": {
+    "count": 24,
+    "reached": 24,
+    "max_fall_damage": 0.0330009
+  }
+}

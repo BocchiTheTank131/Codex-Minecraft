@@ -4,6 +4,8 @@
 #include "RegionalClimate.h"
 #include "RiverNetwork.h"
 #include "BiomeBalance.h"
+#include "GeographicDiversity.h"
+#include "RiverNetworkV22.h"
 #include <algorithm>
 #include <cmath>
 
@@ -64,7 +66,8 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
     height=glm::mix(height,std::min(height,62.f),valley);
     const bool riverOverland=height>=64.f;
     if(generationVersion_>=18 && drainage && s.continentalness>-.08f && s.mushroomIsland<.1f) {
-        const auto river=RiverNetwork::sample(x,z,seed_,[&](int rx,int rz) {
+        const auto riverSample=generationVersion_>=22?RiverNetworkV22::sample:RiverNetwork::sample;
+        const auto river=riverSample(x,z,seed_,[&](int rx,int rz) {
             return RiverNetwork::Ground{drainageContinent(rx,rz)};
         },height);
         s.river=river.channel;
@@ -115,6 +118,12 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
         s.biome=s.height>100?Biome::SavannaPlateau:Biome::Savanna;
     s.biome=generationVersion_>=18?BiomeBalance::variant(s.biome,s.temperature,s.humidity,local,s.height-16):
         TerrainAesthetics::variant(s.biome,s.temperature,s.humidity,local,s.height-16);
+    if(generationVersion_>=22) {
+        // Reuse the habitat noise at an exploration-scale wavelength. Temperature
+        // and humidity remain V16/V21 values; only compatible habitats vary.
+        const float regional=biomeNoise_.noise(x*.0018f+37.19f,.631f,z*.0018f-83.71f);
+        s.biome=GeographicDiversity::habitat(s.biome,s.temperature,s.humidity,regional,s.height);
+    }
     // The legacy selector labels low beds as ocean before testing rivers.
     // A channel carved into dry terrain remains a river even near sea level;
     // reaches already submerged in a genuine ocean retain their ocean biome.

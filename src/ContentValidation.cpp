@@ -193,7 +193,7 @@ void Game::runPatch272SmokeTest() {
     if(!world_->runPatch272SelfTest(report))throw std::runtime_error(report);
     std::cout << report << '\n';
     World origin(seed_);
-    const glm::vec3 spawn=origin.findSafeSpawnNear(0,0);
+    const glm::vec3 spawn=origin.generationVersion()>=22?origin.findSurvivalSpawnNear(0,0):origin.findSafeSpawnNear(0,0);
     origin.generate(2,spawn);
     origin.prepareSpawnTerrain(spawn);
     // Every cause enters the common death/respawn path. Exercise the physical

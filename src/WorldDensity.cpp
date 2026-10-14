@@ -97,6 +97,7 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
         entrances=TerrainExploration::caveEntrances(cx,cz,seed_,[&](int x,int z) {
             const auto t=terrainAt(x,z);return TerrainExploration::SurfaceColumn{t.height,t.river,t.ravine};
         },[&](int x,int y,int z) {
+            if(generationVersion_>=22)return nativeCavityAt(x,y,z);
             const auto t=terrainAt(x,z);
             const float aquifer=aquiferNoise_.fractal2D(x*.0018f+113.7f,z*.0018f-67.3f,2,2.f,.3f);
             const Column c{t.height,smooth(95.f,180.f,float(t.height))*(1.f-smooth(.40f,.83f,t.erosion)),
@@ -238,6 +239,19 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
         }
         return true;
     },MinimumY,featureTop,SeaLevel,generationVersion_);
+    if(generationVersion_>=22 && !entrances.empty()) {
+        // Nearby supported tree roots can extend a canopy into a carved mouth.
+        // Keep the accepted air bore clear after vegetation placement, using
+        // the exact cached per-column mask, without resampling density/noise.
+        for(int z=0;z<16;++z)for(int x=0;x<16;++x) {
+            const auto& mask=entranceMask[(z+1)*Span+x+1];
+            if(mask.none())continue;
+            for(int y=MinimumY;y<scanTop;++y)if(mask.test(y-MinimumY)) {
+                auto& block=at(x,y,z);
+                if(isLeaf(block)||isLog(block)||isPlant(block))block=Block::Air;
+            }
+        }
+    }
     result.hasStructure=structures_.applyToChunk(cx,cz,result.blocks,result.loot,result.mobs,structureTerrain,MinimumY,featureTop);
     if(generationVersion_>=19) result.hasStructure=applyUnderground(cx,cz,result)||result.hasStructure;
     // Shore vegetation uses actual generated water, not a biome-name heuristic.

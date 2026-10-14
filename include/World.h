@@ -9,6 +9,7 @@
 #include "Survival.h"
 #include "ChunkStreaming.h"
 #include "TerrainVertex.h"
+#include "TerrainExploration.h"
 
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -21,6 +22,7 @@
 #include <cstdint>
 #include <deque>
 #include <memory>
+#include <optional>
 #include <limits>
 #include <mutex>
 #include <string>
@@ -231,7 +233,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 21);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 22);
     ~World();
 
     std::array<glm::vec3,6> optimizationScenes() const;
@@ -276,6 +278,8 @@ public:
     std::vector<ItemStack> takeBlockEntityContents(const glm::ivec3& position);
     int terrainHeight(int worldX, int worldZ) const;
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
+    glm::vec3 findSurvivalSpawnNear(int worldX, int worldZ) const;
+    bool runDiversityAudit(const std::string& directory, std::string& report, bool spawnOnly=false) const;
     void prepareSpawnTerrain(const glm::vec3& position);
     bool runUndergroundAudit(const std::string& directory,std::string& report) const;
     bool runBiomeAudit(const std::string& directory, std::string& report) const;
@@ -361,6 +365,10 @@ public:
     int simulationDistance() const { return simulationDistance_; }
 
 private:
+    glm::vec3 findCollisionSpawnNear(int worldX,int worldZ) const;
+    mutable std::optional<glm::ivec2> survivalSpawnRegion_;
+    bool nativeCavityAt(int x,int y,int z) const;
+    std::vector<TerrainExploration::CaveEntrance> diversityEntrances(int cx,int cz) const;
     struct TerrainSample {
         int height = SEA_LEVEL;
         Biome biome = Biome::Plains;
@@ -452,7 +460,7 @@ private:
     UndergroundStructures underground20_;
     UndergroundStructures underground21_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 21;
+    std::uint32_t generationVersion_ = 22;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;
