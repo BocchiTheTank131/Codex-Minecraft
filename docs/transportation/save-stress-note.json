@@ -1,0 +1,9 @@
+{
+  "observed": "A rapid Book inventory checkpoint did not commit; previous Paper inventory and complete Book temporary file remained.",
+  "previous_item_id": 84,
+  "temporary_item_id": 85,
+  "count": 3,
+  "bytes_each": 475,
+  "fresh_isolated_rerun": "All 13 suites passed.",
+  "cause": "External lock/IO owner not established; production SaveFile policy retained."
+}

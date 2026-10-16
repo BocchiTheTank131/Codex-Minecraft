@@ -152,6 +152,7 @@ void tooltip(std::vector<V>& vertices, UiMode mode, int W, int H,
         if(hit.kind==UiSlotKind::FurnaceFuel) stack=&furnace->fuel;
         if(hit.kind==UiSlotKind::FurnaceOutput) stack=&furnace->output;
     }
+    if(item==Item::FilledMap && stack && stack->identity) name+=" #"+std::to_string(stack->identity);
     if(armorDefense(item)>0) name+="  ARMOR "+std::to_string(armorDefense(item));
     if(isDurable(item)) name+="  "+std::to_string(stack?stack->durability:Inventory::maxDurability(item))+"/"+std::to_string(Inventory::maxDurability(item));
     const float scale = std::min(1.5f, (W-24.0f)/std::max(1.0f,name.size()*6.0f));

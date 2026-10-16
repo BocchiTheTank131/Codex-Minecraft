@@ -164,6 +164,8 @@ const Items& items() {
         put(Item::DiamondChestplate, static_cast<std::uint8_t>(Item::DiamondChestplate), static_cast<int>(Item::DiamondChestplate), "DiamondChestplate");
         put(Item::DiamondLeggings, static_cast<std::uint8_t>(Item::DiamondLeggings), static_cast<int>(Item::DiamondLeggings), "DiamondLeggings");
         put(Item::DiamondBoots, static_cast<std::uint8_t>(Item::DiamondBoots), static_cast<int>(Item::DiamondBoots), "DiamondBoots");
+        const char* transportNames[]={"Oak Boat","Birch Boat","Spruce Boat","Jungle Boat","Acacia Boat","Dark Oak Boat","Empty Map","Filled Map","Compass"};
+        for(int n=0;n<9;++n){const auto i=Item(int(Item::OakBoat)+n);put(i,std::uint8_t(i),int(i),transportNames[n]);result[std::size_t(i)].displayName=transportNames[n];result[std::size_t(i)].maxStack=i==Item::Compass?64:1;}
         put(Item::Shield, static_cast<std::uint8_t>(Item::Shield), static_cast<int>(Item::Shield), "Shield");
         constexpr int armorDurability[4][4]={{55,80,75,65},{77,112,105,91},{165,240,225,195},{363,528,495,429}};
         for(int material=0;material<4;++material) for(int part=0;part<4;++part) {

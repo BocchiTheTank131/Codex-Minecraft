@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-15",
+  "suites_passed": 13,
+  "terrain_hashes_matched": 663,
+  "historical_atlas_cells_unchanged": 165,
+  "new_icons": 9,
+  "underground_historical_records": 1776,
+  "connected_structures": 182,
+  "baseline_exe_sha256": "6c392561709d5021503adf38ed92acc0999b1e6d6d8af524bcb2da33c480045b",
+  "artifacts": {
+    "VoxelFrontier-v2.14.0-Windows-Setup.exe": {
+      "bytes": 25540489,
+      "sha256": "666d2a1c6bddbe0e598e6e371083de6c122fc24d5d3cacf14fcc47ef3ca7f7f2"
+    },
+    "VoxelFrontier-v2.14.0-Windows-Standalone.exe": {
+      "bytes": 28265472,
+      "sha256": "ebdf51768559da39c515f2ed58775b85b3dc5cbf90601f88cf8f73e1df5ae4b2"
+    },
+    "VoxelFrontier.exe": {
+      "bytes": 28351488,
+      "sha256": "b423abad39e00ce6f64500a6d6a5c6d30f11cbcfe5cc9b122deb236e84bceb5c"
+    }
+  }
+}

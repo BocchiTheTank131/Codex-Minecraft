@@ -22,10 +22,12 @@ void image(const std::string& name,const std::vector<unsigned char>& pixels,int 
 void World::writeOptimizationChunkHashes(const std::string& path) const {
     std::ofstream file(path),timings(path+".cpu.csv");file<<"seed,version,x,z,bytes,hash\n";
     timings<<"seed,version,x,z,generation_ms\n";
-    for(unsigned seed:{123456789U,20260917U,42U})for(unsigned version=1;version<=21;++version) {
+    for(unsigned seed:{123456789U,20260917U,42U})for(unsigned version=1;version<=22;++version) {
         World probe(seed,version);
-        for(const auto coordinate:{glm::ivec2(0,0),glm::ivec2(-1,-1),glm::ivec2(1,-1),glm::ivec2(-3,2),
-            glm::ivec2(17,-29),glm::ivec2(64,64),glm::ivec2(-128,123),glm::ivec2(377,-911),glm::ivec2(-3011,2741)}) {
+        std::vector<glm::ivec2> coordinates{glm::ivec2(0,0),glm::ivec2(-1,-1),glm::ivec2(1,-1),glm::ivec2(-3,2),
+            glm::ivec2(17,-29),glm::ivec2(64,64),glm::ivec2(-128,123),glm::ivec2(377,-911),glm::ivec2(-3011,2741)};
+        if(version==22){coordinates.clear();for(int i=0;i<32;++i)coordinates.push_back({(i%8)*173-606,(i/8)*197-295});}
+        for(const auto coordinate:coordinates) {
             const auto start=std::chrono::steady_clock::now();
             const auto data=probe.generateChunkData(coordinate.x,coordinate.y);
             const auto ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();

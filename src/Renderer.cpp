@@ -1,4 +1,6 @@
 #include "Renderer.h"
+#include "Transportation.h"
+#include "Player.h"
 #include "RenderScratch.h"
 #include "Definitions.h"
 #include "UIManager.h"
@@ -380,11 +382,15 @@ uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 out vec3 vNormal;
-void main(){ gl_Position=uProjection*uView*uModel*vec4(aPosition,1.0); vNormal=mat3(uModel)*aNormal; }
+out vec2 vWoodUv;
+void main(){ gl_Position=uProjection*uView*uModel*vec4(aPosition,1.0); vNormal=mat3(uModel)*aNormal; vec3 p=aPosition+vec3(.5); vWoodUv=abs(aNormal.y)>.5?p.xz:abs(aNormal.x)>.5?p.zy:p.xy; }
 )GLSL";
 constexpr const char* EntityFragmentShader = R"GLSL(
 #version 330 core
 in vec3 vNormal;
+in vec2 vWoodUv;
+uniform sampler2D uWood;
+uniform int uWoodFamily;
 uniform vec3 uColor;
 uniform vec3 uSunDirection;
 uniform float uDaylight;
@@ -396,7 +402,9 @@ void main(){
     float light=mix(0.14,0.58,uDaylight)+sun*0.38*uDaylight+
                 moon*0.14*(1.0-uDaylight);
     vec3 tint=mix(vec3(0.62,0.70,0.92),vec3(1.0,0.96,0.84),uDaylight);
-    fragColor=vec4(uColor*light*tint,1.0);
+    vec3 base=uColor;
+    if(uWoodFamily>=0){vec2 uv=(floor(clamp(vWoodUv,vec2(0),vec2(.999))*16.0)+.5)/16.0;uv.x=(uv.x+float(uWoodFamily))/6.0;base=texture(uWood,uv).rgb*uColor;}
+    fragColor=vec4(base*light*tint,1.0);
 }
 )GLSL";
 constexpr const char* UiVertexShader = R"GLSL(
@@ -802,6 +810,11 @@ Renderer::Renderer() {
     billboardProgram_ = makeProgram(ItemVertexShader, BillboardFragmentShader);
     billboardUniforms_ = cacheUniforms(billboardProgram_);
     entityUniforms_ = cacheUniforms(entityProgram_);
+    boatFamilyUniform_=glGetUniformLocation(entityProgram_,"uWoodFamily");
+    glUseProgram(entityProgram_);glUniform1i(boatFamilyUniform_,-1);glUniform1i(glGetUniformLocation(entityProgram_,"uWood"),0);
+    std::vector<std::uint8_t> wood(96*16*4);const glm::ivec3 tones[]={{155,103,52},{205,191,129},{91,61,34},{172,111,70},{194,91,38},{66,43,28}};
+    for(int family=0;family<6;++family)for(int y=0;y<16;++y)for(int x=0;x<16;++x){const int grain=int(hashPixel(x/3,y,family+281)%17)-8;const int joint=y%4==0?-28:0;const auto c=tones[family]+glm::ivec3(grain+joint);putPixel(wood,96,family*16+x,y,c.r,c.g,c.b);}
+    glGenTextures(1,&boatTexture_);glBindTexture(GL_TEXTURE_2D,boatTexture_);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,96,16,0,GL_RGBA,GL_UNSIGNED_BYTE,wood.data());glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
     itemUniforms_ = cacheUniforms(itemProgram_);
     panoramaUniforms_ = cacheUniforms(panoramaProgram_);
     particleUniforms_ = cacheUniforms(particleProgram_);
@@ -967,6 +980,8 @@ Renderer::Renderer() {
 }
 
 Renderer::~Renderer() {
+    if(mapTexture_) glDeleteTextures(1,&mapTexture_);
+    if(boatTexture_) glDeleteTextures(1,&boatTexture_);
     if (hudVbo_) glDeleteBuffers(1, &hudVbo_);
     if (hudVao_) glDeleteVertexArrays(1, &hudVao_);
     if (panoramaProgram_) glDeleteProgram(panoramaProgram_);
@@ -1615,11 +1630,14 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
                  glm::value_ptr(state.sunDirection));
     glUniform1f(entityUniforms_.daylight, state.daylight*(1-.25f*weather_.x-.55f*weather_.y));
     glBindVertexArray(entityVao_);
+    int currentWood=-1;
     for (const RenderCuboid& cuboid : cuboids) {
         if (!visibility.visible(cuboid.center, glm::length(cuboid.size) * 0.5f))
             continue;
         ++visibleEntityCount_;
+        if(cuboid.woodTexture!=currentWood){currentWood=cuboid.woodTexture;glUniform1i(boatFamilyUniform_,currentWood);if(currentWood>=0){glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,boatTexture_);}}
         glm::mat4 model = glm::translate(glm::mat4(1.0f), cuboid.center);
+        if(cuboid.yaw!=0) model=glm::rotate(model,-cuboid.yaw,glm::vec3(0,1,0));
         if (glm::dot(cuboid.direction, cuboid.direction) > .0001f) {
             const glm::vec3 direction = glm::normalize(cuboid.direction);
             const glm::vec3 up(0, 1, 0);
@@ -1635,6 +1653,7 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
             entityUniforms_.color, 1, glm::value_ptr(cuboid.color));
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
+    glUniform1i(boatFamilyUniform_,-1);
     glBindVertexArray(0);
 }
 void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
@@ -2748,3 +2767,51 @@ bool Renderer::validateTerrainPacking() const {return validateTerrainPackingGpu(
 
 unsigned Renderer::occlusionCulledCount() const {return occlusion_->diagnostics().culled;}
 unsigned Renderer::occlusionQueryCount() const {return occlusion_->diagnostics().queries;}
+
+void Renderer::renderNavigation(int width,int height,const Transportation& travel,const Player& player,const Inventory& inventory,bool open,bool large,std::uint32_t viewed,const std::string& name,const std::string& coords,bool focus,const std::string& message) const {
+    const auto held=inventory.selectedStack(),off=inventory.equipment(4);
+    const bool compass=held.item==Item::Compass||off.item==Item::Compass;
+    const auto* map=(held.item==Item::FilledMap||off.item==Item::FilledMap)?travel.map(viewed):nullptr;
+    if(!open&&!compass&&!map&&!travel.mounted()&&travel.selectedWaypoint<0)return;
+    thread_local std::vector<UiVertex> navigationVertices;
+    RenderScratch<UiVertex> navigationScratch(navigationVertices,2097152);
+    auto& v=navigationScratch.get();v.reserve(12000);
+    auto rect=[&](float x,float y,float w,float h,glm::vec4 c){addRect(v,x,y,w,h,c,width,height);};
+    auto text=[&](std::string s,float x,float y,float size=1.4f,glm::vec4 color=glm::vec4(1)){textGeometry_->appendRun(v,s,x,y,size,color,width,height);};
+    auto needle=[&](float x,float y,float angle,float length,glm::vec4 color){for(int n=0;n<int(length);++n)rect(x+std::sin(angle)*n,y-std::cos(angle)*n,3,3,color);};
+    if(travel.mounted()){rect(width*.5f-115,height-145,230,20,{0,0,0,.65f});text("BOAT  WASD / SNEAK TO EXIT",width*.5f-105,height-139,1.2f);}
+    if(compass){rect(width-95,80,68,68,{.09f,.12f,.16f,.85f});text("FWD",width-72,82,1.1f);needle(width-61,114,travel.compassAngle,24,{.95f,.2f,.16f,1});needle(width-61,114,travel.compassAngle+3.14159f,19,{.8f,.83f,.9f,1});text("SPAWN",width-83,151,1.1f);}
+    if(travel.selectedWaypoint>=0){const auto& wp=travel.waypoints()[travel.selectedWaypoint];const auto d=wp.position-player.position(),f=player.lookDirection();const float a=std::atan2(d.z,d.x)-std::atan2(f.z,f.x);
+        rect(width*.5f-140,25,280,30,{0,0,0,.65f});text(wp.name+"  "+std::to_string(int(glm::length(glm::vec2(d.x,d.z))))+" BLOCKS",width*.5f-125,34,1.2f);needle(width*.5f+123,42,a,10,{1,.8f,.2f,1});}
+    float mapX=16,mapY=float(height)-270,mapSize=200;
+    if(large){mapSize=std::min(width*.6f,height*.58f);mapX=(width-mapSize)*.5f;mapY=(height-mapSize)*.5f-35;}
+    if(open){
+        rect(0,0,float(width),float(height),{0,0,0,.65f});const float x=width*.5f-300,y=height*.5f-245;
+        rect(x,y,600,490,{.1f,.13f,.15f,.98f});text("NAVIGATION / WAYPOINTS",x+20,y+20,2);
+        text("NAME: "+name+(!focus?"_":""),x+20,y+62,1.7f);text("X Y Z: "+coords+(focus?"_":""),x+20,y+88,1.5f);
+        text("EMPTY COORDINATES = CURRENT POSITION",x+20,y+111,1.2f);
+        text("TAB FIELD / ENTER ADD / CTRL+ENTER RENAME",x+20,y+141,1.15f);
+        text("UP/DOWN SELECT / DELETE REMOVE / HOME SPAWN / ESC CLOSE",x+20,y+164,1.2f);
+        const int start=std::max(0,travel.selectedWaypoint-4);int row=0;
+        for(int i=start;i<int(travel.waypoints().size())&&row<8;++i,++row){const auto& wp=travel.waypoints()[i];const float yy=y+200+row*25;
+            if(i==travel.selectedWaypoint)rect(x+14,yy-4,570,24,{.24f,.34f,.28f,1});
+            text(wp.name+"  "+std::to_string(int(wp.position.x))+" "+std::to_string(int(wp.position.y))+" "+std::to_string(int(wp.position.z)),x+24,yy,1.35f);}
+        const auto spawn=travel.originalSpawn();text("ORIGINAL SPAWN "+std::to_string(int(spawn.x))+" "+std::to_string(int(spawn.z)),x+20,y+420,1.25f);
+        text(message,x+20,y+447,1.05f,{1,.8f,.45f,1});
+    }else if(map){rect(mapX-8,mapY-8,mapSize+16,mapSize+16,{.7f,.58f,.35f,1});text("MAP #"+std::to_string(map->id)+"  1:"+std::to_string(1<<map->scale),mapX,mapY-27,1.4f);if(large)text("M CLOSE / SNEAK+RMB +8 PAPER ZOOM OUT",mapX,mapY+mapSize+20,1.1f);}
+    drawMenuVertices(v.data(),v.size());
+    if(!map||open)return;
+    if(!mapTexture_){glGenTextures(1,&mapTexture_);glBindTexture(GL_TEXTURE_2D,mapTexture_);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,128,128,0,GL_RGBA,GL_UNSIGNED_BYTE,nullptr);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);}
+    glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,mapTexture_);
+    if(mapTextureId_!=map->id || mapTextureRevision_!=map->revision){
+        int x0=128,y0=128,x1=-1,y1=-1;
+        for(int i=0;i<16384;++i){const auto c=map->pixels[i]?map->pixels[i]:0xff24303bU;if(mapTextureId_!=map->id || mapPixels_[i]!=c){mapPixels_[i]=c;x0=std::min(x0,i%128);x1=std::max(x1,i%128);y0=std::min(y0,i/128);y1=std::max(y1,i/128);}}
+        if(x1>=x0){glPixelStorei(GL_UNPACK_ROW_LENGTH,128);glTexSubImage2D(GL_TEXTURE_2D,0,x0,y0,x1-x0+1,y1-y0+1,GL_RGBA,GL_UNSIGNED_BYTE,mapPixels_.data()+y0*128+x0);glPixelStorei(GL_UNPACK_ROW_LENGTH,0);}
+        mapTextureId_=map->id;mapTextureRevision_=map->revision;
+    }
+    v.clear();auto ndc=[&](float x,float y){return glm::vec2(x/width*2-1,1-y/height*2);};const auto a=ndc(mapX,mapY),b=ndc(mapX+mapSize,mapY),c=ndc(mapX+mapSize,mapY+mapSize),d=ndc(mapX,mapY+mapSize);
+    v={ {a,{1,1,1,1},{0,0},1},{b,{1,1,1,1},{1,0},1},{c,{1,1,1,1},{1,1},1},{a,{1,1,1,1},{0,0},1},{c,{1,1,1,1},{1,1},1},{d,{1,1,1,1},{0,1},1} };
+    glUseProgram(uiProgram_);glBindBuffer(GL_ARRAY_BUFFER,uiVbo_);glBufferData(GL_ARRAY_BUFFER,v.size()*sizeof(UiVertex),v.data(),GL_STREAM_DRAW);glDisable(GL_DEPTH_TEST);glDisable(GL_CULL_FACE);glBindVertexArray(uiVao_);glDrawArrays(GL_TRIANGLES,0,6);glBindVertexArray(0);glEnable(GL_CULL_FACE);glEnable(GL_DEPTH_TEST);
+    v.clear();const float span=float(128<<map->scale),px=(player.position().x-map->originX)/span,pz=(player.position().z-map->originZ)/span;
+    if(px>=0&&px<1&&pz>=0&&pz<1){const float x=mapX+px*mapSize,y=mapY+pz*mapSize;rect(x-3,y-3,7,7,{1,1,1,1});const auto f=player.lookDirection();needle(x,y,std::atan2(f.x,-f.z),12,{.95f,.15f,.12f,1});}drawMenuVertices(v.data(),v.size());
+}

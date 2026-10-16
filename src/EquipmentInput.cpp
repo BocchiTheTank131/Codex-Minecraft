@@ -10,6 +10,7 @@ void Game::updateEquipmentInput(bool enabled) {
     bool raise=enabled && input_.mouseDown(GLFW_MOUSE_BUTTON_RIGHT);
     // Existing primary uses retain priority over the offhand shield.
     // Holding a sword/empty hand leaves RMB available for defense.
+    if(raise && (inventory_->selectedItem()>=Item::OakBoat || inventory_->equipment(4).item>=Item::OakBoat)) raise=false;
     if(raise) {
         const auto held=inventory_->selectedItem();
         if((isFood(held) && player_->hunger()<20) ||

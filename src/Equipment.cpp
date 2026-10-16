@@ -6,7 +6,7 @@
 
 bool isDurable(Item item) { return Inventory::maxDurability(item)>0; }
 bool hasMainHandUse(Item item) {
-    return isFood(item) || itemToBlock(item)!=Block::Air || item==Item::Seeds ||
+    return item>=Item::OakBoat || isFood(item) || itemToBlock(item)!=Block::Air || item==Item::Seeds ||
         item==Item::Wheat || itemDefinition(item).tool==ToolKind::Shovel;
 }
 int armorSlot(Item item) {

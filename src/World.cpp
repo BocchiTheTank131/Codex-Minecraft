@@ -2560,7 +2560,8 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         return true;
     }
     const char expectedEntities[8] = {'V', 'X', 'E', 'N', 'T', 'S', '1', '\0'};
-    if (!input || std::memcmp(entityMagic, expectedEntities, sizeof(entityMagic)) != 0)
+    const bool identityStacks = std::memcmp(entityMagic,"VXENTS2",8)==0;
+    if (!input || (!identityStacks && std::memcmp(entityMagic, expectedEntities, sizeof(entityMagic)) != 0))
         return false;
     auto readStack = [&](ItemStack& stack) {
         std::uint8_t item = 0;
@@ -2573,6 +2574,8 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         if (!input || !itemFromSaveId(item, loadedItem))
             return false;
         stack = {loadedItem, count, durability};
+        if(identityStacks) input.read(reinterpret_cast<char*>(&stack.identity),sizeof(stack.identity));
+        if(!input) return false;
         if (stack.count <= 0 || stack.item == Item::None)
             stack.clear();
         return true;
@@ -2666,7 +2669,7 @@ bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) 
         }
     }
     flushEdits();
-    const char entityMagic[8] = {'V', 'X', 'E', 'N', 'T', 'S', '1', '\0'};
+    const char entityMagic[8] = {'V', 'X', 'E', 'N', 'T', 'S', '2', '\0'};
     output.write(entityMagic, sizeof(entityMagic));
     auto writeStack = [&](const ItemStack& stack) {
         const std::uint8_t item = itemDefinition(stack.item).saveId;
@@ -2675,6 +2678,7 @@ bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) 
         output.write(reinterpret_cast<const char*>(&item), sizeof(item));
         output.write(reinterpret_cast<const char*>(&count), sizeof(count));
         output.write(reinterpret_cast<const char*>(&durability), sizeof(durability));
+        output.write(reinterpret_cast<const char*>(&stack.identity), sizeof(stack.identity));
     };
     const std::uint32_t furnaceCount = static_cast<std::uint32_t>(furnaces_.size());
     output.write(reinterpret_cast<const char*>(&furnaceCount), sizeof(furnaceCount));

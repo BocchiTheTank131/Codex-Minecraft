@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "Transportation.h"
 #include "Weather.h"
 #include "WeatherRenderer.h"
 #include "MenuLayout.h"
@@ -170,6 +171,7 @@ bool Game::initialize(int argc, char** argv) {
             createWorldAndSystems();
             ui_.resumeGame();
             if(hazardPreview_) prepareHazardPreview();
+            if(transportPreview_) updateTransportationPreview(smokeTest_.startTime);
         } else {
             ui_.openMainMenu();
         }
@@ -255,6 +257,8 @@ bool Game::initialize(int argc, char** argv) {
         } else if (smokeTest_.survivalEnabled) {
             runSurvivalSmokeTest();
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
+        } else if (transportSmoke_) {
+            runTransportationSmoke();glfwSetWindowShouldClose(window_,true);
         } else if (smokeTest_.commandEnabled) {
             runCommandSmokeTest();
             glfwSetWindowShouldClose(window_, GLFW_TRUE);
@@ -321,6 +325,7 @@ void Game::shutdown() {
     weather_.reset();
     if (weatherRenderer_) weatherRenderer_->clear();
     if (sounds_) sounds_->setRainAmbience(0,0);
+    transportation_.reset();
     farming_.reset();
     survival_.reset();
     inventory_.reset();
@@ -423,6 +428,9 @@ void Game::parseArguments(int argc, char** argv) {
                 streamingRecoverySeconds_=std::clamp(std::stof(argument.substr(29)),10.f,300.f);
             } else if (argument == "--survival-smoke") {
                 smokeTest_.survivalEnabled = true;
+            } else if(argument=="--transport-smoke") {transportSmoke_=true;saveOnExit_=false;
+            } else if(argument=="--transport-load") {transportBenchmark_=true;
+            } else if(argument=="--transport-preview") {transportPreview_=true;saveOnExit_=false;
             } else if (argument == "--command-smoke") {
                 smokeTest_.commandEnabled = true;
             } else if (argument == "--command-visual-smoke") {
@@ -523,6 +531,7 @@ void Game::createPresentationSystems() {
 }
 
 void Game::createWorldAndSystems() {
+    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setTerrainLod(settings_.terrainLod);
@@ -587,6 +596,8 @@ void Game::createWorldAndSystems() {
             (smokeTest_.previewPitch + 12.f) / std::max(0.01f, settings_.mouseSensitivity));
     }
 
+    transportation_=std::make_unique<Transportation>(world_->generationVersion()>=22?world_->findSurvivalSpawnNear(0,0):world_->findSafeSpawnNear(0,0));
+    if(loadedWorld && Persistence::enabled() && std::filesystem::exists(worldSavePath("voxel_travel.vtn")) && !transportation_->load(worldSavePath("voxel_travel.vtn"),seed_)) throw std::runtime_error("Cannot load navigation data; original save preserved");
     inventory_ = std::make_unique<Inventory>();
     if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
         inventory_->load(worldSavePath(InventorySavePath), seed_);
@@ -626,7 +637,7 @@ void Game::createWorldAndSystems() {
 }
 
 void Game::synchronizeCursorCapture() {
-    input_.setCursorCaptured(ui_.cursorShouldBeCaptured() && !chat_.isOpen());
+    input_.setCursorCaptured(ui_.cursorShouldBeCaptured() && !chat_.isOpen() && !navigationOpen_);
 }
 
 void Game::applyFullscreenSetting() {
@@ -654,6 +665,7 @@ bool Game::saveAll() {
     if (!player_->isDead()) {
         saved &= world_->saveWorld(worldSavePath(WorldSavePath), player_->position());
     }
+    saved &= transportation_->save(worldSavePath("voxel_travel.vtn"), seed_);
     saved &= inventory_->save(worldSavePath(InventorySavePath), seed_);
     saved &= player_->save(worldSavePath(PlayerSavePath), seed_);
     saved &= survival_->save(worldSavePath(MobSavePath), seed_);
@@ -718,7 +730,7 @@ void Game::playSavedWorld(const SavedWorld& selected) {
         weather_.reset();
         if (weatherRenderer_) weatherRenderer_->clear();
         if (sounds_) sounds_->setRainAmbience(0,0);
-        farming_.reset(); survival_.reset(); inventory_.reset(); player_.reset(); world_.reset();
+        transportation_.reset(); farming_.reset(); survival_.reset(); inventory_.reset(); player_.reset(); world_.reset();
         activeWorld_ = {};
         menuMessage_ = error.what();
         std::cerr << menuMessage_ << '\n' << std::flush;
@@ -831,6 +843,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     weather_.reset();
     if (weatherRenderer_) weatherRenderer_->clear();
     if (sounds_) sounds_->setRainAmbience(0,0);
+    transportation_.reset();
     farming_.reset();
     survival_.reset();
     inventory_.reset();
@@ -839,7 +852,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
 
     std::error_code error;
     if (Persistence::enabled())
-        for (const char* path : {WorldSavePath, InventorySavePath, PlayerSavePath, MobSavePath}) {
+        for (const char* path : {WorldSavePath, InventorySavePath, PlayerSavePath, MobSavePath, "voxel_travel.vtn"}) {
             error.clear();
             std::filesystem::remove(worldSavePath(path), error);
         }
@@ -850,6 +863,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     timing_.worldTime = WorldTime::DefaultSeconds;
     saveWorldMetadata();
 
+    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setTerrainLod(settings_.terrainLod);
@@ -871,6 +885,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     if (spectatorMode_)
         player_->setSpectatorMode(true);
 
+    transportation_=std::make_unique<Transportation>(world_->generationVersion()>=22?world_->findSurvivalSpawnNear(0,0):world_->findSafeSpawnNear(0,0));
     inventory_ = std::make_unique<Inventory>();
     if (creativeMode_ || spectatorMode_)
         inventory_->clear();
@@ -936,6 +951,8 @@ void Game::handleGlobalInput() {
         synchronizeCursorCapture();
         return;
     }
+    if(transportPreview_)updateTransportationPreview(glfwGetTime());
+    if(navigationInput()) return;
     if (chat_.isOpen()) {
         const std::string submitted = chat_.update(input_, window_, commands_);
         if (!submitted.empty()) {
@@ -1446,9 +1463,10 @@ void Game::updateSimulation(float deltaTime) {
     world_->updateFluids(deltaTime);
     world_->updateBlockEntities(deltaTime);
     const bool playerInputEnabled =
-        ui_.state() == GameState::Playing && input_.cursorCaptured() && weatherBenchmark_.empty() && optimizationBenchmark_.empty();
+        ui_.state() == GameState::Playing && input_.cursorCaptured() && !navigationOpen_ && weatherBenchmark_.empty() && optimizationBenchmark_.empty();
     const bool wasDead = player_->isDead();
     const bool wasBelowWorld = player_->position().y < world_->minimumY() - 24.0f;
+    updateTransportation(deltaTime,playerInputEnabled);
     updateEquipmentInput(playerInputEnabled);
     player_->update(deltaTime, input_.playerInput(playerInputEnabled), *world_);
     if(!wasDead && player_->isDead() && player_->lastDamageSource()==PlayerDamageSource::Burning) chat_.addMessage("Burned to death",ChatTone::Error,glfwGetTime());
@@ -1474,7 +1492,7 @@ void Game::updateSimulation(float deltaTime) {
         interaction_.breakProgress = 0.0f;
         interaction_.hasMiningTarget = false;
     } else if (ui_.state() == GameState::Playing && input_.cursorCaptured() &&
-               !player_->isDead() && !spectatorMode_) {
+               !player_->isDead() && !spectatorMode_ && !navigationOpen_) {
         updatePlayingInteraction(deltaTime);
     }
 
@@ -1504,6 +1522,7 @@ void Game::updatePlayingInteraction(float deltaTime) {
                               creativeMode_);
     }
     handleDropAction();
+    if(input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) && interaction_.attackCooldown<=0 && transportation_->breakBoat(*player_,*inventory_,*survival_,*world_,std::min(interaction_.hasBlockTarget?interaction_.blockTarget.distance:5.f,interaction_.mobTarget.valid()?interaction_.mobTarget.distance:5.f))){interaction_.attackCooldown=.35f;return;}
     updateMobAttack();
     updateMining(deltaTime);
     handleUseAction();
@@ -1531,7 +1550,7 @@ void Game::handleDropAction() {
                          dropped.count,
                          dropped.durability,
                          dropVelocity,
-                         1.0f);
+                         1.0f, dropped.identity);
     interaction_.heldItemSwing = 0.55f;
 }
 
@@ -1654,7 +1673,7 @@ void Game::updateMining(float deltaTime) {
         }
 
         for (const ItemStack& stack : storedItems)
-            survival_->spawnDrop(dropPosition, stack.item, stack.count, stack.durability);
+            survival_->spawnDrop(dropPosition, stack.item, stack.count, stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity);
 
         if (isOre(block) && canHarvestBlock(inventory_->selectedItem(), block)) {
             survival_->spawnExperience(dropPosition, oreExperience(block));
@@ -1670,12 +1689,14 @@ void Game::updateMining(float deltaTime) {
 }
 
 void Game::handleUseAction() {
+    if(input_.mousePressed(GLFW_MOUSE_BUTTON_RIGHT) && !transportation_->mounted() && transportation_->useBoat(*player_,*world_,player_->cameraPosition(),player_->lookDirection(),std::min(interaction_.hasBlockTarget?std::min(5.f,interaction_.blockTarget.distance):5.f,interaction_.mobTarget.valid()?interaction_.mobTarget.distance:5.f))) return;
     if (player_->isBlocking() || !input_.mousePressed(GLFW_MOUSE_BUTTON_RIGHT)) {
         return;
     }
 
     const bool useOffhand=inventory_->selectedStack().empty() ||
         (!inventory_->equipment(4).empty() && !hasMainHandUse(inventory_->selectedItem()));
+    if(transportationUse(useOffhand)) return;
     const Item heldItem = useOffhand?inventory_->equipment(4).item:inventory_->selectedItem();
     const auto consume=[&] {return useOffhand?inventory_->consumeOffhand():inventory_->consumeSelected();};
     bool used = false;
@@ -1694,10 +1715,13 @@ void Game::handleUseAction() {
             const int facing = doorFacing(usedBlock);
             const bool hingeRight = doorHingeRight(usedBlock);
             const bool open = !isDoorOpen(usedBlock);
+            const auto nextDoor=doorBlock(facing,false,hingeRight,open);const auto shape=blockGeometry(nextDoor);
+            const glm::vec3 low=glm::vec3(lowerPosition)+glm::vec3(shape.minX,shape.minY,shape.minZ),high=glm::vec3(lowerPosition)+glm::vec3(shape.maxX,shape.maxY,shape.maxZ);
+            if(transportation_->intersectsBox(low,high)||transportation_->intersectsBox(low+glm::vec3(0,1,0),high+glm::vec3(0,1,0)))return;
             world_->setBlock(lowerPosition.x,
                              lowerPosition.y,
                              lowerPosition.z,
-                             doorBlock(facing, false, hingeRight, open));
+                             nextDoor);
             const Block upper = world_->getBlock(
                 lowerPosition.x, lowerPosition.y + 1, lowerPosition.z);
             if (upper == Block::Air || (isDoor(upper) && isDoorUpper(upper))) {
@@ -1844,9 +1868,9 @@ void Game::handleUseAction() {
                     glm::vec3(geometry.maxX, geometry.maxY, geometry.maxZ);
                 const glm::vec3 playerMinimum = player_->aabbMinimum();
                 const glm::vec3 playerMaximum = player_->aabbMaximum();
-                return minimum.x < playerMaximum.x && maximum.x > playerMinimum.x &&
+                return transportation_->intersectsBox(minimum,maximum) || (minimum.x < playerMaximum.x && maximum.x > playerMinimum.x &&
                        minimum.y < playerMaximum.y && maximum.y > playerMinimum.y &&
-                       minimum.z < playerMaximum.z && maximum.z > playerMinimum.z;
+                       minimum.z < playerMaximum.z && maximum.z > playerMinimum.z);
             };
             const bool obstructsPlayer =
                 isSolid(placedBlock) && placementIntersectsPlayer(adjacentPosition, placedBlock);
@@ -2078,6 +2102,7 @@ void Game::renderFrame(float deltaTime) {
     RenderScratch<RenderBillboard> billboards(billboardStorage, 256 * 1024);
     RenderScratch<RenderItemSprite> items(itemStorage, 256 * 1024);
     survival_->renderCuboids(cuboids.get());
+    transportation_->appendModels(cuboids.get(),player_->position(),entityDistance);
     survival_->renderBillboards(billboards.get());
     survival_->renderItemSprites(items.get());
     renderer_->renderEntities(cuboids.get(), view, projection, timing_.worldTime, entityDistance);
@@ -2137,6 +2162,7 @@ void Game::renderFrame(float deltaTime) {
         }
         }
     }
+    if(ui_.state()==GameState::Playing && !chat_.isOpen()) renderer_->renderNavigation(width,height,*transportation_,*player_,*inventory_,navigationOpen_,mapView_,viewedMap_,waypointName_,waypointCoordinates_,waypointCoordinatesFocused_,navigationMessage_);
     if (underwater) {
         renderer_->renderUnderwaterOverlay(width, height);
     }
@@ -2381,6 +2407,7 @@ std::string Game::buildDebugText() const {
          << world_->lastMeshUploadMilliseconds() << " MS\n"
          << "EDIT "
          << world_->lastBlockEditMilliseconds() << " MS";
+    text << "TRAVEL boats " << transportation_->boats().size() << (transportation_->mounted()?" RIDING":"") << " map update " << transportation_->mapMilliseconds << " ms\n";
     return text.str();
 }
 
@@ -3665,6 +3692,7 @@ void Game::returnToMainMenu() {
     weather_.reset();
     if (weatherRenderer_) weatherRenderer_->clear();
     if (sounds_) sounds_->setRainAmbience(0,0);
+    transportation_.reset();
     farming_.reset();
     survival_.reset();
     inventory_.reset();

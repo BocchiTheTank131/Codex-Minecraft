@@ -13,8 +13,8 @@
 
 namespace fs = std::filesystem;
 namespace {
-const std::array<const char*, 5> Files{
-    "voxel_world.vxw", "voxel_inventory.vxi", "voxel_player.vps", "voxel_mobs.vxm", "world_seed.txt"};
+const std::array<const char*, 6> Files{
+    "voxel_world.vxw", "voxel_inventory.vxi", "voxel_player.vps", "voxel_mobs.vxm", "world_seed.txt", "voxel_travel.vtn"};
 SavedWorld read(const fs::path& directory) {
     SavedWorld result;
     result.directory = directory;

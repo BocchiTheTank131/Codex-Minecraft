@@ -24,7 +24,7 @@
 #include <thread>
 
 namespace {
-constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '5', '\0', '\0'};
+constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '6', '\0', '\0'};
 constexpr char MobMagic[8] = {'V', 'X', 'M', 'O', 'B', '1', '\0', '\0'};
 constexpr int PassiveMobCap = 26;
 constexpr int HostileMobCap = 18;
@@ -421,6 +421,10 @@ const std::vector<Recipe>& recipes() {
             const Item m = entry.first;
             r.push_back(recipe(2, 2, {m,m,m,m}, entry.second, m == Item::Sand ? 1 : 4, false));
         }
+        const Item woods[]={Item::Planks,Item::BirchPlanks,Item::SprucePlanks,Item::JunglePlanks,Item::AcaciaPlanks,Item::DarkOakPlanks};
+        for(int w=0;w<6;++w){const Item p=woods[w];r.push_back(recipe(3,2,{p,Item::None,p,p,p,p},Item(int(Item::OakBoat)+w),1,true));}
+        r.push_back(recipe(3,3,{Item::None,Item::IronIngot,Item::None,Item::IronIngot,Item::CopperIngot,Item::IronIngot,Item::None,Item::IronIngot,Item::None},Item::Compass,1,true));
+        r.push_back(recipe(3,3,{Item::Paper,Item::Paper,Item::Paper,Item::Paper,Item::Compass,Item::Paper,Item::Paper,Item::Paper,Item::Paper},Item::EmptyMap,1,true));
         return r;
     }();
     return all;
@@ -503,15 +507,15 @@ void Inventory::normalize(ItemStack& s) {
     s.durability = d ? std::clamp(s.durability, 1, d) : 0;
 }
 bool Inventory::canMerge(const ItemStack& a, const ItemStack& b) {
-    return !a.empty() && !b.empty() && a.item == b.item && !isDurable(a.item);
+    return !a.empty() && !b.empty() && a.item == b.item && a.identity == b.identity && !isDurable(a.item);
 }
-int Inventory::add(Item item, int amount, int durability) {
+int Inventory::add(Item item, int amount, int durability, std::uint32_t identity) {
     if (item == Item::None || amount <= 0)
         return amount;
     int max = maxStack(item);
     if (!isDurable(item))
         for (auto& s : slots_)
-            if (s.item == item && s.count < max) {
+            if (s.item == item && s.identity == identity && s.count < max) {
                 int n = std::min(amount, max - s.count);
                 s.count += n;
                 amount -= n;
@@ -521,7 +525,7 @@ int Inventory::add(Item item, int amount, int durability) {
     for (auto& s : slots_)
         if (s.empty()) {
             int n = std::min(amount, max);
-            s = {item, n, isDurable(item) ? (durability < 0 ? maxDurability(item) : durability) : 0};
+            s = {item, n, isDurable(item) ? (durability < 0 ? maxDurability(item) : durability) : 0, identity};
             normalize(s);
             amount -= n;
             if (!amount)
@@ -868,7 +872,7 @@ bool Inventory::shiftIngredientToCrafting(int playerSlot, int recipeIndex, bool 
             ItemStack& destination = crafting_[static_cast<std::size_t>(y * 3 + x)];
             if (!destination.empty())
                 continue;
-            destination = {source.item, 1, source.durability};
+            destination = {source.item, 1, source.durability, source.identity};
             --source.count;
             movedAny = true;
             normalize(source);
@@ -1006,7 +1010,7 @@ bool Inventory::moveExternalToInventory(ItemStack& stack) {
     if (stack.empty())
         return false;
     const int before = stack.count;
-    stack.count = add(stack.item, stack.count, stack.durability);
+    stack.count = add(stack.item, stack.count, stack.durability, stack.identity);
     normalize(stack);
     return stack.count != before;
 }
@@ -1079,7 +1083,7 @@ ItemStack Inventory::takeSlot(int index, bool entireStack) {
 void Inventory::returnCraftingItems() {
     for (auto& s : crafting_)
         if (!s.empty()) {
-            int left = add(s.item, s.count, s.durability);
+            int left = add(s.item, s.count, s.durability, s.identity);
             s.count = left;
             normalize(s);
         }
@@ -1093,7 +1097,7 @@ bool Inventory::save(const std::string& p, std::uint32_t seed) const {
         std::uint8_t i = itemDefinition(s.item).saveId;
         std::int16_t c = static_cast<std::int16_t>(s.count),
                      d = static_cast<std::int16_t>(s.durability);
-        return wr(f, i) && wr(f, c) && wr(f, d);
+        return wr(f, i) && wr(f, c) && wr(f, d) && wr(f, s.identity);
     };
     for (const auto& s : slots_)
         if (!ws(s))
@@ -1116,7 +1120,8 @@ bool Inventory::load(const std::string& p, std::uint32_t seed) {
     f.read(m, 8);
     const char legacy[8]={'V','X','I','N','V','4','\0','\0'};
     const bool old=std::memcmp(m,legacy,8)==0;
-    if ((!old && std::memcmp(m, InventoryMagic, 8)) || !rd(f, stored) || stored != seed ||
+    const bool v5=std::memcmp(m,"VXINV5\0",8)==0;
+    if ((!old && !v5 && std::memcmp(m, InventoryMagic, 8)) || !rd(f, stored) || stored != seed ||
         !rd(f, loaded.selectedSlot_))
         return false;
     auto rs = [&](ItemStack& s) {
@@ -1126,6 +1131,7 @@ bool Inventory::load(const std::string& p, std::uint32_t seed) {
         if (!rd(f, i) || !rd(f, c) || !rd(f, d) || !itemFromSaveId(i, loadedItem))
             return false;
         s = {loadedItem, c, d};
+        if(!old && !v5 && !rd(f,s.identity)) return false;
         normalize(s);
         return true;
     };
@@ -1649,7 +1655,7 @@ void SurvivalWorld::spawnDrop(const glm::vec3& p,
                               int amount,
                               int durability,
                               const glm::vec3& velocity,
-                              float pickupDelay) {
+                              float pickupDelay, std::uint32_t identity) {
     if (item == Item::None || amount <= 0)
         return;
     Drop d;
@@ -1657,7 +1663,7 @@ void SurvivalWorld::spawnDrop(const glm::vec3& p,
     d.velocity = velocity;
     d.stack = {item,
                amount,
-               isDurable(item) ? (durability < 0 ? Inventory::maxDurability(item) : durability) : 0};
+               isDurable(item) ? (durability < 0 ? Inventory::maxDurability(item) : durability) : 0,identity};
     d.pickupDelay = std::max(0.0f, pickupDelay);
     drops_.push_back(d);
 }
@@ -2060,7 +2066,7 @@ void SurvivalWorld::detonate(const glm::vec3& center, World& world, Player& play
         const glm::vec3 dropPosition = glm::vec3(cell) + glm::vec3(.5f);
         for (const ItemStack& stack : world.takeBlockEntityContents(cell))
             if (stack.item != Item::None && stack.count > 0)
-                spawnDrop(dropPosition, stack.item, stack.count, stack.durability);
+                spawnDrop(dropPosition, stack.item, stack.count, stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity);
         const Item item = blockDefinition(block).drop;
         if (item != Item::None && (!isDoorUpper(block)) && releasedDrops < 64) {
             spawnDrop(dropPosition, item);
@@ -2578,7 +2584,7 @@ void SurvivalWorld::update(float dt, World& w, Player& p, Inventory& i, float da
         if (!p.isSpectator() && d.age >= d.pickupDelay &&
             glm::distance(d.position, p.position() + glm::vec3(0, .8f, 0)) < 1.4f) {
             const int before = d.stack.count;
-            int left = i.add(d.stack.item, d.stack.count, d.stack.durability);
+            int left = i.add(d.stack.item, d.stack.count, d.stack.durability,d.stack.identity);
             d.stack.count = left;
             if (sounds_ && left < before) sounds_->playItemPickup();
         }
@@ -2744,6 +2750,9 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
         wr(f, length);
         f.write(name.data(), length);
     }
+    f.write("DRP1",4);
+    wr(f,std::uint32_t(drops_.size()));
+    for(const auto& d:drops_){wr(f,d.position);wr(f,d.velocity);wr(f,d.stack.item);wr(f,d.stack.count);wr(f,d.stack.durability);wr(f,d.stack.identity);wr(f,d.age);wr(f,d.pickupDelay);}
     return !!f;
     });
 }
@@ -2833,6 +2842,17 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
             }
         }
     }
+    std::vector<Drop> loadedDrops;
+    if(f.peek()!=std::char_traits<char>::eof()){
+        char marker[4]{};f.read(marker,4);std::uint32_t count;
+        if(std::memcmp(marker,"DRP1",4)||!rd(f,count)||count>5000)return false;
+        for(unsigned k=0;k<count;++k){Drop d;
+            if(!rd(f,d.position)||!rd(f,d.velocity)||!rd(f,d.stack.item)||!rd(f,d.stack.count)||!rd(f,d.stack.durability)||!rd(f,d.stack.identity)||!rd(f,d.age)||!rd(f,d.pickupDelay)||
+                int(d.stack.item)>=int(Item::Count)||d.stack.count<1||d.stack.count>Inventory::maxStack(d.stack.item)||!std::isfinite(d.position.x)||!std::isfinite(d.position.y)||!std::isfinite(d.position.z)||!std::isfinite(d.velocity.x)||!std::isfinite(d.velocity.y)||!std::isfinite(d.velocity.z)||!std::isfinite(d.age)||!std::isfinite(d.pickupDelay)) return false;
+            loadedDrops.push_back(d);
+        }
+    }
+    drops_=std::move(loadedDrops);
     animals_ = std::move(loaded);
     arrows_.clear();
     explosionEffects_.clear();
@@ -2851,7 +2871,11 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     w.setSimulationDistance(4);
     for (int x : {-2, 0, 16, 22})
         for (int z : {-2, 0, 3}) w.prepareSpawnTerrain({float(x), 241, float(z)});
-    Player testPlayer(w.findSafeSpawnNear(0, 0));
+    // Controlled combat lane: a natural spawn can face a tree or lie in an
+    // unloaded distant region. Ray tests must not depend on that geography.
+    w.fillBlocks({-4,239,-6},{4,239,3},Block::Stone);
+    w.fillBlocks({-4,240,-6},{4,244,3},Block::Air);
+    Player testPlayer({.5f,240,.5f});
     auto oldAnimals = animals_;
     auto oldDrops = drops_;
     auto oldOrbs = experienceOrbs_;
@@ -3610,5 +3634,19 @@ void SurvivalWorld::lightningDamage(const glm::vec3& center,const World& world) 
             animal.deathTimer=.65f; releaseDrops(animal); spawnExperience(animal.position,4);
             if(sounds_) sounds_->playMobDeath(mobSoundType(static_cast<std::uint8_t>(animal.type)),animal.position);
         }
+    }
+}
+
+bool Inventory::replaceHeld(bool offhand,const ItemStack& expected,const ItemStack& replacement){
+    auto& stack=offhand?equipment_[4]:slots_[selectedSlot_];
+    if(stack.item!=expected.item||stack.count!=expected.count||stack.identity!=expected.identity)return false;
+    stack=replacement;normalize(stack);return true;
+}
+
+void SurvivalWorld::vehicleObstacles(std::vector<RenderCuboid>& out,const glm::vec3& origin,float radius) const {
+    out.clear();
+    for(const auto& a:animals_)if(a.deathTimer<=0 && glm::distance(a.position,origin)<radius){
+        const bool billboard=isBillboard(a.type);const float half=billboard?BillboardMobHalfWidth:.38f,height=billboard?BillboardMobHeight:1.15f;
+        out.push_back({a.position+glm::vec3(0,height*.5f,0),{half*2,height,half*2},{1,1,1},{}});
     }
 }

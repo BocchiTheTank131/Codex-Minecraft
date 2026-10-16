@@ -7,6 +7,7 @@
 
 class World;
 class Inventory;
+class Transportation;
 
 enum class PlayerDamageSource { General, Projectile, Burning, Melee, Explosion, Fall, Cactus, Starvation, Void };
 
@@ -46,6 +47,11 @@ public:
     void setSpectatorMode(bool enabled);
     void adjustSpectatorSpeed(double scrollSteps);
     void teleport(const glm::vec3& position);
+    void setTransportation(const Transportation* value){transportation_=value;}
+    void setRiding(bool value){riding_=value;fallDistance_=0;flying_=false;sprinting_=false;inWater_=false;sneaking_=false;}
+    bool isRiding() const{return riding_;}
+    std::uint32_t positionRevision() const{return positionRevision_;}
+    void setRidePosition(glm::vec3 position,glm::vec3 velocity){position_=position;velocity_=velocity;fallDistance_=0;grounded_=false;}
     void setFlying(bool enabled);
     bool save(const std::string& path, std::uint32_t seed) const;
     bool load(const std::string& path, std::uint32_t seed);
@@ -106,6 +112,9 @@ public:
     float xpProgress() const;
 
 private:
+    const Transportation* transportation_=nullptr;
+    bool riding_=false;
+    std::uint32_t positionRevision_=0;
     Inventory* equipment_ = nullptr;
     bool blocking_ = false;
     float shieldFeedback_ = 0;

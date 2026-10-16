@@ -17,6 +17,8 @@
 #include <vector>
 
 class World;
+class Transportation;
+class Player;
 class TerrainOcclusion;
 const std::array<std::uint8_t, 7>& uiGlyph(char character);
 struct FurnaceData;
@@ -32,6 +34,7 @@ public:
     Renderer(const Renderer&) = delete;
     Renderer& operator=(const Renderer&) = delete;
 
+    void resetNavigationCache(){mapTextureId_=0;mapTextureRevision_=~0U;}
     bool validateTerrainPacking() const;
     unsigned occlusionCulledCount() const;
     unsigned occlusionQueryCount() const;
@@ -60,6 +63,7 @@ public:
                    const std::string& debugText,
                    const std::string& statusText,
                    bool spectator = false) const;
+    void renderNavigation(int,int,const Transportation&,const Player&,const Inventory&,bool,bool,std::uint32_t,const std::string&,const std::string&,bool,const std::string&) const;
     void renderChat(int width, int height, const ChatUI& chat, double now) const;
     void renderSurvivalUi(int width,
                           int height,
@@ -153,6 +157,11 @@ public:
     int visibleEntityCount() const { return visibleEntityCount_; }
 
 private:
+    mutable std::array<std::uint32_t,16384> mapPixels_{};
+    GLuint boatTexture_=0;
+    GLint boatFamilyUniform_=-1;
+    mutable GLuint mapTexture_=0;
+    mutable std::uint32_t mapTextureId_=0,mapTextureRevision_=~0U;
     std::unique_ptr<TerrainOcclusion> occlusion_;
     int occlusionMode_=0;
     mutable float terrainRenderMilliseconds_=0;

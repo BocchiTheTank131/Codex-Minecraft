@@ -1,4 +1,5 @@
 #include "Player.h"
+#include "Transportation.h"
 #include "Survival.h"
 #include "SaveFile.h"
 #include "World.h"
@@ -101,6 +102,7 @@ void Player::addExperience(int a) {
     experience_ = std::max(0, experience_ + a);
 }
 void Player::respawn(const World& world) {
+    riding_=false; ++positionRevision_;
     // The loaded player position is not a world spawn point. Resolve current
     // terrain and saved edits at the versioned world spawn on every respawn.
     position_ = world.generationVersion()>=22 && !creativeMode_ && !spectatorMode_ ?
@@ -158,6 +160,7 @@ void Player::adjustSpectatorSpeed(double scrollSteps) {
 }
 
 void Player::teleport(const glm::vec3& position) {
+    riding_=false; ++positionRevision_;
     position_ = position;
     velocity_ = glm::vec3(0.0f);
     fallDistance_ = 0.0f;
@@ -260,6 +263,8 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
         return;
     }
 
+    glm::vec3 movement(0.0f);
+    if (!riding_) {
     if (creativeMode_) {
         if (input.enabled && input.jump && !jumpWasDown_) {
             if (spaceTapTimer_ > 0.0f) {
@@ -312,7 +317,6 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
     }
     const glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0.0f, 1.0f, 0.0f)));
 
-    glm::vec3 movement(0.0f);
     if (input.enabled && input.moveForward) {
         movement += forward;
     }
@@ -429,6 +433,7 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
         fallDistance_ = 0.0f;
     }
 
+    } // Vehicle owns seated movement, not the player walking integrator.
     if (!creativeMode_ && world.aabbTouchesBlock(aabbMinimum(), aabbMaximum(), Block::Cactus)) {
         damage(1.0f);
     }
@@ -485,6 +490,7 @@ void Player::moveAndCollide(float dt, const World& w) {
 void Player::resolveAxis(int axis, float amount, const World& w) {
     if (amount == 0)
         return;
+    const float previousCoordinate=position_[axis];
     position_[axis] += amount;
     constexpr float e = .0001f;
     auto mn = aabbMinimum(), mx = aabbMaximum();
@@ -519,4 +525,25 @@ void Player::resolveAxis(int axis, float amount, const World& w) {
                     velocity_.z = 0;
                 }
             }
+    if(transportation_ && !transportation_->boats().empty() && !riding_ && !spectatorMode_ && transportation_->intersectsBox(aabbMinimum(),aabbMaximum())){
+        const float requested=position_[axis],delta=requested-previousCoordinate;
+        // Landing on a moving hull uses its actual top contact, including a
+        // tiny existing overlap caused by upward buoyancy this frame.
+        if(axis==1 && amount<0){
+            const float top=transportation_->landingHeight(aabbMinimum(),aabbMaximum(),previousCoordinate);
+            if(std::isfinite(top)){position_.y=top+.0001f;velocity_.y=0;grounded_=true;return;}
+        }
+        position_[axis]=previousCoordinate;
+        if(transportation_->intersectsBox(aabbMinimum(),aabbMaximum())){
+            // A command can start inside an entity; allow ordinary movement
+            // out of it rather than pinning the player there.
+            position_[axis]=requested;return;
+        }
+        float safe=0,blocked=1;
+        for(int step=0;step<12;++step){const float middle=(safe+blocked)*.5f;position_[axis]=previousCoordinate+delta*middle;
+            if(transportation_->intersectsBox(aabbMinimum(),aabbMaximum()))blocked=middle;else safe=middle;
+        }
+        position_[axis]=previousCoordinate+delta*safe;velocity_[axis]=0;
+        if(axis==1 && amount<0)grounded_=true;
+    }
 }

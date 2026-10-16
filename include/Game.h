@@ -24,6 +24,7 @@ class Renderer;
 class SoundSystem;
 class Weather;
 class WeatherRenderer;
+class Transportation;
 
 class Game {
 public:
@@ -117,6 +118,17 @@ private:
     std::unique_ptr<Inventory> inventory_;
     std::unique_ptr<SurvivalWorld> survival_;
     std::unique_ptr<FarmingSystem> farming_;
+    std::unique_ptr<Transportation> transportation_;
+    bool navigationOpen_=false,mapView_=false,transportSmoke_=false,transportPreview_=false,transportBenchmark_=false;
+    std::uint32_t viewedMap_=0;
+    std::string waypointName_="Camp",waypointCoordinates_,navigationMessage_;
+    bool waypointCoordinatesFocused_=false;
+    float mapTimer_=0;
+    bool navigationInput();
+    bool transportationUse(bool offhand);
+    void updateTransportation(float deltaTime,bool inputEnabled);
+    void runTransportationSmoke();
+    void updateTransportationPreview(double now);
     std::unique_ptr<Weather> weather_;
     std::unique_ptr<WeatherRenderer> weatherRenderer_;
 

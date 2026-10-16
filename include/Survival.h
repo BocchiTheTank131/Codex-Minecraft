@@ -135,6 +135,7 @@ enum class Item : std::uint8_t {
     Deepslate, DeepslateCoalOre, DeepslateIronOre, DeepslateCopperOre, DeepslateGoldOre, DeepslateDiamondOre, Bedrock, Lava,
     Cobweb, CrackedStoneBricks, SurveyorToken, CavernShard, AncientSeal,
     LeatherHelmet, LeatherChestplate, LeatherLeggings, LeatherBoots, GoldHelmet, GoldChestplate, GoldLeggings, GoldBoots, IronHelmet, IronChestplate, IronLeggings, IronBoots, DiamondHelmet, DiamondChestplate, DiamondLeggings, DiamondBoots, Shield,
+    OakBoat, BirchBoat, SpruceBoat, JungleBoat, AcaciaBoat, DarkOakBoat, EmptyMap, FilledMap, Compass,
     Count
 };
 
@@ -142,6 +143,7 @@ struct ItemStack {
     Item item = Item::None;
     int count = 0;
     int durability = 0;
+    std::uint32_t identity = 0;
     bool empty() const {
         return item == Item::None || count <= 0;
     }
@@ -149,6 +151,7 @@ struct ItemStack {
         item = Item::None;
         count = 0;
         durability = 0;
+        identity = 0;
     }
 };
 
@@ -217,10 +220,11 @@ public:
         return cursor_;
     }
     int count(Item item) const;
-    int add(Item item, int amount = 1, int durability = -1);
+    int add(Item item, int amount = 1, int durability = -1, std::uint32_t identity = 0);
     bool remove(Item item, int amount = 1);
     bool consumeSelected(int amount = 1);
     bool damageSelectedTool(int amount = 1);
+    bool replaceHeld(bool offhand, const ItemStack& expected, const ItemStack& replacement);
     void clear();
     void setCreativeCursor(Item item);
     bool handleCreativeClick(
@@ -297,6 +301,8 @@ struct RenderCuboid {
     glm::vec3 size{1};
     glm::vec3 color{1};
     glm::vec3 direction{0};
+    float yaw=0;
+    int woodTexture=-1;
 };
 struct RenderBillboard {
     glm::vec3 feet{0};
@@ -345,7 +351,7 @@ public:
                    int amount = 1,
                    int durability = -1,
                    const glm::vec3& velocity = glm::vec3(0.4f, 0.8f, 0.2f),
-                   float pickupDelay = 0.0f);
+                   float pickupDelay = 0.0f, std::uint32_t identity = 0);
     void spawnExperience(const glm::vec3& position, int amount);
     void spawnStructureMob(const glm::ivec3& position, bool hostile);
     void spawnBillboardPreview(const glm::vec3& origin, const glm::vec3& forward);
@@ -363,6 +369,7 @@ public:
     std::vector<RenderBillboard> renderBillboards() const;
     void renderCuboids(std::vector<RenderCuboid>& out) const;
     void renderBillboards(std::vector<RenderBillboard>& out) const;
+    void vehicleObstacles(std::vector<RenderCuboid>& out,const glm::vec3& origin,float radius) const;
     std::string mobName(int index) const;
     std::vector<RenderItemSprite> renderItemSprites() const;
     void renderItemSprites(std::vector<RenderItemSprite>& out) const;

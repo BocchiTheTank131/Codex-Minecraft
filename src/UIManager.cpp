@@ -290,12 +290,12 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
             input.keyDown(GLFW_KEY_LEFT_CONTROL) || input.keyDown(GLFW_KEY_RIGHT_CONTROL);
         const ItemStack stack = inventory.takeGuiDrop(hit,entire);
         if(!stack.empty()) survival.spawnDrop(player.cameraPosition()+player.lookDirection()*1.1f,
-            stack.item,stack.count,stack.durability);
+            stack.item,stack.count,stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity);
         return;
     }
     if(dragReleasedOutside && !inventory.cursorStack().empty()) {
         const auto stack=inventory.takeCursor(false);
-        survival.spawnDrop(player.cameraPosition()+player.lookDirection()*1.1f,stack.item,stack.count,stack.durability);
+        survival.spawnDrop(player.cameraPosition()+player.lookDirection()*1.1f,stack.item,stack.count,stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity);
         return;
     }
 
@@ -447,7 +447,7 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
                  .contains(cursor.x, cursor.y)) {
             const ItemStack dropped = inventory.takeCursor(rightPressed);
             survival.spawnDrop(player.cameraPosition() + player.lookDirection() * 1.1f,
-                               dropped.item, dropped.count, dropped.durability);
+                               dropped.item, dropped.count, dropped.durability,glm::vec3(.4f,.8f,.2f),0,dropped.identity);
         }
     } else if (rightDown && hit.valid() && hit != dragHit_) {
         if (furnaceOpen() || chestOpen()) {

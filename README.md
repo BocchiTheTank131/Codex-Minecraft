@@ -1143,3 +1143,12 @@ The project is split into focused systems:
 ---
 
 **Voxel Frontier** is an experimental voxel sandbox focused on building Minecraft-style systems from scratch in modern C++ and OpenGL, with development driven heavily by ChatGPT Codex.
+
+## v2.14.0 - Transportation & Navigation (local review)
+
+- Six craftable wooden boats use original pixel textures, oriented hull collisions, fixed-step buoyancy, momentum, steering, safe exits and per-world persistence. Aim at open water and right-click to place; right-click the hull to mount; use movement controls to drive/turn, Sneak to exit and attack an unoccupied boat to recover it.
+- Craft a Compass with four Iron Ingots around a Copper Ingot. Its smooth needle points to the original world spawn. Right-click it, or press **N**, for named per-world waypoints. Tab switches name/coordinates, Enter adds, Ctrl+Enter renames, arrows select, Delete removes and Home selects spawn. Escape closes; Ctrl+A clears the active field.
+- Craft an Empty Map with eight Paper around a Compass. Right-click to initialize it. Held/offhand maps progressively survey nearby loaded surface columns; they never generate distant chunks. **M** or right-click toggles the large view. Sneak + right-click spends eight Paper to zoom out, up to 1:16. Unique map IDs survive inventory, offhand, chest and dropped-item transfers. M/N shortcuts yield to existing custom control bindings.
+- World navigation data is bounded to 128 maps, 64 waypoints and 1,024 boats. Maps use 128×128 pixels and cover 128–2,048 blocks. The standalone demo keeps this data in memory only. Older inventory/container formats load with empty identities; generators 1–22 remain unchanged.
+- Optional stairs/fences/gates/trapdoors are deferred to keep this pass focused on validated transportation/navigation.
+- Reproduce regressions with `tools/run_transport_validation.ps1`; see [transport validation](docs/TRANSPORTATION_VALIDATION.md) for measurements, screenshots, package locations and limitations.

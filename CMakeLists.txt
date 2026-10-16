@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.13.2 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.14.0 LANGUAGES C CXX)
 set(VOXELFRONTIER_VERSION_SUFFIX "")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
@@ -76,6 +76,10 @@ add_executable(VoxelFrontier
     src/TerrainOcclusion.cpp
     src/TerrainVertex.cpp
     src/TerrainValidation.cpp
+    src/Transportation.cpp
+    src/Navigation.cpp
+    src/GameNavigation.cpp
+    src/TransportationValidation.cpp
     src/Equipment.cpp
     src/EquipmentValidation.cpp
     src/EquipmentPreview.cpp
