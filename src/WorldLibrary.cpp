@@ -16,6 +16,7 @@ namespace {
 const std::array<const char*, 6> Files{
     "voxel_world.vxw", "voxel_inventory.vxi", "voxel_player.vps", "voxel_mobs.vxm", "world_seed.txt", "voxel_travel.vtn"};
 SavedWorld read(const fs::path& directory) {
+    if(!SaveFile::recover((directory/"save.checkpoint").string()))throw std::runtime_error("Interrupted world checkpoint needs recovery: "+directory.string());
     SavedWorld result;
     result.directory = directory;
     result.name = directory.filename().string();

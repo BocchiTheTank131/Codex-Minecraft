@@ -2791,14 +2791,14 @@ void Renderer::renderNavigation(int width,int height,const Transportation& trave
         text("NAME: "+name+(!focus?"_":""),x+20,y+62,1.7f);text("X Y Z: "+coords+(focus?"_":""),x+20,y+88,1.5f);
         text("EMPTY COORDINATES = CURRENT POSITION",x+20,y+111,1.2f);
         text("TAB FIELD / ENTER ADD / CTRL+ENTER RENAME",x+20,y+141,1.15f);
-        text("UP/DOWN SELECT / DELETE REMOVE / HOME SPAWN / ESC CLOSE",x+20,y+164,1.2f);
+        text("UP/DOWN SELECT / DELETE CONFIRM / HOME SPAWN / ESC",x+20,y+164,1.2f);
         const int start=std::max(0,travel.selectedWaypoint-4);int row=0;
         for(int i=start;i<int(travel.waypoints().size())&&row<8;++i,++row){const auto& wp=travel.waypoints()[i];const float yy=y+200+row*25;
             if(i==travel.selectedWaypoint)rect(x+14,yy-4,570,24,{.24f,.34f,.28f,1});
             text(wp.name+"  "+std::to_string(int(wp.position.x))+" "+std::to_string(int(wp.position.y))+" "+std::to_string(int(wp.position.z)),x+24,yy,1.35f);}
         const auto spawn=travel.originalSpawn();text("ORIGINAL SPAWN "+std::to_string(int(spawn.x))+" "+std::to_string(int(spawn.z)),x+20,y+420,1.25f);
         text(message,x+20,y+447,1.05f,{1,.8f,.45f,1});
-    }else if(map){rect(mapX-8,mapY-8,mapSize+16,mapSize+16,{.7f,.58f,.35f,1});text("MAP #"+std::to_string(map->id)+"  1:"+std::to_string(1<<map->scale),mapX,mapY-27,1.4f);if(large)text("M CLOSE / SNEAK+RMB +8 PAPER ZOOM OUT",mapX,mapY+mapSize+20,1.1f);}
+    }else if(map){rect(mapX-8,mapY-8,mapSize+16,mapSize+16,{.7f,.58f,.35f,1});rect(mapX-8,mapY-(large?49.f:33.f),mapSize+16,large?39.f:23.f,{.04f,.06f,.07f,.9f});text("MAP #"+std::to_string(map->id)+"  1:"+std::to_string(1<<map->scale),mapX,mapY-27,1.4f);if(large){rect(mapX-8,mapY+mapSize+9,mapSize+16,42,{.04f,.06f,.07f,.9f});text("M CLOSE / SNEAK+RMB: ZOOM (-8 PAPER)",mapX,mapY+mapSize+20,1.1f);text(travel.refreshing(map->id)?"REFRESHING SURVEYED TERRAIN...":"F6: REFRESH SURVEYED TERRAIN (IF UNBOUND)",mapX,mapY+mapSize+38,1.1f);text(std::to_string(128<<map->scale)+" x "+std::to_string(128<<map->scale)+" BLOCKS / NORTH UP",mapX,mapY-43,1.1f);}}
     drawMenuVertices(v.data(),v.size());
     if(!map||open)return;
     if(!mapTexture_){glGenTextures(1,&mapTexture_);glBindTexture(GL_TEXTURE_2D,mapTexture_);glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,128,128,0,GL_RGBA,GL_UNSIGNED_BYTE,nullptr);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);}
@@ -2813,5 +2813,17 @@ void Renderer::renderNavigation(int width,int height,const Transportation& trave
     v={ {a,{1,1,1,1},{0,0},1},{b,{1,1,1,1},{1,0},1},{c,{1,1,1,1},{1,1},1},{a,{1,1,1,1},{0,0},1},{c,{1,1,1,1},{1,1},1},{d,{1,1,1,1},{0,1},1} };
     glUseProgram(uiProgram_);glBindBuffer(GL_ARRAY_BUFFER,uiVbo_);glBufferData(GL_ARRAY_BUFFER,v.size()*sizeof(UiVertex),v.data(),GL_STREAM_DRAW);glDisable(GL_DEPTH_TEST);glDisable(GL_CULL_FACE);glBindVertexArray(uiVao_);glDrawArrays(GL_TRIANGLES,0,6);glBindVertexArray(0);glEnable(GL_CULL_FACE);glEnable(GL_DEPTH_TEST);
     v.clear();const float span=float(128<<map->scale),px=(player.position().x-map->originX)/span,pz=(player.position().z-map->originZ)/span;
-    if(px>=0&&px<1&&pz>=0&&pz<1){const float x=mapX+px*mapSize,y=mapY+pz*mapSize;rect(x-3,y-3,7,7,{1,1,1,1});const auto f=player.lookDirection();needle(x,y,std::atan2(f.x,-f.z),12,{.95f,.15f,.12f,1});}drawMenuVertices(v.data(),v.size());
+    if(px>=0&&px<1&&pz>=0&&pz<1){
+        const float x=mapX+px*mapSize,y=mapY+pz*mapSize;
+        rect(x-5,y-5,11,11,{.04f,.04f,.04f,1});rect(x-3,y-3,7,7,{1,1,1,1});
+        const auto facing=player.lookDirection();const float heading=std::atan2(facing.x,-facing.z);
+        const glm::vec2 direction(std::sin(heading),-std::cos(heading));
+        // Two strokes replace 27 overlapping rectangles while retaining contrast.
+        auto stroke=[&](float length,float thickness,glm::vec4 color){
+            const glm::vec2 start(x,y),end=start+direction*length,side=glm::vec2(-direction.y,direction.x)*(thickness*.5f);
+            const std::array<glm::vec2,4> points{start+side,start-side,end-side,end+side};
+            for(int index:{0,1,2,0,2,3})v.push_back({ndc(points[index].x,points[index].y),color,{0,0},0});
+        };
+        stroke(15,5,{.03f,.03f,.03f,1});stroke(12,3,{1,.25f,.1f,1});
+    }drawMenuVertices(v.data(),v.size());
 }

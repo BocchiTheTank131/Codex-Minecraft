@@ -1,0 +1,18 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 14 background tracks
+Audio: playing background track background/Secret base.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+Save failure stage=serializer-rejected path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-before\\save-tests\\inventory.test" domain=errno code=0 message=no OS error supplied (see stage) thread=6088 previous checkpoint retained; temporary data not reported as saved
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-before\\save-tests\\inventory.test" domain=system code=32 message=The process cannot access the file because it is being used by another process. thread=6088 previous checkpoint retained; temporary data not reported as saved
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-before\\save-tests\\inventory.test" attributes=32 owners=21744:VoxelFrontier.exe,
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-before\\save-tests\\inventory.test.tmp" attributes=32 owners=
+Recovered interrupted checkpoint "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-before\\save-tests\\terminated\\save.checkpoint"
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-before\\save-tests\\navigation.test" domain=system code=32 message=The process cannot access the file because it is being used by another process. thread=6088 previous checkpoint retained; temporary data not reported as saved
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-before\\save-tests\\navigation.test" attributes=32 owners=21744:VoxelFrontier.exe,
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-before\\save-tests\\navigation.test.tmp" attributes=32 owners=
+Recovered interrupted checkpoint "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-before\\save-tests\\save.checkpoint"
+Concurrent writer transient failures recovered=0
+Rapid checkpoint transient failures recovered=0
+Save reliability: held Windows delete locks reproduced; failures return false, old data retained, release/retry succeeds; interrupted paired rollback, 400 concurrent writes and 200 paired checkpoints passed
+Initialization failed: safe dismount must reject actual rotated hull, not center radius

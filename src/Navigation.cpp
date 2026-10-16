@@ -25,7 +25,7 @@ std::uint32_t Transportation::createMap(const glm::vec3& p,int scale){
     maps_.push_back(std::move(m));return maps_.back().id;
 }
 std::uint32_t Transportation::zoomMap(std::uint32_t id){
-    finishMapJob(true);const auto* source=map(id);if(!source||source->scale>=4||maps_.size()>=128)return 0;
+    finishMapJob(false);const auto* source=map(id);if(!source||source->scale>=4||maps_.size()>=128)return 0;
     const ExplorationMap old=*source;const int oldStep=1<<old.scale;
     const auto result=createMap({float(old.originX+64*oldStep),0,float(old.originZ+64*oldStep)},old.scale+1);
     auto& dest=maps_.back();const int step=oldStep*2;
@@ -37,23 +37,47 @@ std::uint32_t Transportation::zoomMap(std::uint32_t id){
 }
 void Transportation::finishMapJob(bool wait){
     if(!mapJob_.valid()||(!wait&&mapJob_.wait_for(std::chrono::seconds(0))!=std::future_status::ready))return;
-    const auto result=mapJob_.get();for(auto& m:maps_)if(m.id==result.id){for(auto p:result.pixels)m.pixels[p.first]=p.second;++m.revision;break;}
+    const auto result=mapJob_.get();for(auto& m:maps_)if(m.id==result.id){bool changed=false;for(auto p:result.pixels)if(m.pixels[p.first]!=p.second){m.pixels[p.first]=p.second;changed=true;}if(changed)++m.revision;break;}
+}
+bool Transportation::refreshMap(std::uint32_t id){
+    finishMapJob(false);if(mapJob_.valid()||!map(id)||refreshMap_==id)return false;
+    refreshMap_=id;refreshCursor_=0;surveyComplete_=false;return true;
 }
 void Transportation::reveal(const World& w,const Player& player,std::uint32_t id){
     const auto start=std::chrono::steady_clock::now();finishMapJob(false);
     const auto* m=map(id);if(!m||mapJob_.valid())return;
-    struct Sample{int index,height;glm::vec3 color;};std::vector<Sample> samples;const std::size_t budget=m->scale?48:96;samples.reserve(budget);
+    struct Sample{int index,height;glm::vec3 color;};const std::size_t budget=m->scale?48:96;
     const int step=1<<m->scale;
     const int px=int(std::floor((player.position().x-m->originX)/step)),pz=int(std::floor((player.position().z-m->originZ)/step));
     const int radius=std::max(2,48/step);
-    for(int z=std::max(0,pz-radius);z<=std::min(127,pz+radius)&&samples.size()<budget;++z)
-    for(int x=std::max(0,px-radius);x<=std::min(127,px+radius)&&samples.size()<budget;++x){
-        const int index=z*128+x;if(m->pixels[index]||(x-px)*(x-px)+(z-pz)*(z-pz)>radius*radius)continue;
+    const bool refreshing=refreshMap_==id;
+    const int yCell=int(std::floor(player.position().y));
+    if(!refreshing && surveyComplete_ && surveyMap_==id && surveyX_==px && surveyZ_==pz && surveyY_==yCell && surveyChunks_==w.loadedChunkCount()&&revealTimer_<1.f)return;
+    std::vector<Sample> samples;samples.reserve(budget);
+    surveyMap_=id;surveyX_=px;surveyZ_=pz;surveyY_=yCell;surveyChunks_=w.loadedChunkCount();
+    const int begin=refreshing?refreshCursor_:0;
+    const int end=refreshing?std::min(16384,begin+512):16384;
+    int cursor=begin;
+    for(;cursor<end && samples.size()<budget;++cursor){
+        const int x=cursor%128,z=cursor/128,index=cursor;
+        if(refreshing){if(!m->pixels[index])continue;}
+        else if(m->pixels[index]||std::abs(x-px)>radius||std::abs(z-pz)>radius||(x-px)*(x-px)+(z-pz)*(z-pz)>radius*radius)continue;
         const int wx=m->originX+x*step,wz=m->originZ+z*step;
         if(!w.hasLoadedChunkAt(wx,wz))continue;
-        const int y=int(std::floor(w.precipitationHeight(wx,wz)-.01f));
-        if(player.position().y<y-4)continue; // A cave does not survey the unseen surface overhead.
-        const auto b=w.getBlock(wx,y,wz);const auto c=w.biomeClimateAt(wx,wz,float(y));
+        const int top=int(std::floor(w.precipitationHeight(wx,wz)-.01f));
+        const auto b=w.getBlock(wx,top,wz);int y=top;
+        // Rain stops at leaves. Use the ground under bounded vegetation cover
+        // for cave visibility, so ordinary forest travel can survey the canopy.
+        const bool snowCover=b==Block::Snow||b==Block::SnowBlock||(b>=Block::Snow2&&b<=Block::Snow8);
+        const auto support=snowCover?w.getBlock(wx,top-1,wz):Block::Air;
+        const bool canopy=isLeaf(b)||isLog(b)||(snowCover&&(isLeaf(support)||isLog(support)));
+        if(canopy)for(int n=0;n<48&&y>w.minimumY();++n){
+            const auto cover=w.getBlock(wx,y,wz);
+            if(!(n==0&&snowCover)&&cover!=Block::Air&&!isLeaf(cover)&&!isLog(cover)&&!isPlant(cover)&&!isVine(cover))break;
+            --y;
+        }
+        if(!refreshing && player.position().y<y-4)continue; // A cave never reveals new surface pixels.
+        const auto c=w.biomeClimateAt(wx,wz,float(y));
         glm::vec3 color=climateGrassColor(c);
         if(isWater(b))color=climateWaterColor(c);
         else if(isLeaf(b))color=climateFoliageColor(c)*.8f;
@@ -62,6 +86,8 @@ void Transportation::reveal(const World& w,const Player& player,std::uint32_t id
         else if(b==Block::Stone||b==Block::Gravel||b==Block::Deepslate)color={.46f,.47f,.49f};
         samples.push_back({index,y,color});
     }
+    if(refreshing){refreshCursor_=cursor;if(cursor>=16384){refreshMap_=0;refreshCursor_=0;}}
+    else {surveyComplete_=samples.empty();if(surveyComplete_)revealTimer_=0;}
     if(!samples.empty())mapJob_=std::async(std::launch::async,[id,samples=std::move(samples)]{
         MapResult r;r.id=id;r.pixels.reserve(samples.size());
         for(const auto& s:samples){const float shade=std::clamp(.82f+(s.height-64)*.002f,.65f,1.13f);const auto c=glm::clamp(s.color*shade,glm::vec3(0),glm::vec3(1));

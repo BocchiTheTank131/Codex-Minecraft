@@ -1,0 +1,170 @@
+[
+  {
+    "case": "release-stress-0",
+    "writer_retries": [
+      "0"
+    ],
+    "checkpoint_retries": [
+      "0"
+    ],
+    "maximum_save_ms": [
+      "10.5397"
+    ],
+    "one_active_1024_ms": [
+      "0.0404"
+    ],
+    "crowded_36_average_ms": [
+      "0.0494217"
+    ],
+    "crowded_36_worst_ms": [
+      "0.7797"
+    ]
+  },
+  {
+    "case": "release-stress-1",
+    "writer_retries": [
+      "0"
+    ],
+    "checkpoint_retries": [
+      "0"
+    ],
+    "maximum_save_ms": [
+      "15.1684"
+    ],
+    "one_active_1024_ms": [
+      "0.0366"
+    ],
+    "crowded_36_average_ms": [
+      "0.0463478"
+    ],
+    "crowded_36_worst_ms": [
+      "0.7024"
+    ]
+  },
+  {
+    "case": "release-stress-2",
+    "writer_retries": [
+      "0"
+    ],
+    "checkpoint_retries": [
+      "0"
+    ],
+    "maximum_save_ms": [
+      "19.4866"
+    ],
+    "one_active_1024_ms": [
+      "0.0522"
+    ],
+    "crowded_36_average_ms": [
+      "0.0457867"
+    ],
+    "crowded_36_worst_ms": [
+      "0.7223"
+    ]
+  },
+  {
+    "case": "release-stress-3",
+    "writer_retries": [
+      "0"
+    ],
+    "checkpoint_retries": [
+      "0"
+    ],
+    "maximum_save_ms": [
+      "12.6402"
+    ],
+    "one_active_1024_ms": [
+      "0.0311"
+    ],
+    "crowded_36_average_ms": [
+      "0.0459644"
+    ],
+    "crowded_36_worst_ms": [
+      "0.7114"
+    ]
+  },
+  {
+    "case": "release-stress-4",
+    "writer_retries": [
+      "0"
+    ],
+    "checkpoint_retries": [
+      "0"
+    ],
+    "maximum_save_ms": [
+      "16.0694"
+    ],
+    "one_active_1024_ms": [
+      "0.0331"
+    ],
+    "crowded_36_average_ms": [
+      "0.0525511"
+    ],
+    "crowded_36_worst_ms": [
+      "0.7504"
+    ]
+  },
+  {
+    "case": "release-stress-5",
+    "writer_retries": [
+      "0"
+    ],
+    "checkpoint_retries": [
+      "0"
+    ],
+    "maximum_save_ms": [
+      "11.3267"
+    ],
+    "one_active_1024_ms": [
+      "0.0413"
+    ],
+    "crowded_36_average_ms": [
+      "0.0553878"
+    ],
+    "crowded_36_worst_ms": [
+      "0.8759"
+    ]
+  },
+  {
+    "case": "release-stress-6",
+    "writer_retries": [
+      "0"
+    ],
+    "checkpoint_retries": [
+      "0"
+    ],
+    "maximum_save_ms": [
+      "10.0059"
+    ],
+    "one_active_1024_ms": [
+      "0.0339"
+    ],
+    "crowded_36_average_ms": [
+      "0.0493811"
+    ],
+    "crowded_36_worst_ms": [
+      "0.72"
+    ]
+  },
+  {
+    "case": "release-stress-7",
+    "writer_retries": [
+      "0"
+    ],
+    "checkpoint_retries": [
+      "0"
+    ],
+    "maximum_save_ms": [
+      "11.7054"
+    ],
+    "one_active_1024_ms": [
+      "0.0432"
+    ],
+    "crowded_36_average_ms": [
+      "0.0522178"
+    ],
+    "crowded_36_worst_ms": [
+      "0.7921"
+    ]
+  }
+]

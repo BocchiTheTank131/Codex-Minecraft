@@ -1,0 +1,30 @@
+{
+  "date": "2026-10-16",
+  "core_suites": 13,
+  "additional_menu_suites": 2,
+  "terrain_hashes": 663,
+  "legacy_v2140_navigation_byte_preserved": true,
+  "stress_runs": 8,
+  "paired_checkpoints": 1600,
+  "original_save_lock_owner": "unresolved",
+  "baseline_full_sha256": "b423abad39e00ce6f64500a6d6a5c6d30f11cbcfe5cc9b122deb236e84bceb5c",
+  "artifacts": [
+    {
+      "file": "VoxelFrontier-v2.14.1-Windows-Standalone.exe",
+      "bytes": 28303360,
+      "sha256": "7ddbbdb0ed5d2e22ba8ef52548b6e2cf288a822c10942d3def1ff2db7a7e1e76"
+    },
+    {
+      "file": "VoxelFrontier-v2.14.1-Windows-Setup.exe",
+      "bytes": 25567439,
+      "sha256": "f8f6a4f4d0f00ff1e7f3f943adf29b07433c58a31b3a3097ea41d406d63de3c9"
+    }
+  ],
+  "full_exe_sha256": "741d9f1ed8d4c534eb202c202ec3af9356aca5008100316cfd3c8451769b1bcd",
+  "demo_save_fixture_blocked": true,
+  "concurrent_record_writes": 3200,
+  "rotated_dismount_before_exit": 1,
+  "rotated_dismount_after_exit": 0,
+  "canopy_and_snow_canopy_passed": true,
+  "world_settings_checkpoint_isolated": true
+}

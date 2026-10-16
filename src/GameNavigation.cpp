@@ -11,6 +11,8 @@ bool Game::navigationInput(){
     if(chat_.isOpen()||ui_.state()!=GameState::Playing)return false;
     if(!navigationOpen_ && input_.keyPressed(GLFW_KEY_N) && std::find(settings_.controls.begin(),settings_.controls.end(),GLFW_KEY_N)==settings_.controls.end()){navigationOpen_=true;input_.consumeTypedCharacters();synchronizeCursorCapture();return true;}
     if(!navigationOpen_){
+        if(mapView_ && input_.keyPressed(GLFW_KEY_F6) && std::find(settings_.controls.begin(),settings_.controls.end(),GLFW_KEY_F6)==settings_.controls.end())
+            chat_.addMessage(transportation_->refreshMap(viewedMap_)?"Refreshing surveyed pixels from loaded terrain":"Map update busy; refresh again when complete",ChatTone::Normal,glfwGetTime());
         if(input_.keyPressed(GLFW_KEY_M) && std::find(settings_.controls.begin(),settings_.controls.end(),GLFW_KEY_M)==settings_.controls.end()){
             const auto a=inventory_->selectedStack(),b=inventory_->equipment(4);
             const auto id=a.item==Item::FilledMap?a.identity:b.item==Item::FilledMap?b.identity:0;
@@ -18,7 +20,7 @@ bool Game::navigationInput(){
         }
         return false;
     }
-    if(input_.keyPressed(GLFW_KEY_ESCAPE)){navigationOpen_=false;synchronizeCursorCapture();return true;}
+    if(input_.keyPressed(GLFW_KEY_ESCAPE)){waypointDeletePending_=-1;navigationOpen_=false;synchronizeCursorCapture();return true;}
     if(input_.keyPressed(GLFW_KEY_TAB))waypointCoordinatesFocused_=!waypointCoordinatesFocused_;
     auto& text=waypointCoordinatesFocused_?waypointCoordinates_:waypointName_;
     const auto typed=input_.consumeTypedCharacters();for(unsigned char c:typed)if(c>=32&&c<127&&text.size()<(waypointCoordinatesFocused_?64U:24U))text+=char(c);
@@ -28,14 +30,19 @@ bool Game::navigationInput(){
     if(input_.keyPressed(GLFW_KEY_BACKSPACE)&&!text.empty())text.pop_back();
     const int count=int(transportation_->waypoints().size());
     if(input_.keyPressed(GLFW_KEY_DOWN)&&count)transportation_->selectedWaypoint=(transportation_->selectedWaypoint+1)%count;
-    if(input_.keyPressed(GLFW_KEY_UP)&&count)transportation_->selectedWaypoint=(transportation_->selectedWaypoint+count-1)%count;
+    if(input_.keyPressed(GLFW_KEY_UP)&&count)transportation_->selectedWaypoint=(transportation_->selectedWaypoint<0?count-1:(transportation_->selectedWaypoint+count-1)%count);
     if(input_.keyPressed(GLFW_KEY_HOME))transportation_->selectedWaypoint=-1;
-    if(input_.keyPressed(GLFW_KEY_DELETE))transportation_->removeWaypoint(transportation_->selectedWaypoint);
+    if(waypointDeletePending_!=transportation_->selectedWaypoint || glfwGetTime()>waypointDeleteUntil_)waypointDeletePending_=-1;
+    if(input_.keyPressed(GLFW_KEY_DELETE)&&transportation_->selectedWaypoint>=0){
+        if(waypointDeletePending_==transportation_->selectedWaypoint){transportation_->removeWaypoint(waypointDeletePending_);waypointDeletePending_=-1;navigationMessage_="Waypoint removed";}
+        else {waypointDeletePending_=transportation_->selectedWaypoint;waypointDeleteUntil_=glfwGetTime()+4;navigationMessage_="Remove "+transportation_->waypoints()[waypointDeletePending_].name+"? DELETE again (4s)";}
+    }
     if(input_.keyPressed(GLFW_KEY_ENTER)&&control)navigationMessage_=transportation_->renameWaypoint(transportation_->selectedWaypoint,waypointName_)?"Waypoint renamed":"Select a waypoint and enter a name";
     if(input_.keyPressed(GLFW_KEY_ENTER)&&!control){
         glm::vec3 position=player_->position();bool valid=true;
         if(!waypointCoordinates_.empty()){std::istringstream stream(waypointCoordinates_);valid=bool(stream>>position.x>>position.y>>position.z);std::string extra;if(stream>>extra)valid=false;}
-        navigationMessage_=valid&&transportation_->addWaypoint(waypointName_,position)?"Waypoint saved":"Enter a name and valid X Y Z (or leave coordinates empty)";
+        valid=valid&&std::isfinite(position.x)&&std::isfinite(position.y)&&std::isfinite(position.z)&&std::abs(position.x)<30000000&&std::abs(position.z)<30000000&&position.y>=world_->minimumY()&&position.y<world_->maximumY();
+        navigationMessage_=!valid?"Invalid coordinates: X/Z +/-30M, Y within this world":transportation_->waypoints().size()>=64?"Waypoint limit reached (64)":transportation_->addWaypoint(waypointName_,position)?"Waypoint saved":"Enter a waypoint name";
     }
     return true;
 }
@@ -61,8 +68,9 @@ bool Game::transportationUse(bool offhand){
     if(held.item==Item::FilledMap){
         if(!transportation_->map(held.identity)){chat_.addMessage("Map data unavailable for this world",ChatTone::Error,glfwGetTime());return true;}
         if(input_.actionDown(ControlAction::Sneak)){
+            if(glfwGetTime()<mapZoomAfter_)return true;
             if(inventory_->count(Item::Paper)<8){chat_.addMessage("Zooming out needs 8 Paper",ChatTone::Error,glfwGetTime());return true;}
-            const auto id=transportation_->zoomMap(held.identity);if(id){inventory_->remove(Item::Paper,8);inventory_->replaceHeld(offhand,held,{Item::FilledMap,1,0,id});viewedMap_=id;}else chat_.addMessage("Maximum scale or map limit reached",ChatTone::Error,glfwGetTime());
+            const auto id=transportation_->zoomMap(held.identity);if(id && inventory_->replaceHeld(offhand,held,{Item::FilledMap,1,0,id})){inventory_->remove(Item::Paper,8);viewedMap_=id;mapZoomAfter_=glfwGetTime()+.6;chat_.addMessage("Map #"+std::to_string(id)+" zoomed to 1:"+std::to_string(1<<transportation_->map(id)->scale)+" (-8 Paper)",ChatTone::Normal,glfwGetTime());}else chat_.addMessage("Maximum scale or map limit reached",ChatTone::Error,glfwGetTime());
         }else{viewedMap_=held.identity;mapView_=!mapView_;}
         return true;
     }

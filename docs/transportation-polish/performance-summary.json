@@ -1,0 +1,170 @@
+[
+  {
+    "rd": "8",
+    "scene": "ocean",
+    "baseline": {
+      "fps": 3109.795,
+      "mean_ms": 0.3237095,
+      "p95_ms": 0.6890499999999999,
+      "p99_ms": 2.42015,
+      "ram_mb": 310.1795,
+      "simulation_ms": 0.0231565,
+      "vertices": 386252.0,
+      "terrain_used": 32762412.0,
+      "travel_boats": 6.0,
+      "map_main_average_ms": 0.11141000000000001
+    },
+    "current": {
+      "fps": 2524.3450000000003,
+      "mean_ms": 0.397176,
+      "p95_ms": 1.30615,
+      "p99_ms": 3.0187999999999997,
+      "ram_mb": 288.1095,
+      "simulation_ms": 0.02516355,
+      "vertices": 386252.0,
+      "terrain_used": 32762412.0,
+      "travel_boats": 6.0,
+      "map_main_average_ms": 0.12784800000000002
+    }
+  },
+  {
+    "rd": "8",
+    "scene": "gameplay",
+    "baseline": {
+      "fps": 3239.165,
+      "mean_ms": 0.308842,
+      "p95_ms": 0.58995,
+      "p99_ms": 1.92195,
+      "ram_mb": 300.6895,
+      "simulation_ms": 0.02587015,
+      "vertices": 461116.0,
+      "terrain_used": 32892364.0,
+      "travel_boats": 0.0,
+      "map_main_average_ms": 0.0
+    },
+    "current": {
+      "fps": 3117.52,
+      "mean_ms": 0.3209195,
+      "p95_ms": 0.59345,
+      "p99_ms": 1.9706000000000001,
+      "ram_mb": 290.1155,
+      "simulation_ms": 0.031073,
+      "vertices": 461116.0,
+      "terrain_used": 32892240.0,
+      "travel_boats": 0.0,
+      "map_main_average_ms": 0.0
+    }
+  },
+  {
+    "rd": "16",
+    "scene": "ocean",
+    "baseline": {
+      "fps": 1967.97,
+      "mean_ms": 0.5081655,
+      "p95_ms": 0.80915,
+      "p99_ms": 1.90215,
+      "ram_mb": 352.547,
+      "simulation_ms": 0.01856145,
+      "vertices": 2129308.0,
+      "terrain_used": 158213336.0,
+      "travel_boats": 6.0,
+      "map_main_average_ms": 0.1005395
+    },
+    "current": {
+      "fps": 1969.2350000000001,
+      "mean_ms": 0.5078265,
+      "p95_ms": 0.80865,
+      "p99_ms": 1.87,
+      "ram_mb": 350.90999999999997,
+      "simulation_ms": 0.0180119,
+      "vertices": 2129308.0,
+      "terrain_used": 158219412.0,
+      "travel_boats": 6.0,
+      "map_main_average_ms": 0.105938
+    }
+  },
+  {
+    "rd": "16",
+    "scene": "gameplay",
+    "baseline": {
+      "fps": 2116.645,
+      "mean_ms": 0.4759305,
+      "p95_ms": 1.15875,
+      "p99_ms": 2.4727,
+      "ram_mb": 347.87300000000005,
+      "simulation_ms": 0.0233512,
+      "vertices": 1570786.0,
+      "terrain_used": 136046910.0,
+      "travel_boats": 0.0,
+      "map_main_average_ms": 0.0
+    },
+    "current": {
+      "fps": 2301.2200000000003,
+      "mean_ms": 0.4345605,
+      "p95_ms": 0.8245,
+      "p99_ms": 1.9205999999999999,
+      "ram_mb": 347.9085,
+      "simulation_ms": 0.02146405,
+      "vertices": 1570784.0,
+      "terrain_used": 136046848.0,
+      "travel_boats": 0.0,
+      "map_main_average_ms": 0.0
+    }
+  },
+  {
+    "rd": "32",
+    "scene": "ocean",
+    "baseline": {
+      "fps": 740.4169999999999,
+      "mean_ms": 1.35059,
+      "p95_ms": 1.568,
+      "p99_ms": 2.1454,
+      "ram_mb": 568.746,
+      "simulation_ms": 0.02401445,
+      "vertices": 8945040.0,
+      "terrain_used": 697116592.0,
+      "travel_boats": 6.0,
+      "map_main_average_ms": 0.1121125
+    },
+    "current": {
+      "fps": 741.553,
+      "mean_ms": 1.348525,
+      "p95_ms": 1.5319,
+      "p99_ms": 2.1332,
+      "ram_mb": 568.7695,
+      "simulation_ms": 0.023480050000000002,
+      "vertices": 8946528.0,
+      "terrain_used": 697135812.0,
+      "travel_boats": 6.0,
+      "map_main_average_ms": 0.1107205
+    }
+  },
+  {
+    "rd": "32",
+    "scene": "gameplay",
+    "baseline": {
+      "fps": 969.489,
+      "mean_ms": 1.031665,
+      "p95_ms": 1.4956,
+      "p99_ms": 2.82245,
+      "ram_mb": 562.852,
+      "simulation_ms": 0.02818555,
+      "vertices": 6188870.0,
+      "terrain_used": 576300726.0,
+      "travel_boats": 0.0,
+      "map_main_average_ms": 0.0
+    },
+    "current": {
+      "fps": 934.867,
+      "mean_ms": 1.07415,
+      "p95_ms": 1.8941499999999998,
+      "p99_ms": 2.9491,
+      "ram_mb": 560.9884999999999,
+      "simulation_ms": 0.0267537,
+      "vertices": 6188870.0,
+      "terrain_used": 576305066.0,
+      "travel_boats": 0.0,
+      "map_main_average_ms": 0.0
+    }
+  }
+]

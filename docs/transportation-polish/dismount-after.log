@@ -1,0 +1,33 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 14 background tracks
+Audio: playing background track background/Flashbacker.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+Save failure stage=serializer-rejected path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\save-tests\\inventory.test" domain=errno code=0 message=no OS error supplied (see stage) thread=31436 previous checkpoint retained; temporary data not reported as saved
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\save-tests\\inventory.test" domain=system code=32 message=The process cannot access the file because it is being used by another process. thread=31436 previous checkpoint retained; temporary data not reported as saved
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\save-tests\\inventory.test" attributes=32 owners=22780:VoxelFrontier.exe,
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\save-tests\\inventory.test.tmp" attributes=32 owners=
+Recovered interrupted checkpoint "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\save-tests\\terminated\\save.checkpoint"
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\save-tests\\navigation.test" domain=system code=32 message=The process cannot access the file because it is being used by another process. thread=31436 previous checkpoint retained; temporary data not reported as saved
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\save-tests\\navigation.test" attributes=32 owners=22780:VoxelFrontier.exe,
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\save-tests\\navigation.test.tmp" attributes=32 owners=
+Recovered interrupted checkpoint "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\save-tests\\save.checkpoint"
+Concurrent writer transient failures recovered=0
+Rapid checkpoint transient failures recovered=0
+Save reliability: held Windows delete locks reproduced; failures return false, old data retained, release/retry succeeds; interrupted paired rollback, 400 concurrent writes and 200 paired checkpoints passed
+Maximum navigation serialization_ms=6.5883
+Bounded boats: 1024 saved, 1 active; collision candidates=0 steps=32 main_ms=0.0446
+Crowded boats: 36 hulls, 180 updates including 500ms spike passed; average_ms=0.0491661 worst_ms=0.73
+Map canopy regression: ground traversal reveals foliage; underground reveal stays hidden; known-only refresh updates from below passed
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\voxel_inventory.vxi" domain=system code=32 message=The process cannot access the file because it is being used by another process. thread=31436 previous checkpoint retained; temporary data not reported as saved
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\voxel_inventory.vxi" attributes=32 owners=22780:VoxelFrontier.exe,
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\voxel_inventory.vxi.tmp" attributes=32 owners=
+World save failed; current session retained
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\voxel_inventory.vxi" domain=system code=32 message=The process cannot access the file because it is being used by another process. thread=31436 previous checkpoint retained; temporary data not reported as saved
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\voxel_inventory.vxi" attributes=32 owners=22780:VoxelFrontier.exe,
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\voxel_inventory.vxi.tmp" attributes=32 owners=
+World save failed; current session retained
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\voxel_settings.cfg" domain=system code=32 message=The process cannot access the file because it is being used by another process. thread=31436 previous checkpoint retained; temporary data not reported as saved
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\voxel_settings.cfg" attributes=32 owners=22780:VoxelFrontier.exe,
+Save lock diagnostic path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\dismount-after\\voxel_settings.cfg.tmp" attributes=32 owners=
+Transportation passed: six woods, 15/30/60/120/240 FPS, 500ms spike, shores, negative chunk boundary, buoyancy, mount/dismount, independent maps, fog/zoom, chest/drop identities, waypoints, versioned persistence/demo guards; native input paths: waypoints, map/offhand/paid zoom, RMB boat placement/mount, bound movement/Sneak and LMB recovery passed

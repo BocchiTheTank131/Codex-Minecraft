@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.14.0 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.14.1 LANGUAGES C CXX)
 set(VOXELFRONTIER_VERSION_SUFFIX "")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
@@ -58,6 +58,7 @@ add_executable(VoxelFrontier
     src/Definitions.cpp
     src/Explosion.cpp
     src/SaveFile.cpp
+    src/SaveFileValidation.cpp
     src/Weather.cpp
     src/WeatherRenderer.cpp
     src/WeatherValidation.cpp

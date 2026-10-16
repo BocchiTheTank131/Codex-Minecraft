@@ -1,0 +1,12 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 14 background tracks
+Audio: playing background track background/Secret base.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+Save failure stage=serializer-rejected path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\regressions\\full-transport-profile\\save-tests\\inventory.test" domain=errno code=0 message=no OS error supplied (see stage) thread=23564 previous checkpoint retained; temporary data not reported as saved
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\regressions\\full-transport-profile\\save-tests\\inventory.test" domain=system code=5 message=Access is denied. thread=23564 previous checkpoint retained; temporary data not reported as saved
+Recovered interrupted checkpoint "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\regressions\\full-transport-profile\\save-tests\\terminated\\save.checkpoint"
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\regressions\\full-transport-profile\\save-tests\\navigation.test" domain=system code=5 message=Access is denied. thread=23564 previous checkpoint retained; temporary data not reported as saved
+Recovered interrupted checkpoint "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\regressions\\full-transport-profile\\save-tests\\save.checkpoint"
+Save failure stage=replace path="C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2141-validation\\regressions\\full-transport-profile\\save-tests\\navigation.test" domain=system code=5 message=Access is denied. thread=23564 previous checkpoint retained; temporary data not reported as saved
+Initialization failed: rapid paired saves

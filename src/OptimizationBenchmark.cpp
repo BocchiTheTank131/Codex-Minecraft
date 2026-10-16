@@ -48,7 +48,7 @@ std::array<glm::vec3,6> World::optimizationScenes() const {
 void Game::runOptimizationBenchmark() {
     namespace fs=std::filesystem;fs::create_directories(optimizationBenchmark_);
     std::ofstream csv(fs::path(optimizationBenchmark_)/"frames.csv"),locations(fs::path(optimizationBenchmark_)/"scenes.csv");
-    csv<<"rd,scene,phase,lod,occlusion,fps,mean_ms,p95_ms,p99_ms,worst_ms,cpu_percent,gpu_ms,gpu_samples,focused_percent,visible_percent,ram_mb,private_mb,loaded,rendered,vertices,triangles,opaque_draws,water_draws,terrain_used,terrain_capacity,generation_per_s,mesh_per_s,mesh_ms,upload_ms,render_call_wall_ms,simulation_ms,terrain_vbo_used,terrain_ebo_used,terrain_vbo_capacity,terrain_ebo_capacity,lod0,lod1,lod2,lod3,occlusion_culled,occlusion_queries,frustum_culled,travel_boats,map_main_average_ms,map_main_worst_ms,map_batches\n";
+    csv<<"rd,scene,phase,lod,occlusion,fps,mean_ms,p95_ms,p99_ms,worst_ms,cpu_percent,gpu_ms,gpu_samples,focused_percent,visible_percent,ram_mb,private_mb,loaded,rendered,vertices,triangles,opaque_draws,water_draws,terrain_used,terrain_capacity,generation_per_s,mesh_per_s,mesh_ms,upload_ms,render_call_wall_ms,simulation_ms,terrain_vbo_used,terrain_ebo_used,terrain_vbo_capacity,terrain_ebo_capacity,lod0,lod1,lod2,lod3,occlusion_culled,occlusion_queries,frustum_culled,travel_boats,map_main_average_ms,map_main_worst_ms,map_batches,boat_average_ms,boat_worst_ms,boat_steps_max,boat_candidates_max\n";
     locations<<"scene,x,y,z,biome\n";
     settings_.vsync=false;settings_.frameLimit=0;settings_.antiAliasingSamples=0;settings_.simulationDistance=8;
     settings_.renderDistance=optimizationDistance_;settings_.showFps=false;settings_.showCoordinates=false;settings_.mouseSensitivity=.1f;
@@ -99,6 +99,7 @@ void Game::runOptimizationBenchmark() {
             glfwFocusWindow(window_);
             transportation_->mapBatches=0;transportation_->mapTotalMilliseconds=transportation_->mapWorstMilliseconds=0;
             ++tag;std::vector<double> frames;frames.reserve(20000);
+            double boatTotal=0,boatWorst=0;unsigned boatSteps=0;std::uint64_t boatCandidates=0;
             double gpuTotal=0,renderTotal=0,simulationTotal=0;unsigned gpuSamples=0,focused=0,visible=0;
             const double start=glfwGetTime();double previous=start;int edit=-1;
             const auto target=glm::ivec3(glm::floor(player_->position()+glm::vec3(2,1,-3)));
@@ -115,6 +116,7 @@ void Game::runOptimizationBenchmark() {
                     edit=int((now-start)*2);world_->setBlock(target.x,target.y,target.z,edit%2?original:Block::Stone);
                 }
                 const auto simStart=glfwGetTime();sounds_->update(dt);updateSimulation(dt);simulationTotal+=(glfwGetTime()-simStart)*1000;
+                boatTotal+=transportation_->boatMilliseconds;boatWorst=std::max(boatWorst,double(transportation_->boatMilliseconds));boatSteps=std::max(boatSteps,transportation_->boatSteps);boatCandidates=std::max(boatCandidates,transportation_->boatCollisionCandidates);
                 Timer* active=nullptr;
                 if(gpu)for(auto& q:timers) {
                     if(q.pending) {
@@ -162,7 +164,7 @@ void Game::runOptimizationBenchmark() {
 #else
             csv<<','<<memory.usedBytes<<",0,"<<memory.capacityBytes<<",0,"<<world_->renderedChunkCount()<<",0,0,0,0,0,-1";
 #endif
-            csv<<','<<transportation_->boats().size()<<','<<(transportation_->mapBatches?transportation_->mapTotalMilliseconds/transportation_->mapBatches:0)<<','<<transportation_->mapWorstMilliseconds<<','<<transportation_->mapBatches<<'\n';csv.flush();
+            csv<<','<<transportation_->boats().size()<<','<<(transportation_->mapBatches?transportation_->mapTotalMilliseconds/transportation_->mapBatches:0)<<','<<transportation_->mapWorstMilliseconds<<','<<transportation_->mapBatches<<','<<boatTotal/n<<','<<boatWorst<<','<<boatSteps<<','<<boatCandidates<<'\n';csv.flush();
             if(phase==2)world_->setBlock(target.x,target.y,target.z,original);
             if(phase==0){screenshotRequested_=true;renderFrame(0);}
         }

@@ -1,5 +1,6 @@
 #include "Game.h"
 #include "Persistence.h"
+#include "SaveFile.h"
 #ifdef VOXEL_STANDALONE
 #include "UserData.h"
 #include <iostream>
@@ -12,6 +13,10 @@
 #include <cstdlib>
 
 int main(int argc, char** argv) {
+    if(argc==2 && std::string(argv[1]).find("--save-interruption-fixture=")==0){
+        if(!Persistence::enabled())return EXIT_FAILURE;
+        return SaveFile::interruptionFixture(std::string(argv[1]).substr(std::string("--save-interruption-fixture=").size()));
+    }
 #ifdef VOXEL_STANDALONE
     try {
         UserData::initialize(Persistence::enabled());

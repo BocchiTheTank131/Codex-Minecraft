@@ -35,6 +35,8 @@ public:
     std::uint32_t createMap(const glm::vec3&,int scale=0);
     std::uint32_t zoomMap(std::uint32_t);
     const ExplorationMap* map(std::uint32_t) const;
+    bool refreshMap(std::uint32_t);
+    bool refreshing(std::uint32_t id) const{return refreshMap_==id;}
     void reveal(const World&,const Player&,std::uint32_t);
     bool save(const std::string&,std::uint32_t seed) const;
     bool load(const std::string&,std::uint32_t seed);
@@ -48,7 +50,9 @@ public:
     float compassAngle=0;
     float mapMilliseconds=0;
     double mapTotalMilliseconds=0,mapWorstMilliseconds=0;
-    std::uint64_t mapBatches=0;
+    std::uint64_t mapBatches=0,boatCollisionCandidates=0;
+    float boatMilliseconds=0;
+    unsigned boatSteps=0;
     const std::vector<Boat>& boats() const{return boats_;}
     static bool selfTest(World&,std::string&);
 private:
@@ -59,6 +63,15 @@ private:
     std::uint32_t riderRevision_=0;
     std::vector<RenderCuboid> obstacles_;
     std::vector<Boat> boats_;
+    struct HullCell {int z,x;std::size_t index;};
+    std::vector<HullCell> hullGrid_;
+    std::vector<std::vector<std::size_t>> hullCandidates_;
+    std::vector<std::size_t> activeBoats_;
+    std::uint32_t refreshMap_=0;
+    int refreshCursor_=0;
+    std::uint32_t surveyMap_=0;
+    int surveyX_=0,surveyZ_=0,surveyY_=0,surveyChunks_=0;
+    bool surveyComplete_=false;
     std::vector<ExplorationMap> maps_;
     std::vector<Waypoint> waypoints_;
     struct MapResult {std::uint32_t id;std::vector<std::pair<int,std::uint32_t>> pixels;};

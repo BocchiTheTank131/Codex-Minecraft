@@ -1152,3 +1152,14 @@ The project is split into focused systems:
 - World navigation data is bounded to 128 maps, 64 waypoints and 1,024 boats. Maps use 128×128 pixels and cover 128–2,048 blocks. The standalone demo keeps this data in memory only. Older inventory/container formats load with empty identities; generators 1–22 remain unchanged.
 - Optional stairs/fences/gates/trapdoors are deferred to keep this pass focused on validated transportation/navigation.
 - Reproduce regressions with `tools/run_transport_validation.ps1`; see [transport validation](docs/TRANSPORTATION_VALIDATION.md) for measurements, screenshots, package locations and limitations.
+
+
+## v2.14.1 - Transportation & Navigation Polish
+
+- Save diagnostics include the operation, path, error domain/code, thread and available Windows handle owners. Serialized writers and a nonblocking same-profile process guard protect temporary files. World/inventory/navigation saves use recoverable staged checkpoints with bounded frame-scheduled retries; failed commits are never reported as saved.
+- Boats use spatial collision candidates, swept contacts, partial movement to contact and bounded spike catch-up. Normal simulation remains 120 Hz; source/flowing water support uses a median surface sample.
+- Large maps show clearer markers, scale/coverage and controls. **F6** refreshes surveyed pixels from loaded terrain only while the large map is open; it yields to a custom control binding. **Sneak + RMB** zoom spends eight Paper once, with feedback and a short debounce. Ctrl retains its existing Sprint behavior.
+- Waypoints validate coordinates and require a second Delete within four seconds to remove the selected entry.
+- Existing save formats, all generators including V22, billboard mobs and demo restrictions are preserved. The original intermittent replacement failure's cause remains unresolved; tested transient failures recover without retry sleeps on the rendering thread.
+
+See [polish validation](docs/TRANSPORTATION_POLISH_VALIDATION.md) for reproductions, tests, performance, screenshots and limitations. Publication approved by the user for v2.14.1.

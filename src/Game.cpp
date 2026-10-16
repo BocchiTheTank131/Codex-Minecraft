@@ -150,8 +150,10 @@ Game::~Game() {
 
 bool Game::initialize(int argc, char** argv) {
     if (argc > 0 && argv[0]) executablePath_ = argv[0];
-    if (Persistence::enabled())
+    if (Persistence::enabled()) {
+        if(!SaveFile::recover("save.checkpoint"))return false;
         settings_.load(SettingsPath);
+    }
     parseArguments(argc, argv);
 
     if (!glfwInit()) {
@@ -292,6 +294,7 @@ int Game::run() {
         while (!glfwWindowShouldClose(window_)) {
             const float deltaTime = beginFrame();
             handleGlobalInput();
+            if(saveRetryAt_>0 && glfwGetTime()>=saveRetryAt_ && world_){saveRetryAt_=0;saveAll();}
 
             if (ui_.simulationPaused()) {
                 updatePauseInterface();
@@ -308,7 +311,7 @@ int Game::run() {
         }
 
         if (Persistence::enabled() && saveOnExit_) {
-            saveAll();
+            if(!saveAll())result=EXIT_FAILURE;
         }
     } catch (const std::exception& error) {
         std::cerr << "Fatal: " << error.what() << '\n';
@@ -531,7 +534,9 @@ void Game::createPresentationSystems() {
 }
 
 void Game::createWorldAndSystems() {
-    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;
+    if(Persistence::enabled() && !SaveFile::recover(worldSavePath("save.checkpoint")))throw std::runtime_error("Cannot recover interrupted save; original checkpoint retained. See log.");
+    saveRetryAt_=0;saveRetryCount_=0;
+    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setTerrainLod(settings_.terrainLod);
@@ -661,6 +666,9 @@ void Game::applyFullscreenSetting() {
 
 bool Game::saveAll() {
     if (!Persistence::enabled() || !world_) return true;
+    // Global preferences are independent of a per-world checkpoint.
+    const bool settingsSaved=settings_.save(SettingsPath);
+    SaveFile::Checkpoint checkpoint(worldSavePath("save.checkpoint"));
     bool saved = true;
     if (!player_->isDead()) {
         saved &= world_->saveWorld(worldSavePath(WorldSavePath), player_->position());
@@ -669,11 +677,18 @@ bool Game::saveAll() {
     saved &= inventory_->save(worldSavePath(InventorySavePath), seed_);
     saved &= player_->save(worldSavePath(PlayerSavePath), seed_);
     saved &= survival_->save(worldSavePath(MobSavePath), seed_);
-    saved &= settings_.save(SettingsPath);
     if (saved) saved &= saveWorldMetadata();
+    if (saved) saved = checkpoint.commit();
+    const bool complete=saved&&settingsSaved;
+    if (complete) {saveRetryAt_=0;saveRetryCount_=0;}
+    else {
+        chat_.addMessage(saved?"World saved; settings save failed. See log.":"Save failed; previous checkpoint retained. See log.",ChatTone::Error,glfwGetTime());
+        if(saveRetryCount_<3)saveRetryAt_=glfwGetTime()+(.05*(1<<(2*saveRetryCount_++)));
+        else saveRetryAt_=0;
+    }
     timing_.lastSave = glfwGetTime();
     if (!saved) std::cerr << "World save failed; current session retained\n" << std::flush;
-    return saved;
+    return complete;
 }
 
 void Game::saveSettings() {
@@ -839,6 +854,8 @@ void Game::setGameMode(GameMode mode) {
 }
 
 void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
+    if(Persistence::enabled()&&!SaveFile::recover(worldSavePath("save.checkpoint"))){chat_.addMessage("Cannot reset: checkpoint recovery failed",ChatTone::Error,glfwGetTime());return;}
+    saveRetryAt_=0;saveRetryCount_=0;
     ui_.resumeGame();
     weather_.reset();
     if (weatherRenderer_) weatherRenderer_->clear();
@@ -863,7 +880,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     timing_.worldTime = WorldTime::DefaultSeconds;
     saveWorldMetadata();
 
-    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;
+    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setTerrainLod(settings_.terrainLod);
@@ -1317,6 +1334,7 @@ void Game::updatePauseInterface() {
             ui_.openResetWorld();
             break;
         case 3:
+            saveRetryCount_=0;
             if (Persistence::enabled())
                 saveAll();
             else
@@ -2017,7 +2035,7 @@ void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
     interaction_.heldItemSwing = std::max(0.0f, interaction_.heldItemSwing - deltaTime * 4.0f);
     if (Persistence::enabled() && glfwGetTime() - timing_.lastSave >= 12.0 &&
         !player_->isDead()) {
-        saveAll();
+        saveRetryCount_=0;saveAll();
     }
 }
 
@@ -3689,6 +3707,7 @@ void Game::returnToMainMenu() {
         chat_.addMessage(menuMessage_, ChatTone::Error, glfwGetTime());
         return;
     }
+    saveRetryAt_=0;saveRetryCount_=0;
     weather_.reset();
     if (weatherRenderer_) weatherRenderer_->clear();
     if (sounds_) sounds_->setRainAmbience(0,0);

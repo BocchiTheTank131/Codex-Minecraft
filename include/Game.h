@@ -146,6 +146,10 @@ private:
     bool showWorldgenDebug_ = false;
     bool wasInWater_ = false;
     bool screenshotRequested_ = false;
+    double saveRetryAt_=0;
+    int saveRetryCount_=0;
+    int waypointDeletePending_=-1;
+    double waypointDeleteUntil_=0,mapZoomAfter_=0;
     double saveWarningUntil_ = 0.0;
     bool creativeMode_ = false;
     bool spectatorMode_ = false;
