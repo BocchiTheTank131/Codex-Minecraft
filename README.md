@@ -4,6 +4,19 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.14.3 - Checkpoint Integrity, Audio & Settings Polish
+
+Game-mode, time and weather changes are saved together in complete checkpoints.
+The save layer rejects standalone changes to checkpoint-managed files, and permanent
+checksum failures stop automatic retries. For worlds affected by v2.14.2, retain all
+original files and use **R twice** in Select World to recover a verified previous
+checkpoint into a separate world. Recovery refuses missing or invalid backups.
+
+See [checkpoint correction and recovery instructions](docs/CHECKPOINT_v2.14.3_VALIDATION.md).
+Includes updated audio, a now-playing label, fresh-profile defaults and crisp UI
+rendering separate from scene antialiasing.
+Download [v2.14.3](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.14.3).
+
 ### v2.14.2 - Stability, Reliability & Performance
 
 This build adds verified checkpoints, fail-safe handling of corrupt world sidecars,
@@ -663,12 +676,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
 Prerelease: [Voxel Frontier v2.11.2-beta2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta2).
-Latest stable: [Voxel Frontier v2.14.2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.14.2).
+Latest stable: [Voxel Frontier v2.14.3](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.14.3).
 
-| v2.14.2 Windows build | Purpose | Persistence |
+| v2.14.3 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.14.2-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.14.2-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.14.3-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.14.3-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The

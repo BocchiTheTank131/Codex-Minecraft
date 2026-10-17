@@ -27,7 +27,7 @@ class SoundSystem;
 class Weather;
 class WeatherRenderer;
 class Transportation;
-namespace SaveFile { class Session; }
+namespace SaveFile { class Session; struct CommitStatus; }
 
 class Game {
     friend class StabilityTest;
@@ -49,7 +49,11 @@ private:
     SimulationTime simulationTime_;
     void simulationStep(float deltaTime);
     std::future<bool> pendingSave_;
+    std::shared_ptr<SaveFile::CommitStatus> pendingSaveStatus_;
+    std::string saveBlockedReason_;
+    bool saveQueued_=false;
     void pollSave(bool wait=false);
+    void blockSaving(const std::string& reason);
     void reclaimMapsIfNeeded();
     int recoverWorldPending_=-1;
     double recoverWorldUntil_=0;
@@ -156,7 +160,7 @@ private:
     bool glfwInitialized_ = false;
     bool saveOnExit_ = true;
     bool fullbright_ = false;
-    bool showDebug_ = true;
+    bool showDebug_ = false;
     bool showWorldgenDebug_ = false;
     bool wasInWater_ = false;
     bool screenshotRequested_ = false;

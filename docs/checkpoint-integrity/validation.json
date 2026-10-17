@@ -1,0 +1,52 @@
+{
+  "date": "2026-10-17",
+  "version": "2.14.3",
+  "base_revision": "96d6107",
+  "published": false,
+  "original_failure_reproduced": true,
+  "release_suites_passed": 20,
+  "historical_chunks": {
+    "full": 663,
+    "demo": 663
+  },
+  "new_metadata_regression_assertions": 80,
+  "source_originals_preserved": true,
+  "missing_or_invalid_backups_refused": true,
+  "background_status_and_coalescing_tested": true,
+  "root_legacy_import_tested": true,
+  "unexpected_session_conflict_in_mode_sequence": false,
+  "music_playback_tracks": {
+    "full": 24,
+    "demo": 24
+  },
+  "music_source_count": 24,
+  "demo_stateless_profiles": 9,
+  "persistence_stress": {
+    "concurrent_writes": 400,
+    "paired_checkpoints": 200,
+    "metadata_interruption_before_manifest": true
+  },
+  "artifacts": [
+    {
+      "file": "build/installed-release/Release/VoxelFrontier.exe",
+      "bytes": 73438720,
+      "sha256": "993146135f423ed3425b6db9ae00655d982da147a51b7b68ddd8589b52d08519"
+    },
+    {
+      "file": "dist/VoxelFrontier-v2.14.3-Windows-Standalone.exe",
+      "bytes": 73284096,
+      "sha256": "9b44324e87f8320a231caf6c0e45133acaa0e066dc5a928994be803b884b1a94"
+    },
+    {
+      "file": "dist/VoxelFrontier-v2.14.3-Windows-Setup.exe",
+      "bytes": 70418699,
+      "sha256": "d52a1b840c5cf7ec89f0be600e5fdca45c93e38f16e9218d8083f5d4f1073c18"
+    }
+  ],
+  "limitations": [
+    "Original separate native Windows replacement failure cause unresolved",
+    "No physical power-loss or multi-hour soak",
+    "Main-thread snapshot serialization remains",
+    "Recovery needs a complete verified previous generation"
+  ]
+}

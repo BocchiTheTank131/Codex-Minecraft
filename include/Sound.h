@@ -5,6 +5,7 @@
 #include <glm/vec3.hpp>
 #include <filesystem>
 #include <memory>
+#include <string>
 
 enum class MobSoundType { Cow = 0, Pig = 1, Sheep = 2, Villager = 4,
                           Pillager = 5, BillboardHostile = 6 };
@@ -19,6 +20,7 @@ public:
     void setMasterVolume(float value);
     void setCategoryVolumes(float music, float sfx, float passiveMobs, float hostileMobs);
     void startMusic();
+    const std::string& currentSongName() const;
     void setRainAmbience(float outdoor, float sheltered);
     void playLightning(const glm::vec3& position, bool thunder, float muffle);
     bool verifyWeather();

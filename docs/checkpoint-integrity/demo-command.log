@@ -1,0 +1,13 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/Planet.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+20-minute time tests passed: three complete cycles, 600-second halves, legacy phase migration, reload, numeric wrapping and metadata fallback
+Terrain packing GPU comparison: 8 legacy/packed/indexed scenes pixel-identical; 48 to 28 bytes
+Equipment loot (10,000 shallow/deep ancient chests): 1725 / 2534, diamond helmets 19
+16 armor pieces, 625 combinations, recipes, directional shields, environmental bypass, durability/breakage, UI swaps/drops, Creative ownership, legacy V4 migration and deterministic depth loot passed
+Demo save fixture skipped (stateless)
+Crafting expansion: 98 recipes; new block meshes/UVs, deterministic Sugar Cane 3, Vines 2 in 2 candidate chunks
+Content: appended item IDs/icons and block states, support, furnace fuels, demo persistence bypass passed
+Command smoke: demo privileged commands denied

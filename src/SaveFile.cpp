@@ -4,6 +4,7 @@
 #include <vector>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <cerrno>
 #include <cstdlib>
 #include <cwctype>
@@ -35,7 +36,17 @@ struct Session::Impl {
         file=::open(path.c_str(),O_CREAT|O_RDWR,0600);
         owns=file>=0 && ::flock(file,LOCK_EX|LOCK_NB)==0;
 #endif
-        if(!owns)std::cerr<<"World session reservation failed: "<<path<<" (another session or filesystem access error)\n";
+        if(!owns) {
+#ifdef _WIN32
+            const auto code=GetLastError();
+            std::cerr<<"World session reservation failed: "<<path<<" code="<<code
+                     <<" message="<<std::system_category().message(int(code))
+                     <<" requester_pid="<<GetCurrentProcessId()
+                     <<(code==ERROR_SHARING_VIOLATION?" (already reserved by another handle; same or other process)":" (filesystem/access failure)")<<'\n';
+#else
+            std::cerr<<"World session reservation failed: "<<path<<" errno="<<errno<<'\n';
+#endif
+        }
     }
     ~Impl(){
 #ifdef _WIN32
@@ -52,6 +63,8 @@ namespace {
 std::recursive_mutex mutex;
 struct Entry {std::string path; bool existed=false;};
 thread_local std::vector<Entry>* staged=nullptr;
+thread_local bool stageReady=false;
+thread_local std::filesystem::path stageDirectory;
 thread_local int interruptAfter=-1;
 void error(const std::string& path,const char* stage,unsigned code,bool native=true) {
     std::cerr << "Save failure stage=" << stage << " path=" << std::quoted(path)
@@ -62,7 +75,7 @@ void error(const std::string& path,const char* stage,unsigned code,bool native=t
 #else
               0
 #endif
-              << " previous checkpoint retained; temporary data not reported as saved\n" << std::flush;
+              << " save not reported successful; preserve checkpoint/backup files for recovery\n" << std::flush;
 }
 // Same-profile processes must not serialize into each other's .tmp or journal.
 // A zero-timeout named mutex refuses contention instead of stalling a frame.
@@ -172,7 +185,8 @@ bool rollback(const std::string& journal,const std::vector<Entry>& entries) {
     }
     std::error_code ec;std::filesystem::remove(journal,ec);
     if(ec){error(journal,"clear-journal",ec.value());return false;}
-    for(const auto& e:entries)std::filesystem::remove(e.path+".checkpoint-old",ec);
+    // A failed/interrupted commit must retain its verified recovery generation.
+    // The next successful checkpoint may rotate it after validating current state.
     return true;
 }
 }
@@ -206,17 +220,28 @@ bool recover(const std::string& journal) {
     if(ok)std::cerr<<"Recovered interrupted checkpoint "<<std::quoted(journal)<<'\n';
     return ok;
 }
-bool verifyCheckpoint(const std::string& directory) {
+bool verifyCheckpoint(const std::string& directory, std::string* reason) {
+    if(reason)reason->clear();
     const auto root=std::filesystem::path(directory);
     const auto manifest=root/"checkpoint.manifest";
     if(!std::filesystem::exists(manifest))return true; // Unmodified legacy worlds.
-    if(std::filesystem::file_size(manifest)>65536){error(manifest.string(),"manifest-length",0);return false;}
+    const auto fail=[&](const std::filesystem::path& component,const std::string& detail){
+        if(reason)*reason=component.filename().string()+": "+detail;
+        error(component.string(),"checkpoint-integrity",0);
+        std::cerr<<"Checkpoint detail: "<<detail<<"; automatic retries stopped; use verified recovery copy\n";
+        return false;
+    };
+    if(std::filesystem::file_size(manifest)>65536)return fail(manifest,"manifest exceeds 64 KiB");
     std::ifstream f(manifest);std::string magic;std::uint64_t generation=0;unsigned count=0;
-    if(!(f>>magic>>generation>>count)||magic!="VXMAN1"||!generation||!count||count>16){error(manifest.string(),"invalid-manifest",0);return false;}
+    if(!(f>>magic>>generation>>count)||magic!="VXMAN1"||!generation||!count||count>16)return fail(manifest,"invalid manifest header");
+    std::vector<std::string> seen;
     for(unsigned i=0;i<count;++i){std::string name;std::uint64_t bytes=0,hash=0,actualBytes=0,actualHash=0;
-        if(!(f>>std::quoted(name)>>bytes>>hash)||name.empty()||std::filesystem::path(name).filename()!=std::filesystem::path(name)||
-            !signature((root/name).string(),actualBytes,actualHash)||actualBytes!=bytes||actualHash!=hash){error((root/name).string(),"checkpoint-integrity",0);return false;}}
-    f>>std::ws;if(!f.eof()){error(manifest.string(),"manifest-length",0);return false;}
+        if(!(f>>std::quoted(name)>>bytes>>hash)||name.empty()||name=="."||name==".."||std::filesystem::path(name).filename()!=std::filesystem::path(name)||std::find(seen.begin(),seen.end(),name)!=seen.end())return fail(manifest,"invalid or duplicate component record");
+        seen.push_back(name);
+        if(!signature((root/name).string(),actualBytes,actualHash)||actualBytes!=bytes||actualHash!=hash){
+            std::ostringstream detail;detail<<"generation="<<generation<<" expected_bytes="<<bytes<<" actual_bytes="<<actualBytes<<" expected_hash="<<hash<<" actual_hash="<<actualHash;
+            return fail(root/name,detail.str());}}
+    f>>std::ws;if(!f.eof())return fail(manifest,"unexpected trailing records");
     return true;
 }
 bool stagingCheckpoint(){return staged!=nullptr;}
@@ -238,16 +263,27 @@ bool copyPrevious(const std::string& directory,const std::string& destination){
 }
 struct Checkpoint::Impl {
     std::unique_lock<std::recursive_mutex> lock{mutex};
-    std::string journal;WriterLock writer;std::vector<Entry> entries;bool ready=false,committed=false;
-    explicit Impl(std::string j):journal(std::move(j)),writer(journal){if(staged)throw std::logic_error("Nested save checkpoint");ready=writer.acquired&&recover(journal)&&verifyCheckpoint(std::filesystem::path(journal).parent_path().string());staged=&entries;}
+    std::string journal;WriterLock writer;std::vector<Entry> entries;bool ready=false,committed=false,permanent=false;std::string reason;
+    explicit Impl(std::string j):journal(std::move(j)),writer(journal){
+        if(staged)throw std::logic_error("Nested save checkpoint");
+        if(!writer.acquired)reason="Save writer is busy";
+        else if(!recover(journal)){reason="save.checkpoint: interrupted checkpoint requires recovery";permanent=true;}
+        else if(!verifyCheckpoint(std::filesystem::path(journal).parent_path().string(),&reason))permanent=true;
+        else ready=true;
+        staged=&entries;stageReady=ready;stageDirectory=std::filesystem::absolute(journal).lexically_normal().parent_path();
+    }
 };
 Checkpoint::Checkpoint(const std::string& journal):impl_(new Impl(journal)){}
-Checkpoint::~Checkpoint(){staged=nullptr;}
-std::future<bool> Checkpoint::commitAsync(){
-    if(!impl_->ready||impl_->committed){std::promise<bool> result;result.set_value(false);return result.get_future();}
+Checkpoint::~Checkpoint(){staged=nullptr;stageReady=false;stageDirectory.clear();}
+bool Checkpoint::ready()const{return impl_->ready;}
+bool Checkpoint::permanentFailure()const{return impl_->permanent;}
+const std::string& Checkpoint::failureReason()const{return impl_->reason;}
+std::future<bool> Checkpoint::commitAsync(std::shared_ptr<CommitStatus> status){
+    if(!impl_->ready||impl_->committed){if(status){status->permanentFailure=impl_->permanent;status->reason=impl_->reason;}std::promise<bool> result;result.set_value(false);return result.get_future();}
     impl_->committed=true;
-    return std::async(std::launch::async,[journal=impl_->journal,entries=std::move(impl_->entries)]()mutable{
+    return std::async(std::launch::async,[journal=impl_->journal,entries=std::move(impl_->entries),status]()mutable{
         Checkpoint checkpoint(journal);checkpoint.impl_->entries=std::move(entries);
+        if(status){status->permanentFailure=checkpoint.permanentFailure();status->reason=checkpoint.failureReason();}
         return checkpoint.commit();
     });
 }
@@ -255,6 +291,20 @@ bool writeImpl(const std::string& path,std::ios::openmode mode,const std::functi
     std::lock_guard<std::recursive_mutex> lock(mutex);
     WriterLock ownership(path);if(!ownership.acquired)return false;
     const std::string absolute=std::filesystem::absolute(path).lexically_normal().string();
+    if(staged && (!stageReady || std::filesystem::path(absolute).parent_path()!=stageDirectory)){
+        error(absolute,"checkpoint-not-ready-or-wrong-directory",0);return false;
+    }
+    if(!staged){
+        const auto component=std::filesystem::path(absolute);const auto manifest=component.parent_path()/"checkpoint.manifest";
+        if(std::filesystem::exists(manifest)){
+            bool managed=false;
+            for(const char* name:{"world_seed.txt","world.info","voxel_world.vxw","voxel_player.vps","voxel_inventory.vxi","voxel_mobs.vxm","voxel_travel.vtn","checkpoint.manifest"})managed|=component.filename()==name;
+            if(std::filesystem::file_size(manifest)<=65536){std::ifstream f(manifest);std::string magic,name;std::uint64_t generation,bytes,hash;unsigned n=0;
+                if(f>>magic>>generation>>n && magic=="VXMAN1" && n<=16)for(unsigned i=0;i<n && (f>>std::quoted(name)>>bytes>>hash);++i)managed|=component.filename()==name;
+            }
+            if(managed){error(absolute,"checkpoint-transaction-required",0);return false;}
+        }
+    }
     if(!serialize(absolute,mode,writer))return false;
     if(staged){for(const auto& e:*staged)if(e.path==absolute)return true;staged->push_back({absolute,false});return true;}
     return replaceFile(absolute,absolute+".tmp");
@@ -309,10 +359,11 @@ int interruptionFixture(const std::string& directory){
     std::filesystem::create_directories(directory);
     const auto root=std::filesystem::absolute(directory);
     auto put=[](const std::string& p,const char* data){return write(p,std::ios::binary,[&](std::ofstream& f){f<<data;return bool(f);});};
-    const auto a=(root/"inventory.test").string(),b=(root/"navigation.test").string();
-    if(!put(a,"old")||!put(b,"old"))return 1;
+    const auto a=(root/"inventory.test").string(),b=(root/"navigation.test").string(),metadata=(root/"world_seed.txt").string();
+    if(!put(a,"old")||!put(b,"old")||!put(metadata,"old-metadata"))return 1;
+    {Checkpoint baseline((root/"save.checkpoint").string());if(!put(a,"old")||!put(b,"old")||!put(metadata,"old-metadata")||!baseline.commit())return 1;}
     Checkpoint checkpoint((root/"save.checkpoint").string());
-    if(!put(a,"new")||!put(b,"new"))return 1;
-    interruptAfter=1;checkpoint.commit();return 1;
+    if(!put(a,"new")||!put(b,"new")||!put(metadata,"new-metadata"))return 1;
+    interruptAfter=3;checkpoint.commit();return 1; // Data and metadata replaced; manifest still old.
 }
 }

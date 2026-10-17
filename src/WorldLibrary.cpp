@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iterator>
+#include <iostream>
 #include <random>
 #include <stdexcept>
 
@@ -20,7 +21,8 @@ SavedWorld read(const fs::path& directory,bool reserved=false) {
     if(!reserved)session=std::make_unique<SaveFile::Session>(directory.string());
     if(session && !session->acquired())throw std::runtime_error("World in use or access denied: "+directory.string());
     if(!SaveFile::recover((directory/"save.checkpoint").string()))throw std::runtime_error("Interrupted world checkpoint needs recovery: "+directory.string());
-    if(!SaveFile::verifyCheckpoint(directory.string()))throw std::runtime_error("Invalid checkpoint; restore a verified backup: "+directory.string());
+    std::string reason;
+    if(!SaveFile::verifyCheckpoint(directory.string(),&reason))throw std::runtime_error("Invalid checkpoint: "+reason+"; recover a verified copy: "+directory.string());
     for(const char* filename:{"world.info","world_seed.txt"})if(fs::exists(directory/filename) && fs::file_size(directory/filename)>4096)throw std::runtime_error("Oversized world metadata: "+directory.string());
     SavedWorld result;
     result.directory = directory;
@@ -65,16 +67,27 @@ namespace WorldLibrary {
 SavedWorld inspectReserved(const fs::path& directory){return read(directory,true);}
 bool writeMetadata(const SavedWorld& world) {
     if (!Persistence::enabled()) return false;
-    if(!SaveFile::stagingCheckpoint() && fs::exists(world.directory/"checkpoint.manifest")){
+    if(!SaveFile::stagingCheckpoint()){
         SaveFile::Session session(world.directory.string());if(!session.acquired())return false;
         SaveFile::Checkpoint checkpoint((world.directory/"save.checkpoint").string());
-        return writeMetadata(world)&&checkpoint.commit();
+        return checkpoint.ready()&&writeMetadata(world)&&checkpoint.commit();
     }
     return SaveFile::write((world.directory / "world.info").string(), std::ios::out,
         [&](std::ofstream& output) {
             output << std::quoted(world.name) << '\n' << world.lastPlayed << '\n' << "CHEATS1 " << (world.cheats?1:0) << '\n';
             return static_cast<bool>(output);
         });
+}
+
+bool setCheats(const SavedWorld& selected,bool enabled) {
+    if(!Persistence::enabled() || !selected.loadError.empty())return false;
+    try {
+        SaveFile::Session session(selected.directory.string());if(!session.acquired())return false;
+        auto current=read(selected.directory,true);
+        current.cheats=enabled;
+        SaveFile::Checkpoint checkpoint((current.directory/"save.checkpoint").string());
+        return checkpoint.ready() && writeMetadata(current) && checkpoint.commit();
+    } catch(const std::exception& error){std::cerr<<"Cheat permission transaction refused: "<<error.what()<<'\n';return false;}
 }
 
 std::vector<SavedWorld> list() {
@@ -121,12 +134,17 @@ SavedWorld create(const std::string& name, std::uint32_t seed, GameMode mode, bo
     for (int attempt = 0; attempt < 32; ++attempt) {
         result.directory = fs::path("saves") / ("world-" + std::to_string(random()) + "-" + std::to_string(random()));
         if (!fs::create_directory(result.directory)) continue;
+        SaveFile::Session session(result.directory.string());
+        if(!session.acquired())throw std::runtime_error("Cannot reserve new world");
+        SaveFile::Checkpoint checkpoint((result.directory/"save.checkpoint").string());
+        if(!checkpoint.ready())throw std::runtime_error("Cannot initialize world checkpoint");
         if (!writeMetadata(result)) throw std::runtime_error("Cannot write world metadata");
         const auto path = (result.directory / "world_seed.txt").string();
         if (!SaveFile::write(path, std::ios::out, [&](std::ofstream& output) {
-            output << seed << '\n' << (mode == GameMode::Creative ? "creative" : "survival") << "\n" << WorldTime::DefaultSeconds << "\nTIME_CYCLE1 " << WorldTime::CycleSeconds << '\n';
+            output << seed << '\n' << (mode == GameMode::Spectator ? "spectator" : mode == GameMode::Creative ? "creative" : "survival") << "\n" << WorldTime::DefaultSeconds << "\nTIME_CYCLE1 " << WorldTime::CycleSeconds << '\n';
             return static_cast<bool>(output);
         })) throw std::runtime_error("Cannot write world seed");
+        if(!checkpoint.commit())throw std::runtime_error("Cannot commit new world metadata");
         return result;
     }
     throw std::runtime_error("Cannot create a unique world folder");
@@ -147,16 +165,18 @@ void importLegacy() {
     }
     auto imported = read(staging);
     imported.name = "Imported World";
-    if (!fs::exists(staging / "world_seed.txt")) {
+    {
+      SaveFile::Session session(staging.string());if(!session.acquired())throw std::runtime_error("Cannot reserve imported copy");
+      SaveFile::Checkpoint checkpoint((staging/"save.checkpoint").string());if(!checkpoint.ready())throw std::runtime_error("Cannot checkpoint imported copy");
+      if (!fs::exists(staging / "world_seed.txt")) {
         std::ifstream world("voxel_world.vxw", std::ios::binary);
         world.seekg(12);
         world.read(reinterpret_cast<char*>(&imported.seed), sizeof(imported.seed));
         if (!world) throw std::runtime_error("Cannot read legacy world seed");
-        std::ofstream seed(staging / "world_seed.txt");
-        seed << imported.seed << "\nsurvival\n35\n";
-        if (!seed) throw std::runtime_error("Cannot write imported seed");
+        if(!SaveFile::write((staging/"world_seed.txt").string(),std::ios::out,[&](std::ofstream& seed){seed<<imported.seed<<"\nsurvival\n35\n";return bool(seed);}))throw std::runtime_error("Cannot write imported seed");
+      }
+      if (!writeMetadata(imported) || !checkpoint.commit()) throw std::runtime_error("Cannot commit import metadata");
     }
-    if (!writeMetadata(imported)) throw std::runtime_error("Cannot write import metadata");
     fs::rename(staging, destination); // Publish only after all copies succeeded. Originals remain intact.
 }
 }

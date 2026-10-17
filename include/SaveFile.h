@@ -6,6 +6,10 @@
 #include <memory>
 #include <string>
 namespace SaveFile {
+struct CommitStatus {
+    bool permanentFailure = false;
+    std::string reason;
+};
 // Lifetime reservation, acquired before recovery/loading and held until unload.
 class Session {
 public:
@@ -29,16 +33,19 @@ public:
     explicit Checkpoint(const std::string& journal);
     ~Checkpoint();
     bool commit();
+    bool ready() const;
+    bool permanentFailure() const;
+    const std::string& failureReason() const;
     // All live state has already serialized into private staged files. Only the
     // immutable bytes and commit metadata cross the worker boundary.
-    std::future<bool> commitAsync();
+    std::future<bool> commitAsync(std::shared_ptr<CommitStatus> status = {});
     Checkpoint(const Checkpoint&)=delete;
     Checkpoint& operator=(const Checkpoint&)=delete;
 private:
     struct Impl; std::unique_ptr<Impl> impl_;
 };
 bool recover(const std::string& journal);
-bool verifyCheckpoint(const std::string& directory);
+bool verifyCheckpoint(const std::string& directory, std::string* reason = nullptr);
 bool stagingCheckpoint();
 // Explicit recovery creates a separate verified world; original bytes stay intact.
 bool copyPrevious(const std::string& directory,const std::string& destination);

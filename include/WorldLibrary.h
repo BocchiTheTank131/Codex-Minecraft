@@ -25,5 +25,6 @@ SavedWorld inspectReserved(const std::filesystem::path& directory);
 SavedWorld create(const std::string& name, std::uint32_t seed, GameMode mode, bool cheats = false);
 void importLegacy();
 bool writeMetadata(const SavedWorld& world);
+bool setCheats(const SavedWorld& selected, bool enabled);
 SavedWorld recoverPrevious(const SavedWorld& world);
 }

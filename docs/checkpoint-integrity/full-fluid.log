@@ -1,0 +1,7 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/Doppelganger.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+shoreline climb, downward flow, level spread, retraction, opened-block flow, boundary flow, water/lava 7/4-block limits, repeated/source-only/one-cell-budget scheduling, blocked reopening, burn timing, cobweb volumes, and water meshing passed
+day surface=0; night surface=17; day cave=17; lit cave=0; 

@@ -6,17 +6,17 @@
 enum class GraphicsPreset : int { Low = 0, Medium = 1, High = 2, Custom = 3 };
 
 struct GameSettings {
-    int terrainLod=0; // Off / Low / Medium / High (explicit far-detail strength)
-    int occlusionCulling=0; // Off / Auto / On
+    int terrainLod=1; // Off / Low / Medium / High (explicit far-detail strength)
+    int occlusionCulling=1; // Off / Auto / On
     int terrainMemoryBudget=0; // Auto / Low / Balanced / High
     int chunkStreamingQuality = 0; // Auto / Low / Balanced / High
-    int renderDistance = 7;
-    int simulationDistance = 7;
+    int renderDistance = 8;
+    int simulationDistance = 8;
     float fov = 74.0f;
     float mouseSensitivity = 0.10f;
     float brightness = 0.5f;
     float masterVolume = 1.0f;
-    float musicVolume = 1.0f;
+    float musicVolume = 0.5f;
     float sfxVolume = 1.0f;
     float passiveMobVolume = 1.0f;
     float hostileMobVolume = 1.0f;

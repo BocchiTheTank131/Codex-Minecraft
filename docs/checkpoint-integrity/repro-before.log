@@ -1,0 +1,11 @@
+Isolated fixture: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-670056674700"
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/I cant sing a love song.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+initial_world_loaded passed=1
+initial_checkpoint passed=1
+World session reservation failed: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-670056674700\\saves\\world-172874132-1709474109\\.session.lock" (another session or filesystem access error)
+Save failure stage=checkpoint-integrity path="saves\\world-172874132-1709474109\\world_seed.txt" domain=system code=0 message=no OS error supplied (see stage) thread=16500 previous checkpoint retained; temporary data not reported as saved
+gamemode_preserves_manifest passed=0
+gamemode_preserves_manifest

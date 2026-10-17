@@ -24,6 +24,7 @@
 #include "Renderer.h"
 #include <thread>
 #include <algorithm>
+#include <map>
 #ifdef _WIN32
 #ifdef APIENTRY
 #undef APIENTRY
@@ -54,6 +55,90 @@ int StabilityTest::run(int argc,char** argv){
  }
  if(argc>1 && std::string(argv[1])=="--traversal")return traversal(argc>2?std::stoi(argv[2]):8,argc>3?std::filesystem::path(argv[3]):std::filesystem::current_path());
  auto log=[](const char* name,bool passed){std::cout<<name<<" passed="<<passed<<std::endl;if(!passed)throw std::runtime_error(name);};
+ if(argc>1 && std::string(argv[1])=="--checkpoint") {
+  Game g;char app[]="checkpoint-regression";char* args[]={app};if(!g.initialize(1,args))return 5;glfwHideWindow(g.window_);
+  const auto selected=WorldLibrary::create("Metadata regression",42,GameMode::Survival,true);
+  g.playSavedWorld(selected);log("initial_world_loaded",bool(g.world_));log("initial_checkpoint",g.saveAll());
+  g.setGameMode(GameMode::Creative);
+  log("gamemode_preserves_manifest",SaveFile::verifyCheckpoint(selected.directory.string()));
+  log("gamemode_checkpoint",g.saveAll());
+  auto bytes=[](const std::filesystem::path& p){std::ifstream f(p,std::ios::binary);return std::string(std::istreambuf_iterator<char>(f),{});};
+  auto snapshot=[&](const std::filesystem::path& dir){std::map<std::string,std::string> state;for(const auto& p:std::filesystem::directory_iterator(dir))if(p.is_regular_file() && p.path().filename()!=".session.lock")state[p.path().filename().string()]=bytes(p.path());return state;};
+  auto command=[&](const std::string& text){CommandContext c{*g.world_,*g.player_,*g.inventory_,*g.survival_,g.timing_.worldTime,42,[&]{return g.gameMode();},[&](GameMode m){g.setGameMode(m);},g.activeWorld_.cheats,g.weather_.get(),g.sounds_.get()};return g.commands_.execute(text,c).tone!=ChatTone::Error;};
+  for(const auto& mode:{std::string("spectator"),std::string("survival"),std::string("creative")}){
+    const auto disk=bytes(selected.directory/"world_seed.txt");
+    log("mode_time_weather_commands",command("/gamemode "+mode)&&command("/time set midnight")&&command("/weather thunder 180"));
+    log("commands_only_change_memory",bytes(selected.directory/"world_seed.txt")==disk && SaveFile::verifyCheckpoint(selected.directory.string()));
+    log("mode_autosave_queued",g.saveAll(true));g.pollSave(true);
+    log("mode_autosave_valid",SaveFile::verifyCheckpoint(selected.directory.string()));
+    g.returnToMainMenu();g.playSavedWorld(selected);
+    log("mode_time_weather_reload",g.world_ && g.gameMode()==(mode=="spectator"?GameMode::Spectator:mode=="creative"?GameMode::Creative:GameMode::Survival) && g.timing_.worldTime==WorldTime::MidnightSeconds && g.weather_->type()==WeatherType::Thunder);
+  }
+  log("background_first_snapshot",command("/time set noon")&&g.saveAll(true));
+  log("background_pending_change",command("/gamemode survival")&&command("/time set night")&&command("/weather rain 240"));
+  log("background_save_coalesced",g.saveAll(true)&&g.saveQueued_);g.pollSave(true);
+  const auto persisted=WorldLibrary::inspectReserved(selected.directory);
+  log("background_latest_state_committed",persisted.mode==GameMode::Survival && persisted.time==WorldTime::NightSeconds && SaveFile::verifyCheckpoint(selected.directory.string()));
+  log("owned_metadata_cannot_bypass_session",!WorldLibrary::setCheats(selected,false));
+  log("active_metadata_serializer_guard",!g.saveWorldMetadata());
+  const auto beforeGuard=snapshot(selected.directory);
+  for(const char* file:{"world_seed.txt","world.info","voxel_world.vxw","voxel_inventory.vxi","voxel_player.vps","voxel_mobs.vxm","voxel_travel.vtn","checkpoint.manifest"})
+    log("standalone_managed_write_refused",!SaveFile::write((selected.directory/file).string(),std::ios::binary,[](std::ofstream& f){f<<"bad";return true;}));
+  log("standalone_guard_preserves_all_files",snapshot(selected.directory)==beforeGuard);
+  // A stale selection may only change its intended permission, never older metadata.
+  g.returnToMainMenu();auto stale=selected;stale.name="Stale name";stale.lastPlayed=0;
+  log("cheats_transaction",WorldLibrary::setCheats(stale,false));
+  auto listed=WorldLibrary::list();auto found=std::find_if(listed.begin(),listed.end(),[&](const auto& w){return w.directory==selected.directory;});
+  log("cheats_preserve_current_metadata",found!=listed.end()&&!found->cheats&&found->name==selected.name&&found->lastPlayed>0&&found->mode==GameMode::Survival);
+  g.playSavedWorld(*found);log("cheats_executor_denies_command",!command("/time set noon"));g.returnToMainMenu();
+  log("cheats_reenabled",WorldLibrary::setCheats(selected,true));g.playSavedWorld(selected);
+  log("shutdown_async_snapshot",command("/time set 456")&&g.saveAll(true));g.shutdown();
+  Game restarted;if(!restarted.initialize(1,args))return 5;glfwHideWindow(restarted.window_);restarted.playSavedWorld(selected);
+  log("shutdown_reload_latest_checkpoint",restarted.world_&&restarted.timing_.worldTime==456&&restarted.gameMode()==GameMode::Survival&&restarted.weather_->type()==WeatherType::Rain);
+  log("all_background_music_playable",!restarted.sounds_->currentSongName().empty()&&restarted.sounds_->verifyMusic());
+  // Deterministically introduce external/old-client corruption before the worker
+  // verifies its immutable snapshot. The worker must classify it as permanent.
+  auto status=std::make_shared<SaveFile::CommitStatus>();
+  {SaveFile::Checkpoint batch((selected.directory/"save.checkpoint").string());log("worker_fixture_ready",batch.ready());
+   log("worker_fixture_staged",SaveFile::write((selected.directory/"world_seed.txt").string(),std::ios::out,[](std::ofstream& f){f<<"42\nsurvival\n500\nTIME_CYCLE1 1200\n";return true;}));
+   {std::ofstream legacy(selected.directory/"world_seed.txt");legacy<<"42\ncreative\n600\nTIME_CYCLE1 1200\n";}
+   restarted.pendingSaveStatus_=status;restarted.pendingSave_=batch.commitAsync(status);
+  }
+  restarted.pollSave(true);const auto damaged=snapshot(selected.directory);
+  log("worker_integrity_failure_classified",status->permanentFailure&&status->reason.find("world_seed.txt")!=std::string::npos&&!restarted.saveBlockedReason_.empty());
+  for(int n=0;n<20;++n)log("permanent_failure_no_retry",!restarted.saveAll(n%2!=0)&&restarted.saveRetryAt_==0);
+  restarted.timing_.lastSave=glfwGetTime()-20;restarted.updateSimulation(1.f/60);
+  log("autosave_does_not_rearm_integrity_retry",restarted.saveRetryAt_==0&&!restarted.pendingSave_.valid()&&snapshot(selected.directory)==damaged);
+  restarted.resetWorld(99,GameMode::Survival);log("reset_does_not_overwrite_damaged_world",restarted.seed_==42&&snapshot(selected.directory)==damaged);
+  restarted.shutdown();
+  const auto sourceBefore=snapshot(selected.directory);const auto recovered=WorldLibrary::recoverPrevious(selected);
+  log("recovery_creates_verified_separate_copy",recovered.directory!=selected.directory&&SaveFile::verifyCheckpoint(recovered.directory.string())&&snapshot(selected.directory)==sourceBefore);
+  const auto noBackup=WorldLibrary::create("No complete backup",43,GameMode::Survival);
+  const auto noBackupBefore=snapshot(noBackup.directory);bool refused=false;try{WorldLibrary::recoverPrevious(noBackup);}catch(const std::exception&){refused=true;}
+  log("missing_verified_backup_refused",refused&&snapshot(noBackup.directory)==noBackupBefore);
+  auto invalidBackup=selected;invalidBackup.directory=selected.directory.parent_path()/"invalid-backup-copy";std::filesystem::create_directory(invalidBackup.directory);
+  for(const auto& entry:sourceBefore){std::ofstream f(invalidBackup.directory/entry.first,std::ios::binary);f.write(entry.second.data(),std::streamsize(entry.second.size()));}
+  {std::ofstream f(invalidBackup.directory/"world_seed.txt.checkpoint-old");f<<"unverified";}
+  const auto invalidBefore=snapshot(invalidBackup.directory);refused=false;try{WorldLibrary::recoverPrevious(invalidBackup);}catch(const std::exception&){refused=true;}
+  log("invalid_backup_refused_without_repair",refused&&snapshot(invalidBackup.directory)==invalidBefore);
+  // Make a pre-manifest compatibility fixture from a verified copy; never
+  // strip or modify the original world's manifest.
+  auto legacy=selected;legacy.directory=selected.directory.parent_path()/"legacy-copy";std::filesystem::create_directory(legacy.directory);
+  for(const char* name:{"world.info","world_seed.txt","voxel_world.vxw","voxel_inventory.vxi","voxel_player.vps","voxel_mobs.vxm","voxel_travel.vtn"})std::filesystem::copy_file(recovered.directory/name,legacy.directory/name);
+  {std::ofstream info(legacy.directory/"world.info");info<<"\"Legacy copy\"\n0\n";}
+  Game legacyGame;if(!legacyGame.initialize(1,args))return 5;glfwHideWindow(legacyGame.window_);legacyGame.playSavedWorld(legacy);
+  log("legacy_copy_loads",bool(legacyGame.world_));legacyGame.setGameMode(GameMode::Creative);log("legacy_copy_migrates_transactionally",legacyGame.saveAll()&&SaveFile::verifyCheckpoint(legacy.directory.string()));legacyGame.returnToMainMenu();legacyGame.playSavedWorld(legacy);log("legacy_copy_reloads",legacyGame.world_&&legacyGame.gameMode()==GameMode::Creative);legacyGame.returnToMainMenu();legacyGame.playSavedWorld(recovered);log("recovered_copy_loads",bool(legacyGame.world_));legacyGame.returnToMainMenu();legacyGame.shutdown();
+  log("affected_originals_still_identical",snapshot(selected.directory)==sourceBefore);
+  const auto originalCwd=std::filesystem::current_path();
+  const auto importFixture=originalCwd/"root-import-copy";std::filesystem::create_directory(importFixture);
+  for(const char* name:{"voxel_world.vxw","voxel_inventory.vxi","voxel_player.vps","voxel_mobs.vxm","voxel_travel.vtn"})std::filesystem::copy_file(recovered.directory/name,importFixture/name);
+  const auto originalRootFiles=snapshot(importFixture);std::filesystem::current_path(importFixture);
+  WorldLibrary::importLegacy();const auto imported=WorldLibrary::list();
+  log("root_legacy_import_transaction",imported.size()==1&&imported[0].seed==42&&SaveFile::verifyCheckpoint(imported[0].directory.string()));
+  for(const auto& original:originalRootFiles)log("root_legacy_original_preserved",bytes(original.first)==original.second);
+  std::filesystem::current_path(originalCwd);
+  return 0;
+ }
  if(argc>1 && std::string(argv[1])=="--game") {
   Game g;char arg[]="audit";char* args[]={arg};if(!g.initialize(1,args))return 5;glfwHideWindow(g.window_);
   const auto selected=WorldLibrary::create("Game audit",42,GameMode::Survival,false);g.playSavedWorld(selected);if(!g.world_)return 6;

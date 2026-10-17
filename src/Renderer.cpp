@@ -2538,13 +2538,43 @@ void Renderer::drawMenuVertices(const void* data, std::size_t count) const {
     glBindVertexArray(0); glDisable(GL_BLEND); glEnable(GL_CULL_FACE); glEnable(GL_DEPTH_TEST);
 }
 
+void Renderer::renderNowPlaying(int width, int height, const std::string& songName) const {
+    if (songName.empty() || width < 80 || height < 40) return;
+    // Rebuild glyph geometry only on song changes or window resizing.
+    struct Cache {
+        std::string song;
+        int width = 0, height = 0;
+        std::vector<UiVertex> vertices;
+    };
+    thread_local Cache cache;
+    if (cache.song != songName || cache.width != width || cache.height != height) {
+        cache.song = songName;
+        cache.width = width;
+        cache.height = height;
+        cache.vertices.clear();
+        constexpr float scale = 1.25f, padding = 5.0f, margin = 12.0f;
+        std::string label = "NOW PLAYING: " + songName;
+        const auto maxChars = static_cast<std::size_t>((width - 2 * (margin + padding)) / (6 * scale));
+        if (label.size() > maxChars) label = label.substr(0, maxChars - 3) + "...";
+        const float textWidth = (label.size() * 6 - 1) * scale;
+        const float x = width - margin - padding - textWidth;
+        addRect(cache.vertices, x - padding, margin, textWidth + 2 * padding,
+                7 * scale + 2 * padding, {0.02f, 0.025f, 0.03f, 0.48f}, width, height);
+        menuText(cache.vertices, label, x + 1, margin + padding + 1, scale,
+                 {0, 0, 0, .8f}, width, height);
+        menuText(cache.vertices, label, x, margin + padding, scale,
+                 {.88f, .91f, .94f, 1}, width, height);
+    }
+    drawMenuVertices(cache.vertices.data(), cache.vertices.size());
+}
+
 void Renderer::renderSettingsCategories(int width, int height, int hovered,
                                         const GameSettings& settings, bool video) const {
     thread_local std::vector<UiVertex> verticesStorage;
     RenderScratch<UiVertex> verticesScratch(verticesStorage, 2097152);
     auto& vertices = verticesScratch.get();
     menuPanel(vertices,video ? "VIDEO SETTINGS" : "SETTINGS",width,height);
-    const std::array<std::string,4> categories{"VIDEO","AUDIO","CONTROLS","BACK"};
+    const std::array<std::string,3> categories{"VIDEO","AUDIO","CONTROLS"};
     if (!video) {
         const std::array<std::string,5> hub{"VIDEO","AUDIO","CONTROLS","WEATHER","BACK"};
         for (int index=0; index<5; ++index) {
@@ -2552,7 +2582,7 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
             menuButton(vertices,MenuLayout::hubRow(index,width,height),hub[index],hovered==action,width,height,2.2f);
         }
     } else {
-        for (int index=0; index<4; ++index)
+        for (int index=0; index<int(categories.size()); ++index)
             menuButton(vertices,MenuLayout::tab(index,width,height),categories[index],index==0 || hovered==30+index,width,height);
         const std::array<std::string,16> labels{"RENDER DISTANCE","SIMULATION DISTANCE","FOV","BRIGHTNESS",
             "ANTI ALIASING","FULLSCREEN","VSYNC","FPS LIMIT","GRAPHICS PRESET","ENTITY DISTANCE","SHOW FPS","SHOW COORDINATES","CHUNK STREAMING","TERRAIN LOD","OCCLUSION","TERRAIN MEMORY TARGET"};

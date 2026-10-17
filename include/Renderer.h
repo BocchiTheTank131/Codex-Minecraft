@@ -65,6 +65,7 @@ public:
                    bool spectator = false) const;
     void renderNavigation(int,int,const Transportation&,const Player&,const Inventory&,bool,bool,std::uint32_t,const std::string&,const std::string&,bool,const std::string&) const;
     void renderChat(int width, int height, const ChatUI& chat, double now) const;
+    void renderNowPlaying(int width, int height, const std::string& songName) const;
     void renderSurvivalUi(int width,
                           int height,
                           const Inventory& inventory,

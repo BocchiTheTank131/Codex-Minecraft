@@ -46,7 +46,7 @@ void GameSettings::clamp() {
     mouseSensitivity = std::isfinite(mouseSensitivity) ? std::clamp(mouseSensitivity, .03f, .30f) : .1f;
     brightness = std::isfinite(brightness) ? std::clamp(brightness, 0.f, 1.f) : .5f;
     masterVolume = std::isfinite(masterVolume) ? std::clamp(masterVolume, 0.f, 1.f) : 1.f;
-    musicVolume = std::isfinite(musicVolume) ? std::clamp(musicVolume, 0.f, 1.f) : 1.f;
+    musicVolume = std::isfinite(musicVolume) ? std::clamp(musicVolume, 0.f, 1.f) : .5f;
     sfxVolume = std::isfinite(sfxVolume) ? std::clamp(sfxVolume, 0.f, 1.f) : 1.f;
     passiveMobVolume = std::isfinite(passiveMobVolume) ? std::clamp(passiveMobVolume, 0.f, 1.f) : 1.f;
     hostileMobVolume = std::isfinite(hostileMobVolume) ? std::clamp(hostileMobVolume, 0.f, 1.f) : 1.f;

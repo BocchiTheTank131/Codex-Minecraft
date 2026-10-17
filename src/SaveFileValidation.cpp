@@ -33,8 +33,9 @@ bool selfTest(const std::string& directory,std::string& report) {
         check(CreateProcessW(exe,args.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,nullptr,&si,&pi)!=0,"start interruption child");
         const auto wait=WaitForSingleObject(pi.hProcess,30000);DWORD code=0;GetExitCodeProcess(pi.hProcess,&code);CloseHandle(pi.hThread);CloseHandle(pi.hProcess);
         check(wait==WAIT_OBJECT_0&&code==77,"process interrupted during real checkpoint commit");
-        check(get((child/"inventory.test").string())=="new"&&get((child/"navigation.test").string())=="old","interrupted mixed checkpoint fixture");
-        check(recover((child/"save.checkpoint").string())&&get((child/"inventory.test").string())=="old"&&get((child/"navigation.test").string())=="old","restart after abrupt process termination");
+        check(get((child/"inventory.test").string())=="new"&&get((child/"navigation.test").string())=="new"&&get((child/"world_seed.txt").string())=="new-metadata"&&!verifyCheckpoint(child.string()),"interrupted data/metadata before manifest fixture");
+        check(recover((child/"save.checkpoint").string())&&get((child/"inventory.test").string())=="old"&&get((child/"navigation.test").string())=="old"&&get((child/"world_seed.txt").string())=="old-metadata"&&verifyCheckpoint(child.string()),"restart after abrupt process termination");
+        check(fs::exists(child/"checkpoint.manifest.checkpoint-old")&&fs::exists(child/"world_seed.txt.checkpoint-old"),"interruption recovery retains verified backups");
     }
     {
         Checkpoint owning(journal);
@@ -56,7 +57,10 @@ bool selfTest(const std::string& directory,std::string& report) {
     // Exact durable state left by process termination between replacements.
     fs::copy_file(file,file+".checkpoint-old",fs::copy_options::overwrite_existing);fs::copy_file(navigation,navigation+".checkpoint-old",fs::copy_options::overwrite_existing);
     {std::ofstream f(journal);f<<"VXCHECK1 2\n"<<std::quoted(file)<<" 1\n"<<std::quoted(navigation)<<" 1\n";}
-    check(put(file,"interrupted-new"),"interrupted state");check(recover(journal)&&get(file)=="paired-inventory"&&get(navigation)=="paired-maps","restart rolls back complete pair");
+    // Deliberately construct the bytes left by an interrupted legacy writer;
+    // normal standalone writes to manifest-managed components are now refused.
+    {std::ofstream partial(file,std::ios::binary);partial<<"interrupted-new";check(bool(partial),"interrupted state");}
+    check(recover(journal)&&get(file)=="paired-inventory"&&get(navigation)=="paired-maps","restart rolls back complete pair");
     std::atomic<bool> ok{true};std::atomic<int> writerRetries{0};std::vector<std::thread> threads;
     for(int n=0;n<4;++n)threads.emplace_back([&,n]{for(int i=0;i<100;++i){bool saved=false;
         for(int attempt=0;attempt<4&&!saved;++attempt){saved=put(file+".concurrent",std::to_string(n)+":"+std::to_string(i)+":"+std::string(4096,char('A'+n)));if(!saved){++writerRetries;std::this_thread::sleep_for(std::chrono::milliseconds(5*(1<<attempt)));}}

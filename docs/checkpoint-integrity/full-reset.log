@@ -1,0 +1,6 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/seisyun complex.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+Reset smoke: fresh seed, Creative mode, player state, inventory, and saves passed

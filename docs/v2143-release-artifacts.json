@@ -1,0 +1,28 @@
+{
+  "version": "2.14.3",
+  "publication_approved": true,
+  "date": "2026-10-17",
+  "validation_scope": "Checkpoint tests precede final settings/UI changes; final packages checked by build/source inspection and hashes.",
+  "artifacts": [
+    {
+      "file": "build/installed-release/Release/VoxelFrontier.exe",
+      "bytes": 73438720,
+      "sha256": "623bcade8f94b73bb2ab4fef6ec70e7f15b73b306357690baf96f2be1f6136cc"
+    },
+    {
+      "file": "dist/VoxelFrontier-v2.14.3-Windows-Standalone.exe",
+      "bytes": 73284096,
+      "sha256": "744737ad52fcbf10e636bf251634fff88acebdff6eec0bc52e81e686d56902a9"
+    },
+    {
+      "file": "dist/VoxelFrontier-v2.14.3-Windows-Setup.exe",
+      "bytes": 70418461,
+      "sha256": "bc066edd29132899cdf8afd6009269459b67f1e8d20d07f3cf5ecdac770333d0"
+    },
+    {
+      "file": "dist/SHA256SUMS.txt",
+      "bytes": 219,
+      "sha256": "58e6d98fec181cae66f74e922ef46c72ec4f02eed229ad1fe6fcd276317af658"
+    }
+  ]
+}

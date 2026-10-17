@@ -1,0 +1,10 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/Never forget.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+Mesh CPU fixed snapshot 0,0: raw 4.72208 ms; pack-only 0.46032 ms; pack+index 0.333228 ms; 21744 to 14496 vertices
+Mesh CPU fixed snapshot -1,-1: raw 4.88113 ms; pack-only 0.357204 ms; pack+index 0.266908 ms; 17022 to 11348 vertices
+Mesh CPU fixed snapshot 1,1: raw 4.83006 ms; pack-only 0.234636 ms; pack+index 0.194104 ms; 11292 to 7528 vertices
+Terrain packing GPU comparison: 8 legacy/packed/indexed scenes pixel-identical; 48 to 28 bytes
+Optimization smoke passed: Packing/index attributes, 16/32-bit page lifecycle and merging, full terrain/transparent LOD preservation, hysteresis; Streaming passed: worker plans, 8 parallel byte-identical meshes, negative coordinates, teleports, epoch/revision cancellation, bounded queues and exact GPU upload.; 480 exact full-scene pixel comparisons (including 4x MSAA/viewport changes), 432 query frames, 4736 hidden chunk draws skipped.

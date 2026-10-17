@@ -116,6 +116,7 @@ struct SoundSystem::Impl {
     std::size_t musicGeneration = 0;
     std::unique_ptr<ma_decoder> musicDecoder;
     std::unique_ptr<ma_sound> musicSound;
+    std::string currentSongName;
     std::mt19937 random{std::random_device{}()};
     glm::vec3 listener{0.0f};
     float masterVolume = 1.0f;
@@ -298,6 +299,7 @@ struct SoundSystem::Impl {
     }
 
     void stopMusic() {
+        currentSongName.clear();
         if (musicSound) {
             ma_sound_uninit(musicSound.get());
             musicSound.reset();
@@ -369,6 +371,7 @@ struct SoundSystem::Impl {
             ++musicGeneration;
             musicDecoder = std::move(decoder);
             musicSound = std::move(sound);
+            currentSongName = std::filesystem::path(track.name).stem().string();
             ma_sound_get_length_in_pcm_frames(musicSound.get(), &musicLengthFrames);
             ma_decoder_get_data_format(musicDecoder.get(), nullptr, nullptr, &musicSampleRate,
                                        nullptr, 0);
@@ -551,6 +554,9 @@ void SoundSystem::setCategoryVolumes(float music, float sfx, float passiveMobs,
 void SoundSystem::startMusic() {
     if (impl_->engineReady && !impl_->musicSound && !impl_->musicTracks.empty())
         impl_->startNextMusic();
+}
+const std::string& SoundSystem::currentSongName() const {
+    return impl_->currentSongName;
 }
 void SoundSystem::setListener(const glm::vec3& position, const glm::vec3& forward) {
     impl_->listener = position;

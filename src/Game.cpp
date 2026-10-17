@@ -500,6 +500,7 @@ bool Game::createWindow() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_SAMPLES, 0); // Only the offscreen 3D target uses MSAA.
 
     window_ = glfwCreateWindow(1280, 720, "Voxel Frontier", nullptr, nullptr);
     if (window_ == nullptr) {
@@ -550,13 +551,14 @@ void Game::createWorldAndSystems() {
         if(!worldSession_->acquired())throw std::runtime_error("World already open in another session, or access denied. No saves changed.");
     }
     if(Persistence::enabled() && !SaveFile::recover(worldSavePath("save.checkpoint")))throw std::runtime_error("Cannot recover interrupted save; original checkpoint retained. See log.");
-    if(Persistence::enabled() && !SaveFile::verifyCheckpoint(activeWorld_.directory.empty()?".":activeWorld_.directory.string()))throw std::runtime_error("Checkpoint integrity failed. Originals and previous checkpoint retained; restore a verified backup to recover.");
+    std::string checkpointReason;
+    if(Persistence::enabled() && !SaveFile::verifyCheckpoint(activeWorld_.directory.empty()?".":activeWorld_.directory.string(),&checkpointReason))throw std::runtime_error("Checkpoint integrity failed: "+checkpointReason+". Originals preserved; recover a verified copy.");
     if(Persistence::enabled() && !activeWorld_.directory.empty()){
         activeWorld_=WorldLibrary::inspectReserved(activeWorld_.directory);
         seed_=activeWorld_.seed;timing_.worldTime=activeWorld_.time;
         creativeMode_=activeWorld_.mode==GameMode::Creative;spectatorMode_=activeWorld_.mode==GameMode::Spectator;
     }
-    saveRetryAt_=0;saveRetryCount_=0;
+    saveRetryAt_=0;saveRetryCount_=0;saveBlockedReason_.clear();saveQueued_=false;
     transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
@@ -689,24 +691,42 @@ void Game::applyFullscreenSetting() {
                          0);
 }
 
+void Game::blockSaving(const std::string& reason) {
+    saveRetryAt_=0;saveQueued_=false;
+    if(!saveBlockedReason_.empty())return;
+    saveBlockedReason_=reason.empty()?"Checkpoint requires verified recovery":reason;
+    const auto message="Saving stopped: "+saveBlockedReason_+". Original files preserved; use recovery into a separate world. Automatic retries disabled.";
+    std::cerr<<message<<'\n'<<std::flush;
+    chat_.addMessage(message,ChatTone::Error,glfwGetTime());
+}
+
 void Game::pollSave(bool wait) {
     if(!pendingSave_.valid() || (!wait && pendingSave_.wait_for(std::chrono::seconds(0))!=std::future_status::ready))return;
     bool saved=false;try{saved=pendingSave_.get();}catch(const std::exception& e){std::cerr<<"Background checkpoint error: "<<e.what()<<'\n';}
-    if(saved){saveRetryAt_=0;saveRetryCount_=0;}
+    const auto status=std::move(pendingSaveStatus_);
+    const bool queued=saveQueued_;saveQueued_=false;
+    if(!saved && status && status->permanentFailure){blockSaving(status->reason);return;}
+    if(saved){saveRetryAt_=0;saveRetryCount_=0;if(queued && world_ && loadedStateValid_)saveAll(!wait);}
     else {chat_.addMessage("Autosave commit failed; previous checkpoint retained. See log.",ChatTone::Error,glfwGetTime());
         if(saveRetryCount_<3)saveRetryAt_=glfwGetTime()+(.05*(1<<(2*saveRetryCount_++)));}
 }
 
 bool Game::saveAll(bool asynchronous) {
     if(pendingSave_.valid()){
-        if(asynchronous)return true; // A single bounded immutable checkpoint in flight.
+        if(asynchronous){saveQueued_=true;return true;} // Coalesce to one fresh capture after this commit.
         pollSave(true);
     }
     if (!Persistence::enabled() || !world_) return true;
+    if(!saveBlockedReason_.empty())return false;
     if(!loadedStateValid_ || !player_ || !inventory_ || !survival_ || !transportation_)return false;
     // Global preferences are independent of a per-world checkpoint.
     const bool settingsSaved=settings_.save(SettingsPath);
     SaveFile::Checkpoint checkpoint(worldSavePath("save.checkpoint"));
+    if(!checkpoint.ready()){
+        if(checkpoint.permanentFailure())blockSaving(checkpoint.failureReason());
+        else if(saveRetryCount_<3)saveRetryAt_=glfwGetTime()+(.05*(1<<(2*saveRetryCount_++)));
+        return false;
+    }
     bool saved = true;
     // Terrain and containers belong to the same checkpoint even during death.
     // Persist the death location; Player's death timer restores the normal respawn.
@@ -717,7 +737,8 @@ bool Game::saveAll(bool asynchronous) {
     saved &= survival_->save(worldSavePath(MobSavePath), seed_);
     if (saved) saved &= saveWorldMetadata();
     if(saved && asynchronous){
-        pendingSave_=checkpoint.commitAsync();
+        pendingSaveStatus_=std::make_shared<SaveFile::CommitStatus>();
+        pendingSave_=checkpoint.commitAsync(pendingSaveStatus_);
         if(!settingsSaved)chat_.addMessage("World checkpoint queued; settings save failed. See log.",ChatTone::Error,glfwGetTime());
         timing_.lastSave=glfwGetTime();
         return settingsSaved; // Queued only; success/failure reported by pollSave.
@@ -742,6 +763,9 @@ void Game::saveSettings() {
 
 bool Game::saveWorldMetadata() const {
     if (!Persistence::enabled()) return true;
+    if(!SaveFile::stagingCheckpoint()){
+        std::cerr<<"Metadata serialization requires the complete world checkpoint\n";return false;
+    }
     bool saved = SaveFile::write(worldSavePath(SeedPath), std::ios::out, [&](std::ofstream& output) {
         const char* mode = spectatorMode_ ? "spectator"
                            : creativeMode_ ? "creative" : "survival";
@@ -897,12 +921,17 @@ void Game::setGameMode(GameMode mode) {
     interaction_.breakProgress = 0.0f;
     interaction_.heldItemSwing = 0.0f;
     interaction_.cameraKickDegrees = 0.0f;
-    saveWorldMetadata();
+    // Mode, time and weather remain live state until the next complete save.
+    // Never replace world_seed.txt independently of the manifest/player state.
 }
 
 void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     pollSave(true);
     if(Persistence::enabled()&&!SaveFile::recover(worldSavePath("save.checkpoint"))){chat_.addMessage("Cannot reset: checkpoint recovery failed",ChatTone::Error,glfwGetTime());return;}
+    if(Persistence::enabled()){
+        std::string reason;
+        if(!SaveFile::verifyCheckpoint(activeWorld_.directory.empty()?".":activeWorld_.directory.string(),&reason)){blockSaving(reason);return;}
+    }
     saveRetryAt_=0;saveRetryCount_=0;
     ui_.resumeGame();
     weather_.reset();
@@ -1329,7 +1358,7 @@ void Game::updatePauseInterface() {
         } else if (hit == 10 && selectedWorld_ >= 0) playSavedWorld(savedWorlds_[selectedWorld_]);
         else if (hit == 11) { newWorldName_ = "New World"; newWorldSeed_.clear(); newWorldCheats_=false; menuMessage_.clear(); worldNameField_ = 0; ui_.openCreateWorld(); }
         else if (hit == 12) ui_.openMainMenu();
-        else if (hit == 15 && selectedWorld_>=0 && selectedWorld_<int(savedWorlds_.size())) { auto& info=savedWorlds_[selectedWorld_]; info.cheats=!info.cheats; if(!WorldLibrary::writeMetadata(info)) {info.cheats=!info.cheats; menuMessage_="Cannot save cheat permissions";} }
+        else if (hit == 15 && selectedWorld_>=0 && selectedWorld_<int(savedWorlds_.size())) { auto& info=savedWorlds_[selectedWorld_]; if(WorldLibrary::setCheats(info,!info.cheats))info.cheats=!info.cheats;else menuMessage_="Cannot save cheat permissions; world may be open or require recovery"; }
         else if (hit == 13) worldPage_ = std::max(0, worldPage_-1);
         else if (hit == 14) worldPage_ = std::min(std::max(0,(static_cast<int>(savedWorlds_.size())-1)/6),worldPage_+1);
         return;
@@ -2092,7 +2121,7 @@ void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
     }
     renderer_->updateParticles(deltaTime);
     interaction_.heldItemSwing = std::max(0.0f, interaction_.heldItemSwing - deltaTime * 4.0f);
-    if (Persistence::enabled() && glfwGetTime() - timing_.lastSave >= 12.0 &&
+    if (Persistence::enabled() && saveBlockedReason_.empty() && glfwGetTime() - timing_.lastSave >= 12.0 &&
         !player_->isDead()) {
         saveRetryCount_=0;saveAll(true);
     }
@@ -2116,6 +2145,7 @@ void Game::renderFrame(float deltaTime) {
             input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT),
             ui_.state() == GameState::MainMenu, !Persistence::enabled(), glfwGetTime());
         if (ui_.state() != GameState::MainMenu) renderMenuInterface(width, height);
+        renderer_->renderNowPlaying(width, height, sounds_->currentSongName());
         if (screenshotRequested_) {
             Screenshot::saveBmp(width, height);
             screenshotRequested_ = false;
@@ -2205,6 +2235,12 @@ void Game::renderFrame(float deltaTime) {
                 view, projection);
         }
 
+    }
+    // Resolve the 3D scene before any HUD, menus, maps, held sprites or text.
+    resolveRenderTarget(width, height);
+    if (underwater) renderer_->renderUnderwaterOverlay(width, height);
+
+    if (!zooming) {
         if(!(smokeTest_.worldgenEnabled&&smokeTest_.previewClean)) {
         const std::string status =
             player_->isDead()
@@ -2240,9 +2276,6 @@ void Game::renderFrame(float deltaTime) {
         }
     }
     if(ui_.state()==GameState::Playing && !chat_.isOpen()) renderer_->renderNavigation(width,height,*transportation_,*player_,*inventory_,navigationOpen_,mapView_,viewedMap_,waypointName_,waypointCoordinates_,waypointCoordinatesFocused_,navigationMessage_);
-    if (underwater) {
-        renderer_->renderUnderwaterOverlay(width, height);
-    }
 
     const glm::dvec2 cursor = input_.framebufferCursorPosition();
     if (ui_.gameplayInterfaceOpen()) {
@@ -2268,7 +2301,8 @@ void Game::renderFrame(float deltaTime) {
     if (ui_.simulationPaused()) renderMenuInterface(width, height);
 
     renderer_->renderChat(width, height, chat_, glfwGetTime());
-    resolveRenderTarget(width, height);
+    if (!(smokeTest_.worldgenEnabled && smokeTest_.previewClean))
+        renderer_->renderNowPlaying(width, height, sounds_->currentSongName());
     if (screenshotRequested_) {
         Screenshot::saveBmp(width, height);
         screenshotRequested_ = false;
@@ -2348,8 +2382,10 @@ void Game::prepareRenderTarget(int width, int height) {
 }
 
 void Game::resolveRenderTarget(int width, int height) {
-    if (multisampleFramebuffer_ == 0)
+    if (settings_.antiAliasingSamples == 0 || multisampleFramebuffer_ == 0) {
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
         return;
+    }
     glBindFramebuffer(GL_READ_FRAMEBUFFER, multisampleFramebuffer_);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
     glBlitFramebuffer(
@@ -3770,7 +3806,7 @@ void Game::renderMenuInterface(int width, int height) {
 
 void Game::returnToMainMenu() {
     if (Persistence::enabled() && !saveAll()) {
-        menuMessage_ = "Save failed. Check disk space; world remains open.";
+        menuMessage_ = saveBlockedReason_.empty()?"Save failed. Check disk space; world remains open.":"Save blocked: "+saveBlockedReason_+". Restart and recover a verified copy; originals preserved.";
         chat_.addMessage(menuMessage_, ChatTone::Error, glfwGetTime());
         return;
     }
@@ -3870,6 +3906,8 @@ void Game::runMainMenuSmokeTest() {
         auto match=std::find_if(listed.begin(),listed.end(),[&](const auto& w){return w.directory==permissions.directory;});
         check(match!=listed.end()&&match->cheats,"Cheats On reload");
         permissions.cheats=false;check(WorldLibrary::writeMetadata(permissions),"Cheats Off save");
+        // This fixture deliberately represents a pre-manifest legacy world.
+        std::filesystem::remove(permissions.directory/"checkpoint.manifest");
         {std::ofstream legacy(permissions.directory/"world.info");legacy<<"\"Permission Regression\"\n0\n";}
         listed=WorldLibrary::list();match=std::find_if(listed.begin(),listed.end(),[&](const auto& w){return w.directory==permissions.directory;});
         check(match!=listed.end()&&match->cheats,"Legacy command access preserved");
