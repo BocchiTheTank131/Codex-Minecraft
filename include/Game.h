@@ -1,5 +1,6 @@
 #pragma once
 #include "WorldLibrary.h"
+#include "SimulationClock.h"
 
 #include "InputManager.h"
 #include "Settings.h"
@@ -14,6 +15,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <future>
 #include <limits>
 #include <string>
 
@@ -25,8 +27,10 @@ class SoundSystem;
 class Weather;
 class WeatherRenderer;
 class Transportation;
+namespace SaveFile { class Session; }
 
 class Game {
+    friend class StabilityTest;
 public:
     Game();
     ~Game();
@@ -39,6 +43,16 @@ public:
     void shutdown();
 
 private:
+    std::unique_ptr<SaveFile::Session> worldSession_;
+    bool loadedStateValid_=false;
+    SimulationClock simulationClock_;
+    SimulationTime simulationTime_;
+    void simulationStep(float deltaTime);
+    std::future<bool> pendingSave_;
+    void pollSave(bool wait=false);
+    void reclaimMapsIfNeeded();
+    int recoverWorldPending_=-1;
+    double recoverWorldUntil_=0;
     struct TimingState {
         double previousFrame = 0.0;
         double fpsSampleStart = 0.0;
@@ -185,7 +199,7 @@ private:
     void runMainMenuSmokeTest();
     void synchronizeCursorCapture();
     void applyFullscreenSetting();
-    bool saveAll();
+    bool saveAll(bool asynchronous=false);
     std::string worldSavePath(const char* filename) const;
     void refreshWorlds();
     void playSavedWorld(const SavedWorld& world);

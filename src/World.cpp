@@ -8,6 +8,7 @@
 
 #include "Player.h"
 #include "SaveFile.h"
+#include "SaveValidation.h"
 #include "Definitions.h"
 #include "RenderScratch.h"
 
@@ -1944,7 +1945,7 @@ void World::generate(int renderDistance, const glm::vec3& initialPosition) {
             queueLightingUpdate(centerX, centerZ, false);
     }
     rebuildChunk(centerX, centerZ);
-    streamCenter_ = {centerX, centerZ};
+    streamCenter_ = {centerX, centerZ};streamCenterValid_=true;
     generationLoadRadius_.store(
         std::max(renderDistance_, simulationDistance_), std::memory_order_relaxed);
     generationCenterKey_.store(chunkKey(centerX, centerZ), std::memory_order_relaxed);
@@ -1957,7 +1958,7 @@ void World::setRenderDistance(int value) {
         return;
     renderDistance_ = value;
     requestRadius_ = -1;
-    streamCenter_ = {1000000, 1000000};
+    streamCenterValid_=false;
 }
 
 void World::setSimulationDistance(int value) {
@@ -1966,7 +1967,7 @@ void World::setSimulationDistance(int value) {
         return;
     simulationDistance_ = value;
     requestRadius_ = -1;
-    streamCenter_ = {1000000, 1000000};
+    streamCenterValid_=false;
 }
 
 void World::rebuildRequestOffsets() {
@@ -1976,7 +1977,7 @@ void World::rebuildRequestOffsets() {
         (2 * requestRadius_ + 1) * (2 * requestRadius_ + 1)));
     for (int dz = -requestRadius_; dz <= requestRadius_; ++dz) {
         for (int dx = -requestRadius_; dx <= requestRadius_; ++dx) {
-            if (dx * dx + dz * dz <= requestRadius_ * requestRadius_)
+            if (std::int64_t(dx) * dx + std::int64_t(dz) * dz <= requestRadius_ * requestRadius_)
                 requestOffsets_.push_back({dx, dz});
         }
     }
@@ -1992,7 +1993,7 @@ void World::discardObsoleteRequests(int centerX, int centerZ) {
     const auto obsolete = [&](int x, int z) {
         const int dx = x - centerX;
         const int dz = z - centerZ;
-        return dx * dx + dz * dz > maximumDistance * maximumDistance;
+        return std::int64_t(dx) * dx + std::int64_t(dz) * dz > maximumDistance * maximumDistance;
     };
     std::lock_guard<std::mutex> lock(generationMutex_);
     generationQueue_.erase(
@@ -2118,7 +2119,7 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
         const int dx = generated.x - centerX;
         const int dz = generated.z - centerZ;
         const int loadDistance = std::max(renderDistance_, simulationDistance_);
-        if (dx * dx + dz * dz > (loadDistance + 1) * (loadDistance + 1))
+        if (std::int64_t(dx) * dx + std::int64_t(dz) * dz > (loadDistance + 1) * (loadDistance + 1))
             continue;
         const std::int64_t key = chunkKey(generated.x, generated.z);
         if (chunks_.find(key) != chunks_.end())
@@ -2175,7 +2176,7 @@ void World::unloadDistant(int centerX, int centerZ) {
     for (auto it = chunks_.begin(); it != chunks_.end();) {
         const int dx = it->second->x - centerX;
         const int dz = it->second->z - centerZ;
-        if (dx * dx + dz * dz > unloadDistance * unloadDistance) {
+        if (std::int64_t(dx) * dx + std::int64_t(dz) * dz > unloadDistance * unloadDistance) {
             if (generationVersion_ >= 11 && !it->second->lightEmitters.empty())
                 queueLightingUpdate(it->second->x,it->second->z,false);
             dirtySet_.erase(it->first);
@@ -2213,14 +2214,14 @@ void World::unloadDistant(int centerX, int centerZ) {
     const int lightRadius=unloadDistance+2; // Covers each solve's 3x3 destinations.
     lightingQueue_.erase(std::remove_if(lightingQueue_.begin(),lightingQueue_.end(),[&](const auto& center) {
         const auto dx=std::int64_t(center.x)-centerX,dz=std::int64_t(center.y)-centerZ;
-        if(dx*dx+dz*dz<=std::int64_t(lightRadius)*lightRadius) return false;
+        if(std::int64_t(dx)*dx+std::int64_t(dz)*dz<=std::int64_t(lightRadius)*lightRadius) return false;
         lightingSet_.erase(chunkKey(center.x,center.y));return true;
     }),lightingQueue_.end());
     std::lock_guard<std::mutex> lock(meshMutex_);
     const auto obsolete = [&](int x, int z) {
         const int dx = x - centerX;
         const int dz = z - centerZ;
-        return dx * dx + dz * dz > unloadDistance * unloadDistance;
+        return std::int64_t(dx) * dx + std::int64_t(dz) * dz > unloadDistance * unloadDistance;
     };
     meshQueue_.erase(
         std::remove_if(meshQueue_.begin(), meshQueue_.end(),
@@ -2342,7 +2343,9 @@ void World::releaseEmptyTerrainPages() {
         [](const auto& page){return !page->allocated && page.use_count()==1;});
     if(empty!=terrainPages_.end()) {
         terrainPageTrimmedThisFrame_=true;
+        const auto trimStart=std::chrono::steady_clock::now();
         terrainPages_.erase(empty);
+        streamingStats_.pageTrimMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-trimStart).count();
     }
 }
 
@@ -2501,9 +2504,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     if (!input || std::memcmp(magic, expected, sizeof(magic)) != 0 ||
         (version != 1U && version != 2U) ||
         savedSeed != seed_ || editCount > 10000000ULL ||
-        !std::isfinite(loadedPlayerPosition.x) ||
-        !std::isfinite(loadedPlayerPosition.y) ||
-        !std::isfinite(loadedPlayerPosition.z))
+        !SaveValidation::position(loadedPlayerPosition))
         return false;
 
     std::uint32_t loadedGenerationVersion = 1U;
@@ -2545,7 +2546,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         input.read(reinterpret_cast<char*>(&index), sizeof(index));
         input.read(reinterpret_cast<char*>(&value), sizeof(value));
         Block loadedBlock = Block::Air;
-        if (!input || index >= static_cast<std::uint32_t>(CHUNK_SIZE * (loadedGenerationVersion >= 11 ? 384 : WORLD_HEIGHT) * CHUNK_SIZE) ||
+        if (!input || std::abs(std::int64_t(chunkX))>1875000 || std::abs(std::int64_t(chunkZ))>1875000 || index >= static_cast<std::uint32_t>(CHUNK_SIZE * (loadedGenerationVersion >= 11 ? 384 : WORLD_HEIGHT) * CHUNK_SIZE) ||
             !blockFromSaveId(value, loadedBlock)) {
             return false;
         }
@@ -2576,9 +2577,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         stack = {loadedItem, count, durability};
         if(identityStacks) input.read(reinterpret_cast<char*>(&stack.identity),sizeof(stack.identity));
         if(!input) return false;
-        if (stack.count <= 0 || stack.item == Item::None)
-            stack.clear();
-        return true;
+        return SaveValidation::stack(stack);
     };
     std::uint32_t furnaceCount = 0;
     input.read(reinterpret_cast<char*>(&furnaceCount), sizeof(furnaceCount));
@@ -2596,8 +2595,8 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         input.read(reinterpret_cast<char*>(&furnace.fuelRemaining), sizeof(float));
         input.read(reinterpret_cast<char*>(&furnace.fuelCapacity), sizeof(float));
         input.read(reinterpret_cast<char*>(&furnace.progress), sizeof(float));
-        if (!input)
-            return false;
+        if (!input || !SaveValidation::position(glm::vec3(position.x,position.y,position.z)) || position.y<(loadedGenerationVersion>=11?-64:0) || position.y>=(loadedGenerationVersion>=11?320:WORLD_HEIGHT) ||
+            !std::isfinite(furnace.fuelRemaining) || !std::isfinite(furnace.fuelCapacity) || !std::isfinite(furnace.progress) || furnace.fuelRemaining<0 || furnace.fuelCapacity<0 || furnace.progress<0 || furnace.progress>1)return false;
         furnace.fuelRemaining = std::max(0.0f, furnace.fuelRemaining);
         furnace.fuelCapacity = std::max(0.0f, furnace.fuelCapacity);
         furnace.progress = std::clamp(furnace.progress, 0.0f, 1.0f);
@@ -2616,6 +2615,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         for (ItemStack& stack : chest.slots)
             if (!readStack(stack))
                 return false;
+        if(!SaveValidation::position(glm::vec3(position.x,position.y,position.z)) || position.y<(loadedGenerationVersion>=11?-64:0) || position.y>=(loadedGenerationVersion>=11?320:WORLD_HEIGHT))return false;
         loadedChests[position] = chest;
     }
     if(input.peek()!=std::char_traits<char>::eof()) {
@@ -2624,11 +2624,18 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         if(!input || std::memcmp(extension,"VXGEAR1",8)!=0 || enabled>1) return false;
         loadedEquipmentLoot=enabled!=0;
     }
+    if(input.peek()!=std::char_traits<char>::eof())return false;
     commit();
     return true;
 }
 
 bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) const {
+    if(!SaveValidation::position(playerPosition))return false;
+    std::uint64_t totalEdits=0;for(const auto& c:edits_)totalEdits+=c.second.size();
+    if(totalEdits>10000000 || furnaces_.size()>1000000 || chests_.size()>1000000)return false;
+    for(const auto& entry:furnaces_){const auto& f=entry.second;
+        if(!SaveValidation::stack(f.input)||!SaveValidation::stack(f.output)||!SaveValidation::stack(f.fuel)||!std::isfinite(f.fuelRemaining)||f.fuelRemaining<0||!std::isfinite(f.fuelCapacity)||f.fuelCapacity<0||!std::isfinite(f.progress)||f.progress<0||f.progress>1)return false;}
+    for(const auto& c:chests_)for(const auto& stack:c.second.slots)if(!SaveValidation::stack(stack))return false;
     return SaveFile::write(path, std::ios::binary, [&](std::ofstream& output) {
     const char magic[8] = {'V', 'X', 'W', 'O', 'R', 'L', 'D', '3'};
     const std::uint32_t version = 2U;
@@ -3789,13 +3796,14 @@ bool World::hasClimbableNear(const glm::vec3& position, float radius) const {
     return false;
 }
 bool World::simulationActiveAt(float worldX, float worldZ) const {
-    if (std::abs(streamCenter_.x) > 100000 || std::abs(streamCenter_.y) > 100000)
+    if (!std::isfinite(worldX) || !std::isfinite(worldZ) || std::abs(double(worldX))>30000000 || std::abs(double(worldZ))>30000000)return false;
+    if (!streamCenterValid_)
         return true;
     const int chunkX = floorDiv(static_cast<int>(std::floor(worldX)), CHUNK_SIZE);
     const int chunkZ = floorDiv(static_cast<int>(std::floor(worldZ)), CHUNK_SIZE);
     const int dx = chunkX - streamCenter_.x;
     const int dz = chunkZ - streamCenter_.y;
-    return dx * dx + dz * dz <= simulationDistance_ * simulationDistance_;
+    return std::int64_t(dx) * dx + std::int64_t(dz) * dz <= simulationDistance_ * simulationDistance_;
 }
 Block World::getBlock(int x, int y, int z) const {
     if (y < minimumY() || y >= maximumY())
@@ -4642,7 +4650,7 @@ const World::VisibleChunks& World::collectVisibleChunks(
         const Chunk& chunk = *entry.second;
         const int dx = chunk.x - streamCenter_.x;
         const int dz = chunk.z - streamCenter_.y;
-        if (dx * dx + dz * dz > renderDistance_ * renderDistance_) continue;
+        if (std::int64_t(dx) * dx + std::int64_t(dz) * dz > renderDistance_ * renderDistance_) continue;
         ++visible.distanceAccepted;
         if ((!chunk.opaqueVertexCount && !chunk.waterVertexCount) ||
             !chunkInFrustum(chunk, planes)) {if(chunk.opaqueVertexCount || chunk.waterVertexCount)++frustumCulledCount_;continue;}
@@ -4723,6 +4731,7 @@ bool World::raycast(const glm::vec3& origin,
                     const glm::vec3& direction,
                     float maxDistance,
                     RayHit& hit) const {
+    if(!SaveValidation::position(origin) || !SaveValidation::position(direction) || !std::isfinite(maxDistance) || maxDistance<0 || maxDistance>1024 || glm::dot(direction,direction)<1e-12f)return false;
     const glm::vec3 ray = glm::normalize(direction);
     glm::ivec3 cell = glm::ivec3(glm::floor(origin));
     const glm::ivec3 step(ray.x >= 0.0f ? 1 : -1, ray.y >= 0.0f ? 1 : -1, ray.z >= 0.0f ? 1 : -1);
@@ -4739,8 +4748,14 @@ bool World::raycast(const glm::vec3& origin,
     while (travelled <= maxDistance) {
         const Block block = getBlock(cell.x, cell.y, cell.z);
         if (isRenderable(block) && !isWater(block)) {
-            if (isDoor(block) || isTorch(block) || block == Block::LightningRod) {
-                const BlockGeometryProperties bounds = blockGeometry(block);
+            { // Every selectable shape uses its actual bounds; crossed plants retain their deliberate cell box.
+                auto bounds = blockGeometry(block);
+                if(isWallAttachment(block)){
+                    if(block==Block::LadderNorth || block==Block::VineNorth)bounds.maxZ=.07f;
+                    else if(block==Block::LadderSouth || block==Block::VineSouth)bounds.minZ=.93f;
+                    else if(block==Block::LadderEast || block==Block::VineEast)bounds.minX=.93f;
+                    else bounds.maxX=.07f;
+                }
                 const glm::vec3 lower = glm::vec3(cell) +
                     glm::vec3(bounds.minX, bounds.minY, bounds.minZ);
                 const glm::vec3 upper = glm::vec3(cell) +
@@ -4771,9 +4786,6 @@ bool World::raycast(const glm::vec3& origin,
                     hit = {cell, cell + face, face, enter};
                     return true;
                 }
-            } else {
-                hit = {cell, cell + entryNormal, entryNormal, travelled};
-                return true;
             }
         }
         if (next.x < next.y && next.x < next.z) {
@@ -4794,6 +4806,21 @@ bool World::raycast(const glm::vec3& origin,
         }
     }
     return false;
+}
+
+void World::mapReferences(std::unordered_set<std::uint32_t>& refs) const {
+    auto add=[&](const auto& s){if(s.item==Item::FilledMap && s.identity)refs.insert(s.identity);};
+    for(const auto& c:chests_)for(const auto& s:c.second.slots)add(s);
+    for(const auto& f:furnaces_){add(f.second.input);add(f.second.output);add(f.second.fuel);}
+}
+
+bool World::collisionReady(const glm::vec3& minimum,const glm::vec3& maximum) const {
+    if(!SaveValidation::position(minimum)||!SaveValidation::position(maximum))return false;
+    const int x0=floorDiv(int(std::floor(minimum.x)),CHUNK_SIZE), x1=floorDiv(int(std::floor(maximum.x)),CHUNK_SIZE);
+    const int z0=floorDiv(int(std::floor(minimum.z)),CHUNK_SIZE), z1=floorDiv(int(std::floor(maximum.z)),CHUNK_SIZE);
+    if(x1-x0>64 || z1-z0>64)return false;
+    for(int z=z0;z<=z1;++z)for(int x=x0;x<=x1;++x)if(!findChunk(x,z))return false;
+    return true;
 }
 
 bool World::aabbIntersectsSolid(const glm::vec3& minimum, const glm::vec3& maximum) const {

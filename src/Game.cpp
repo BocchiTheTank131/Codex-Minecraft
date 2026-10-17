@@ -293,6 +293,7 @@ int Game::run() {
     try {
         while (!glfwWindowShouldClose(window_)) {
             const float deltaTime = beginFrame();
+            pollSave();
             handleGlobalInput();
             if(saveRetryAt_>0 && glfwGetTime()>=saveRetryAt_ && world_){saveRetryAt_=0;saveAll();}
 
@@ -321,6 +322,7 @@ int Game::run() {
 }
 
 void Game::shutdown() {
+    pollSave(true);
     if (!glfwInitialized_) {
         return;
     }
@@ -334,6 +336,7 @@ void Game::shutdown() {
     inventory_.reset();
     player_.reset();
     world_.reset();
+    loadedStateValid_=false;worldSession_.reset();
     weatherRenderer_.reset();
     sounds_.reset();
     renderer_.reset();
@@ -479,6 +482,13 @@ void Game::parseArguments(int argc, char** argv) {
         }
     }
 
+    if(!std::isfinite(smokeTest_.previewX)||std::abs(double(smokeTest_.previewX))>29999000)smokeTest_.previewX=0;
+    if(!std::isfinite(smokeTest_.previewZ)||std::abs(double(smokeTest_.previewZ))>29999000)smokeTest_.previewZ=0;
+    if(!std::isfinite(smokeTest_.previewYaw))smokeTest_.previewYaw=-90;
+    if(!std::isfinite(smokeTest_.previewPitch))smokeTest_.previewPitch=-12;
+    if(!std::isfinite(smokeTest_.previewBrightness))smokeTest_.previewBrightness=.5f;
+    if(!std::isfinite(smokeTest_.previewY)||std::abs(double(smokeTest_.previewY))>=9990)smokeTest_.previewY=std::numeric_limits<float>::quiet_NaN();
+
     if (smokeTest_.uiEnabled || smokeTest_.survivalEnabled || smokeTest_.commandEnabled ||
         smokeTest_.commandVisual || smokeTest_.resetEnabled ||
         smokeTest_.worldgenEnabled || smokeTest_.spectatorEnabled || smokeTest_.billboardPreview || smokeTest_.craftingPreview || smokeTest_.patch272)
@@ -534,7 +544,18 @@ void Game::createPresentationSystems() {
 }
 
 void Game::createWorldAndSystems() {
+    loadedStateValid_=false;simulationClock_.reset();
+    if(Persistence::enabled()) {
+        if(!worldSession_)worldSession_=std::make_unique<SaveFile::Session>(activeWorld_.directory.empty()?".":activeWorld_.directory.string());
+        if(!worldSession_->acquired())throw std::runtime_error("World already open in another session, or access denied. No saves changed.");
+    }
     if(Persistence::enabled() && !SaveFile::recover(worldSavePath("save.checkpoint")))throw std::runtime_error("Cannot recover interrupted save; original checkpoint retained. See log.");
+    if(Persistence::enabled() && !SaveFile::verifyCheckpoint(activeWorld_.directory.empty()?".":activeWorld_.directory.string()))throw std::runtime_error("Checkpoint integrity failed. Originals and previous checkpoint retained; restore a verified backup to recover.");
+    if(Persistence::enabled() && !activeWorld_.directory.empty()){
+        activeWorld_=WorldLibrary::inspectReserved(activeWorld_.directory);
+        seed_=activeWorld_.seed;timing_.worldTime=activeWorld_.time;
+        creativeMode_=activeWorld_.mode==GameMode::Creative;spectatorMode_=activeWorld_.mode==GameMode::Spectator;
+    }
     saveRetryAt_=0;saveRetryCount_=0;
     transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
@@ -545,9 +566,10 @@ void Game::createWorldAndSystems() {
     glm::vec3 spawnPosition(0.5f, 0.0f, 0.5f);
     const bool loadedWorld = Persistence::enabled() && !smokeTest_.worldgenEnabled &&
                              world_->loadWorld(worldSavePath(WorldSavePath), spawnPosition);
-    if (!loadedWorld && Persistence::enabled() && !activeWorld_.directory.empty() &&
+    if (!loadedWorld && Persistence::enabled() && !smokeTest_.worldgenEnabled &&
         std::filesystem::exists(worldSavePath(WorldSavePath))) {
         world_.reset();
+    loadedStateValid_=false;worldSession_.reset();
         throw std::runtime_error("Cannot load this world. Original save files were preserved.");
     }
     if (!loadedWorld)
@@ -585,9 +607,13 @@ void Game::createWorldAndSystems() {
     world_->generate(settings_.renderDistance, spawnPosition);
     player_ = std::make_unique<Player>(spawnPosition);
     player_->setMouseSensitivity(settings_.mouseSensitivity);
-    if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
-        player_->load(worldSavePath(PlayerSavePath), seed_);
     player_->setCreativeMode(creativeMode_);
+    const auto requireSidecar=[&](const char* name,auto& component){
+        if(Persistence::enabled() && !smokeTest_.worldgenEnabled &&
+           std::filesystem::exists(worldSavePath(name)) && !component.load(worldSavePath(name),seed_))
+            throw std::runtime_error(std::string("Invalid save: ")+name+". Original preserved; restore a verified backup to recover.");
+    };
+    requireSidecar(PlayerSavePath,*player_);
     if (spectatorMode_)
         player_->setSpectatorMode(true);
     if (smokeTest_.worldgenEnabled) {
@@ -604,12 +630,10 @@ void Game::createWorldAndSystems() {
     transportation_=std::make_unique<Transportation>(world_->generationVersion()>=22?world_->findSurvivalSpawnNear(0,0):world_->findSafeSpawnNear(0,0));
     if(loadedWorld && Persistence::enabled() && std::filesystem::exists(worldSavePath("voxel_travel.vtn")) && !transportation_->load(worldSavePath("voxel_travel.vtn"),seed_)) throw std::runtime_error("Cannot load navigation data; original save preserved");
     inventory_ = std::make_unique<Inventory>();
-    if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
-        inventory_->load(worldSavePath(InventorySavePath), seed_);
+    requireSidecar(InventorySavePath,*inventory_);
     player_->setEquipment(inventory_.get());
     survival_ = std::make_unique<SurvivalWorld>(seed_);
-    if (Persistence::enabled() && !smokeTest_.worldgenEnabled)
-        survival_->load(worldSavePath(MobSavePath), seed_);
+    requireSidecar(MobSavePath,*survival_);
     survival_->setSoundSystem(sounds_.get());
     if (smokeTest_.billboardPreview) {
         saveOnExit_ = false;
@@ -639,6 +663,7 @@ void Game::createWorldAndSystems() {
     timing_.fpsSampleStart = now;
     timing_.lastSave = now;
     smokeTest_.startTime = now;
+    loadedStateValid_=true;
 }
 
 void Game::synchronizeCursorCapture() {
@@ -664,20 +689,39 @@ void Game::applyFullscreenSetting() {
                          0);
 }
 
-bool Game::saveAll() {
+void Game::pollSave(bool wait) {
+    if(!pendingSave_.valid() || (!wait && pendingSave_.wait_for(std::chrono::seconds(0))!=std::future_status::ready))return;
+    bool saved=false;try{saved=pendingSave_.get();}catch(const std::exception& e){std::cerr<<"Background checkpoint error: "<<e.what()<<'\n';}
+    if(saved){saveRetryAt_=0;saveRetryCount_=0;}
+    else {chat_.addMessage("Autosave commit failed; previous checkpoint retained. See log.",ChatTone::Error,glfwGetTime());
+        if(saveRetryCount_<3)saveRetryAt_=glfwGetTime()+(.05*(1<<(2*saveRetryCount_++)));}
+}
+
+bool Game::saveAll(bool asynchronous) {
+    if(pendingSave_.valid()){
+        if(asynchronous)return true; // A single bounded immutable checkpoint in flight.
+        pollSave(true);
+    }
     if (!Persistence::enabled() || !world_) return true;
+    if(!loadedStateValid_ || !player_ || !inventory_ || !survival_ || !transportation_)return false;
     // Global preferences are independent of a per-world checkpoint.
     const bool settingsSaved=settings_.save(SettingsPath);
     SaveFile::Checkpoint checkpoint(worldSavePath("save.checkpoint"));
     bool saved = true;
-    if (!player_->isDead()) {
-        saved &= world_->saveWorld(worldSavePath(WorldSavePath), player_->position());
-    }
+    // Terrain and containers belong to the same checkpoint even during death.
+    // Persist the death location; Player's death timer restores the normal respawn.
+    saved &= world_->saveWorld(worldSavePath(WorldSavePath), player_->position());
     saved &= transportation_->save(worldSavePath("voxel_travel.vtn"), seed_);
     saved &= inventory_->save(worldSavePath(InventorySavePath), seed_);
     saved &= player_->save(worldSavePath(PlayerSavePath), seed_);
     saved &= survival_->save(worldSavePath(MobSavePath), seed_);
     if (saved) saved &= saveWorldMetadata();
+    if(saved && asynchronous){
+        pendingSave_=checkpoint.commitAsync();
+        if(!settingsSaved)chat_.addMessage("World checkpoint queued; settings save failed. See log.",ChatTone::Error,glfwGetTime());
+        timing_.lastSave=glfwGetTime();
+        return settingsSaved; // Queued only; success/failure reported by pollSave.
+    }
     if (saved) saved = checkpoint.commit();
     const bool complete=saved&&settingsSaved;
     if (complete) {saveRetryAt_=0;saveRetryCount_=0;}
@@ -731,6 +775,8 @@ void Game::refreshWorlds() {
 
 void Game::playSavedWorld(const SavedWorld& selected) {
     if (!Persistence::enabled()) return;
+    if(world_){returnToMainMenu();if(world_)return;}
+    if(!selected.loadError.empty()){menuMessage_=selected.loadError+". R: recover previous checkpoint into a separate world";return;}
     activeWorld_ = selected;
     seed_ = selected.seed;
     timing_.worldTime = selected.time;
@@ -746,6 +792,7 @@ void Game::playSavedWorld(const SavedWorld& selected) {
         if (weatherRenderer_) weatherRenderer_->clear();
         if (sounds_) sounds_->setRainAmbience(0,0);
         transportation_.reset(); farming_.reset(); survival_.reset(); inventory_.reset(); player_.reset(); world_.reset();
+        loadedStateValid_=false;worldSession_.reset();
         activeWorld_ = {};
         menuMessage_ = error.what();
         std::cerr << menuMessage_ << '\n' << std::flush;
@@ -854,6 +901,7 @@ void Game::setGameMode(GameMode mode) {
 }
 
 void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
+    pollSave(true);
     if(Persistence::enabled()&&!SaveFile::recover(worldSavePath("save.checkpoint"))){chat_.addMessage("Cannot reset: checkpoint recovery failed",ChatTone::Error,glfwGetTime());return;}
     saveRetryAt_=0;saveRetryCount_=0;
     ui_.resumeGame();
@@ -866,19 +914,14 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     inventory_.reset();
     player_.reset();
     world_.reset();
+    loadedStateValid_=false;
 
-    std::error_code error;
-    if (Persistence::enabled())
-        for (const char* path : {WorldSavePath, InventorySavePath, PlayerSavePath, MobSavePath, "voxel_travel.vtn"}) {
-            error.clear();
-            std::filesystem::remove(worldSavePath(path), error);
-        }
-
+    // Keep the previous world on disk until the complete reset checkpoint commits.
+    // Deleting sidecars first would leave a mixed world if reset saving failed.
     seed_ = newSeed;
     creativeMode_ = mode == GameMode::Creative;
     spectatorMode_ = mode == GameMode::Spectator;
     timing_.worldTime = WorldTime::DefaultSeconds;
-    saveWorldMetadata();
 
     transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
@@ -920,12 +963,13 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     interaction_ = {};
     wasInWater_ = false;
     currentFov_ = settings_.fov;
+    loadedStateValid_=true;
     saveAll();
     synchronizeCursorCapture();
 }
 float Game::beginFrame() {
     const double now = glfwGetTime();
-    const float deltaTime = std::min(static_cast<float>(now - timing_.previousFrame), 0.05f);
+    const float deltaTime = std::isfinite(now-timing_.previousFrame) ? static_cast<float>(std::max(0.0,now-timing_.previousFrame)) : 0.f;
     timing_.previousFrame = now;
     timing_.frameMilliseconds = deltaTime * 1000.0f;
 
@@ -1233,6 +1277,17 @@ void Game::updatePauseInterface() {
                 (worldNameField_ == 0 ? c >= 32 && c < 127 : c >= '0' && c <= '9')) value.push_back(static_cast<char>(c));
         if (input_.keyPressed(GLFW_KEY_ENTER)) { createNamedWorld(); return; }
     }
+    // Keyboard recovery is independent from mouse-button/menu hit testing.
+    if(ui_.state()==GameState::WorldSelection){
+        if(input_.keyPressed(GLFW_KEY_R) && selectedWorld_>=0 && selectedWorld_<int(savedWorlds_.size()) && !savedWorlds_[selectedWorld_].loadError.empty()){
+            if(recoverWorldPending_==selectedWorld_ && glfwGetTime()<recoverWorldUntil_){
+                try{const auto copy=WorldLibrary::recoverPrevious(savedWorlds_[selectedWorld_]);refreshWorlds();menuMessage_="Recovered as a separate world: "+copy.name;}
+                catch(const std::exception& error){menuMessage_=error.what();}
+                recoverWorldPending_=-1;
+            }else {recoverWorldPending_=selectedWorld_;recoverWorldUntil_=glfwGetTime()+5;menuMessage_="R again (5s): create a verified previous-checkpoint copy; original kept";}
+            return;
+        }
+    }
     if (!input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT)) {
         return;
     }
@@ -1260,6 +1315,8 @@ void Game::updatePauseInterface() {
     }
 
     if (ui_.state() == GameState::WorldSelection) {
+
+
         if (hit >= 0 && hit < 6) {
             const int index = worldPage_ * 6 + hit;
             if (index < static_cast<int>(savedWorlds_.size())) {
@@ -1456,43 +1513,22 @@ void Game::updatePauseInterface() {
 
 void Game::updateSimulation(float deltaTime) {
     if (!world_ || ui_.simulationPaused()) {
-        interaction_.hasBlockTarget = false;
-        interaction_.mobTarget = {};
-        return;
+        simulationClock_.reset();interaction_.hasBlockTarget=false;interaction_.mobTarget={};return;
     }
-
-    timing_.worldTime += deltaTime;
-    interaction_.attackCooldown = std::max(0.0f, interaction_.attackCooldown - deltaTime);
-    interaction_.cameraKickDegrees =
-        decayHitRecoilDegrees(interaction_.cameraKickDegrees, deltaTime);
-
-    const bool chestWasOpen = ui_.state() == GameState::Chest;
-    const glm::ivec3 chestPosition = ui_.openedContainerPosition();
-    if (!ui_.validateOpenBlock(*world_, *player_, *inventory_)) {
-        if (chestWasOpen)
-            sounds_->playChest(false, glm::vec3(chestPosition) + glm::vec3(.5f));
+    const bool chestWasOpen=ui_.state()==GameState::Chest;
+    const auto chestPosition=ui_.openedContainerPosition();
+    if(!ui_.validateOpenBlock(*world_,*player_,*inventory_)){
+        if(chestWasOpen)sounds_->playChest(false,glm::vec3(chestPosition)+glm::vec3(.5f));
         synchronizeCursorCapture();
     }
-    updateTargets();
-
-    const float oldHealth = player_->health();
+    // Queue maintenance and edge-triggered input run once per rendered frame.
     world_->setStreamingView(player_->lookDirection(),timing_.streamingWorkMilliseconds);
-    world_->updateStreaming(player_->cameraPosition(), 2);
-    world_->updateFluids(deltaTime);
-    world_->updateBlockEntities(deltaTime);
-    const bool playerInputEnabled =
-        ui_.state() == GameState::Playing && input_.cursorCaptured() && !navigationOpen_ && weatherBenchmark_.empty() && optimizationBenchmark_.empty();
-    const bool wasDead = player_->isDead();
-    const bool wasBelowWorld = player_->position().y < world_->minimumY() - 24.0f;
-    updateTransportation(deltaTime,playerInputEnabled);
-    updateEquipmentInput(playerInputEnabled);
-    player_->update(deltaTime, input_.playerInput(playerInputEnabled), *world_);
-    if(!wasDead && player_->isDead() && player_->lastDamageSource()==PlayerDamageSource::Burning) chat_.addMessage("Burned to death",ChatTone::Error,glfwGetTime());
-    if ((wasDead || wasBelowWorld) && !player_->isDead() && player_->position().y >= world_->minimumY())
-        world_->prepareSpawnTerrain(player_->position());
-    weather_->update(deltaTime, *world_, *player_, *survival_, *sounds_, settings_);
-    farming_->update(deltaTime, *world_, player_->position());
-
+    world_->updateStreaming(player_->cameraPosition(),2);
+    updateEquipmentInput(ui_.state()==GameState::Playing && input_.cursorCaptured() && !navigationOpen_);
+    const auto steps=simulationClock_.advance(deltaTime);
+    for(unsigned i=0;i<steps;++i)simulationStep(float(SimulationClock::Step));
+    updateTargets();
+    deltaTime=float(steps*SimulationClock::Step);
     if (ui_.gameplayInterfaceOpen()) {
         int framebufferWidth = 0;
         int framebufferHeight = 0;
@@ -1514,7 +1550,30 @@ void Game::updateSimulation(float deltaTime) {
         updatePlayingInteraction(deltaTime);
     }
 
-    finishSimulationFrame(deltaTime, oldHealth);
+}
+
+void Game::simulationStep(float deltaTime) {
+    simulationTime_.advance(timing_.worldTime,SimulationClock::Step);
+    interaction_.attackCooldown = std::max(0.0f, interaction_.attackCooldown - deltaTime);
+    interaction_.cameraKickDegrees =
+        decayHitRecoilDegrees(interaction_.cameraKickDegrees, deltaTime);
+
+    const float oldHealth = player_->health();
+    world_->updateFluids(deltaTime);
+    world_->updateBlockEntities(deltaTime);
+    const bool playerInputEnabled =
+        ui_.state() == GameState::Playing && input_.cursorCaptured() && !navigationOpen_ && weatherBenchmark_.empty() && optimizationBenchmark_.empty();
+    const bool wasDead = player_->isDead();
+    const bool wasBelowWorld = player_->position().y < world_->minimumY() - 24.0f;
+    updateTransportation(deltaTime,playerInputEnabled);
+    player_->update(deltaTime, input_.playerInput(playerInputEnabled), *world_);
+    if(!wasDead && player_->isDead() && player_->lastDamageSource()==PlayerDamageSource::Burning) chat_.addMessage("Burned to death",ChatTone::Error,glfwGetTime());
+    if ((wasDead || wasBelowWorld) && !player_->isDead() && player_->position().y >= world_->minimumY())
+        world_->updateStreaming(player_->cameraPosition(),2);
+    weather_->update(deltaTime, *world_, *player_, *survival_, *sounds_, settings_);
+    farming_->update(deltaTime, *world_, player_->position());
+
+    finishSimulationFrame(deltaTime,oldHealth);
 }
 
 void Game::updateTargets() {
@@ -2035,7 +2094,7 @@ void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
     interaction_.heldItemSwing = std::max(0.0f, interaction_.heldItemSwing - deltaTime * 4.0f);
     if (Persistence::enabled() && glfwGetTime() - timing_.lastSave >= 12.0 &&
         !player_->isDead()) {
-        saveRetryCount_=0;saveAll();
+        saveRetryCount_=0;saveAll(true);
     }
 }
 
@@ -2119,10 +2178,10 @@ void Game::renderFrame(float deltaTime) {
     RenderScratch<RenderCuboid> cuboids(cuboidStorage, 256 * 1024);
     RenderScratch<RenderBillboard> billboards(billboardStorage, 256 * 1024);
     RenderScratch<RenderItemSprite> items(itemStorage, 256 * 1024);
-    survival_->renderCuboids(cuboids.get());
+    survival_->renderCuboids(cuboids.get(),player_->cameraPosition(),entityDistance);
     transportation_->appendModels(cuboids.get(),player_->position(),entityDistance);
     survival_->renderBillboards(billboards.get());
-    survival_->renderItemSprites(items.get());
+    survival_->renderItemSprites(items.get(),player_->cameraPosition(),entityDistance);
     renderer_->renderEntities(cuboids.get(), view, projection, timing_.worldTime, entityDistance);
     renderer_->renderBillboards(billboards.get(), *world_, view, projection,
                                 timing_.worldTime, settings_.brightness, fullbright_, entityDistance);
@@ -2418,13 +2477,14 @@ std::string Game::buildDebugText() const {
          << "LOD " << lod[0] << "/" << lod[1] << "/" << lod[2] << "/" << lod[3] << "\n"
          << "CULLED FRUSTUM " << world_->frustumCulledCount() << " OCCLUSION " << renderer_->occlusionCulledCount() << " QUERIES " << renderer_->occlusionQueryCount() << "\n"
          << "DRAW VERTICES " << world_->renderedVertexCount() << " TRIANGLES " << world_->renderedTriangleCount() << " CALLS " << world_->opaqueSubmissionCount()+world_->waterSubmissionCount() << "\n"
-         << "TERRAIN GPU " << memory.usedBytes/1048576 << " USED / " << memory.capacityBytes/1048576 << " ALLOC MB TARGET " << memory.budgetBytes/1048576 << "\n"
+         << "TERRAIN GPU " << memory.usedBytes/1048576 << " USED / " << memory.capacityBytes/1048576 << " ALLOC MB SOFT TARGET " << memory.budgetBytes/1048576 << "\n"
          << "FREE " << memory.freeBytes/1048576 << " MB LARGEST " << memory.largestFreeBytes/1048576 << " RETIRED " << memory.retiredBytes/1048576 << " MB\n"
          << "RENDER CPU " << renderer_->terrainRenderMilliseconds() << " MS GEN " << streaming.generationMilliseconds << " MS\n"
          << "BUILD " << world_->lastChunkRebuildMilliseconds() << " MS  UPLOAD "
          << world_->lastMeshUploadMilliseconds() << " MS\n"
          << "EDIT "
          << world_->lastBlockEditMilliseconds() << " MS";
+    text << "SIM DEBT " << simulationClock_.debt*1000 << " MS OVERLOAD DROPPED " << simulationClock_.dropped << " S\n";
     text << "TRAVEL boats " << transportation_->boats().size() << (transportation_->mounted()?" RIDING":"") << " map update " << transportation_->mapMilliseconds << " ms\n";
     return text.str();
 }
@@ -3062,6 +3122,9 @@ void Game::runSurvivalSmokeTest() {
     {
         World edgeWorld(42U);
         edgeWorld.generate(2, {0.5f, 249.01f, 0.5f});
+        // A sneak test needs known air across its negative chunk edge; absent
+        // terrain is now deliberately held behind the collision barrier.
+        edgeWorld.prepareSpawnTerrain({-.5f,249,-.5f});
         PlayerInput idleInput;
         idleInput.enabled = true;
         PlayerInput sneakInput = idleInput;
@@ -3081,6 +3144,7 @@ void Game::runSurvivalSmokeTest() {
     }
     passed = passed && sneakPassed;
 
+    world_->prepareSpawnTerrain(player_->position());
     Player creativePlayer(player_->position());
     creativePlayer.setCreativeMode(true);
     creativePlayer.damage(12.0f);
@@ -3100,6 +3164,9 @@ void Game::runSurvivalSmokeTest() {
     creativePlayer.setCreativeMode(false);
     creativePassed = creativePassed && !creativePlayer.isFlying();
 
+    // Establish the whole measured flight lane before testing speed. Streaming
+    // readiness is covered separately by the unloaded-terrain regressions.
+    for(int z=-32;z<=16;z+=16)world_->prepareSpawnTerrain({.5f,210,float(z)+.5f});
     Player flightSpeedPlayer({0.5f, 210.0f, 0.5f});
     flightSpeedPlayer.setCreativeMode(true);
     flightSpeedPlayer.setFlying(true);
@@ -3717,6 +3784,7 @@ void Game::returnToMainMenu() {
     inventory_.reset();
     player_.reset();
     world_.reset();
+    loadedStateValid_=false;worldSession_.reset();
     interaction_ = {};
     renderer_->clearParticles();
     chat_ = {};

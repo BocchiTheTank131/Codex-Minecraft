@@ -146,7 +146,12 @@ bool Inventory::runEquipmentSelfTest(std::string& report) {
             std::ifstream in(path,std::ios::binary);std::string bytes((std::istreambuf_iterator<char>(in)),{});in.close();
             std::ofstream truncated(path,std::ios::binary|std::ios::trunc);truncated.write(bytes.data(),bytes.size()-1);truncated.close();
             check(!restored.load(path,99)&&restored.equipment(4).durability==before.durability,"transactional truncated inventory");
-            bytes[5]='4';bytes.resize(bytes.size()-EquipmentSlots*5);
+            // V6 has 9-byte stacks (including identity); V4 has 5-byte stacks
+            // and no equipment section. Convert each record, not just the tail.
+            std::string legacy=bytes.substr(0,16);legacy[5]='4';
+            for(int slot=0;slot<TotalSlots+CraftSlots+1;++slot)legacy.append(bytes,16+slot*9,5);
+            bytes=std::move(legacy);
+            check(bytes.size()==16+(TotalSlots+CraftSlots+1)*5,"V4 fixture record lengths");
             std::ofstream out(path,std::ios::binary|std::ios::trunc);out.write(bytes.data(),bytes.size());out.close();
             check(restored.load(path,99)&&restored.equipment(4).empty()&&restored.slot(0).count==64,"V4 migration");
             for(int part=0;part<4;++part) check(restored.equipment(part).empty(),"V4 empty armor");

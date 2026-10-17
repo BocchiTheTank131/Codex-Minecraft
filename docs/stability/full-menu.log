@@ -1,0 +1,23 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 14 background tracks
+Audio: playing background track background/Guitar, Loneliness and Blue Planet.ogg
+Screenshot saved: screenshots\voxel_1792196138993.bmp
+Screenshot saved: screenshots\voxel_1792196139005.bmp
+Screenshot saved: screenshots\voxel_1792196139014.bmp
+Screenshot saved: panorama-start\voxel_1792196139020.bmp
+Screenshot saved: panorama-half\voxel_1792196139027.bmp
+Screenshot saved: panorama-before-wrap\voxel_1792196139031.bmp
+Screenshot saved: panorama-after-wrap\voxel_1792196139035.bmp
+Screenshot saved: screenshots\voxel_1792196139038.bmp
+Screenshot saved: screenshots\voxel_1792196139044.bmp
+Screenshot saved: screenshots\voxel_1792196139048.bmp
+Screenshot saved: screenshots\voxel_1792196139052.bmp
+Screenshot saved: screenshots\voxel_1792196139056.bmp
+Screenshot saved: screenshots\voxel_1792196139070.bmp
+Screenshot saved: screenshots\voxel_1792196139240.bmp
+Screenshot saved: screenshots\voxel_1792196139275.bmp
+Screenshot saved: screenshots\voxel_1792196139906.bmp
+Three independent worlds: seed, mode, terrain, player, inventory, mobs and time passed
+Main menu smoke passed: panorama resize, settings/back, PLAY, return, reload
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar

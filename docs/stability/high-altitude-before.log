@@ -1,0 +1,24 @@
+Isolated fixture: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-22750851621400"
+twenty_minute_precise_clock passed=1
+precise_clock_time_command passed=1
+before_mode health=13 hunger=10
+player_statistics_roundtrip passed=1
+settings_reject_nan passed=1
+large_mobs_roundtrip passed=1
+large_drops_roundtrip passed=1
+oversized_drops_split passed=1
+nonfinite_mob_admission passed=1
+nonfinite_mob_load_rejected passed=1
+World session reservation failed: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-22750851621400\\.session.lock" (another session or filesystem access error)
+world_session_exclusive passed=1
+start_simultaneous_session passed=1
+cross_process_session_exclusive passed=1
+invalid_inventory_no_partial_mutation passed=1
+invalid_navigation_no_partial_mutation passed=1
+player_failed_load_transactional passed=1
+distant_passive_preparation_filtered passed=1
+passive_preparation_all_ms=0.163185 filtered_ms=0.00661
+Save failure stage=invalid-journal path="saves\\world-2349718128-3925774359\\save.checkpoint" domain=system code=0 message=no OS error supplied (see stage) thread=9756 previous checkpoint retained; temporary data not reported as saved
+broken_world_listing_isolated passed=1
+high_altitude_position_roundtrip passed=0
+high_altitude_position_roundtrip

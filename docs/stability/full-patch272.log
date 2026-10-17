@@ -1,0 +1,20 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 14 background tracks
+Audio: playing background track background/That band.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+Terrain seed 20260917: v7 25-233, v8 25-244
+Terrain seed 123456789: v7 30-170, v8 30-211
+Terrain seed 1: v7 25-158, v8 25-244
+Terrain seed 42: v7 26-210, v8 26-244
+Terrain seed 8675309: v7 26-244, v8 26-244
+Terrain seed 314159: v7 21-189, v8 21-244
+Terrain seed 987654321: v7 27-224, v8 27-244
+Terrain seed 271828: v7 31-244, v8 31-244
+Terrain CPU benchmark 128 chunks/version: v7 694.99 ms; v8 804.643 ms; ratio 1.15778
+Biome samples plains/forest/desert/snow/ocean/beach/river 26622/14351/4774/10759/60597/14587/13728; valid deterministic cane bases 183
+Valid v8 structure plans (plains village/desert village/outpost/pyramid/ruin/well/campsite): 24/2/4/1/9/1/37/
+eight-seed terrain, bounded heights, v7 compatibility, shoreline cane and CPU budget passed
+Respawn: eight death origins/causes, original world spawn, reset physics and safety passed
+Respawn: distant streamed world restores origin collision terrain before physics passed
+Tooltips: occupied/empty inventory, Creative, recipes, chest, furnace and screen edges passed

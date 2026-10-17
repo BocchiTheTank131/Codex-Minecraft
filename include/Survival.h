@@ -328,6 +328,7 @@ struct AttackResult {
 
 class Weather;
 class SurvivalWorld {
+    friend class StabilityTest;
 public:
     struct MobDiagnostics {
         int passive = 0;
@@ -356,6 +357,7 @@ public:
     void spawnStructureMob(const glm::ivec3& position, bool hostile);
     void spawnBillboardPreview(const glm::vec3& origin, const glm::vec3& forward);
     bool summonMob(const std::string& name, const glm::vec3& position);
+    void mapReferences(std::unordered_set<std::uint32_t>& references) const;
     bool feedAnimal(const glm::vec3& origin, const glm::vec3& direction, Item food);
     MobTarget raycastMob(const glm::vec3& origin,
                          const glm::vec3& direction,
@@ -368,11 +370,13 @@ public:
     std::vector<RenderCuboid> renderCuboids() const;
     std::vector<RenderBillboard> renderBillboards() const;
     void renderCuboids(std::vector<RenderCuboid>& out) const;
+    void renderCuboids(std::vector<RenderCuboid>& out,const glm::vec3& camera,float distance) const;
     void renderBillboards(std::vector<RenderBillboard>& out) const;
     void vehicleObstacles(std::vector<RenderCuboid>& out,const glm::vec3& origin,float radius) const;
     std::string mobName(int index) const;
     std::vector<RenderItemSprite> renderItemSprites() const;
     void renderItemSprites(std::vector<RenderItemSprite>& out) const;
+    void renderItemSprites(std::vector<RenderItemSprite>& out,const glm::vec3& camera,float distance) const;
     std::vector<glm::vec3> takeExplosionEffects();
     void burningPositions(std::vector<glm::vec3>& positions) const;
     bool save(const std::string& path, std::uint32_t seed) const;

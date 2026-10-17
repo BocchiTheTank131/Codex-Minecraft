@@ -8,6 +8,8 @@
 #include <GLFW/glfw3.h>
 
 namespace {
+float parseFloat(const std::string& value){std::size_t used=0;const float result=std::stof(value,&used);if(value.find_first_not_of(" \t\r",used)!=std::string::npos)throw std::invalid_argument("float setting");return result;}
+int parseInt(const std::string& value){std::size_t used=0;const int result=std::stoi(value,&used);if(value.find_first_not_of(" \t\r",used)!=std::string::npos)throw std::invalid_argument("integer setting");return result;}
 bool reservedControlKey(int key) {
     return key == GLFW_KEY_ESCAPE ||
            (key >= GLFW_KEY_1 && key <= GLFW_KEY_9);
@@ -40,14 +42,14 @@ void GameSettings::clamp() {
     lightningFlash = std::isfinite(lightningFlash) ? std::clamp(lightningFlash,0.0f,1.0f) : .65f;
     renderDistance = std::clamp(renderDistance, 2, 64);
     simulationDistance = std::clamp(simulationDistance, 2, 32);
-    fov = std::clamp(fov, 55.0f, 105.0f);
-    mouseSensitivity = std::clamp(mouseSensitivity, 0.03f, 0.30f);
-    brightness = std::clamp(brightness, 0.0f, 1.0f);
-    masterVolume = std::clamp(masterVolume, 0.0f, 1.0f);
-    musicVolume = std::clamp(musicVolume, 0.0f, 1.0f);
-    sfxVolume = std::clamp(sfxVolume, 0.0f, 1.0f);
-    passiveMobVolume = std::clamp(passiveMobVolume, 0.0f, 1.0f);
-    hostileMobVolume = std::clamp(hostileMobVolume, 0.0f, 1.0f);
+    fov = std::isfinite(fov) ? std::clamp(fov, 55.f, 105.f) : 74.f;
+    mouseSensitivity = std::isfinite(mouseSensitivity) ? std::clamp(mouseSensitivity, .03f, .30f) : .1f;
+    brightness = std::isfinite(brightness) ? std::clamp(brightness, 0.f, 1.f) : .5f;
+    masterVolume = std::isfinite(masterVolume) ? std::clamp(masterVolume, 0.f, 1.f) : 1.f;
+    musicVolume = std::isfinite(musicVolume) ? std::clamp(musicVolume, 0.f, 1.f) : 1.f;
+    sfxVolume = std::isfinite(sfxVolume) ? std::clamp(sfxVolume, 0.f, 1.f) : 1.f;
+    passiveMobVolume = std::isfinite(passiveMobVolume) ? std::clamp(passiveMobVolume, 0.f, 1.f) : 1.f;
+    hostileMobVolume = std::isfinite(hostileMobVolume) ? std::clamp(hostileMobVolume, 0.f, 1.f) : 1.f;
     if (antiAliasingSamples != 2 && antiAliasingSamples != 4)
         antiAliasingSamples = 0;
     entityDistance = std::clamp(entityDistance, 2, 64);
@@ -125,50 +127,50 @@ bool GameSettings::load(const std::string& path) {
         const std::string key = line.substr(0, split);
         const std::string value = line.substr(split + 1);
         try {
-            if(key=="terrain_lod") terrainLod=std::stoi(value);
-            else if(key=="occlusion_culling") occlusionCulling=std::stoi(value);
-            else if(key=="terrain_memory_budget") terrainMemoryBudget=std::stoi(value);
+            if(key=="terrain_lod") terrainLod=parseInt(value);
+            else if(key=="occlusion_culling") occlusionCulling=parseInt(value);
+            else if(key=="terrain_memory_budget") terrainMemoryBudget=parseInt(value);
             else if (key == "weather_cycle") weatherCycle = std::stoi(value)!=0;
-            else if (key == "chunk_streaming_quality") chunkStreamingQuality = std::stoi(value);
-            else if (key == "weather_quality") weatherQuality = std::stoi(value);
-            else if (key == "precipitation_density") precipitationDensity = std::stof(value);
+            else if (key == "chunk_streaming_quality") chunkStreamingQuality = parseInt(value);
+            else if (key == "weather_quality") weatherQuality = parseInt(value);
+            else if (key == "precipitation_density") precipitationDensity = parseFloat(value);
             else if (key == "snow_accumulation") snowAccumulation = std::stoi(value)!=0;
             else if (key == "lightning_effects") lightningEffects = std::stoi(value)!=0;
-            else if (key == "lightning_flash") lightningFlash = std::stof(value);
+            else if (key == "lightning_flash") lightningFlash = parseFloat(value);
             else if (key == "weather_fog") weatherFog = std::stoi(value)!=0;
             else if (key == "weather_wind") weatherWind = std::stoi(value)!=0;
             else if (key == "render_distance")
-                renderDistance = std::stoi(value);
+                renderDistance = parseInt(value);
             else if (key == "simulation_distance")
-                simulationDistance = std::stoi(value);
+                simulationDistance = parseInt(value);
             else if (key == "fov")
-                fov = std::stof(value);
+                fov = parseFloat(value);
             else if (key == "mouse_sensitivity")
-                mouseSensitivity = std::stof(value);
+                mouseSensitivity = parseFloat(value);
             else if (key == "brightness")
-                brightness = std::stof(value);
+                brightness = parseFloat(value);
             else if (key == "master_volume")
-                masterVolume = std::stof(value);
+                masterVolume = parseFloat(value);
             else if (key == "music_volume")
-                musicVolume = std::stof(value);
+                musicVolume = parseFloat(value);
             else if (key == "sfx_volume")
-                sfxVolume = std::stof(value);
+                sfxVolume = parseFloat(value);
             else if (key == "passive_mob_volume")
-                passiveMobVolume = std::stof(value);
+                passiveMobVolume = parseFloat(value);
             else if (key == "hostile_mob_volume")
-                hostileMobVolume = std::stof(value);
+                hostileMobVolume = parseFloat(value);
             else if (key == "anti_aliasing_samples")
-                antiAliasingSamples = std::stoi(value);
+                antiAliasingSamples = parseInt(value);
             else if (key == "graphics_preset")
                 graphicsPreset = static_cast<GraphicsPreset>(std::stoi(value));
             else if (key == "entity_distance")
-                entityDistance = std::stoi(value);
+                entityDistance = parseInt(value);
             else if (key == "particle_percent")
-                particlePercent = std::stoi(value);
+                particlePercent = parseInt(value);
             else if (key == "effect_quality")
-                effectQuality = std::stoi(value);
+                effectQuality = parseInt(value);
             else if (key == "frame_limit")
-                frameLimit = std::stoi(value);
+                frameLimit = parseInt(value);
             else if (key == "fullscreen")
                 fullscreen = std::stoi(value) != 0;
             else if (key == "vsync")
@@ -180,7 +182,7 @@ bool GameSettings::load(const std::string& path) {
             else if (key.rfind("key_", 0) == 0) {
                 const int index = std::stoi(key.substr(4));
                 if (index >= 0 && index < ControlActionCount)
-                    controls[static_cast<std::size_t>(index)] = std::stoi(value);
+                    controls[static_cast<std::size_t>(index)] = parseInt(value);
             }
         } catch (...) {
         }

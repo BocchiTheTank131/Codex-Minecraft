@@ -37,7 +37,7 @@ void World::workerLoop(unsigned workerIndex) {
             const int radius = generationLoadRadius_.load(std::memory_order_relaxed) + 1;
             const std::int64_t dx = static_cast<std::int64_t>(request.x) - centerX;
             const std::int64_t dz = static_cast<std::int64_t>(request.y) - centerZ;
-            return dx * dx + dz * dz <= radius * radius;
+            return std::int64_t(dx) * dx + std::int64_t(dz) * dz <= radius * radius;
         };
         if (!relevant()) {
             std::lock_guard<std::mutex> lock(generationMutex_);
@@ -62,19 +62,21 @@ void World::workerLoop(unsigned workerIndex) {
 }
 
 void World::updateStreaming(const glm::vec3& playerPosition, int meshBudget) {
+    if(!std::isfinite(playerPosition.x)||!std::isfinite(playerPosition.y)||!std::isfinite(playerPosition.z)||std::abs(double(playerPosition.x))>30000000||std::abs(double(playerPosition.z))>30000000)return;
     using Clock=std::chrono::steady_clock;
     const auto start=Clock::now();
     updateTerrainLod(playerPosition);
     terrainPageTrimmedThisFrame_=false;
     streamingStats_.unloadMilliseconds=0;
+    streamingStats_.fencePollMilliseconds=streamingStats_.rangeReleaseMilliseconds=streamingStats_.bufferDeleteMilliseconds=streamingStats_.pageTrimMilliseconds=streamingStats_.payloadReleaseMilliseconds=0;
     // A soft budget: individual sunlight/GL operations remain indivisible.
     // Always make progress even after a slow frame; never cut load distance.
     streamingBudgetMilliseconds_=streamingQuality_==ChunkStreamingQuality::Low ? .5f :
         std::clamp((16.667f-streamingFrameMilliseconds_)*.18f,.5f,2.f);
     const int centerX = floorDiv(static_cast<int>(std::floor(playerPosition.x)), CHUNK_SIZE);
     const int centerZ = floorDiv(static_cast<int>(std::floor(playerPosition.z)), CHUNK_SIZE);
-    if (streamCenter_.x != centerX || streamCenter_.y != centerZ) {
-        streamCenter_ = {centerX, centerZ};
+    if (!streamCenterValid_ || streamCenter_.x != centerX || streamCenter_.y != centerZ) {
+        streamCenter_ = {centerX, centerZ};streamCenterValid_=true;
         generationLoadRadius_.store(
             std::max(renderDistance_, simulationDistance_), std::memory_order_relaxed);
         generationCenterKey_.store(chunkKey(centerX, centerZ), std::memory_order_relaxed);
@@ -139,20 +141,28 @@ void World::releaseRetiredTerrain(bool drain) {
     while(!retiredTerrain_.empty()) {
         const auto& fence=retiredTerrain_.front().fence;
         if(!drain && fence && !fence->complete) {
+            const auto pollStart=std::chrono::steady_clock::now();
             const GLenum state=glClientWaitSync(fence->handle,0,0);
+            streamingStats_.fencePollMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-pollStart).count();
             if(state==GL_WAIT_FAILED) throw std::runtime_error("GPU retirement fence wait failed");
             if(state!=GL_ALREADY_SIGNALED && state!=GL_CONDITION_SATISFIED) break;
             fence->complete=true;
         }
         auto mesh=std::move(retiredTerrain_.front());retiredTerrain_.pop_front();
+        const auto rangeStart=std::chrono::steady_clock::now();
         if(mesh.page) mesh.page->release(mesh.first,mesh.count);
         if(mesh.waterPage)mesh.waterPage->release(mesh.waterFirst,mesh.waterCount);
+        const auto deleteStart=std::chrono::steady_clock::now();
+        streamingStats_.rangeReleaseMilliseconds+=std::chrono::duration<float,std::milli>(deleteStart-rangeStart).count();
         if(mesh.vbo) glDeleteBuffers(1,&mesh.vbo);
         if(mesh.vao) glDeleteVertexArrays(1,&mesh.vao);
+        const auto payloadStart=std::chrono::steady_clock::now();
+        streamingStats_.bufferDeleteMilliseconds+=std::chrono::duration<float,std::milli>(payloadStart-deleteStart).count();
         if(!drain && !stopping_) {
             std::lock_guard<std::mutex> lock(generationMutex_);
             retiredChunkPayloads_.push_back({std::move(mesh.blocks),std::move(mesh.light),std::move(mesh.emitters)});
         }
+        streamingStats_.payloadReleaseMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-payloadStart).count();
         ++count;
         if(!drain && count>=4 && std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-start).count()>=.5f) break;
     }
@@ -272,7 +282,7 @@ void World::dispatchMeshJobs(int budget) {
         for(int nz=-1;nz<=1;++nz)for(int nx=-1;nx<=1;++nx) {
             const int x=found->second->x+nx,z=found->second->z+nz;
             const int dx=x-streamCenter_.x,dz=z-streamCenter_.y;
-            if(dx*dx+dz*dz<=radius*radius && !findChunk(x,z)) waiting=true;
+            if(std::int64_t(dx)*dx+std::int64_t(dz)*dz<=radius*radius && !findChunk(x,z)) waiting=true;
         }
         if(waiting && !priority) { dirtyQueue_.push_back(key); continue; }
         MeshInput input = captureMeshInput(found->second->x, found->second->z);

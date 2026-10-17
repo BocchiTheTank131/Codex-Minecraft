@@ -1,6 +1,7 @@
 #include "Survival.h"
 #include "Weather.h"
 #include "SaveFile.h"
+#include "SaveValidation.h"
 #include "Persistence.h"
 #include "Sound.h"
 #include "UiLayout.h"
@@ -1089,6 +1090,11 @@ void Inventory::returnCraftingItems() {
         }
 }
 bool Inventory::save(const std::string& p, std::uint32_t seed) const {
+    if(selectedSlot_<0 || selectedSlot_>=9)return false;
+    for(const auto& s:slots_)if(!SaveValidation::stack(s))return false;
+    for(const auto& s:crafting_)if(!SaveValidation::stack(s))return false;
+    if(!SaveValidation::stack(cursor_))return false;
+    for(int i=0;i<EquipmentSlots;++i)if(!SaveValidation::stack(equipment_[i]) || (!equipment_[i].empty() && i<4 && armorSlot(equipment_[i].item)!=i))return false;
     return SaveFile::write(p, std::ios::binary, [&](std::ofstream& f) {
     f.write(InventoryMagic, 8);
     wr(f, seed);
@@ -1132,8 +1138,7 @@ bool Inventory::load(const std::string& p, std::uint32_t seed) {
             return false;
         s = {loadedItem, c, d};
         if(!old && !v5 && !rd(f,s.identity)) return false;
-        normalize(s);
-        return true;
+        return SaveValidation::stack(s);
     };
     for (auto& s : loaded.slots_)
         if (!rs(s))
@@ -1148,6 +1153,7 @@ bool Inventory::load(const std::string& p, std::uint32_t seed) {
         if(!old && (!rs(loaded.equipment_[i]) || (!loaded.equipment_[i].empty() &&
             (i<4 && armorSlot(loaded.equipment_[i].item)!=i)))) return false;
     }
+    if(loaded.selectedSlot_<0 || loaded.selectedSlot_>=9 || f.peek()!=std::char_traits<char>::eof())return false;
     loaded.selectSlot(loaded.selectedSlot_);
     *this=loaded;
     return true;
@@ -1648,7 +1654,7 @@ std::string SurvivalWorld::mobName(int index) const {
     }
 }
 std::int64_t SurvivalWorld::chunkKey(int x, int z) {
-    return (static_cast<std::int64_t>(x) << 32) ^ static_cast<std::uint32_t>(z);
+    return static_cast<std::int64_t>((std::uint64_t(std::uint32_t(x)) << 32) | std::uint32_t(z));
 }
 void SurvivalWorld::spawnDrop(const glm::vec3& p,
                               Item item,
@@ -1656,8 +1662,9 @@ void SurvivalWorld::spawnDrop(const glm::vec3& p,
                               int durability,
                               const glm::vec3& velocity,
                               float pickupDelay, std::uint32_t identity) {
-    if (item == Item::None || amount <= 0)
-        return;
+    if (item == Item::None || item>=Item::Count || amount<=0 || !SaveValidation::position(p) || !SaveValidation::velocity(velocity) || !std::isfinite(pickupDelay))return;
+    const int limit=Inventory::maxStack(item);
+    if(limit<=0 || (std::uint64_t(amount)+limit-1)/limit+ drops_.size()>SaveValidation::MaxDrops)return;
     Drop d;
     d.position = p;
     d.velocity = velocity;
@@ -1665,7 +1672,7 @@ void SurvivalWorld::spawnDrop(const glm::vec3& p,
                amount,
                isDurable(item) ? (durability < 0 ? Inventory::maxDurability(item) : durability) : 0,identity};
     d.pickupDelay = std::max(0.0f, pickupDelay);
-    drops_.push_back(d);
+    while(amount>0){d.stack.count=std::min(amount,limit);if(!SaveValidation::stack(d.stack))return;drops_.push_back(d);amount-=d.stack.count;}
 }
 void SurvivalWorld::spawnExperience(const glm::vec3& p, int amount) {
     int n = std::max(1, amount / 2);
@@ -1690,6 +1697,7 @@ void SurvivalWorld::spawnStructureMob(const glm::ivec3& position, bool hostile) 
     animals_.push_back(animal);
 }
 bool SurvivalWorld::summonMob(const std::string& name, const glm::vec3& position) {
+    if(!SaveValidation::position(position) || animals_.size()>=SaveValidation::MaxMobs)return false;
     std::string normalized = name;
     std::transform(normalized.begin(), normalized.end(), normalized.begin(),
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
@@ -2646,11 +2654,13 @@ std::vector<RenderCuboid> SurvivalWorld::renderCuboids() const {
     renderCuboids(out);
     return out;
 }
-void SurvivalWorld::renderCuboids(std::vector<RenderCuboid>& out) const {
+void SurvivalWorld::renderCuboids(std::vector<RenderCuboid>& out) const {renderCuboids(out,{0,0,0},std::numeric_limits<float>::infinity());}
+void SurvivalWorld::renderCuboids(std::vector<RenderCuboid>& out,const glm::vec3& camera,float distance) const {
+    auto within=[&](glm::vec3 p){const auto d=p-camera;return glm::dot(d,d)<=(distance+4)*(distance+4);};
     out.clear();
-    out.reserve(animals_.size() * 6 + experienceOrbs_.size() + arrows_.size());
+    out.reserve(std::min<std::size_t>(2048,animals_.size()*6+experienceOrbs_.size()+arrows_.size()));
     for (const auto& a : animals_) {
-        if (isBillboard(a.type))
+        if (isBillboard(a.type) || !within(a.position))
             continue;
         float baby = a.age < 0 ? .55f : 1,
               death = a.deathTimer > 0 ? std::max(.1f, a.deathTimer / .65f) : 1;
@@ -2678,9 +2688,9 @@ void SurvivalWorld::renderCuboids(std::vector<RenderCuboid>& out) const {
                  glm::vec3(.16f, .48f, .16f) * scale,
                  c * .75f});
     }
-    for (const auto& o : experienceOrbs_)
+    for (const auto& o : experienceOrbs_)if(within(o.position))
         out.push_back({o.position, glm::vec3(.14f), {.35f, 1, .08f}});
-    for (const Arrow& arrow : arrows_)
+    for (const Arrow& arrow : arrows_)if(within(arrow.position))
         out.push_back({arrow.position, glm::vec3(.055f, .48f, .055f),
                        glm::vec3(.34f, .24f, .14f), arrow.velocity});
 
@@ -2703,14 +2713,21 @@ std::vector<RenderItemSprite> SurvivalWorld::renderItemSprites() const {
     renderItemSprites(out);
     return out;
 }
-void SurvivalWorld::renderItemSprites(std::vector<RenderItemSprite>& out) const {
+void SurvivalWorld::renderItemSprites(std::vector<RenderItemSprite>& out) const {renderItemSprites(out,{0,0,0},std::numeric_limits<float>::infinity());}
+void SurvivalWorld::renderItemSprites(std::vector<RenderItemSprite>& out,const glm::vec3& camera,float distance) const {
     out.clear();
-    out.reserve(drops_.size());
-    for (const auto& d : drops_)
+    out.reserve(std::min<std::size_t>(1024,drops_.size()));
+    for (const auto& d : drops_)if(glm::dot(d.position-camera,d.position-camera)<=(distance+1)*(distance+1))
         out.push_back({d.position, d.stack.item, .42f});
 
 }
+void SurvivalWorld::mapReferences(std::unordered_set<std::uint32_t>& refs) const {
+    for(const auto& d:drops_)if(d.stack.item==Item::FilledMap && d.stack.identity)refs.insert(d.stack.identity);
+}
 bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
+    if(animals_.size()>SaveValidation::MaxMobs || drops_.size()>SaveValidation::MaxDrops || spawnedStructureMarkers_.size()>SaveValidation::MaxMarkers)return false;
+    for(const auto& a:animals_)if(a.deathTimer<=0 && (!SaveValidation::position(a.position) || !std::isfinite(a.health) || a.health<=0 || a.health>20 || !std::isfinite(a.age) || a.age < -1000000 || a.age>1000000000 || int(a.type)<0 || int(a.type)==3 || int(a.type)>=6+BillboardMobCount))return false;
+    for(const auto& d:drops_)if(!SaveValidation::position(d.position) || !SaveValidation::velocity(d.velocity) || !SaveValidation::stack(d.stack) || !std::isfinite(d.age) || d.age<0 || !std::isfinite(d.pickupDelay) || d.pickupDelay<0)return false;
     return SaveFile::write(p, std::ios::binary, [&](std::ofstream& f) {
     f.write(MobMagic, 8);
     wr(f, seed);
@@ -2753,6 +2770,8 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     f.write("DRP1",4);
     wr(f,std::uint32_t(drops_.size()));
     for(const auto& d:drops_){wr(f,d.position);wr(f,d.velocity);wr(f,d.stack.item);wr(f,d.stack.count);wr(f,d.stack.durability);wr(f,d.stack.identity);wr(f,d.age);wr(f,d.pickupDelay);}
+    f.write("PST1",4);wr(f,n);
+    for(const auto& a:animals_)if(a.deathTimer<=0)wr(f,std::uint8_t(a.persistent));
     return !!f;
     });
 }
@@ -2763,7 +2782,7 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
     char m[8]{};
     std::uint32_t stored = 0, n = 0;
     f.read(m, 8);
-    if (std::memcmp(m, MobMagic, 8) || !rd(f, stored) || stored != seed || !rd(f, n) || n > 5000)
+    if (std::memcmp(m, MobMagic, 8) || !rd(f, stored) || stored != seed || !rd(f, n) || n > SaveValidation::MaxMobs)
         return false;
     std::vector<Animal> loaded;
     std::vector<std::uint32_t> recordIndices;
@@ -2786,8 +2805,10 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
             a.type = static_cast<AnimalType>(type);
             break;
         }
-        a.health = std::clamp(a.health, .1f, 20.f);
+        if(!SaveValidation::position(a.position) || !std::isfinite(a.health) || a.health<=0 || a.health>20 || !std::isfinite(a.age) || a.age < -1000000 || a.age>1000000000)return false;
         a.home = a.position;
+        // Legacy records cannot distinguish natural from bred/persistent animals.
+        // Preserve them conservatively; PST1 below restores exact newer flags.
         a.persistent = true;
         recordIndices.push_back(k);
         loaded.push_back(a);
@@ -2801,7 +2822,7 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
     // MOB1 files end here and remain readable without migration.
     if (f.peek() != std::char_traits<char>::eof()) {
         std::uint32_t markerCount = 0;
-        if (!rd(f, markerCount) || markerCount > 100000U)
+        if (!rd(f, markerCount) || markerCount > SaveValidation::MaxMarkers)
             return false;
         for (std::uint32_t index = 0; index < markerCount; ++index) {
             std::uint64_t id = 0;
@@ -2845,13 +2866,22 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
     std::vector<Drop> loadedDrops;
     if(f.peek()!=std::char_traits<char>::eof()){
         char marker[4]{};f.read(marker,4);std::uint32_t count;
-        if(std::memcmp(marker,"DRP1",4)||!rd(f,count)||count>5000)return false;
+        if(std::memcmp(marker,"DRP1",4)||!rd(f,count)||count>SaveValidation::MaxDrops)return false;
         for(unsigned k=0;k<count;++k){Drop d;
             if(!rd(f,d.position)||!rd(f,d.velocity)||!rd(f,d.stack.item)||!rd(f,d.stack.count)||!rd(f,d.stack.durability)||!rd(f,d.stack.identity)||!rd(f,d.age)||!rd(f,d.pickupDelay)||
-                int(d.stack.item)>=int(Item::Count)||d.stack.count<1||d.stack.count>Inventory::maxStack(d.stack.item)||!std::isfinite(d.position.x)||!std::isfinite(d.position.y)||!std::isfinite(d.position.z)||!std::isfinite(d.velocity.x)||!std::isfinite(d.velocity.y)||!std::isfinite(d.velocity.z)||!std::isfinite(d.age)||!std::isfinite(d.pickupDelay)) return false;
+                !SaveValidation::stack(d.stack)||!SaveValidation::position(d.position)||!SaveValidation::velocity(d.velocity)||!std::isfinite(d.age)||d.age<0||!std::isfinite(d.pickupDelay)||d.pickupDelay<0) return false;
             loadedDrops.push_back(d);
         }
     }
+    if(f.peek()!=std::char_traits<char>::eof()){
+        char extension[4]{};std::uint32_t count=0;f.read(extension,4);
+        if(std::memcmp(extension,"PST1",4)||!rd(f,count)||count!=n)return false;
+        std::size_t index=0;
+        for(unsigned k=0;k<n;++k){std::uint8_t persistent=0;if(!rd(f,persistent)||persistent>1)return false;
+            if(index<recordIndices.size() && recordIndices[index]==k)loaded[index++].persistent=persistent!=0;
+        }
+    }
+    if(f.peek()!=std::char_traits<char>::eof())return false;
     drops_=std::move(loadedDrops);
     animals_ = std::move(loaded);
     arrows_.clear();
@@ -3560,15 +3590,20 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
         w.setBlock(cell.x,cell.y,cell.z,old);
         if(!ok && firstFailure.empty()) firstFailure="mob burning/extinguishing";
     }
+    // The combat lane's origin may be ocean for an arbitrary seed. Natural
+    // spawning must retain biome exclusions; observe a real eligible land
+    // spawn instead of requiring ocean monsters in this regression fixture.
+    const glm::vec3 spawnObserver=w.findSurvivalSpawnNear(0,0);
+    w.generate(4,spawnObserver);
     SurvivalWorld spawnProbe(seed_);
     const auto spawnWaitStart = std::chrono::steady_clock::now();
     while (w.loadedChunkCount() < 25 &&
            std::chrono::steady_clock::now() - spawnWaitStart < std::chrono::seconds(5)) {
-        w.updateStreaming(testPlayer.position(), 0);
+        w.updateStreaming(spawnObserver, 0);
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     for (int attempt = 0; attempt < 20; ++attempt)
-        spawnProbe.spawnNearbyAnimals(w, testPlayer.position(), 1.0f);
+        spawnProbe.spawnNearbyAnimals(w, spawnObserver, 1.0f);
     for(const auto& a:spawnProbe.animals_) if(isBillboard(a.type)) {
         const auto pos=glm::ivec3(glm::floor(a.position));
         ok &= std::max(w.blockLightAt(pos.x,pos.y+1,pos.z),w.sunlightAt(pos.x,pos.y+1,pos.z))<=6;
@@ -3579,7 +3614,7 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     std::uint8_t variantMask = 0;
     bool sawNightSpawn = false;
     for (int attempt = 0; attempt < 100 && variantMask != 15; ++attempt) {
-        spawnProbe.spawnNearbyAnimals(w, testPlayer.position(), 0.0f);
+        spawnProbe.spawnNearbyAnimals(w, spawnObserver, 0.0f);
         for (const Animal& spawned : spawnProbe.animals_)
             if (isBillboard(spawned.type)) {
                 sawNightSpawn = true;

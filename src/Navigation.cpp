@@ -2,6 +2,7 @@
 #include "World.h"
 #include "Player.h"
 #include "SaveFile.h"
+#include "SaveValidation.h"
 #include "Persistence.h"
 #include <algorithm>
 #include <chrono>
@@ -18,8 +19,14 @@ std::string cleanName(std::string name){name.erase(std::remove_if(name.begin(),n
 }
 Transportation::~Transportation(){finishMapJob(true);}
 const ExplorationMap* Transportation::map(std::uint32_t id) const{for(const auto& m:maps_)if(m.id==id)return &m;return nullptr;}
+std::size_t Transportation::reclaimMaps(const std::unordered_set<std::uint32_t>& references){
+    finishMapJob(true);const auto before=maps_.size();
+    maps_.erase(std::remove_if(maps_.begin(),maps_.end(),[&](const auto& m){return !references.count(m.id);}),maps_.end());
+    if(refreshMap_ && !map(refreshMap_)){refreshMap_=0;refreshCursor_=0;}
+    surveyComplete_=false;return before-maps_.size();
+}
 std::uint32_t Transportation::createMap(const glm::vec3& p,int scale){
-    if(maps_.size()>=128 || !valid(p))return 0;
+    if(maps_.size()>=128 || nextMap_==UINT32_MAX || !valid(p))return 0;
     ExplorationMap m;m.id=nextMap_++;m.scale=std::clamp(scale,0,4);const int span=128<<m.scale;
     m.originX=int(std::floor(p.x/32))*32-span/2;m.originZ=int(std::floor(p.z/32))*32-span/2;
     maps_.push_back(std::move(m));return maps_.back().id;
@@ -28,6 +35,7 @@ std::uint32_t Transportation::zoomMap(std::uint32_t id){
     finishMapJob(false);const auto* source=map(id);if(!source||source->scale>=4||maps_.size()>=128)return 0;
     const ExplorationMap old=*source;const int oldStep=1<<old.scale;
     const auto result=createMap({float(old.originX+64*oldStep),0,float(old.originZ+64*oldStep)},old.scale+1);
+    if(!result)return 0;
     auto& dest=maps_.back();const int step=oldStep*2;
     // Zoom preserves only already surveyed pixels. It never reveals new territory.
     for(int y=0;y<128;++y)for(int x=0;x<128;++x)if(old.pixels[y*128+x]){
@@ -104,6 +112,12 @@ glm::vec3 Transportation::target() const{return selectedWaypoint>=0&&selectedWay
 bool Transportation::save(const std::string& path,std::uint32_t seed) const{
     if(!Persistence::enabled())return true;
     const_cast<Transportation*>(this)->finishMapJob(true);
+    if(!valid(spawn_) || !nextBoat_ || !nextMap_ || boats_.size()>1024 || maps_.size()>128 || waypoints_.size()>64 || selectedWaypoint< -1 || selectedWaypoint>=int(waypoints_.size()))return false;
+    std::unordered_set<std::uint32_t> ids;
+    for(const auto& b:boats_)if(!b.id || b.id>=nextBoat_ || !ids.insert(b.id).second || !isBoatItem(b.item) || !valid(b.position) || !SaveValidation::velocity(b.velocity) || !std::isfinite(b.heading))return false;
+    if(rider_ && !ids.count(rider_))return false;
+    ids.clear();for(const auto& m:maps_)if(!m.id || m.id>=nextMap_ || !ids.insert(m.id).second || std::abs(double(m.originX))>30002048 || std::abs(double(m.originZ))>30002048 || m.scale<0 || m.scale>4)return false;
+    for(const auto& wp:waypoints_)if(!valid(wp.position) || wp.name.empty() || cleanName(wp.name)!=wp.name)return false;
     return SaveFile::write(path,std::ios::binary,[&](std::ofstream& f){
         f.write("VXTRAV1",8);wr(f,seed);wr(f,spawn_);wr(f,nextBoat_);wr(f,nextMap_);wr(f,selectedWaypoint);wr(f,rider_);
         const auto nb=std::uint32_t(boats_.size());wr(f,nb);
@@ -122,10 +136,10 @@ bool Transportation::load(const std::string& path,std::uint32_t seed){
     if(!Persistence::enabled())return true;
     std::ifstream f(path,std::ios::binary);if(!f)return false;
     char magic[8]{};f.read(magic,8);std::uint32_t stored,n;Transportation temp(spawn_);
-    if(std::memcmp(magic,"VXTRAV1",8)||!rd(f,stored)||stored!=seed||!rd(f,temp.spawn_)||!valid(temp.spawn_)||!rd(f,temp.nextBoat_)||!rd(f,temp.nextMap_)||!rd(f,temp.selectedWaypoint)||!rd(f,temp.rider_))return false;
+    if(std::memcmp(magic,"VXTRAV1",8)||!rd(f,stored)||stored!=seed||!rd(f,temp.spawn_)||!valid(temp.spawn_)||!rd(f,temp.nextBoat_)||!rd(f,temp.nextMap_)||!temp.nextBoat_||!temp.nextMap_||!rd(f,temp.selectedWaypoint)||!rd(f,temp.rider_))return false;
     if(!rd(f,n)||n>1024)return false;
     std::unordered_set<std::uint32_t> ids;
-    for(unsigned i=0;i<n;++i){Boat b;if(!rd(f,b.id)||!rd(f,b.item)||!isBoatItem(b.item)||!rd(f,b.position)||!valid(b.position)||!rd(f,b.velocity)||!valid(b.velocity)||!rd(f,b.heading)||!std::isfinite(b.heading)||!b.id||!ids.insert(b.id).second||b.id>=temp.nextBoat_)return false;temp.boats_.push_back(b);}
+    for(unsigned i=0;i<n;++i){Boat b;if(!rd(f,b.id)||!rd(f,b.item)||!isBoatItem(b.item)||!rd(f,b.position)||!valid(b.position)||!rd(f,b.velocity)||!SaveValidation::velocity(b.velocity)||!rd(f,b.heading)||!std::isfinite(b.heading)||!b.id||!ids.insert(b.id).second||b.id>=temp.nextBoat_)return false;temp.boats_.push_back(b);}
     if(!rd(f,n)||n>128)return false;ids.clear();
     for(unsigned i=0;i<n;++i){ExplorationMap m;std::uint32_t count;if(!rd(f,m.id)||!m.id||m.id>=temp.nextMap_||!ids.insert(m.id).second||!rd(f,m.originX)||!rd(f,m.originZ)||std::abs(double(m.originX))>30002048||std::abs(double(m.originZ))>30002048||!rd(f,m.scale)||m.scale<0||m.scale>4||!rd(f,count)||(count!=~0U && count>16384))return false;
         if(count==~0U){f.read(reinterpret_cast<char*>(m.pixels.data()),65536);if(!f)return false;}

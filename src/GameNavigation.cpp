@@ -46,6 +46,17 @@ bool Game::navigationInput(){
     }
     return true;
 }
+void Game::reclaimMapsIfNeeded(){
+    if(!transportation_->atMapLimit())return;
+    std::unordered_set<std::uint32_t> refs;
+    auto add=[&](const auto& s){if(s.item==Item::FilledMap && s.identity)refs.insert(s.identity);};
+    for(int i=0;i<Inventory::TotalSlots;++i)add(inventory_->slot(i));
+    for(int i=0;i<Inventory::CraftSlots;++i)add(inventory_->craftSlot(i));
+    for(int i=0;i<Inventory::EquipmentSlots;++i)add(inventory_->equipment(i));
+    add(inventory_->cursorStack());world_->mapReferences(refs);survival_->mapReferences(refs);
+    if(mapView_ && viewedMap_)refs.insert(viewedMap_);
+    transportation_->reclaimMaps(refs);
+}
 bool Game::transportationUse(bool offhand){
     const float reach=std::min(interaction_.hasBlockTarget?std::min(5.f,interaction_.blockTarget.distance):5.f,interaction_.mobTarget.valid()?interaction_.mobTarget.distance:5.f);
     if(transportation_->useBoat(*player_,*world_,player_->cameraPosition(),player_->lookDirection(),reach))return true;
@@ -64,12 +75,13 @@ bool Game::transportationUse(bool offhand){
             if(isSolid(b))break;
         }return true;
     }
-    if(held.item==Item::EmptyMap || (held.item==Item::FilledMap && !held.identity)){const auto id=transportation_->createMap(player_->position());if(id){inventory_->replaceHeld(offhand,held,{Item::FilledMap,1,0,id});viewedMap_=id;mapView_=true;}else chat_.addMessage("Map limit reached (128 per world)",ChatTone::Error,glfwGetTime());return true;}
+    if(held.item==Item::EmptyMap || (held.item==Item::FilledMap && !held.identity)){reclaimMapsIfNeeded();const auto id=transportation_->createMap(player_->position());if(id){inventory_->replaceHeld(offhand,held,{Item::FilledMap,1,0,id});viewedMap_=id;mapView_=true;}else chat_.addMessage("128 maps still in use; store fewer map identities to create another",ChatTone::Error,glfwGetTime());return true;}
     if(held.item==Item::FilledMap){
         if(!transportation_->map(held.identity)){chat_.addMessage("Map data unavailable for this world",ChatTone::Error,glfwGetTime());return true;}
         if(input_.actionDown(ControlAction::Sneak)){
             if(glfwGetTime()<mapZoomAfter_)return true;
             if(inventory_->count(Item::Paper)<8){chat_.addMessage("Zooming out needs 8 Paper",ChatTone::Error,glfwGetTime());return true;}
+            reclaimMapsIfNeeded();
             const auto id=transportation_->zoomMap(held.identity);if(id && inventory_->replaceHeld(offhand,held,{Item::FilledMap,1,0,id})){inventory_->remove(Item::Paper,8);viewedMap_=id;mapZoomAfter_=glfwGetTime()+.6;chat_.addMessage("Map #"+std::to_string(id)+" zoomed to 1:"+std::to_string(1<<transportation_->map(id)->scale)+" (-8 Paper)",ChatTone::Normal,glfwGetTime());}else chat_.addMessage("Maximum scale or map limit reached",ChatTone::Error,glfwGetTime());
         }else{viewedMap_=held.identity;mapView_=!mapView_;}
         return true;

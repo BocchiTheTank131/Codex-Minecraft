@@ -13,24 +13,39 @@
 
 namespace fs = std::filesystem;
 namespace {
-const std::array<const char*, 6> Files{
-    "voxel_world.vxw", "voxel_inventory.vxi", "voxel_player.vps", "voxel_mobs.vxm", "world_seed.txt", "voxel_travel.vtn"};
-SavedWorld read(const fs::path& directory) {
+const std::array<const char*, 7> Files{
+    "voxel_world.vxw", "voxel_inventory.vxi", "voxel_player.vps", "voxel_mobs.vxm", "world_seed.txt", "voxel_travel.vtn", "checkpoint.manifest"};
+SavedWorld read(const fs::path& directory,bool reserved=false) {
+    std::unique_ptr<SaveFile::Session> session;
+    if(!reserved)session=std::make_unique<SaveFile::Session>(directory.string());
+    if(session && !session->acquired())throw std::runtime_error("World in use or access denied: "+directory.string());
     if(!SaveFile::recover((directory/"save.checkpoint").string()))throw std::runtime_error("Interrupted world checkpoint needs recovery: "+directory.string());
+    if(!SaveFile::verifyCheckpoint(directory.string()))throw std::runtime_error("Invalid checkpoint; restore a verified backup: "+directory.string());
+    for(const char* filename:{"world.info","world_seed.txt"})if(fs::exists(directory/filename) && fs::file_size(directory/filename)>4096)throw std::runtime_error("Oversized world metadata: "+directory.string());
     SavedWorld result;
     result.directory = directory;
     result.name = directory.filename().string();
     std::ifstream info(directory / "world.info");
     std::string name;
-    if (info >> std::quoted(name) && !name.empty()) result.name = name.substr(0, 48);
-    info >> result.lastPlayed;
+    if(fs::exists(directory/"world.info") && (!(info>>std::quoted(name)>>result.lastPlayed)||name.empty()||name.size()>48||result.lastPlayed<0))throw std::runtime_error("Invalid world metadata: "+directory.string());
+    if(!name.empty())result.name=name;
     std::string permission; int enabled=1;
-    if(info >> permission >> enabled && permission=="CHEATS1") result.cheats=enabled!=0;
+    if(info){
+        info>>std::ws;
+        if(!info.eof()){
+            if(!(info>>permission>>enabled) || permission!="CHEATS1" || (enabled!=0 && enabled!=1))throw std::runtime_error("Invalid command permissions: "+directory.string());
+            result.cheats=enabled!=0;info>>std::ws;
+            if(!info.eof())throw std::runtime_error("Invalid world metadata length: "+directory.string());
+        }
+    }
     std::ifstream seedFile(directory / "world_seed.txt");
     std::string mode;
     float storedTime = 35.f;
-    seedFile >> result.seed >> mode;
-    if (!(seedFile >> storedTime)) storedTime=35.f;
+    if(fs::exists(directory/"world_seed.txt")){
+        std::uint64_t seed=0;
+        if(!(seedFile>>seed>>mode>>storedTime)||seed>UINT32_MAX || (mode!="creative" && mode!="spectator" && mode!="survival") || !std::isfinite(storedTime)||storedTime<0)throw std::runtime_error("Invalid world seed/time metadata: "+directory.string());
+        result.seed=std::uint32_t(seed);
+    }
     seedFile.clear();
     result.time = WorldTime::restore(storedTime, seedFile);
     result.mode = mode == "creative" ? GameMode::Creative :
@@ -47,8 +62,14 @@ bool equalFiles(const fs::path& a, const fs::path& b) {
 }
 
 namespace WorldLibrary {
+SavedWorld inspectReserved(const fs::path& directory){return read(directory,true);}
 bool writeMetadata(const SavedWorld& world) {
     if (!Persistence::enabled()) return false;
+    if(!SaveFile::stagingCheckpoint() && fs::exists(world.directory/"checkpoint.manifest")){
+        SaveFile::Session session(world.directory.string());if(!session.acquired())return false;
+        SaveFile::Checkpoint checkpoint((world.directory/"save.checkpoint").string());
+        return writeMetadata(world)&&checkpoint.commit();
+    }
     return SaveFile::write((world.directory / "world.info").string(), std::ios::out,
         [&](std::ofstream& output) {
             output << std::quoted(world.name) << '\n' << world.lastPlayed << '\n' << "CHEATS1 " << (world.cheats?1:0) << '\n';
@@ -60,14 +81,29 @@ std::vector<SavedWorld> list() {
     std::vector<SavedWorld> worlds;
     if (!Persistence::enabled() || !fs::exists("saves")) return worlds;
     for (const auto& entry : fs::directory_iterator("saves")) {
-        if (entry.is_symlink() || !entry.is_directory() || entry.path().filename().string()[0] == '.') continue;
-        if (fs::is_regular_file(entry.path() / "world.info")) worlds.push_back(read(entry.path()));
+        try {
+            if (entry.is_symlink() || !entry.is_directory() || entry.path().filename().string()[0] == '.') continue;
+            if (fs::is_regular_file(entry.path() / "world.info"))worlds.push_back(read(entry.path()));
+        } catch(const std::exception& error) {
+            SavedWorld unavailable;unavailable.directory=entry.path();
+            unavailable.name=entry.path().filename().string()+" [Unavailable]";
+            unavailable.loadError=error.what();worlds.push_back(std::move(unavailable));
+        }
     }
     std::sort(worlds.begin(), worlds.end(), [](const auto& a, const auto& b) {
         if (a.lastPlayed != b.lastPlayed) return a.lastPlayed > b.lastPlayed;
         return a.directory < b.directory;
     });
     return worlds;
+}
+SavedWorld recoverPrevious(const SavedWorld& world){
+    SaveFile::Session session(world.directory.string());
+    if(!session.acquired())throw std::runtime_error("Cannot recover an open world");
+    const auto destination=world.directory.parent_path()/("world-recovered-"+std::to_string(std::random_device{}()));
+    if(!SaveFile::copyPrevious(world.directory.string(),destination.string()))throw std::runtime_error("No complete verified previous checkpoint; originals preserved. See validation recovery instructions.");
+    auto recovered=read(destination);recovered.name="Recovered "+recovered.name;recovered.name.resize(std::min<std::size_t>(recovered.name.size(),48));
+    if(!writeMetadata(recovered))throw std::runtime_error("Recovered copy retained, but renaming failed");
+    return recovered;
 }
 
 SavedWorld create(const std::string& name, std::uint32_t seed, GameMode mode, bool cheats) {

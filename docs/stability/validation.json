@@ -1,0 +1,266 @@
+{
+  "date": "2026-10-17",
+  "base_revision": "2951413",
+  "publication_approved": true,
+  "release_tag": "v2.14.2",
+  "findings": [
+    {
+      "audit_number": 1,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 2,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 3,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 4,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 5,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 6,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 7,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 8,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 9,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 10,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 11,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 12,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 13,
+      "status": "Improved"
+    },
+    {
+      "audit_number": 14,
+      "status": "Unresolved"
+    },
+    {
+      "audit_number": 15,
+      "status": "Improved"
+    },
+    {
+      "audit_number": 16,
+      "status": "Deferred"
+    },
+    {
+      "audit_number": 17,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 18,
+      "status": "Deferred"
+    },
+    {
+      "audit_number": 19,
+      "status": "Improved"
+    },
+    {
+      "audit_number": 20,
+      "status": "Improved"
+    },
+    {
+      "audit_number": 21,
+      "status": "Deferred"
+    },
+    {
+      "audit_number": 22,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 23,
+      "status": "Fixed"
+    },
+    {
+      "audit_number": 24,
+      "status": "Improved"
+    },
+    {
+      "audit_number": 25,
+      "status": "Improved"
+    }
+  ],
+  "totals": {
+    "Fixed": 15,
+    "Improved": 6,
+    "Deferred": 3,
+    "Unresolved": 1
+  },
+  "release_regression_suites": 20,
+  "release_regressions_passed": true,
+  "historical_chunks_identical": {
+    "full": 663,
+    "demo": 663
+  },
+  "baseline_full_sha256": "741d9f1ed8d4c534eb202c202ec3af9356aca5008100316cfd3c8451769b1bcd",
+  "artifacts": [
+    {
+      "file": "build\\installed-release\\Release\\VoxelFrontier.exe",
+      "bytes": 28499456,
+      "sha256": "73423f5cf7d771dfcc0f9065a4eae9c34773cd3d7b61f762639f8b816d4b49b6"
+    },
+    {
+      "file": "dist\\VoxelFrontier-v2.14.2-Windows-Standalone.exe",
+      "bytes": 28354048,
+      "sha256": "feef2d8dca6f9c13aa0d4f47bb0d77a9169e5657e5ef87ca142a37289bccb869"
+    },
+    {
+      "file": "dist\\VoxelFrontier-v2.14.2-Windows-Setup.exe",
+      "bytes": 25584270,
+      "sha256": "a66e7956b02dbaf0d42730a0f9e2ed36dc2e3b889e5f49a0e050742b9952a004"
+    }
+  ],
+  "survival_traversal": {
+    "8": [
+      {
+        "phase": "walking",
+        "rd": "8",
+        "frames": "966",
+        "fps": "48.2892",
+        "mean_ms": "20.7086",
+        "p95_ms": "67.0064",
+        "p99_ms": "100.451",
+        "worst_ms": "514.295",
+        "mean_work_ms": "1.16711",
+        "ram_mb": "268.234",
+        "terrain_bytes": "83886080",
+        "distance": "55.8928",
+        "occlusion_chunks": "0",
+        "save_capture_ms": "5.2284",
+        "save_total_ms": "24.9755"
+      },
+      {
+        "phase": "boat",
+        "rd": "8",
+        "frames": "856",
+        "fps": "57.0462",
+        "mean_ms": "17.5297",
+        "p95_ms": "17.1928",
+        "p99_ms": "17.3374",
+        "worst_ms": "510.534",
+        "mean_work_ms": "1.47919",
+        "ram_mb": "267.129",
+        "terrain_bytes": "58720256",
+        "distance": "15.7054",
+        "occlusion_chunks": "0",
+        "save_capture_ms": "4.615",
+        "save_total_ms": "21.6064"
+      }
+    ],
+    "16": [
+      {
+        "phase": "walking",
+        "rd": "16",
+        "frames": "965",
+        "fps": "48.2434",
+        "mean_ms": "20.7282",
+        "p95_ms": "67.0187",
+        "p99_ms": "100.449",
+        "worst_ms": "525.951",
+        "mean_work_ms": "1.33668",
+        "ram_mb": "337.387",
+        "terrain_bytes": "276824064",
+        "distance": "55.8741",
+        "occlusion_chunks": "0",
+        "save_capture_ms": "4.6976",
+        "save_total_ms": "22.2319"
+      },
+      {
+        "phase": "boat",
+        "rd": "16",
+        "frames": "852",
+        "fps": "56.7824",
+        "mean_ms": "17.6111",
+        "p95_ms": "17.2737",
+        "p99_ms": "17.6433",
+        "worst_ms": "505.128",
+        "mean_work_ms": "1.92295",
+        "ram_mb": "329.078",
+        "terrain_bytes": "209715200",
+        "distance": "15.6593",
+        "occlusion_chunks": "0",
+        "save_capture_ms": "3.9852",
+        "save_total_ms": "19.5451"
+      }
+    ],
+    "32": [
+      {
+        "phase": "walking",
+        "rd": "32",
+        "frames": "966",
+        "fps": "48.2816",
+        "mean_ms": "20.7118",
+        "p95_ms": "67.1213",
+        "p99_ms": "100.373",
+        "worst_ms": "513.164",
+        "mean_work_ms": "2.35546",
+        "ram_mb": "593.504",
+        "terrain_bytes": "1073741824",
+        "distance": "55.8928",
+        "occlusion_chunks": "0",
+        "save_capture_ms": "5.6599",
+        "save_total_ms": "20.9977"
+      },
+      {
+        "phase": "boat",
+        "rd": "32",
+        "frames": "854",
+        "fps": "56.8998",
+        "mean_ms": "17.5747",
+        "p95_ms": "17.2364",
+        "p99_ms": "18.1246",
+        "worst_ms": "513.352",
+        "mean_work_ms": "5.31722",
+        "ram_mb": "557.715",
+        "terrain_bytes": "914358272",
+        "distance": "16.0982",
+        "occlusion_chunks": "0",
+        "save_capture_ms": "4.9797",
+        "save_total_ms": "24.8561"
+      }
+    ]
+  },
+  "maximum_timing_accounting_error_seconds": 6.09928e-06,
+  "demo_stateless_profiles_checked": 9,
+  "demo_interruption_rejected_exit": 1,
+  "installer": {
+    "app_id": "VFStability2142.f938cd18ec58473ebba0fe8b50a6f5dd",
+    "upgrade_payloads_verified": true,
+    "upgrade_preserved_saves": true,
+    "legacy_worlds_loaded": true,
+    "uninstall_preserved_saves": true,
+    "production_registry_unchanged": true,
+    "test_registration_removed": true
+  },
+  "performance_matrix_rows": 72,
+  "performance_matrix_note": "Two alternating repeats per scene/RD, collected before final clock/menu/validation refinements. No general speedup established.",
+  "physical_low_end_hardware_tested": false,
+  "physical_power_loss_tested": false,
+  "multi_hour_soak_tested": false,
+  "original_unowned_windows_replacement_failure_cause": "Unresolved"
+}

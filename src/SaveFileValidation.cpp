@@ -59,10 +59,10 @@ bool selfTest(const std::string& directory,std::string& report) {
     check(put(file,"interrupted-new"),"interrupted state");check(recover(journal)&&get(file)=="paired-inventory"&&get(navigation)=="paired-maps","restart rolls back complete pair");
     std::atomic<bool> ok{true};std::atomic<int> writerRetries{0};std::vector<std::thread> threads;
     for(int n=0;n<4;++n)threads.emplace_back([&,n]{for(int i=0;i<100;++i){bool saved=false;
-        for(int attempt=0;attempt<4&&!saved;++attempt){saved=put(file,std::to_string(n)+":"+std::to_string(i)+":"+std::string(4096,char('A'+n)));if(!saved){++writerRetries;std::this_thread::sleep_for(std::chrono::milliseconds(5*(1<<attempt)));}}
+        for(int attempt=0;attempt<4&&!saved;++attempt){saved=put(file+".concurrent",std::to_string(n)+":"+std::to_string(i)+":"+std::string(4096,char('A'+n)));if(!saved){++writerRetries;std::this_thread::sleep_for(std::chrono::milliseconds(5*(1<<attempt)));}}
         if(!saved)ok=false;
     }});
-    for(auto& t:threads)t.join();const auto content=get(file);check(ok&&content.size()>4096&&content.substr(content.size()-4096)==std::string(4096,content.back()),"concurrent writers serialize whole records");
+    for(auto& t:threads)t.join();const auto content=get(file+".concurrent");check(ok&&content.size()>4096&&content.substr(content.size()-4096)==std::string(4096,content.back()),"concurrent writers serialize whole records");
     std::cout<<"Concurrent writer transient failures recovered="<<writerRetries<<'\n';
     int recoveredFailures=0;
     for(int i=0;i<200;++i){bool saved=false;for(int attempt=0;attempt<4&&!saved;++attempt){
@@ -71,6 +71,9 @@ bool selfTest(const std::string& directory,std::string& report) {
         if(!saved){++recoveredFailures;std::this_thread::sleep_for(std::chrono::milliseconds(5*(1<<attempt)));} // Test driver only; gameplay uses frame deadlines.
     }check(saved,"rapid paired saves exhausted bounded recovery");}
     std::cout<<"Rapid checkpoint transient failures recovered="<<recoveredFailures<<'\n';
+    std::future<bool> asynchronous;
+    {Checkpoint batch(journal);check(put(file,"immutable")&&put(navigation,"immutable"),"async capture");asynchronous=batch.commitAsync();}
+    check(asynchronous.get()&&verifyCheckpoint(fs::absolute(directory).string())&&get(file)=="immutable"&&get(navigation)=="immutable","immutable async checkpoint");
     report="Save reliability: held Windows delete locks reproduced; failures return false, old data retained, release/retry succeeds; interrupted paired rollback, 400 concurrent writes and 200 paired checkpoints passed";
     return true;
 }

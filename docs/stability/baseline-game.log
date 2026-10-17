@@ -1,0 +1,8 @@
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 14 background tracks
+Audio: playing background track background/If I could be a constellation.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+actual_game_relogin_refills reproduced=1
+dead_save_rolls_back_world_but_keeps_inventory reproduced=1
+corrupt_inventory_silently_loaded_as_empty reproduced=1
+corrupt_inventory_overwritten reproduced=1

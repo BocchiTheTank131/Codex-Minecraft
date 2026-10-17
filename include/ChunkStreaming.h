@@ -13,6 +13,7 @@ struct ChunkStreamingDiagnostics {
     float generationMilliseconds=0;
     float integrateMilliseconds=0,lightingMilliseconds=0,snapshotMilliseconds=0,uploadMilliseconds=0;
     float unloadMilliseconds=0,retireMilliseconds=0;
+    float fencePollMilliseconds=0,rangeReleaseMilliseconds=0,bufferDeleteMilliseconds=0,pageTrimMilliseconds=0,payloadReleaseMilliseconds=0;
     int retiredChunks=0,lightingQueued=0;
     std::uint64_t generated=0,meshed=0,staleMeshes=0;
 };

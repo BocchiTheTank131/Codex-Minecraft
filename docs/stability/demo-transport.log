@@ -1,0 +1,9 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 14 background tracks
+Audio: playing background track background/I cant sing a love song.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+Bounded boats: 1024 saved, 1 active; collision candidates=0 steps=32 main_ms=0.0304
+Crowded boats: 36 hulls, 180 updates including 500ms spike passed; average_ms=0.0438817 worst_ms=0.6651
+Map canopy regression: ground traversal reveals foliage; underground reveal stays hidden; known-only refresh updates from below passed
+Transportation passed: six woods, 15/30/60/120/240 FPS, 500ms spike, shores, negative chunk boundary, buoyancy, mount/dismount, independent maps, fog/zoom, chest/drop identities, waypoints, versioned persistence/demo guards; native input paths: waypoints, map/offhand/paid zoom, RMB boat placement/mount, bound movement/Sneak and LMB recovery passed

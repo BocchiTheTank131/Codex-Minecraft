@@ -2,6 +2,7 @@
 #include "Survival.h"
 #include <array>
 #include <future>
+#include <unordered_set>
 
 class World;
 class Player;
@@ -34,6 +35,8 @@ public:
     bool mounted() const{return rider_!=0;}
     std::uint32_t createMap(const glm::vec3&,int scale=0);
     std::uint32_t zoomMap(std::uint32_t);
+    bool atMapLimit()const{return maps_.size()>=128;}
+    std::size_t reclaimMaps(const std::unordered_set<std::uint32_t>& references);
     const ExplorationMap* map(std::uint32_t) const;
     bool refreshMap(std::uint32_t);
     bool refreshing(std::uint32_t id) const{return refreshMap_==id;}

@@ -16,9 +16,9 @@
 namespace {
 namespace fs = std::filesystem;
 
-constexpr std::array<const char*, 7> ProfileFiles = {
+constexpr std::array<const char*, 8> ProfileFiles = {
     "voxel_world.vxw", "voxel_inventory.vxi", "voxel_player.vps",
-    "voxel_mobs.vxm", "voxel_settings.cfg", "world_seed.txt", "voxel_travel.vtn"};
+    "voxel_mobs.vxm", "voxel_settings.cfg", "world_seed.txt", "voxel_travel.vtn", "checkpoint.manifest"};
 
 bool hasProfile(const fs::path& directory) {
     for (const char* name : ProfileFiles) {
@@ -80,7 +80,7 @@ void initialize(bool migrateLegacy) {
     }
     destination = fs::absolute(destination);
     fs::create_directories(destination);
-    if (migrateLegacy && !hasProfile(destination)) {
+    if (migrateLegacy && requested<=1 && !hasProfile(destination)) {
         copyLegacyProfile(previousDirectory, destination);
         if (!hasProfile(destination))
             copyLegacyProfile(executableDirectory(), destination);

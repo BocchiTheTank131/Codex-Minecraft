@@ -1,0 +1,55 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 14 background tracks
+Audio: playing background track background/Distortion.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+Terrain packing GPU comparison: 8 legacy/packed/indexed scenes pixel-identical; 48 to 28 bytes
+Equipment loot (10,000 shallow/deep ancient chests): 1725 / 2534, diamond helmets 19
+16 armor pieces, 625 combinations, recipes, directional shields, environmental bypass, durability/breakage, UI swaps/drops, Creative ownership, legacy V4 migration and deterministic depth loot passed
+Demo save fixture skipped (stateless)
+Crafting expansion: 98 recipes; new block meshes/UVs, deterministic Sugar Cane 3, Vines 2 in 2 candidate chunks
+Content: appended item IDs/icons and block states, support, furnace fuels, demo persistence bypass passed
+Audio: playing background track background/Secret base.ogg
+Audio: playing background track background/hitoribocchi tokyo.ogg
+Audio: playing background track background/That band.ogg
+Audio: playing background track background/Karakara.ogg
+Audio: playing background track background/Guitar, Loneliness and Blue Planet.ogg
+Audio: playing background track background/I cant sing a love song.ogg
+Audio: playing background track background/Flashbacker.ogg
+Audio: playing background track background/Never forget.ogg
+Audio: playing background track background/If I could be a constellation.ogg
+Audio: playing background track background/Rockn Roll, Morning Light Falls on You.ogg
+Audio: playing background track background/The Little Sea.ogg
+Audio: playing background track background/seisyun complex.ogg
+Audio: playing background track background/What is wrong with.ogg
+Audio: playing background track background/Secret base.ogg
+Music smoke: 14 unique streamed tracks, automatic transitions, shuffle boundary, and exact category gain passed
+Habitat spawning: day surface=0; night surface=17; day cave=17; lit cave=0; 
+Compatibility voxel_settings.cfg: passed
+Camera recoil smoke: fixed eye, bounded degrees, 30/60/144 FPS decay, rapid hits passed
+Structure smoke: regional plans, overlap, cross-chunk application, and deterministic loot: passed (villages 33, outposts 10, pyramids 6)
+Crafting smoke: 2x2/3x3 recipes, shifted shapes, tools/mirrors, material groups, autofill, batch output, invalid ingredients, and full inventory passed
+Recipe Book smoke: grid filtering, craftable toggle, search, pagination, and autofill passed
+UI/container smoke: shared slot hits and container isolation passed
+Metadata smoke: stable IDs, atlas bounds, and Apple food passed
+Combat smoke: 52 terrain physics regressions; mob combat, 1.75-block hitbox, one-block steps/stairs and headroom, light-gated spawning (hostile candidate rate 1.496592x), exact stacked arrow volleys, two archer sources, projectile immunity, fall damage, melee/explosion cooldowns, four named roles, old billboard/Wolf saves, GUI drop/pickup/save consistency, and Creative immunity passed
+Mesh edit smoke: local edits at render 2/32/64, lateral skylight, boundary Snow, slabs, and doors passed (6.585700 ms max)
+Voxel AO smoke: geometry-aware corner AO passed
+Async mesh smoke: rapid edits, stale revisions, and boundary uploads passed (0.469200 ms max edit; 3456 to 36 vertices on a flat test platform; eave/porch/window/room/torch lighting, geometry-aware AO, and boundary daylight passed)
+Fluid smoke: shoreline climb, downward flow, level spread, retraction, opened-block flow, boundary flow, water/lava 7/4-block limits, repeated/source-only/one-cell-budget scheduling, blocked reopening, burn timing, cobweb volumes, and water meshing passed
+Distance/drop/MSAA smoke: saved limits, 2x/4x targets, and durable drops passed
+Streaming smoke: 64/32 independent radii, bounded queue, fast relocation passed
+Terrain smoke: eight seeds, elevation 25-244, max 8-block rise 33, biome-boundary rise 27 passed
+Generation smoke: 991: deterministic yes, dry cave 1547, aquifer 102, ore 3086, entrances 0, max seam rise 0, origin surface block 132; 42: deterministic yes, dry cave 1582, aquifer 1, ore 3584, entrances 0, max seam rise 1, origin surface block 1; 1337: deterministic yes, dry cave 12529, aquifer 0, ore 7962, entrances 0, max seam rise 1, origin surface block 36; 
+Worldgen survey: 24 seeds, surface openings 12/24576, intentional cave mouths 52/52 (nearby open columns 910, broad 47), dry/flooded cave blocks 40645/6955, max border rise 1, canyon/surface regions 1485/314 passed
+Real structure smoke: 991: real terrain regions 489 (plains villages 210, desert villages 43, outposts 222, pyramids 14), slope/biome/loot passed; 42: real terrain regions 488 (plains villages 230, desert villages 43, outposts 197, pyramids 18), slope/biome/loot passed; 1337: real terrain regions 513 (plains villages 238, desert villages 55, outposts 201, pyramids 19), slope/biome/loot passed; 
+Structure chest save/reload: passed
+Creative smoke: catalog, cursor stacks, invulnerability, and flight passed
+Flight speed smoke: normal 8.5, sprint 21, Ctrl release 8.5, vertical/sneak unchanged passed
+Control smoke: full-block/slab sneak edges and Pick Block passed
+Persistence smoke: mobs passed, items passed
+Structure mob smoke: marker deduplication and save/reload passed
+Furnace/chest/shape smoke: local torch light plus persisted contents/shapes passed
+Audio smoke: OGG groups and material metadata passed
+Save compatibility smoke: 1 existing files loaded
+Day/night smoke: synchronized 1200 second cycle

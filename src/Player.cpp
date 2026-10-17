@@ -2,11 +2,13 @@
 #include "Transportation.h"
 #include "Survival.h"
 #include "SaveFile.h"
+#include "SaveValidation.h"
 #include "World.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <climits>
 #include <fstream>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -41,11 +43,12 @@ glm::vec3 Player::aabbMaximum() const {
     return position_ + glm::vec3(Width * .5f, Height, Width * .5f);
 }
 void Player::addMouseMovement(double x, double y) {
-    yaw_ += (float)x * mouseSensitivity_;
+    if(!std::isfinite(x)||!std::isfinite(y)||std::abs(x)>1e6||std::abs(y)>1e6)return;
+    yaw_ = std::remainder(yaw_ + (float)x * mouseSensitivity_,360.f);
     pitch_ = std::clamp(pitch_ + (float)y * mouseSensitivity_, -89.f, 89.f);
 }
 void Player::damage(float a, PlayerDamageSource source) {
-    if (creativeMode_ || spectatorMode_ || dead_ || respawnProtection_ > 0 || a <= 0 ||
+    if (!std::isfinite(a) || creativeMode_ || spectatorMode_ || dead_ || respawnProtection_ > 0 || a <= 0 ||
         (source != PlayerDamageSource::Projectile && source != PlayerDamageSource::Burning && damageInvulnerability_ > 0))
         return;
     if (source != PlayerDamageSource::Projectile && source != PlayerDamageSource::Burning)
@@ -68,17 +71,16 @@ void Player::killByCommand() {
     fallDistance_ = 0.0f;
 }
 void Player::applyImpulse(const glm::vec3& impulse) {
-    if (creativeMode_ || spectatorMode_ || dead_) return;
+    if (creativeMode_ || spectatorMode_ || dead_ || !SaveValidation::position(impulse) || glm::dot(impulse,impulse)>1000000) return;
     velocity_ += impulse;
 }
 void Player::heal(float a) {
-    if (!dead_)
+    if (!dead_ && std::isfinite(a) && a>=0)
         health_ = std::min(20.f, health_ + a);
 }
 void Player::eat(float f) {
-    if (spectatorMode_)
-        return;
-    hunger_ = std::min(20.f, hunger_ + f);
+    if (spectatorMode_ || !std::isfinite(f))return;
+    hunger_ = std::clamp(hunger_+f,0.f,20.f);
 }
 int Player::xpLevel() const {
     int level = 0, x = experience_;
@@ -99,7 +101,7 @@ float Player::xpProgress() const {
 void Player::addExperience(int a) {
     if (spectatorMode_)
         return;
-    experience_ = std::max(0, experience_ + a);
+    experience_ = int(std::clamp(std::int64_t(experience_)+a,std::int64_t(0),std::int64_t(INT_MAX)));
 }
 void Player::respawn(const World& world) {
     riding_=false; ++positionRevision_;
@@ -160,6 +162,7 @@ void Player::adjustSpectatorSpeed(double scrollSteps) {
 }
 
 void Player::teleport(const glm::vec3& position) {
+    if(!SaveValidation::position(position))return;
     riding_=false; ++positionRevision_;
     position_ = position;
     velocity_ = glm::vec3(0.0f);
@@ -172,6 +175,7 @@ void Player::setFlying(bool enabled) {
         velocity_ = glm::vec3(0.0f);
 }
 bool Player::save(const std::string& p, std::uint32_t seed) const {
+    if(!std::isfinite(health_) || health_<0 || health_>20 || !std::isfinite(hunger_) || hunger_<0 || hunger_>20 || experience_<0)return false;
     return SaveFile::write(p, std::ios::binary, [&](std::ofstream& f) {
         f.write(Magic, 8);
         return wr(f, seed) && wr(f, health_) && wr(f, hunger_) && wr(f, experience_);
@@ -184,12 +188,12 @@ bool Player::load(const std::string& p, std::uint32_t seed) {
     char m[8]{};
     std::uint32_t s = 0;
     f.read(m, 8);
-    if (std::memcmp(m, Magic, 8) || !rd(f, s) || s != seed || !rd(f, health_) || !rd(f, hunger_) ||
-        !rd(f, experience_))
-        return false;
-    health_ = std::clamp(health_, .1f, 20.f);
-    hunger_ = std::clamp(hunger_, 0.f, 20.f);
-    experience_ = std::max(0, experience_);
+    float health=0,hunger=0;int experience=0;
+    if (std::memcmp(m, Magic, 8) || !rd(f,s) || s!=seed || !rd(f,health) || !rd(f,hunger) || !rd(f,experience) ||
+        !std::isfinite(health) || health<0 || health>20 || !std::isfinite(hunger) || hunger<0 || hunger>20 || experience<0 ||
+        f.peek()!=std::char_traits<char>::eof())return false;
+    health_=health;hunger_=hunger;experience_=experience;
+    dead_=health_==0;respawnTimer_=dead_?2.f:0.f;
     return true;
 }
 void Player::applyShoreClimbAssist(const PlayerInput& input,
@@ -223,6 +227,7 @@ void Player::applyShoreClimbAssist(const PlayerInput& input,
     }
 }
 void Player::update(float deltaTime, const PlayerInput& input, const World& world) {
+    if(!std::isfinite(deltaTime)||deltaTime<=0)return;
     lastFallDamage_ = 0.0f;
     respawnProtection_ = std::max(0.0f, respawnProtection_ - deltaTime);
     hurtFlash_ = std::max(0.0f, hurtFlash_ - deltaTime);
@@ -235,6 +240,9 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
         return;
     }
 
+    if(!spectatorMode_ && !world.collisionReady(aabbMinimum()-glm::vec3(.05f,.05f,.05f),aabbMaximum()+glm::vec3(.05f,.05f,.05f))){
+        velocity_=glm::vec3(0);fallDistance_=0;return;
+    }
     if (spectatorMode_) {
         burning_.clear();
         const glm::vec3 forward = lookDirection();
@@ -492,6 +500,7 @@ void Player::resolveAxis(int axis, float amount, const World& w) {
         return;
     const float previousCoordinate=position_[axis];
     position_[axis] += amount;
+    if(!w.collisionReady(aabbMinimum(),aabbMaximum())){position_[axis]=previousCoordinate;velocity_[axis]=0;return;}
     constexpr float e = .0001f;
     auto mn = aabbMinimum(), mx = aabbMaximum();
     glm::ivec3 first = glm::ivec3(glm::floor(mn + glm::vec3(e))),

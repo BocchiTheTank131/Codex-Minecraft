@@ -1,0 +1,18 @@
+Voxel Frontier started
+Audio: loaded 100 OGG effects from embedded resources
+Audio: indexed 14 background tracks
+Audio: playing background track background/hitoribocchi tokyo.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+Biome samples: rain 1012, snow 3017, dry 196
+Weather ecology: exposed/sheltered farmland, fire, snow depths/melting and dry biome passed
+weather metadata/RNG roundtrip, legacy/corrupt saves, stone/glass/slab roofs, removal and rain/snow/dry biomes passed
+Weather audio: 19 decodes, continuous clip handoff, shelter crossfade, SFX mute, strike position and ranges passed
+Weather commands, cycle toggle/transition, lightning damage/immunity and rod crafting passed
+Screenshot saved: screenshots\voxel_1792196135158.bmp
+Rain visual capture
+Screenshot saved: screenshots\voxel_1792196135924.bmp
+Thunder visual capture
+Screenshot saved: screenshots\voxel_1792196135932.bmp
+Lightning visual capture
+Screenshot saved: screenshots\voxel_1792196135937.bmp
+Weather Release smoke passed; graphics Off/Low/Medium/High, settings and embedded assets

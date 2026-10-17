@@ -307,6 +307,8 @@ public:
                  const glm::vec3& direction,
                  float maxDistance,
                  RayHit& hit) const;
+    bool collisionReady(const glm::vec3& minimum,const glm::vec3& maximum) const;
+    void mapReferences(std::unordered_set<std::uint32_t>& references) const;
     bool aabbIntersectsSolid(const glm::vec3& minimum, const glm::vec3& maximum) const;
     bool blockIntersectsAabb(const glm::ivec3& block,
                              const glm::vec3& minimum,
@@ -528,7 +530,8 @@ private:
 
     int renderDistance_ = 7;
     int simulationDistance_ = 7;
-    glm::ivec2 streamCenter_{1000000, 1000000};
+    glm::ivec2 streamCenter_{0,0};
+    bool streamCenterValid_=false;
     bool blockLightingDirty_ = false;
     struct BlockLightNode {
         int x;

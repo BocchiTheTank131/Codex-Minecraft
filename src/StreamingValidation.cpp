@@ -26,6 +26,8 @@ void Game::runStreamingBenchmark() {
     std::ofstream csv(fs::path(streamingBenchmark_)/"streaming.csv");
     std::ofstream samples(fs::path(streamingBenchmark_)/"streaming-samples.csv");
     samples<<"generator,rd,phase,seconds,ram_mb,private_mb,loaded,rendered,dirty,generation,mesh,uploads,retired,lighting\n";
+    std::ofstream retirement(fs::path(streamingBenchmark_)/"retirement.csv");
+    retirement<<"phase,frame,retire_ms,unload_ms,fence_ms,ranges_ms,delete_ms,trim_ms,payload_ms\n";
     csv<<"generator,rd,phase,fps,mean_ms,p99_ms,worst_ms,cpu_percent,ram_mb,loaded,rendered,dirty,generation,mesh,upload_queue,stream_ms,render_ms,mesh_ms,upload_ms,gen_active,mesh_active,gen_limit,mesh_limit,gen_per_s,mesh_per_s,integrate_ms,light_ms,snapshot_ms,upload_batch_ms,stale,peak_unload_ms,peak_retire_ms,retired,lighting_queue,recovery_seconds,terrain_vertices,terrain_used_bytes,terrain_capacity_bytes,opaque_draws\n";
     settings_.vsync=false; settings_.frameLimit=0; settings_.antiAliasingSamples=0;
     settings_.weatherQuality=0; settings_.simulationDistance=8; glfwSwapInterval(0);
@@ -59,6 +61,8 @@ void Game::runStreamingBenchmark() {
                 world_->setStreamingView(player_->lookDirection(),dt*1000);
                 world_->updateStreaming(player_->cameraPosition(),2);
                 const auto stages=world_->streamingDiagnostics();
+                if(stages.retireMilliseconds>.5f || stages.unloadMilliseconds>.5f)
+                    retirement<<phase<<','<<frames.size()<<','<<stages.retireMilliseconds<<','<<stages.unloadMilliseconds<<','<<stages.fencePollMilliseconds<<','<<stages.rangeReleaseMilliseconds<<','<<stages.bufferDeleteMilliseconds<<','<<stages.pageTrimMilliseconds<<','<<stages.payloadReleaseMilliseconds<<'\n';
                 peakUnload=std::max(peakUnload,stages.unloadMilliseconds);peakRetire=std::max(peakRetire,stages.retireMilliseconds);
                 if(phase==2 && recovery<0 && !world_->pendingChunkCount() && !world_->queuedMeshRebuildCount() &&
                     !world_->pendingCpuMeshCount() && !world_->completedMeshCount() && !stages.lightingQueued && !stages.retiredChunks) recovery=glfwGetTime()-start;

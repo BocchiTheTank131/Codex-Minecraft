@@ -4,6 +4,19 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.14.2 - Stability, Reliability & Performance
+
+This build adds verified checkpoints, fail-safe handling of corrupt world sidecars,
+per-world session protection, unloaded-terrain collision barriers and corrected
+low-FPS simulation timing. In Select World, an unavailable world can be recovered
+into a **separate world** with **R twice within five seconds**, when a verified
+previous checkpoint exists. Keep external backups; recovery never repairs the
+original in place. The standalone demo remains stateless.
+
+See [Stability validation](docs/STABILITY_VALIDATION.md) for all 25 audit findings,
+measured results, reproducible tests and remaining limitations.
+Download [v2.14.2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.14.2).
+
 ## Contents
 
 - [Features](#features)
@@ -650,12 +663,12 @@ adapted to Voxel Frontier. Clear lasts 4-12 minutes, Rain 2-5, and Thunderstorms
   temporary world and starts fresh when PLAY is pressed again, without world-selection screens.
 
 Prerelease: [Voxel Frontier v2.11.2-beta2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.11.2-beta2).
-Latest stable: [Voxel Frontier v2.13.0](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.13.0).
+Latest stable: [Voxel Frontier v2.14.2](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.14.2).
 
-| v2.13.0 Windows build | Purpose | Persistence |
+| v2.14.2 Windows build | Purpose | Persistence |
 |---|---|---|
-| `VoxelFrontier-v2.13.0-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
-| `VoxelFrontier-v2.13.0-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
+| `VoxelFrontier-v2.14.2-Windows-Standalone.exe` | Run the single-file demo directly | Fresh session every launch |
+| `VoxelFrontier-v2.14.2-Windows-Setup.exe` | Install the full game | Saves worlds and settings |
 | `SHA256SUMS.txt` | Verify download integrity | Not a game executable |
 
 The Windows x64 release provides a stateless standalone demo and a full installer. The

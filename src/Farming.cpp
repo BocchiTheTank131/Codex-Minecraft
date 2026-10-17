@@ -2,38 +2,32 @@
 #include "World.h"
 #include <algorithm>
 #include <cmath>
-std::int64_t FarmingSystem::key(const glm::ivec3& p) {
-    return ((std::int64_t)(p.x & 0x1fffff) << 42) ^ ((std::int64_t)(p.y & 0x3ff) << 32) ^
-           (std::uint32_t)p.z;
-}
 void FarmingSystem::plant(World& w, const glm::ivec3& p) {
     if (w.getBlock(p.x, p.y, p.z) == Block::Air &&
         (w.getBlock(p.x, p.y - 1, p.z) == Block::Farmland || w.getBlock(p.x, p.y - 1, p.z) == Block::WetFarmland)) {
         w.setBlock(p.x, p.y, p.z, Block::Crop0);
-        growth_[key(p)] = 0;
+        growth_[p] = 0;
     }
 }
 void FarmingSystem::update(float dt, World& w, const glm::vec3& player) {
     scanTimer_ -= dt;
-    if (scanTimer_ <= 0) {
-        scanTimer_ = 5;
-        int px = (int)std::floor(player.x), py = (int)std::floor(player.y),
-            pz = (int)std::floor(player.z);
-        const int scanRadius = std::min(48, w.simulationDistance() * CHUNK_SIZE);
-        for (int z = pz - scanRadius; z <= pz + scanRadius; ++z)
-            for (int x = px - scanRadius; x <= px + scanRadius; ++x)
-                for (int y = std::max(w.minimumY() + 1, py - 10); y < std::min(w.maximumY() - 1, py + 8); ++y) {
-                    Block b = w.getBlock(x, y, z);
-                    if (isCrop(b))
-                        growth_.try_emplace(key({x, y, z}), 0.f);
-                }
+    if(scanTimer_<=0 && scanCursor_==0){
+        scanOrigin_=glm::ivec3(glm::floor(player));scanRadius_=std::min(48,w.simulationDistance()*CHUNK_SIZE);
+        scanLow_=std::max(w.minimumY()+1,scanOrigin_.y-10);scanHigh_=std::min(w.maximumY()-1,scanOrigin_.y+8);
+        scanTimer_=5;
     }
+    const int side=2*scanRadius_+1,height=std::max(0,scanHigh_-scanLow_),total=side*side*height;
+    if(scanCursor_<total){
+        const int end=std::min(total,scanCursor_+512);
+        for(;scanCursor_<end;++scanCursor_){const int column=scanCursor_/height;
+            glm::ivec3 p(scanOrigin_.x-scanRadius_+column%side,scanLow_+scanCursor_%height,scanOrigin_.z-scanRadius_+column/side);
+            if(isCrop(w.getBlock(p.x,p.y,p.z)))growth_.try_emplace(p,0.f);
+        }
+    }
+    if(scanCursor_==total && scanTimer_<=0)scanCursor_=0;
     for (auto it = growth_.begin(); it != growth_.end();) {
-        std::int64_t k = it->first;
-        int x = (int)((k >> 42) & 0x1fffff), y = (int)((k >> 32) & 0x3ff),
-            z = (int)(std::uint32_t)k;
-        if (x & 0x100000)
-            x |= ~0x1fffff;
+        const auto& p=it->first;const int x=p.x,y=p.y,z=p.z;
+        if(!w.hasLoadedChunkAt(x,z)){++it;continue;}
         Block b = w.getBlock(x, y, z);
         if (!isCrop(b)) {
             it = growth_.erase(it);

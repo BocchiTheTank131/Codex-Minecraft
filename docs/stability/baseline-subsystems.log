@@ -1,0 +1,16 @@
+before_mode health=13 hunger=10
+relogin_refills_survival reproduced=1
+settings_accept_nan reproduced=1
+writer_exceeds_mob_loader_cap reproduced=1
+writer_exceeds_drop_loader_cap reproduced=1
+oversized_drop_save_rejects_on_load reproduced=1
+nonfinite_mob_position_accepted reproduced=1
+one_bad_world_blocks_listing reproduced=1
+Save failure stage=invalid-journal path="saves\\world-1258370559-83060763\\save.checkpoint" domain=system code=0 message=no OS error supplied (see stage) thread=16904 previous checkpoint retained; temporary data not reported as saved
+farming_scan_mean_ms=1.62288 worst_ms=2.0163
+negative_y_crop_never_grows reproduced=1
+unloaded_terrain_player_falls reproduced=1
+raycast_hits_empty_half_of_slab reproduced=1
+far_teleport_overflow_retains_origin reproduced=1
+far_world_simulation_radius_disabled reproduced=1
+maps_permanently_exhausted_at_128 reproduced=1
