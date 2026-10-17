@@ -35,6 +35,7 @@ public:
     static int stress(Game&,const std::filesystem::path&);
 };
 bool testFarmingControls(Game&);
+bool testFarmingMining(Game&);
 int runFarmingTests(int argc,char** argv) {return FarmingTest::run(argc,argv);}
 
 int FarmingTest::run(int argc,char** argv) {
@@ -160,8 +161,20 @@ int FarmingTest::run(int argc,char** argv) {
         const auto result=offhand?inventory.equipment(4):inventory.selectedStack();
         check(definition.foodContainer==Item::None?result.empty():result.item==definition.foodContainer && result.count==1,"food_container_"+std::to_string(id)+(offhand?"_offhand":"_main"));
     }
+    check(testFarmingMining(g),"production_mining_wheat_xp_survival_only_once");
     player.hunger_=12;player.saturation_=3;player.health_=9;
-    player.setCreativeMode(true);player.setSpectatorMode(true);player.setSpectatorMode(false);player.setCreativeMode(false);
+    PlayerInput idle{};
+    g.setGameMode(GameMode::Creative);
+    for(int i=0;i<600;++i)player.update(1.f/120.f,idle,w);
+    check(player.health()==9 && player.hunger()==12 && player.saturation()==3,"creative_simulation_preserves_survival_stats");
+    player.flying_=true;PlayerInput flight{};flight.enabled=true;flight.jump=true;
+    for(int i=0;i<120;++i)player.update(1.f/120.f,flight,w);
+    check(player.health()==9 && player.hunger()==12 && player.saturation()==3,"creative_flight_preserves_survival_stats");
+    g.setGameMode(GameMode::Spectator);
+    for(int i=0;i<600;++i)player.update(1.f/120.f,idle,w);
+    g.setGameMode(GameMode::Creative);
+    for(int i=0;i<120;++i)player.update(1.f/120.f,idle,w);
+    g.setGameMode(GameMode::Survival);
     check(player.health()==9 && player.hunger()==12 && player.saturation()==3,"gamemode_preserves_survival_stats");
     check(player.save("nutrition.vps",991),"nutrition_save");Player loadedPlayer({0,300,0});check(loadedPlayer.load("nutrition.vps",991) && loadedPlayer.saturation()==3 && loadedPlayer.health()==9 && loadedPlayer.hunger()==12,"nutrition_roundtrip");
     const auto nutrition=bytes("nutrition.vps");write("old.vps",nutrition.substr(0,24));check(loadedPlayer.load("old.vps",991) && loadedPlayer.saturation()==5,"old_player_migration");

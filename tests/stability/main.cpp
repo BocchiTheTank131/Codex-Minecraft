@@ -39,9 +39,30 @@ public:
 static int run(int argc,char** argv);
 static int traversal(int rd,const std::filesystem::path& output);
 static bool farmingControls(Game&);
+static bool farmingMining(Game&);
 };
 int runFarmingTests(int argc,char** argv);
 bool testFarmingControls(Game& g){return StabilityTest::farmingControls(g);}
+bool testFarmingMining(Game& g){return StabilityTest::farmingMining(g);}
+bool StabilityTest::farmingMining(Game& g) {
+ auto& w=*g.world_;auto& survival=*g.survival_;const glm::ivec3 crop(2,300,4);
+ g.inventory_->clear();survival.experienceOrbs_.clear();
+ auto xp=[&]{int total=0;for(const auto& orb:survival.experienceOrbs_)total+=orb.value;return total;};
+ auto mine=[&](Block block,GameMode mode){
+  g.setGameMode(mode);w.setBlock(crop.x,crop.y,crop.z,block);
+  g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);
+  g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_LEFT]=true;
+  g.interaction_.mobTarget={};g.interaction_.hasBlockTarget=true;
+  g.interaction_.blockTarget={crop,crop+glm::ivec3(0,1,0),{0,1,0},3};
+  g.updateMining(1.f/120.f);
+ };
+ mine(Block::Crop3,GameMode::Survival);bool ok=xp()==2 && w.getBlock(crop.x,crop.y,crop.z)==Block::Air;
+ g.updateMining(1.f/120.f);ok &= xp()==2;
+ for(auto block:{Block::Crop0,Block::Crop1,Block::Crop2,Block::Carrot3}){mine(block,GameMode::Survival);ok &= xp()==2;}
+ mine(Block::Crop3,GameMode::Creative);ok &= xp()==2;
+ g.setGameMode(GameMode::Survival);g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);
+ survival.experienceOrbs_.clear();return ok;
+}
 
 bool StabilityTest::farmingControls(Game& g) {
  auto& w=*g.world_;auto& inventory=*g.inventory_;const glm::ivec3 soil(2,299,4);

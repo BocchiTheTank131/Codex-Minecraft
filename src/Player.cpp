@@ -296,8 +296,6 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
             }
         }
         jumpWasDown_ = input.enabled && input.jump;
-        health_ = 20.0f;
-        hunger_ = 20.0f;
     } else {
         jumpWasDown_ = false;
     }

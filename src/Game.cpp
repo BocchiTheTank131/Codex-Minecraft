@@ -1773,7 +1773,9 @@ void Game::updateMining(float deltaTime) {
         for (const ItemStack& stack : storedItems)
             survival_->spawnDrop(dropPosition, stack.item, stack.count, stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity);
 
-        if (isOre(block) && canHarvestBlock(inventory_->selectedItem(), block)) {
+        if (block == Block::Crop3) {
+            survival_->spawnExperience(dropPosition, 2);
+        } else if (isOre(block) && canHarvestBlock(inventory_->selectedItem(), block)) {
             survival_->spawnExperience(dropPosition, oreExperience(block));
         }
         if (isTool(inventory_->selectedItem())) {

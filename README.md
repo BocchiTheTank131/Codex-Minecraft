@@ -4,6 +4,13 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.15.1 - Survival Statistics & Wheat XP
+
+Creative and Spectator simulation retain Survival health, hunger and saturation.
+Harvesting ripe wheat in Survival again awards 2 XP; immature crops and Creative
+harvesting award none. See [fix validation](docs/VALIDATION_v2.15.1.md).
+Download the installer or standalone demo from the [v2.15.1 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.15.1).
+
 ### v2.15.0 - Farming, Food & Survival
 
 Grow carrots, potatoes, beetroot, pumpkins, melons and berries alongside wheat.
