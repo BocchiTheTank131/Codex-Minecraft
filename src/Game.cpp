@@ -1600,7 +1600,7 @@ void Game::simulationStep(float deltaTime) {
     if ((wasDead || wasBelowWorld) && !player_->isDead() && player_->position().y >= world_->minimumY())
         world_->updateStreaming(player_->cameraPosition(),2);
     weather_->update(deltaTime, *world_, *player_, *survival_, *sounds_, settings_);
-    farming_->update(deltaTime, *world_, player_->position());
+    farming_->update(deltaTime, *world_, player_->position(), weather_.get(), daylight(timing_.worldTime)*weather_->daylightScale());
 
     finishSimulationFrame(deltaTime,oldHealth);
 }
@@ -1680,6 +1680,7 @@ void Game::updateMobAttack() {
     const AttackResult hit =
         survival_->attackMob(interaction_.mobTarget.index, weapon, critical, player_->position());
     interaction_.attackCooldown = attackCooldown(weapon);
+    if(hit.hit) player_->exhaust(.1f);
     if (!hit.hit) {
         return;
     }
@@ -1751,21 +1752,12 @@ void Game::updateMining(float deltaTime) {
             survival_->spawnDrop(glm::vec3(brokenPosition) + glm::vec3(.5f, 1.5f, .5f),
                                  Item::WoodenDoor);
         }
-        if (block == Block::Crop3) {
-            survival_->spawnDrop(
-                dropPosition, Item::Wheat, 1 + (interaction_.blockTarget.block.x & 1));
-            survival_->spawnDrop(
-                dropPosition, Item::Seeds, 1 + std::abs(interaction_.blockTarget.block.z % 3));
-            survival_->spawnExperience(dropPosition, 2);
-        } else if (isCrop(block)) {
-            survival_->spawnDrop(dropPosition, Item::Seeds, 1);
-        } else {
-            const bool valuableOre = isOre(block) || blockDefinition(block).requiredHarvestTier > 0;
-            if (!valuableOre || canHarvestBlock(inventory_->selectedItem(), block)) {
-                survival_->spawnDrop(dropPosition,
-                                     block == Block::Farmland ? Item::Dirt : blockToItem(block),
-                                     blockDefinition(block).dropCount);
-            }
+        const bool valuableOre = isOre(block) || blockDefinition(block).requiredHarvestTier > 0;
+        if(!valuableOre || canHarvestBlock(inventory_->selectedItem(),block))
+            for(const auto& drop:FarmingSystem::harvest(block,brokenPosition,seed_))
+                survival_->spawnDrop(dropPosition,drop.item,drop.count);
+        player_->exhaust(.025f);
+        {
             if (block == Block::Leaves) {
                 const std::uint32_t appleHash =
                     static_cast<std::uint32_t>(interaction_.blockTarget.block.x) * 73856093U ^
@@ -1856,20 +1848,25 @@ void Game::handleUseAction() {
         }
     }
 
-    if (!used &&
-        survival_->feedAnimal(player_->cameraPosition(), player_->lookDirection(), heldItem)) {
+    if(!used && interaction_.hasBlockTarget && !interaction_.mobTarget.valid()) {
+        used=farming_->interact(*world_,*inventory_,*survival_,interaction_.blockTarget.block,
+            interaction_.blockTarget.adjacent,interaction_.blockTarget.normal,heldItem,useOffhand,creativeMode_);
+        if(used) {
+            if(const char* message=farming_->feedback())chat_.addMessage(message,ChatTone::Warning,glfwGetTime());
+            else {interaction_.heldItemSwing=1.f;sounds_->playBlockPlace(Block::TallGrass,glm::vec3(interaction_.blockTarget.block));}
+        }
+    }
+    if(!used && interaction_.mobTarget.valid())used=survival_->tendAnimal(interaction_.mobTarget.index,*inventory_,useOffhand,creativeMode_);
+    if (!used && interaction_.mobTarget.valid() &&
+        survival_->feedAnimal(player_->cameraPosition(), player_->lookDirection(), heldItem,world_.get())) {
         if (!creativeMode_) {
             consume();
         }
         interaction_.heldItemSwing = 1.0f;
         used = true;
     }
-    if (!used && isFood(heldItem) && player_->hunger() < 20.0f) {
-        player_->eat(foodValue(heldItem));
+    if (!used && consumeFood(*player_,*inventory_,useOffhand,creativeMode_)) {
         sounds_->playEat();
-        if (!creativeMode_) {
-            consume();
-        }
         interaction_.heldItemSwing = 1.0f;
         used = true;
     }
@@ -1879,28 +1876,7 @@ void Game::handleUseAction() {
         const Block targetBlock =
             world_->getBlock(targetPosition.x, targetPosition.y, targetPosition.z);
 
-        if (heldItem == Item::Seeds && (targetBlock == Block::Farmland || targetBlock == Block::WetFarmland) &&
-            world_->getBlock(adjacentPosition.x, adjacentPosition.y, adjacentPosition.z) ==
-                Block::Air) {
-            farming_->plant(*world_, adjacentPosition);
-            if (!creativeMode_) {
-                consume();
-            }
-            used = true;
-            placed = true;
-        } else if ((heldItem == Item::WoodShovel || heldItem == Item::StoneShovel ||
-                    heldItem == Item::IronShovel || heldItem == Item::GoldShovel ||
-                    heldItem == Item::DiamondShovel) &&
-                   (targetBlock == Block::Dirt || targetBlock == Block::Grass) &&
-                   interaction_.blockTarget.normal.y > 0) {
-            world_->setBlock(targetPosition.x, targetPosition.y, targetPosition.z, Block::Farmland);
-            if (!creativeMode_) {
-                if(useOffhand) inventory_->damageOffhandTool();
-                else damageSelectedToolWithSound();
-            }
-            used = true;
-            placed = true;
-        } else {
+        {
             Block placedBlock = itemToBlock(heldItem);
             const glm::vec3 blockHitPoint = player_->cameraPosition() +
                                             player_->lookDirection() *

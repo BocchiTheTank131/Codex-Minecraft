@@ -343,6 +343,12 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
     ensureHeight(y);
     const auto index = static_cast<std::uint32_t>(
         ((y - minimumY) * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX);
+    const bool wasFarm = isFarmTracked(blocks[index]), nowFarm = isFarmTracked(block);
+    if (wasFarm != nowFarm) {
+        const auto it = std::lower_bound(farmCells.begin(), farmCells.end(), index);
+        if (nowFarm) farmCells.insert(it,index);
+        else if (it!=farmCells.end() && *it==index) farmCells.erase(it);
+    }
     const bool wasEmitter = blockLightEmission(blocks[index]) != 0;
     const bool isEmitter = blockLightEmission(block) != 0;
     if (wasEmitter != isEmitter) {
@@ -370,9 +376,11 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
 
 void Chunk::rebuildLightEmitterIndex() {
     lightEmitters.clear();
+    farmCells.clear();
     precipitationTop.fill(static_cast<std::int16_t>(minimumY - 1));
     for (std::size_t index = 0; index < blocks.size(); ++index) {
         const Block b = blocks[index];
+        if (isFarmTracked(b)) farmCells.push_back(static_cast<std::uint32_t>(index));
         if (blockLightEmission(b)) lightEmitters.push_back(static_cast<std::uint32_t>(index));
         if (b != Block::Air && !isPlant(b) && !isCrop(b) && !isWallAttachment(b) && !isTorch(b))
             precipitationTop[index % (CHUNK_SIZE*CHUNK_SIZE)] = static_cast<std::int16_t>(minimumY + index / (CHUNK_SIZE*CHUNK_SIZE));
@@ -3830,8 +3838,23 @@ void World::setBlock(int x, int y, int z, Block block) {
     setBlockInternal(x, y, z, block, true);
 }
 
+std::uint64_t World::farmResidencyAt(int x,int z) const {
+    const auto* c=findChunk(floorDiv(x,CHUNK_SIZE),floorDiv(z,CHUNK_SIZE));
+    return c?c->meshIdentity:0;
+}
+void World::activeFarmCells(std::vector<glm::ivec3>& out) const {
+    out.clear();
+    for (const auto& entry : chunks_) {
+        const Chunk& c=*entry.second;
+        if (!simulationActiveAt(float(c.x*CHUNK_SIZE),float(c.z*CHUNK_SIZE))) continue;
+        for (auto i:c.farmCells) out.emplace_back(c.x*CHUNK_SIZE+int(i%16), c.minimumY+int(i/256), c.z*CHUNK_SIZE+int((i/16)%16));
+    }
+}
+
 bool World::canPlacePlant(const glm::ivec3& position, Block block) const {
     if (position.y <= minimumY() || position.y >= maximumY()) return false;
+    if (isCrop(block)) return isFarmland(getBlock(position.x,position.y-1,position.z));
+    if (isBerryBush(block)) { const auto s=getBlock(position.x,position.y-1,position.z); return s==Block::Grass || s==Block::Dirt || s==Block::Podzol || s==Block::CoarseDirt; }
     if (isVine(block)) {
         constexpr glm::ivec3 support[] = {{0,0,-1}, {0,0,1}, {1,0,0}, {-1,0,0}};
         const glm::ivec3 wall = position + support[static_cast<int>(block) - static_cast<int>(Block::VineNorth)];
@@ -4262,17 +4285,18 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
                                                       1});
                         }
                     };
+                    const float plantHeight=(isCrop(block)||isBerryBush(block))?blockGeometry(block).maxY:.9f;
                     const float x = static_cast<float>(worldX);
                     const float z = static_cast<float>(worldZ);
                     if (isPlant(block)) {
                         addQuad({{{x + .08f, y, z + .08f},
-                                  {x + .08f, y + .9f, z + .08f},
-                                  {x + .92f, y + .9f, z + .92f},
+                                  {x + .08f, y + plantHeight, z + .08f},
+                                  {x + .92f, y + plantHeight, z + .92f},
                                   {x + .92f, y, z + .92f}}},
                                 glm::normalize(glm::vec3(-1, 0, 1)));
                         addQuad({{{x + .92f, y, z + .08f},
-                                  {x + .92f, y + .9f, z + .08f},
-                                  {x + .08f, y + .9f, z + .92f},
+                                  {x + .92f, y + plantHeight, z + .08f},
+                                  {x + .08f, y + plantHeight, z + .92f},
                                   {x + .08f, y, z + .92f}}},
                                 glm::normalize(glm::vec3(1, 0, 1)));
                     } else {

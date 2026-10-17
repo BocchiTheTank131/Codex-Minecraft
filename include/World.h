@@ -184,6 +184,7 @@ public:
     mutable bool climateColorsReady = false;
     mutable std::array<std::array<glm::vec3,4>,3> climateColors{};
     std::vector<std::uint32_t> lightEmitters;
+    std::vector<std::uint32_t> farmCells;
     void rebuildLightEmitterIndex();
     int requestedLod=0,meshLod=0;
     int highestRenderableY = -1;
@@ -264,6 +265,8 @@ public:
 
     Block getBlock(int x, int y, int z) const;
     void setBlock(int x, int y, int z, Block block);
+    void activeFarmCells(std::vector<glm::ivec3>& output) const;
+    std::uint64_t farmResidencyAt(int x,int z) const;
     bool hasLoadedChunkAt(int x, int z) const;
     float precipitationHeight(int x, int z) const;
     bool canPlacePlant(const glm::ivec3& position, Block block) const;

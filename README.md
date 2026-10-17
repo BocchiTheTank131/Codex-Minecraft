@@ -4,6 +4,18 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.15.0 - Farming, Food & Survival
+
+Grow carrots, potatoes, beetroot, pumpkins, melons and berries alongside wheat.
+Irrigate fields, craft hoes, compost spare produce, and use Bone Meal. Raise
+chickens for eggs and meat, shear sheep, milk cows, and prepare new meals.
+Saturation supports longer journeys while Survival statistics persist across
+game-mode changes. New seeds can be collected in existing worlds.
+
+This update retains Generator V22 and the coordinated checkpoint system.
+See [farming rules, validation and limitations](docs/FARMING_SURVIVAL_VALIDATION.md).
+Download the installer or standalone demo from the [v2.15.0 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.15.0).
+
 ### v2.14.3 - Checkpoint Integrity, Audio & Settings Polish
 
 Game-mode, time and weather changes are saved together in complete checkpoints.

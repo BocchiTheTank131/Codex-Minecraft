@@ -38,7 +38,24 @@ class StabilityTest {
 public:
 static int run(int argc,char** argv);
 static int traversal(int rd,const std::filesystem::path& output);
+static bool farmingControls(Game&);
 };
+int runFarmingTests(int argc,char** argv);
+bool testFarmingControls(Game& g){return StabilityTest::farmingControls(g);}
+
+bool StabilityTest::farmingControls(Game& g) {
+ auto& w=*g.world_;auto& inventory=*g.inventory_;const glm::ivec3 soil(2,299,4);
+ w.setBlock(soil.x,soil.y,soil.z,Block::Dirt);w.setBlock(soil.x,soil.y+1,soil.z,Block::Air);
+ auto frame=[&]{g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_RIGHT]=true;g.interaction_.mobTarget={};};
+ auto shield=[&](Item held){inventory.clear();inventory.add(Item::Shield);inventory.equipFromSlot(0);inventory.add(held,1);};
+ frame();shield(Item::WoodHoe);g.interaction_.hasBlockTarget=true;g.interaction_.blockTarget={soil,soil+glm::ivec3(0,1,0),{0,1,0},3};
+ g.updateEquipmentInput(true);g.handleUseAction();bool ok=isFarmland(w.getBlock(soil.x,soil.y,soil.z)) && inventory.selectedStack().durability==Inventory::maxDurability(Item::WoodHoe)-1;
+ frame();shield(Item::Carrot);g.player_->eat(20);g.updateEquipmentInput(true);g.handleUseAction();ok &= inventory.selectedStack().empty() && w.getBlock(soil.x,soil.y+1,soil.z)==Block::Carrot0 && g.player_->hunger()==20;
+ frame();shield(Item::MilkBucket);g.player_->eat(-10);g.updateEquipmentInput(true);g.handleUseAction();ok &= inventory.selectedItem()==Item::Bucket;
+ frame();shield(Item::WoodHoe);g.interaction_.hasBlockTarget=false;g.updateEquipmentInput(true);ok &= g.player_->isBlocking();
+ g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);g.player_->setBlocking(false);
+ return ok;
+}
 int main(int argc,char** argv){
     // This harness cannot operate on the current profile. Every run gets a new
     // isolated fixture; evidence is kept for inspection, never auto-deleted.
@@ -48,6 +65,7 @@ int main(int argc,char** argv){
     try{return StabilityTest::run(argc,argv);}catch(const std::exception& e){std::cerr<<e.what()<<std::endl;return 1;}
 }
 int StabilityTest::run(int argc,char** argv){
+ if(argc>1 && std::string(argv[1]).find("--farming")==0)return runFarmingTests(argc,argv);
  if(argc==2 && std::string(argv[1]).find("--session-probe=")==0){
     const auto target=std::filesystem::weakly_canonical(std::string(argv[1]).substr(16));
     if(target.parent_path()!=std::filesystem::weakly_canonical(std::filesystem::temp_directory_path()) || target.filename().string().find("VoxelFrontier-stability-")!=0)return 2;
@@ -225,8 +243,10 @@ int StabilityTest::run(int argc,char** argv){
  log("high_altitude_position_roundtrip",w.saveWorld("high-altitude.vxw",highAltitude) && w.loadWorld("high-altitude.vxw",restored) && restored==highAltitude);
  w.generate(2,{.5f,80,.5f});
  {FarmingSystem f;double total=0,worst=0;for(int i=0;i<20;++i){auto start=std::chrono::steady_clock::now();f.update(5.1f,w,{4,80,4});double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();total+=ms;worst=std::max(worst,ms);}std::cout<<"farming_scan_mean_ms="<<total/20<<" worst_ms="<<worst<<std::endl;}
- w.setBlock(2,-11,2,Block::Farmland);w.setBlock(2,-10,2,Block::Air);w.setBlock(4,79,4,Block::Farmland);w.setBlock(4,80,4,Block::Air);FarmingSystem f;f.plant(w,{2,-10,2});f.plant(w,{4,80,4});f.update(19,w,{4,80,4});log("negative_y_crops_grow",w.getBlock(2,-10,2)==Block::Crop1&&w.getBlock(4,80,4)==Block::Crop1);
- {const glm::ivec3 distantCrop(2097154,-10,-18);w.prepareSpawnTerrain(glm::vec3(distantCrop));w.setBlock(distantCrop.x,distantCrop.y-1,distantCrop.z,Block::Farmland);w.setBlock(distantCrop.x,distantCrop.y,distantCrop.z,Block::Air);f.plant(w,distantCrop);w.updateStreaming(glm::vec3(distantCrop),0);f.update(19,w,glm::vec3(distantCrop));log("far_crop_no_coordinate_alias",w.getBlock(distantCrop.x,distantCrop.y,distantCrop.z)==Block::Crop1);w.prepareSpawnTerrain({4,80,4});w.updateStreaming({4,80,4},0);}
+ // Coordinate regression is independent of sunlight and growth duration. The
+ // farming suite separately tests real fixed-step natural growth and darkness.
+ w.setBlock(2,-11,2,Block::Farmland);w.setBlock(2,-10,2,Block::Air);w.setBlock(4,79,4,Block::Farmland);w.setBlock(4,80,4,Block::Air);FarmingSystem f;f.plant(w,{2,-10,2});f.plant(w,{4,80,4});log("negative_y_crop_fertilization",f.fertilize(w,{2,-10,2})&&f.fertilize(w,{4,80,4})&&cropStage(w.getBlock(2,-10,2))>0&&cropStage(w.getBlock(4,80,4))>0);
+ {const glm::ivec3 distantCrop(2097154,-10,-18);w.prepareSpawnTerrain(glm::vec3(distantCrop));w.updateStreaming(glm::vec3(distantCrop),0);w.setBlock(distantCrop.x,distantCrop.y-1,distantCrop.z,Block::Farmland);w.setBlock(distantCrop.x,distantCrop.y,distantCrop.z,Block::Air);f.plant(w,distantCrop);log("far_crop_no_coordinate_alias",f.fertilize(w,distantCrop)&&cropStage(w.getBlock(distantCrop.x,distantCrop.y,distantCrop.z))>0);w.prepareSpawnTerrain({4,80,4});w.updateStreaming({4,80,4},0);}
  Player p({10000.5f,80,10000.5f});for(int i=0;i<20;++i)p.update(.05f,{},w);log("unloaded_collision_waits",p.position().y==80);
  w.fillBlocks({6,80,8},{10,80,8},Block::Air);w.setBlock(8,80,8,Block::StoneSlab);RayHit hit;log("raycast_respects_slab",!w.raycast({6.5f,80.8f,8.5f},{1,0,0},4,hit));
  w.updateStreaming({1048576.5f,80,.5f},0);log("far_teleport_unloads_origin",!w.hasLoadedChunkAt(0,0));

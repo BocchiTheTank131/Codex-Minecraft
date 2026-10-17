@@ -136,6 +136,8 @@ enum class Item : std::uint8_t {
     Cobweb, CrackedStoneBricks, SurveyorToken, CavernShard, AncientSeal,
     LeatherHelmet, LeatherChestplate, LeatherLeggings, LeatherBoots, GoldHelmet, GoldChestplate, GoldLeggings, GoldBoots, IronHelmet, IronChestplate, IronLeggings, IronBoots, DiamondHelmet, DiamondChestplate, DiamondLeggings, DiamondBoots, Shield,
     OakBoat, BirchBoat, SpruceBoat, JungleBoat, AcaciaBoat, DarkOakBoat, EmptyMap, FilledMap, Compass,
+    // v2.15.0: append only, all historical save IDs retained.
+    Carrot, Potato, BakedPotato, Beetroot, BeetrootSeeds, PumpkinSeeds, Pumpkin, MelonSeeds, Melon, MelonSlice, SweetBerries, WoodHoe, StoneHoe, IronHoe, GoldHoe, DiamondHoe, BoneMeal, Composter, Shears, Bucket, MilkBucket, Egg, RawChicken, CookedChicken, Feather, Bowl, Sugar, BeetrootSoup, MushroomStew, PumpkinPie, Cookie, VegetableStew,
     Count
 };
 
@@ -285,6 +287,7 @@ bool canHarvestBlock(Item item, Block block);
 Item smeltingResult(Item item);
 bool isFood(Item item);
 float foodValue(Item item);
+static_assert(int(Item::Count)<=255, "Item sentinel must fit the save byte");
 float blockHardness(Block block);
 float toolBreakMultiplier(Item item, Block block);
 float attackDamage(Item item);
@@ -328,6 +331,7 @@ struct AttackResult {
 
 class Weather;
 class SurvivalWorld {
+    friend class FarmingTest;
     friend class StabilityTest;
 public:
     struct MobDiagnostics {
@@ -358,7 +362,8 @@ public:
     void spawnBillboardPreview(const glm::vec3& origin, const glm::vec3& forward);
     bool summonMob(const std::string& name, const glm::vec3& position);
     void mapReferences(std::unordered_set<std::uint32_t>& references) const;
-    bool feedAnimal(const glm::vec3& origin, const glm::vec3& direction, Item food);
+    bool feedAnimal(const glm::vec3& origin, const glm::vec3& direction, Item food, const World* world=nullptr);
+    bool tendAnimal(int index, Inventory&, bool offhand, bool creative);
     MobTarget raycastMob(const glm::vec3& origin,
                          const glm::vec3& direction,
                          float reach,
@@ -387,7 +392,7 @@ public:
 private:
     // ID 3 is a retired Wolf ID in old save files. Never reuse it.
     enum class AnimalType : std::uint8_t { Cow = 0, Pig = 1, Sheep = 2, Villager = 4,
-                                            Pillager = 5, BillboardFirst = 6 };
+                                            Pillager = 5, BillboardFirst = 6, Chicken = 10 };
     static bool isBillboard(AnimalType type);
     static std::size_t billboardIndex(AnimalType type);
     static AnimalType billboardType(std::size_t index);
@@ -407,6 +412,8 @@ private:
         float fleeTimer = 0, angerTimer = 0, memoryTimer = 0, idleTimer = 0,
               wanderPhase = 0;
         glm::vec3 rememberedTarget{0};
+        bool sheared = false;
+        float resourceTimer = 0, woolTimer = 0, gait = 0;
         bool persistent = false;
         bool grounded = false, dropsReleased = false;
     };

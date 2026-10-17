@@ -1,13 +1,16 @@
 #include "Survival.h"
 #include "Player.h"
 #include "Definitions.h"
+#include "Farming.h"
 #include <algorithm>
 #include <cmath>
 
 bool isDurable(Item item) { return Inventory::maxDurability(item)>0; }
 bool hasMainHandUse(Item item) {
-    return item>=Item::OakBoat || isFood(item) || itemToBlock(item)!=Block::Air || item==Item::Seeds ||
-        item==Item::Wheat || itemDefinition(item).tool==ToolKind::Shovel;
+    return (item>=Item::OakBoat && item<=Item::Compass) || isFood(item) ||
+        itemToBlock(item)!=Block::Air || FarmingSystem::plantedBlock(item)!=Block::Air ||
+        item==Item::Wheat || item==Item::Bucket || item==Item::BoneMeal ||
+        itemDefinition(item).tool==ToolKind::Hoe || itemDefinition(item).tool==ToolKind::Shovel || itemDefinition(item).tool==ToolKind::Shears;
 }
 int armorSlot(Item item) {
     const int index=int(item)-int(Item::LeatherHelmet);

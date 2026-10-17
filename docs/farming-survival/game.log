@@ -1,0 +1,46 @@
+Isolated fixture: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-7307900215900"
+Audio: loaded 104 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/Flashbacker.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+actual_game_statistics_preserved passed=1
+dead_save_coherent passed=1
+game_fixed_clock_10 passed=1
+game_fixed_clock_15 passed=1
+game_fixed_clock_20 passed=1
+game_fixed_clock_30 passed=1
+game_fixed_clock_60 passed=1
+game_fixed_clock_120 passed=1
+one_second_spike_debt_recovered passed=1
+raw_frame_metric passed=1
+teleport_origin_loaded_precondition passed=1
+command_teleport_accepted passed=1
+command_teleport_waits_for_collision passed=1
+command_teleport_frame_ms=0.8438
+game_large_entity_checkpoint passed=1
+game_large_entity_reload passed=1
+animal_persistence_and_baby_age passed=1
+game_async_snapshot_staged passed=1
+async_capture_immutable passed=1
+legacy_corrupt_refused_voxel_inventory.vxi passed=1
+Invalid save: voxel_inventory.vxi. Original preserved; restore a verified backup to recover.
+corrupt_bytes_preserved passed=1
+Invalid save: voxel_player.vps. Original preserved; restore a verified backup to recover.
+legacy_corrupt_refused_voxel_player.vps passed=1
+corrupt_bytes_preserved passed=1
+legacy_corrupt_refused_voxel_mobs.vxm passed=1
+Invalid save: voxel_mobs.vxm. Original preserved; restore a verified backup to recover.
+corrupt_bytes_preserved passed=1
+Save failure stage=checkpoint-integrity path="saves\\world-906165599-1920481024\\voxel_inventory.vxi" domain=system code=0 message=no OS error supplied (see stage) thread=5820 save not reported successful; preserve checkpoint/backup files for recovery
+Checkpoint detail: generation=11 expected_bytes=475 actual_bytes=6 expected_hash=4564120895556772103 actual_hash=12782453976472725088; automatic retries stopped; use verified recovery copy
+Checkpoint integrity failed: voxel_inventory.vxi: generation=11 expected_bytes=475 actual_bytes=6 expected_hash=4564120895556772103 actual_hash=12782453976472725088. Originals preserved; recover a verified copy.
+manifest_corruption_refused passed=1
+Save failure stage=checkpoint-integrity path="saves\\world-906165599-1920481024\\voxel_inventory.vxi" domain=system code=0 message=no OS error supplied (see stage) thread=5820 save not reported successful; preserve checkpoint/backup files for recovery
+Checkpoint detail: generation=11 expected_bytes=475 actual_bytes=6 expected_hash=4564120895556772103 actual_hash=12782453976472725088; automatic retries stopped; use verified recovery copy
+game_world_selection_retains_unavailable passed=1
+keyboard_recovery_requires_confirmation passed=1
+Save failure stage=checkpoint-integrity path="saves\\world-906165599-1920481024\\voxel_inventory.vxi" domain=system code=0 message=no OS error supplied (see stage) thread=5820 save not reported successful; preserve checkpoint/backup files for recovery
+Checkpoint detail: generation=11 expected_bytes=475 actual_bytes=6 expected_hash=4564120895556772103 actual_hash=12782453976472725088; automatic retries stopped; use verified recovery copy
+keyboard_recovery_creates_separate_world passed=1
+recovery_copy_verified passed=1
+recovery_copy_game_loads passed=1

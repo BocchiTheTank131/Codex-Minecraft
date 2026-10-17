@@ -8,7 +8,7 @@
 #include <string>
 
 enum class MobSoundType { Cow = 0, Pig = 1, Sheep = 2, Villager = 4,
-                          Pillager = 5, BillboardHostile = 6 };
+                          Pillager = 5, BillboardHostile = 6, Chicken = 10 };
 
 class SoundSystem {
 public:

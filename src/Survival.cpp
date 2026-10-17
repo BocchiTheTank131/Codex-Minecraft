@@ -426,6 +426,27 @@ const std::vector<Recipe>& recipes() {
         for(int w=0;w<6;++w){const Item p=woods[w];r.push_back(recipe(3,2,{p,Item::None,p,p,p,p},Item(int(Item::OakBoat)+w),1,true));}
         r.push_back(recipe(3,3,{Item::None,Item::IronIngot,Item::None,Item::IronIngot,Item::CopperIngot,Item::IronIngot,Item::None,Item::IronIngot,Item::None},Item::Compass,1,true));
         r.push_back(recipe(3,3,{Item::Paper,Item::Paper,Item::Paper,Item::Paper,Item::Compass,Item::Paper,Item::Paper,Item::Paper,Item::Paper},Item::EmptyMap,1,true));
+
+        // Farming recipes; bowl meals are single stacks so returning the bowl
+        // replaces the owned held slot atomically, including a full inventory.
+        const Item hoeMaterials[]={Item::Planks,Item::Cobblestone,Item::IronIngot,Item::GoldIngot,Item::Diamond};
+        for(int n=0;n<5;++n) {
+            const Ingredient m=n==0?Ingredient(IngredientGroup::Planks):Ingredient(hoeMaterials[n]);
+            r.push_back(recipe(2,3,{m,m,Item::None,Item::Stick,Item::None,Item::Stick},Item(int(Item::WoodHoe)+n),1,true,true));
+        }
+        r.push_back(recipe(2,2,{Item::None,Item::IronIngot,Item::IronIngot,Item::None},Item::Shears,1,false,true));
+        r.push_back(recipe(3,2,{Item::IronIngot,Item::None,Item::IronIngot,Item::None,Item::IronIngot,Item::None},Item::Bucket,1,true));
+        r.push_back(recipe(3,2,{IngredientGroup::Planks,Item::None,IngredientGroup::Planks,Item::None,IngredientGroup::Planks,Item::None},Item::Bowl,4,true));
+        r.push_back(recipe(3,3,{IngredientGroup::Planks,Item::None,IngredientGroup::Planks,IngredientGroup::Planks,Item::None,IngredientGroup::Planks,IngredientGroup::Planks,IngredientGroup::Planks,IngredientGroup::Planks},Item::Composter,1,true));
+        r.push_back(recipe(1,1,{Item::SugarCane},Item::Sugar,1,false));
+        r.push_back(recipe(1,1,{Item::Pumpkin},Item::PumpkinSeeds,4,false));
+        r.push_back(recipe(1,1,{Item::MelonSlice},Item::MelonSeeds,1,false));
+        r.push_back(recipe(3,3,{Item::MelonSlice,Item::MelonSlice,Item::MelonSlice,Item::MelonSlice,Item::MelonSlice,Item::MelonSlice,Item::MelonSlice,Item::MelonSlice,Item::MelonSlice},Item::Melon,1,true));
+        r.push_back(recipe(2,2,{Item::RedMushroom,Item::BrownMushroom,Item::Bowl},Item::MushroomStew,1,false,false,true));
+        r.push_back(recipe(3,2,{Item::Beetroot,Item::Beetroot,Item::Beetroot,Item::Beetroot,Item::Beetroot,Item::Bowl},Item::BeetrootSoup,1,true,false,true));
+        r.push_back(recipe(2,2,{Item::Carrot,Item::Potato,Item::Beetroot,Item::Bowl},Item::VegetableStew,1,false,false,true));
+        r.push_back(recipe(2,2,{Item::Pumpkin,Item::Sugar,Item::Egg},Item::PumpkinPie,1,false,false,true));
+        r.push_back(recipe(3,1,{Item::Wheat,Item::SweetBerries,Item::Wheat},Item::Cookie,6,true));
         return r;
     }();
     return all;
@@ -1472,7 +1493,7 @@ Item blockToItem(Block b) {
     return blockDefinition(b).drop;
 }
 bool isTool(Item i) {
-    return pick(i) || axe(i) || shovel(i) || isSword(i);
+    return itemDefinition(i).tool != ToolKind::None;
 }
 bool isSword(Item i) {
     return itemDefinition(i).tool == ToolKind::Sword;
@@ -1648,6 +1669,7 @@ std::string SurvivalWorld::mobName(int index) const {
     case AnimalType::Cow: return "Cow";
     case AnimalType::Pig: return "Pig";
     case AnimalType::Sheep: return "Sheep";
+    case AnimalType::Chicken: return "Chicken";
     case AnimalType::Villager: return "Villager";
     case AnimalType::Pillager: return "Pillager";
     default: return {};
@@ -1705,6 +1727,7 @@ bool SurvivalWorld::summonMob(const std::string& name, const glm::vec3& position
     if (normalized == "cow") mob.type = AnimalType::Cow;
     else if (normalized == "pig") mob.type = AnimalType::Pig;
     else if (normalized == "sheep") mob.type = AnimalType::Sheep;
+    else if (normalized == "chicken") {mob.type = AnimalType::Chicken;mob.health=4;}
     else if (normalized == "villager") mob.type = AnimalType::Villager;
     else if (normalized == "pillager") mob.type = AnimalType::Pillager;
     else {
@@ -1847,9 +1870,13 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         animal.position = {x + .5f, feetY + .01f, z + .5f};
         animal.type = hostile ? billboardType(billboardChoice(random))
                       : static_cast<AnimalType>(static_cast<int>(unit(random) * 3.0f));
+        // Use a position hash, not another RNG draw: the hostile spawn stream
+        // and all four billboard selection weights remain exactly unchanged.
+        if(!hostile && (std::uint32_t(x)*73856093u ^ std::uint32_t(z)*19349663u)%4==0)animal.type=AnimalType::Chicken;
+        if(animal.type==AnimalType::Chicken)animal.resourceTimer=300.f+float((std::uint32_t(x)^std::uint32_t(z))%300);
         animal.health = isBillboard(animal.type)
                         ? billboardMobDefinitions()[billboardIndex(animal.type)].health
-                        : animal.type == AnimalType::Cow ? 10.0f : 8.0f;
+                        : animal.type == AnimalType::Cow ? 10.0f : animal.type==AnimalType::Chicken ? 4.f : 8.0f;
         animal.thinkTimer = unit(random) * 2.0f;
         animals_.push_back(animal);
         ++spawnSuccessesLastTick_;
@@ -1963,8 +1990,10 @@ void SurvivalWorld::releaseDrops(Animal& a) {
         spawnDrop(a.position, Item::Leather, 1);
     } else if (a.type == AnimalType::Pig) {
         spawnDrop(a.position, Item::RawPork, 1 + static_cast<int>(std::abs(a.position.z)) % 2);
+    } else if(a.type==AnimalType::Chicken) {
+        if(a.age>=0){spawnDrop(a.position,a.burning.remaining>0?Item::CookedChicken:Item::RawChicken);spawnDrop(a.position,Item::Feather,1);}
     } else if (a.type == AnimalType::Sheep) {
-        spawnDrop(a.position, Item::Wool, 1);
+        if(!a.sheared) spawnDrop(a.position, Item::Wool, 1);
         spawnDrop(a.position, Item::RawMutton, 1 + static_cast<int>(std::abs(a.position.x)) % 2);
     }
 }
@@ -1980,37 +2009,67 @@ RenderCuboid SurvivalWorld::mobOutline(int i) const {
     return {
         a.position + glm::vec3(0, .53f * baby, 0), glm::vec3(1.08f, .95f, .66f) * baby, {1, 1, 1}};
 }
-bool SurvivalWorld::feedAnimal(const glm::vec3& o, const glm::vec3& d, Item food) {
+bool SurvivalWorld::feedAnimal(const glm::vec3& o, const glm::vec3& d, Item food, const World* world) {
     int i = targetedAnimal(o, d, 5);
     if (i < 0)
         return false;
     Animal& a = animals_[i];
-    bool ok = (a.type == AnimalType::Cow || a.type == AnimalType::Sheep)
-                  ? food == Item::Wheat
-                  : a.type == AnimalType::Pig && food == Item::Seeds;
-    if (!ok || a.breedingCooldown > 0 || a.age < 0)
-        return false;
-    a.loveTimer = 12;
+    const bool ok=(a.type==AnimalType::Cow || a.type==AnimalType::Sheep)?food==Item::Wheat:
+        a.type==AnimalType::Pig?(food==Item::Carrot || food==Item::Potato || food==Item::Beetroot):
+        a.type==AnimalType::Chicken?(food==Item::Seeds || food==Item::BeetrootSeeds || food==Item::PumpkinSeeds || food==Item::MelonSeeds):false;
+    if(!ok || a.breedingCooldown>0 || a.age<0 || a.loveTimer>0 || a.deathTimer!=0)return false;
+    int nearby=0;for(const auto& other:animals_)if(other.deathTimer==0 && !isBillboard(other.type) && glm::distance(other.position,a.position)<16)++nearby;
+    if(nearby>=64 || animals_.size()>=SaveValidation::MaxMobs)return false;
+    a.loveTimer=30;a.persistent=true;
+    if(a.type==AnimalType::Sheep && a.sheared){a.woolTimer=std::min(a.woolTimer,30.f);}
     for (int j = 0; j < static_cast<int>(animals_.size()); ++j)
         if (j != i && animals_[j].type == a.type && animals_[j].loveTimer > 0 &&
             animals_[j].breedingCooldown <= 0 && animals_[j].age >= 0 &&
             glm::distance(animals_[j].position, a.position) < 5) {
             Animal baby = a;
-            baby.position = (a.position + animals_[j].position) * .5f;
-            baby.age = -60;
+            baby.position = a.position;
+            if(world && world->aabbIntersectsSolid(baby.position-glm::vec3(.2f,0,.2f),baby.position+glm::vec3(.2f,.65f,.2f)))continue;
+            baby.age = -1200;baby.sheared=false;baby.resourceTimer=450;baby.woolTimer=0;
             baby.loveTimer = 0;
             baby.breedingCooldown = 0;
-            baby.health = a.type == AnimalType::Cow ? 10.f : 8.f;
+            baby.health = a.type == AnimalType::Cow ? 10.f : a.type==AnimalType::Chicken ? 4.f : 8.f;
             baby.persistent = true;
             animals_[j].loveTimer = 0;
-            animals_[j].breedingCooldown = 45;
+            animals_[j].breedingCooldown = 300;animals_[j].persistent=true;
             a.loveTimer = 0;
-            a.breedingCooldown = 45;
+            a.breedingCooldown = 300;
             animals_.push_back(baby);
             spawnExperience(baby.position, 3);
             break;
         }
     return true;
+}
+
+bool SurvivalWorld::tendAnimal(int index,Inventory& inventory,bool offhand,bool creative) {
+    if(index<0 || index>=int(animals_.size()))return false;
+    auto& a=animals_[index];if(a.age<0 || a.deathTimer!=0)return false;
+    const auto held=offhand?inventory.equipment(4):inventory.selectedStack();
+    if(a.type==AnimalType::Sheep && held.item==Item::Shears && !a.sheared) {
+        if(!creative && !(offhand?inventory.damageOffhandTool():inventory.damageSelectedTool()))return false;
+        a.sheared=true;a.woolTimer=180;a.persistent=true;
+        spawnDrop(a.position+glm::vec3(0,.6f,0),Item::Wool,2);
+        if(sounds_)sounds_->playBlockBreak(Block::Leaves,a.position);
+        return true;
+    }
+    if(a.type==AnimalType::Cow && held.item==Item::Bucket && a.resourceTimer<=0) {
+        Inventory candidate=inventory;
+        if(!creative && held.count==1) {
+            if(!candidate.replaceHeld(offhand,held,{Item::MilkBucket,1}))return false;
+        } else {
+            if(!creative && !(offhand?candidate.consumeOffhand():candidate.consumeSelected()))return false;
+            if(candidate.add(Item::MilkBucket,1)!=0)return false;
+        }
+        inventory=std::move(candidate);
+        a.resourceTimer=60;a.persistent=true;
+        if(sounds_)sounds_->playMobAmbient(MobSoundType::Cow,a.position);
+        return true;
+    }
+    return false;
 }
 
 bool SurvivalWorld::canSeePlayer(const Animal& animal, const World& world,
@@ -2206,6 +2265,18 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
             a.deathTimer = -.001f;
         return;
     }
+    if(a.type==AnimalType::Cow || a.type==AnimalType::Sheep || a.type==AnimalType::Chicken) {
+        a.resourceTimer=std::max(0.f,a.resourceTimer-dt);
+        if(a.type==AnimalType::Sheep && a.sheared) {
+            a.woolTimer=std::max(0.f,a.woolTimer-dt);
+            if(a.woolTimer<=0 && w.getBlock(int(std::floor(a.position.x)),int(std::floor(a.position.y-.1f)),int(std::floor(a.position.z)))==Block::Grass)a.sheared=false;
+        }
+        if(a.type==AnimalType::Chicken && a.age>=0 && a.resourceTimer<=0) {
+            spawnDrop(a.position+glm::vec3(0,.2f,0),Item::Egg);
+            a.resourceTimer=300.f+float((std::uint32_t(std::abs(a.position.x)*13)^std::uint32_t(std::abs(a.position.z)*31))%300);
+        }
+        if(a.type==AnimalType::Chicken)a.gait=std::fmod(a.gait+dt*12.f,6.2831853f);
+    }
     a.thinkTimer -= dt;
     a.fleeTimer = std::max(0.0f, a.fleeTimer - dt);
     a.angerTimer = std::max(0.0f, a.angerTimer - dt);
@@ -2244,8 +2315,8 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     const bool preferredFood = !player.isSpectator() &&
         (a.type == AnimalType::Cow || a.type == AnimalType::Sheep
                                    ? heldFood == Item::Wheat
-                               : a.type == AnimalType::Pig ? heldFood == Item::Seeds
-                               : false);
+                               : a.type == AnimalType::Pig ? (heldFood==Item::Carrot || heldFood==Item::Potato || heldFood==Item::Beetroot)
+                               : a.type==AnimalType::Chicken ? (heldFood==Item::Seeds || heldFood==Item::BeetrootSeeds || heldFood==Item::PumpkinSeeds || heldFood==Item::MelonSeeds) : false);
     if (a.thinkTimer <= 0.0f) {
         const float detectionRange = definition ? definition->detectionRange :
                                      hostile ? 14.0f : 8.0f;
@@ -2664,6 +2735,26 @@ void SurvivalWorld::renderCuboids(std::vector<RenderCuboid>& out,const glm::vec3
             continue;
         float baby = a.age < 0 ? .55f : 1,
               death = a.deathTimer > 0 ? std::max(.1f, a.deathTimer / .65f) : 1;
+        if(a.type==AnimalType::Chicken) {
+            const float scale=baby*death;
+            const glm::vec3 forward=glm::length(a.heading)>.01f?glm::vec3(a.heading.x,0,a.heading.y):glm::vec3(0,0,1);
+            const glm::vec3 side(-forward.z,0,forward.x);
+            auto part=[&](glm::vec3 offset,glm::vec3 size,glm::vec3 color){if(a.hurtFlash>0)color=glm::mix(color,glm::vec3(1,.1f,.1f),.65f);out.push_back({a.position+(side*offset.x+glm::vec3(0,offset.y,0)+forward*offset.z)*scale,size*scale,color});};
+            const float flap=std::sin(a.gait)*.05f;
+            part({0,.35f,0},{.42f,.38f,.48f},{.88f,.86f,.74f});
+            part({0,.64f,.17f},{.25f,.30f,.25f},{.97f,.94f,.82f});
+            part({0,.62f,.34f},{.17f,.09f,.16f},{.92f,.57f,.10f});
+            part({0,.51f,.25f},{.10f,.12f,.10f},{.73f,.12f,.10f});
+            part({0,.81f,.16f},{.10f,.07f,.13f},{.77f,.14f,.11f});
+            part({-.24f,.37f+flap,0},{.10f,.22f,.33f},{.71f,.71f,.62f});
+            part({.24f,.37f-flap,0},{.10f,.22f,.33f},{.76f,.75f,.66f});
+            for(int j:{-1,1}) {
+                const float step=glm::dot(a.heading,a.heading)>.01f?std::sin(a.gait+j)*.035f:0;
+                part({j*.10f,.10f,.04f+step},{.05f,.22f,.05f},{.85f,.56f,.13f});
+                part({j*.135f,.68f,.27f},{.035f,.045f,.035f},{.09f,.08f,.06f});
+            }
+            continue;
+        }
         glm::vec3 c =
             a.type == AnimalType::Cow
                 ? glm::vec3(.35f, .2f, .12f)
@@ -2675,6 +2766,7 @@ void SurvivalWorld::renderCuboids(std::vector<RenderCuboid>& out,const glm::vec3
                        : glm::vec3(.38f)));
         if (a.hurtFlash > 0)
             c = glm::mix(c, glm::vec3(1, .04f, .03f), .8f);
+        if(a.type==AnimalType::Sheep && a.sheared)c=glm::vec3(.63f,.53f,.43f);
         float scale = baby * death;
         out.push_back(
             {a.position + glm::vec3(0, .55f * scale, 0), glm::vec3(1, .85f, .55f) * scale, c});
@@ -2726,7 +2818,8 @@ void SurvivalWorld::mapReferences(std::unordered_set<std::uint32_t>& refs) const
 }
 bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     if(animals_.size()>SaveValidation::MaxMobs || drops_.size()>SaveValidation::MaxDrops || spawnedStructureMarkers_.size()>SaveValidation::MaxMarkers)return false;
-    for(const auto& a:animals_)if(a.deathTimer<=0 && (!SaveValidation::position(a.position) || !std::isfinite(a.health) || a.health<=0 || a.health>20 || !std::isfinite(a.age) || a.age < -1000000 || a.age>1000000000 || int(a.type)<0 || int(a.type)==3 || int(a.type)>=6+BillboardMobCount))return false;
+    for(const auto& a:animals_)if(a.deathTimer<=0 && (!SaveValidation::position(a.position) || !std::isfinite(a.health) || a.health<=0 || a.health>20 || !std::isfinite(a.age) || a.age < -1000000 || a.age>1000000000 || int(a.type)<0 || int(a.type)==3 || (int(a.type)>=6+BillboardMobCount && a.type!=AnimalType::Chicken)))return false;
+    for(const auto& a:animals_)if(a.deathTimer<=0 && (!std::isfinite(a.resourceTimer)||a.resourceTimer<0||a.resourceTimer>600||!std::isfinite(a.woolTimer)||a.woolTimer<0||a.woolTimer>180||!std::isfinite(a.loveTimer)||a.loveTimer<0||a.loveTimer>30||!std::isfinite(a.breedingCooldown)||a.breedingCooldown<0||a.breedingCooldown>300))return false;
     for(const auto& d:drops_)if(!SaveValidation::position(d.position) || !SaveValidation::velocity(d.velocity) || !SaveValidation::stack(d.stack) || !std::isfinite(d.age) || d.age<0 || !std::isfinite(d.pickupDelay) || d.pickupDelay<0)return false;
     return SaveFile::write(p, std::ios::binary, [&](std::ofstream& f) {
     f.write(MobMagic, 8);
@@ -2741,6 +2834,7 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
             case AnimalType::Cow: type = 0; break;
             case AnimalType::Pig: type = 1; break;
             case AnimalType::Sheep: type = 2; break;
+            case AnimalType::Chicken: type = 10; break;
             case AnimalType::Villager: type = 4; break;
             case AnimalType::Pillager: type = 5; break;
             default:
@@ -2772,6 +2866,8 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     for(const auto& d:drops_){wr(f,d.position);wr(f,d.velocity);wr(f,d.stack.item);wr(f,d.stack.count);wr(f,d.stack.durability);wr(f,d.stack.identity);wr(f,d.age);wr(f,d.pickupDelay);}
     f.write("PST1",4);wr(f,n);
     for(const auto& a:animals_)if(a.deathTimer<=0)wr(f,std::uint8_t(a.persistent));
+    f.write("HUS1",4);wr(f,n);
+    for(const auto& a:animals_)if(a.deathTimer<=0){wr(f,std::uint8_t(a.sheared));wr(f,a.resourceTimer);wr(f,a.woolTimer);wr(f,a.loveTimer);wr(f,a.breedingCooldown);}
     return !!f;
     });
 }
@@ -2800,6 +2896,7 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
         case 3: continue; // Retired Wolf from an older save.
         case 4: a.type = AnimalType::Villager; break;
         case 5: a.type = AnimalType::Pillager; break;
+        case 10: a.type = AnimalType::Chicken; break;
         default:
             if (type < 6 || type >= 6 + BillboardMobCount) return false;
             a.type = static_cast<AnimalType>(type);
@@ -2879,6 +2976,16 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
         std::size_t index=0;
         for(unsigned k=0;k<n;++k){std::uint8_t persistent=0;if(!rd(f,persistent)||persistent>1)return false;
             if(index<recordIndices.size() && recordIndices[index]==k)loaded[index++].persistent=persistent!=0;
+        }
+    }
+    if(f.peek()!=std::char_traits<char>::eof()) {
+        char extension[4]{};std::uint32_t count=0;f.read(extension,4);
+        if(std::memcmp(extension,"HUS1",4)||!rd(f,count)||count!=n)return false;
+        std::size_t index=0;
+        for(unsigned k=0;k<n;++k) {
+            std::uint8_t sheared=0;float resource=0,wool=0,love=0,breed=0;
+            if(!rd(f,sheared)||sheared>1||!rd(f,resource)||!rd(f,wool)||!rd(f,love)||!rd(f,breed)||!std::isfinite(resource)||resource<0||resource>600||!std::isfinite(wool)||wool<0||wool>180||!std::isfinite(love)||love<0||love>30||!std::isfinite(breed)||breed<0||breed>300)return false;
+            if(index<recordIndices.size() && recordIndices[index]==k) {auto& a=loaded[index++];a.sheared=sheared;a.resourceTimer=resource;a.woolTimer=wool;a.loveTimer=love;a.breedingCooldown=breed;}
         }
     }
     if(f.peek()!=std::char_traits<char>::eof())return false;

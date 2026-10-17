@@ -23,6 +23,7 @@ struct PlayerInput {
 };
 
 class Player {
+    friend class FarmingTest;
 public:
     static constexpr float Width = 0.60f, Height = 1.80f, EyeHeight = 1.62f;
     explicit Player(const glm::vec3& spawnPosition);
@@ -40,7 +41,9 @@ public:
     void killByCommand();
     void applyImpulse(const glm::vec3& impulse);
     void heal(float amount);
-    void eat(float foodPoints);
+    void eat(float foodPoints, float saturation = 0);
+    float saturation() const { return saturation_; }
+    void exhaust(float amount);
     void addExperience(int amount);
     void respawn(const World& world);
     void setCreativeMode(bool enabled);
@@ -121,7 +124,7 @@ private:
     Burning burning_;
     PlayerDamageSource lastDamageSource_=PlayerDamageSource::General;
     glm::vec3 position_, velocity_{0.f};
-    float yaw_ = -90.f, pitch_ = -12.f, health_ = 20.f, hunger_ = 20.f, exhaustion_ = 0.f,
+    float yaw_ = -90.f, pitch_ = -12.f, health_ = 20.f, hunger_ = 20.f, saturation_ = 5.f, exhaustion_ = 0.f,
           regenTimer_ = 0.f;
     float fallDistance_ = 0.f, respawnTimer_ = 0.f, hurtFlash_ = 0.f, damageInvulnerability_ = 0.f,
           mouseSensitivity_ = 0.10f;

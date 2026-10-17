@@ -132,6 +132,8 @@ enum class Block : std::uint8_t {
     Deepslate, DeepslateCoalOre, DeepslateIronOre, DeepslateCopperOre, DeepslateGoldOre, DeepslateDiamondOre, Bedrock, Lava,
     Cobweb, CrackedStoneBricks,
     LavaFlow1, LavaFlow2, LavaFlow3, LavaFlow4, LavaFalling,
+    // v2.15.0 crop stages and persistent composter fill.
+    Carrot0, Carrot1, Carrot2, Carrot3, Potato0, Potato1, Potato2, Potato3, Beetroot0, Beetroot1, Beetroot2, Beetroot3, PumpkinStem0, PumpkinStem1, PumpkinStem2, PumpkinStem3, MelonStem0, MelonStem1, MelonStem2, MelonStem3, Pumpkin, Melon, BerryBush0, BerryBush1, BerryBush2, BerryBush3, Composter0, Composter1, Composter2, Composter3, Composter4,
     Count
 };
 
@@ -183,8 +185,16 @@ inline std::uint8_t blockLightEmission(Block block) {
     return block == Block::Torch || block == Block::Fire || isLava(block) ? 15U : 0U;
 }
 inline bool isCrop(Block b) {
-    return b >= Block::Crop0 && b <= Block::Crop3;
+    return (b >= Block::Crop0 && b <= Block::Crop3) ||
+           (b >= Block::Carrot0 && b <= Block::MelonStem3);
 }
+inline bool isBerryBush(Block b) { return b >= Block::BerryBush0 && b <= Block::BerryBush3; }
+inline bool isComposter(Block b) { return b >= Block::Composter0 && b <= Block::Composter4; }
+inline bool isFarmland(Block b) { return b == Block::Farmland || b == Block::WetFarmland; }
+inline int cropStage(Block b) { return b <= Block::Crop3 ? int(b)-int(Block::Crop0) : (int(b)-int(Block::Carrot0))%4; }
+inline Block cropBase(Block b) { return Block(int(b)-cropStage(b)); }
+inline bool isFarmTracked(Block b) { return isCrop(b) || isBerryBush(b) || isFarmland(b) || b==Block::SugarCane || b==Block::RedMushroom || b==Block::BrownMushroom; }
+static_assert(int(Block::Count) <= 255, "Block sentinel must fit the save byte");
 inline bool isLog(Block b) {
     return b==Block::Log||b==Block::BirchLog||b==Block::SpruceLog||b==Block::JungleLog||
            b==Block::AcaciaLog||b==Block::DarkOakLog;
@@ -195,7 +205,7 @@ inline bool isLeaf(Block b) {
            b == Block::AcaciaLeaves || b == Block::DarkOakLeaves;
 }
 inline bool isPlant(Block b) {
-    return b == Block::TallGrass || b == Block::RedFlower || b == Block::YellowFlower ||
+    return isCrop(b) || isBerryBush(b) || b == Block::TallGrass || b == Block::RedFlower || b == Block::YellowFlower ||
            b == Block::SugarCane || b == Block::Fire || b == Block::Bamboo ||
            b == Block::Cobweb || b == Block::Fern || b == Block::DeadBush || b == Block::RedMushroom || b == Block::BrownMushroom;
 }
@@ -390,6 +400,11 @@ inline BlockGeometryProperties blockGeometry(Block block) {
         geometry.aoOcclusion = 0.0f;
     } else if (isPlant(block) || isCrop(block)) {
         geometry.shape = BlockShape::Crossed;
+        if (isCrop(block) || isBerryBush(block)) {
+            geometry.minX = geometry.minZ = .12f;
+            geometry.maxX = geometry.maxZ = .88f;
+            geometry.maxY = isCrop(block) ? .25f + .20f * cropStage(block) : .35f + .18f*(int(block)-int(Block::BerryBush0));
+        }
         geometry.occludesNeighborFaces = false;
         geometry.aoOcclusion = 0.0f;
     } else if (block == Block::Torch) {

@@ -1,0 +1,35 @@
+Isolated fixture: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-7307485262600"
+twenty_minute_precise_clock passed=1
+precise_clock_time_command passed=1
+before_mode health=13 hunger=10
+player_statistics_roundtrip passed=1
+settings_reject_nan passed=1
+large_mobs_roundtrip passed=1
+large_drops_roundtrip passed=1
+oversized_drops_split passed=1
+falling_drop_valid passed=1
+invalid_velocity_admission passed=1
+falling_drop_roundtrip passed=1
+nonfinite_mob_admission passed=1
+nonfinite_mob_load_rejected passed=1
+World session reservation failed: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-7307485262600\\.session.lock" code=32 message=The process cannot access the file because it is being used by another process. requester_pid=18152 (already reserved by another handle; same or other process)
+world_session_exclusive passed=1
+start_simultaneous_session passed=1
+cross_process_session_exclusive passed=1
+invalid_inventory_no_partial_mutation passed=1
+invalid_navigation_no_partial_mutation passed=1
+player_failed_load_transactional passed=1
+distant_passive_preparation_filtered passed=1
+passive_preparation_all_ms=0.173545 filtered_ms=0.006225
+Save failure stage=invalid-journal path="saves\\world-2160086924-3881684552\\save.checkpoint" domain=system code=0 message=no OS error supplied (see stage) thread=12696 save not reported successful; preserve checkpoint/backup files for recovery
+broken_world_listing_isolated passed=1
+high_altitude_position_roundtrip passed=1
+farming_scan_mean_ms=0.000225 worst_ms=0.0034
+negative_y_crop_fertilization passed=1
+far_crop_no_coordinate_alias passed=1
+unloaded_collision_waits passed=1
+raycast_respects_slab passed=1
+far_teleport_unloads_origin passed=1
+far_simulation_radius_preserved passed=1
+map_limit_safe passed=1
+map_reference_reclamation passed=1

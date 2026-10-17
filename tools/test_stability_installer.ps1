@@ -1,11 +1,17 @@
-param([string]$Output='build/v2142-validation/installer-check')
+param(
+ [string]$Output='build/v2150-validation/installer-check',
+ [string]$BaselineVersion='2.14.3',
+ [string]$CurrentVersion='2.15.0',
+ [string]$BaselineExe='build/v2150-validation/baseline/VoxelFrontier.exe',
+ [string]$CurrentExe='build/installed-release/Release/VoxelFrontier.exe'
+)
 $ErrorActionPreference='Stop'
 $root=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'));$out=Join-Path $root $Output
 if(Test-Path $out){$out=Join-Path $out ([guid]::NewGuid().ToString('N'))}
 New-Item -ItemType Directory -Force $out | Out-Null
 $install=Join-Path $out 'installed';$testProfile=Join-Path $out 'profile';New-Item -ItemType Directory -Force $testProfile | Out-Null
 New-Item -ItemType File -Path (Join-Path $testProfile '.voxel_test_sandbox') -Force | Out-Null
-$id='VFStability2142.'+[guid]::NewGuid().ToString('N');$name='VFStabilityFixture'+[guid]::NewGuid().ToString('N').Substring(0,8)
+$id='VFStabilityFixture.'+[guid]::NewGuid().ToString('N');$name='VFStabilityFixture'+[guid]::NewGuid().ToString('N').Substring(0,8)
 $testKey="HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\${id}_is1"
 if(Test-Path $testKey){throw 'Test installer ID collision'}
 $productionKey='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\VoxelFrontier.BocchiTheTank131_is1'
@@ -15,8 +21,8 @@ $beforeProduction=ProductionState
 $compiler='C:/Users/Win/AppData/Local/Programs/Inno Setup 7/ISCC.exe'
 $prior=$env:VOXEL_FRONTIER_DATA_DIR
 try {
- foreach($version in @('2.14.1','2.14.2')){
-  $source=if($version -eq '2.14.1'){Join-Path $root 'build/v2142-validation/baseline/VoxelFrontier-v2.14.1.exe'}else{Join-Path $root 'build/installed-release/Release/VoxelFrontier.exe'}
+ foreach($version in @($BaselineVersion,$CurrentVersion)){
+  $source=[IO.Path]::GetFullPath((Join-Path $root $(if($version -eq $BaselineVersion){$BaselineExe}else{$CurrentExe})))
   $destination=Join-Path $out $version;New-Item -ItemType Directory -Force $destination | Out-Null
   $compilerArguments=@("--define=AppVersion=$version","--define=AppDisplayVersion=$version-test","--define=SourceExe=$source","--define=OutputDir=$destination","--define=IconPath=$(Join-Path $root 'packaging/VoxelFrontier.ico')","--define=AppId=$id","--define=AppDisplayName=$name","--define=ShortcutName=$name","--define=DefaultInstallDir=$install",(Join-Path $root 'packaging/VoxelFrontier.iss'))
   & $compiler @compilerArguments *> (Join-Path $out "compile-$version.log");if($LASTEXITCODE){throw "Compile $version failed"}
@@ -25,7 +31,7 @@ try {
   if($p.ExitCode){throw "Install $version failed: $($p.ExitCode)"}
   if((Get-FileHash (Join-Path $install 'VoxelFrontier.exe')).Hash -ne (Get-FileHash $source).Hash){throw 'Installer payload hash mismatch'}
   if((Get-ItemProperty $testKey).DisplayVersion -ne $version){throw 'Upgrade version registration mismatch'}
-  if($version -eq '2.14.2' -and (Compare-Object $beforeUpgrade (ProfileState))){throw 'Upgrade modified isolated save files'}
+  if($version -eq $CurrentVersion -and (Compare-Object $beforeUpgrade (ProfileState))){throw 'Upgrade modified isolated save files'}
   Set-Content (Join-Path $testProfile 'voxel_settings.cfg') 'render_distance=2';$env:VOXEL_FRONTIER_DATA_DIR=$testProfile
   & (Join-Path $install 'VoxelFrontier.exe') --menu-smoke | Out-Null
   if($LASTEXITCODE){throw "Installed $version menu/save regression failed"}

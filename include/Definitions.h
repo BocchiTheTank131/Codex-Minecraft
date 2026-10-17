@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-enum class ToolKind : std::uint8_t { None, Pickaxe, Axe, Shovel, Sword };
+enum class ToolKind : std::uint8_t { None, Pickaxe, Axe, Shovel, Sword, Hoe, Shears };
 enum class SoundMaterial : std::uint8_t { Stone, Wood, Grass, Gravel, Sand, Snow };
 
 struct ItemDefinition {
@@ -16,6 +16,8 @@ struct ItemDefinition {
     int tier = 0;
     int durability = 0;
     float foodValue = 0.0f;
+    float saturation = 0.0f;
+    Item foodContainer = Item::None;
     float attackDamage = 1.0f;
     float attackCooldown = 0.42f;
     Block placedBlock = Block::Air;
@@ -45,7 +47,7 @@ const BlockDefinition& blockDefinition(Block block);
 bool itemFromSaveId(std::uint8_t id, Item& item);
 bool blockFromSaveId(std::uint8_t id, Block& block);
 int blockTexture(Block block, int faceIndex);
-inline constexpr int BlockAtlasTiles = 106;
+inline constexpr int BlockAtlasTiles = 143;
 float furnaceFuelSeconds(Item item);
 
 struct ItemAtlasLayout {

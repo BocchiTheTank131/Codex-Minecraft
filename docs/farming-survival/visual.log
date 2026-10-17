@@ -1,0 +1,16 @@
+Isolated fixture: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-7290133179100"
+Audio: loaded 104 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/milky way.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+farming game_initialize passed=1
+farming world_open passed=1
+Screenshot saved: screenshots\voxel_1792218888983.bmp
+farming screenshot_farm-overview passed=1
+Screenshot saved: screenshots\voxel_1792218893003.bmp
+farming screenshot_farm-ground passed=1
+Screenshot saved: screenshots\voxel_1792218897013.bmp
+farming screenshot_chickens-livestock passed=1
+Screenshot saved: screenshots\voxel_1792218901020.bmp
+farming screenshot_farming-inventory passed=1
+farming showcase_checkpoint passed=1

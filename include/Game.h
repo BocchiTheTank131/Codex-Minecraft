@@ -30,6 +30,7 @@ class Transportation;
 namespace SaveFile { class Session; struct CommitStatus; }
 
 class Game {
+    friend class FarmingTest;
     friend class StabilityTest;
 public:
     Game();

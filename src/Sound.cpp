@@ -64,6 +64,7 @@ const char* mobFolder(MobSoundType type) {
     case MobSoundType::Cow: return "cow/";
     case MobSoundType::Pig: return "pig/";
     case MobSoundType::Sheep: return "sheep/";
+    case MobSoundType::Chicken: return "chicken/";
     default: return "";
     }
 }

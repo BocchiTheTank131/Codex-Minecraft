@@ -78,9 +78,14 @@ void Player::heal(float a) {
     if (!dead_ && std::isfinite(a) && a>=0)
         health_ = std::min(20.f, health_ + a);
 }
-void Player::eat(float f) {
-    if (spectatorMode_ || !std::isfinite(f))return;
+void Player::eat(float f,float saturation) {
+    if (spectatorMode_ || dead_ || !std::isfinite(f) || !std::isfinite(saturation) || saturation<0)return;
     hunger_ = std::clamp(hunger_+f,0.f,20.f);
+    saturation_ = std::clamp(saturation_+saturation,0.f,hunger_);
+}
+void Player::exhaust(float amount) {
+    if(!creativeMode_ && !spectatorMode_ && !dead_ && std::isfinite(amount) && amount>0)
+        exhaustion_=std::min(40.f,exhaustion_+amount);
 }
 int Player::xpLevel() const {
     int level = 0, x = experience_;
@@ -110,7 +115,7 @@ void Player::respawn(const World& world) {
     position_ = world.generationVersion()>=22 && !creativeMode_ && !spectatorMode_ ?
         world.findSurvivalSpawnNear(0,0) : world.findSafeSpawnNear(0, 0);
     velocity_ = glm::vec3(0.0f);
-    health_ = hunger_ = 20.0f;
+    health_ = hunger_ = 20.0f; saturation_=5;
     fallDistance_ = lastFallDamage_ = exhaustion_ = regenTimer_ = 0.0f;
     burning_.clear();
     blocking_=false;shieldFeedback_=0;
@@ -123,8 +128,7 @@ void Player::respawn(const World& world) {
 void Player::setCreativeMode(bool enabled) {
     spectatorMode_ = false;
     creativeMode_ = enabled;
-    health_ = 20.0f;
-    hunger_ = 20.0f;
+    if(dead_) health_=1.f;
     dead_ = false;
     respawnTimer_ = 0.0f;
     fallDistance_ = 0.0f;
@@ -175,10 +179,11 @@ void Player::setFlying(bool enabled) {
         velocity_ = glm::vec3(0.0f);
 }
 bool Player::save(const std::string& p, std::uint32_t seed) const {
-    if(!std::isfinite(health_) || health_<0 || health_>20 || !std::isfinite(hunger_) || hunger_<0 || hunger_>20 || experience_<0)return false;
+    if(!std::isfinite(health_) || health_<0 || health_>20 || !std::isfinite(hunger_) || hunger_<0 || hunger_>20 || experience_<0 || !std::isfinite(saturation_) || saturation_<0 || saturation_>hunger_ || !std::isfinite(exhaustion_) || exhaustion_<0 || exhaustion_>40 || !std::isfinite(regenTimer_) || regenTimer_<0 || regenTimer_>4.1f)return false;
     return SaveFile::write(p, std::ios::binary, [&](std::ofstream& f) {
         f.write(Magic, 8);
-        return wr(f, seed) && wr(f, health_) && wr(f, hunger_) && wr(f, experience_);
+        if(!(wr(f, seed) && wr(f, health_) && wr(f, hunger_) && wr(f, experience_)))return false;
+        f.write("NUT1",4);return wr(f,saturation_) && wr(f,exhaustion_) && wr(f,regenTimer_);
     });
 }
 bool Player::load(const std::string& p, std::uint32_t seed) {
@@ -190,9 +195,15 @@ bool Player::load(const std::string& p, std::uint32_t seed) {
     f.read(m, 8);
     float health=0,hunger=0;int experience=0;
     if (std::memcmp(m, Magic, 8) || !rd(f,s) || s!=seed || !rd(f,health) || !rd(f,hunger) || !rd(f,experience) ||
-        !std::isfinite(health) || health<0 || health>20 || !std::isfinite(hunger) || hunger<0 || hunger>20 || experience<0 ||
-        f.peek()!=std::char_traits<char>::eof())return false;
-    health_=health;hunger_=hunger;experience_=experience;
+        !std::isfinite(health) || health<0 || health>20 || !std::isfinite(hunger) || hunger<0 || hunger>20 || experience<0)return false;
+    float saturation=std::min(5.f,hunger),exhaustion=0,regen=0;
+    if(f.peek()!=std::char_traits<char>::eof()) {
+        char tag[4]{};f.read(tag,4);
+        if(std::memcmp(tag,"NUT1",4) || !rd(f,saturation) || !rd(f,exhaustion) || !rd(f,regen) ||
+           !std::isfinite(saturation) || saturation<0 || saturation>hunger || !std::isfinite(exhaustion) || exhaustion<0 || exhaustion>40 || !std::isfinite(regen) || regen<0 || regen>4.1f)return false;
+    }
+    if(f.peek()!=std::char_traits<char>::eof())return false;
+    health_=health;hunger_=hunger;experience_=experience;saturation_=saturation;exhaustion_=exhaustion;regenTimer_=regen;
     dead_=health_==0;respawnTimer_=dead_?2.f:0.f;
     return true;
 }
@@ -422,7 +433,7 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
             velocity_.y = 8.3f;
             grounded_ = false;
             fallDistance_ = 0.0f;
-            exhaustion_ += 0.25f;
+            exhaust(sprinting_ ? .2f : .05f);
         }
         velocity_.y = std::max(velocity_.y - 24.0f * deltaTime, -45.0f);
     }
@@ -455,17 +466,13 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
         for(int i=0;i<ticks;++i) damage(1.f,PlayerDamageSource::Burning);
     }
 
-    if (creativeMode_) {
-        exhaustion_ = 0.0f;
-        regenTimer_ = 0.0f;
-        health_ = 20.0f;
-        hunger_ = 20.0f;
-    } else {
+    if (!creativeMode_) {
         if (glm::dot(movement, movement) > 0.0f)
-            exhaustion_ += deltaTime * (sprinting_ ? 0.12f : 0.018f);
+            exhaust(deltaTime * (inWater_ ? .20f : sprinting_ ? .32f : .08f));
         if (exhaustion_ >= 4.0f) {
             exhaustion_ -= 4.0f;
-            hunger_ = std::max(0.0f, hunger_ - 1.0f);
+            if(saturation_>0)saturation_=std::max(0.f,saturation_-1.f);
+            else hunger_ = std::max(0.0f, hunger_ - 1.0f);
         }
 
         regenTimer_ += deltaTime;
@@ -473,9 +480,9 @@ void Player::update(float deltaTime, const PlayerInput& input, const World& worl
             regenTimer_ = 0.0f;
             if (hunger_ >= 18.0f && health_ < 20.0f) {
                 heal(1.0f);
-                hunger_ = std::max(0.0f, hunger_ - 0.5f);
+                exhaust(3.f);
             } else if (hunger_ <= 0.0f) {
-                damage(1.0f);
+                damage(1.0f,PlayerDamageSource::Starvation);
             }
         }
     }

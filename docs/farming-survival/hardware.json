@@ -1,0 +1,10 @@
+{
+  "cpu": "Intel(R) Core(TM) i7-14700F",
+  "logical_processors": 28,
+  "gpu": [
+    "AMD Radeon RX 9060 XT"
+  ],
+  "ram_gib": 31.84,
+  "full_product_version": "2.15.0",
+  "demo_product_version": "2.15.0"
+}

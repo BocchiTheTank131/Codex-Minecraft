@@ -84,7 +84,7 @@ std::string modeName(GameMode mode) {
 }
 const std::vector<std::string>& mobNames() {
     static const std::vector<std::string> names{
-        "cow", "pig", "sheep", "villager", "pillager",
+        "cow", "pig", "sheep", "chicken", "villager", "pillager",
         "HitoriGotoh", "KitaIkuyo", "NijikaIjichi", "RyoYamada", "lightning_bolt"};
     return names;
 }

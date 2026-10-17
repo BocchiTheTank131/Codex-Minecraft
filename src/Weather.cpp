@@ -99,8 +99,6 @@ void Weather::environmentColumn(World& world, int x, int z, const GameSettings& 
         if (world.getBlock(x,y,z)==Block::Fire &&
             ((intensity_>.15f && kind==Precipitation::Rain) || nextRandom()%4==0))
             world.setBlock(x,y,z,Block::Air);
-        if (top==Block::WetFarmland && (intensity_<.05f || kind==Precipitation::None))
-            world.setBlock(x,y-1,z,Block::Farmland);
         const int layers=snowLayers(top);
         if(settings.snowAccumulation && kind==Precipitation::Snow && intensity_>.4f &&
            world.blockLightAt(x,y,z)<10 && layers>0 && layers<8)
