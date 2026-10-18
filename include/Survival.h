@@ -15,7 +15,7 @@ class SoundSystem;
 class World;
 
 // Never reorder existing values: inventory V4 saves store these numeric IDs.
-enum class Item : std::uint8_t {
+enum class Item : std::uint16_t {
     None = 0,
     Grass,
     Dirt,
@@ -138,6 +138,8 @@ enum class Item : std::uint8_t {
     OakBoat, BirchBoat, SpruceBoat, JungleBoat, AcaciaBoat, DarkOakBoat, EmptyMap, FilledMap, Compass,
     // v2.15.0: append only, all historical save IDs retained.
     Carrot, Potato, BakedPotato, Beetroot, BeetrootSeeds, PumpkinSeeds, Pumpkin, MelonSeeds, Melon, MelonSlice, SweetBerries, WoodHoe, StoneHoe, IronHoe, GoldHoe, DiamondHoe, BoneMeal, Composter, Shears, Bucket, MilkBucket, Egg, RawChicken, CookedChicken, Feather, Bowl, Sugar, BeetrootSoup, MushroomStew, PumpkinPie, Cookie, VegetableStew,
+    // v2.16.0: stable types; orientation and connections are properties.
+    OakStairs, OakSlab, OakFence, OakFenceGate, OakTrapdoor, OakDoor, OakStrippedLog, OakButton, OakPressurePlate, OakTable, OakChair, OakBench, OakSign, OakShelf, BirchStairs, BirchSlab, BirchFence, BirchFenceGate, BirchTrapdoor, BirchDoor, BirchStrippedLog, BirchButton, BirchPressurePlate, BirchTable, BirchChair, BirchBench, BirchSign, BirchShelf, SpruceStairs, SpruceSlab, SpruceFence, SpruceFenceGate, SpruceTrapdoor, SpruceDoor, SpruceStrippedLog, SpruceButton, SprucePressurePlate, SpruceTable, SpruceChair, SpruceBench, SpruceSign, SpruceShelf, JungleStairs, JungleSlab, JungleFence, JungleFenceGate, JungleTrapdoor, JungleDoor, JungleStrippedLog, JungleButton, JunglePressurePlate, JungleTable, JungleChair, JungleBench, JungleSign, JungleShelf, AcaciaStairs, AcaciaSlab, AcaciaFence, AcaciaFenceGate, AcaciaTrapdoor, AcaciaDoor, AcaciaStrippedLog, AcaciaButton, AcaciaPressurePlate, AcaciaTable, AcaciaChair, AcaciaBench, AcaciaSign, AcaciaShelf, DarkOakStairs, DarkOakSlab, DarkOakFence, DarkOakFenceGate, DarkOakTrapdoor, DarkOakDoor, DarkOakStrippedLog, DarkOakButton, DarkOakPressurePlate, DarkOakTable, DarkOakChair, DarkOakBench, DarkOakSign, DarkOakShelf, CobblestoneStairs, CobblestoneSlab, CobblestoneWall, StoneStairs, StoneCutSlab, StoneWall, StoneBricksStairs, StoneBricksSlab, StoneBricksWall, MossyCobblestoneStairs, MossyCobblestoneSlab, MossyCobblestoneWall, MossyStoneBricksStairs, MossyStoneBricksSlab, MossyStoneBricksWall, BricksStairs, BricksSlab, BricksWall, SandstoneStairs, SandstoneSlab, SandstoneWall, DeepslateStairs, DeepslateSlab, DeepslateWall, PolishedGraniteStairs, PolishedGraniteSlab, PolishedGraniteWall, PolishedDioriteStairs, PolishedDioriteSlab, PolishedDioriteWall, PolishedAndesiteStairs, PolishedAndesiteSlab, PolishedAndesiteWall, ChiseledStoneBricks, SmoothStone, SmoothSandstone, CutSandstone, PolishedDeepslate, DeepslateBricks, CrackedDeepslateBricks, RoofShingles, GlassPane, RoseGlassPane, AmberGlassPane, SmokedGlassPane, Lantern, Chain, Candle, Campfire, Bed, Barrel, Painting, ItemFrame, FlowerPot, Carpet, DirtPath, StonePaving, Scaffold,
     Count
 };
 
@@ -230,7 +232,8 @@ public:
     void clear();
     void setCreativeCursor(Item item);
     bool handleCreativeClick(
-        double mouseX, double mouseY, int width, int height, bool rightClick, bool shiftClick = false);
+        double mouseX, double mouseY, int width, int height, bool rightClick, bool shiftClick = false,int page = 0);
+    bool handleCreativeClick(const UiHit& hit,bool rightClick,bool shiftClick = false);
     ItemStack craftingOutput(bool tableMode) const;
     bool takeCraftingOutput(bool tableMode);
     int craftOutputToInventory(bool tableMode);
@@ -287,7 +290,7 @@ bool canHarvestBlock(Item item, Block block);
 Item smeltingResult(Item item);
 bool isFood(Item item);
 float foodValue(Item item);
-static_assert(int(Item::Count)<=255, "Item sentinel must fit the save byte");
+static_assert(int(Item::Count)<=65535, "Item sentinel must fit the save byte");
 float blockHardness(Block block);
 float toolBreakMultiplier(Item item, Block block);
 float attackDamage(Item item);
@@ -298,6 +301,8 @@ struct RenderItemSprite {
     glm::vec3 center{0};
     Item item = Item::None;
     float size = .42f;
+    bool fixed=false;glm::vec3 normal{0,0,1};int rotation=0;
+    bool worldPlant=false; // Potted plants use crossed world-atlas faces, not item icons.
 };
 struct RenderCuboid {
     glm::vec3 center{0};
@@ -332,6 +337,7 @@ struct AttackResult {
 class Weather;
 class SurvivalWorld {
     friend class FarmingTest;
+    friend class BuildingTest;
     friend class StabilityTest;
 public:
     struct MobDiagnostics {
@@ -351,7 +357,8 @@ public:
     void lightningDamage(const glm::vec3& center, const World& world);
     void
     update(float deltaTime, World& world, Player& player, Inventory& inventory, float daylight);
-    void spawnDrop(const glm::vec3& position,
+    bool anyMobIntersects(const glm::vec3& minimum,const glm::vec3& maximum) const;
+    bool spawnDrop(const glm::vec3& position,
                    Item item,
                    int amount = 1,
                    int durability = -1,

@@ -63,6 +63,7 @@ public:
                    const std::string& debugText,
                    const std::string& statusText,
                    bool spectator = false) const;
+    void renderBuildingOverlay(int width,int height,const World&,const Player&,const glm::mat4& view,const glm::mat4& projection,bool editor,const std::string& draft,const glm::ivec3& target) const;
     void renderNavigation(int,int,const Transportation&,const Player&,const Inventory&,bool,bool,std::uint32_t,const std::string&,const std::string&,bool,const std::string&) const;
     void renderChat(int width, int height, const ChatUI& chat, double now) const;
     void renderNowPlaying(int width, int height, const std::string& songName) const;
@@ -84,7 +85,7 @@ public:
                                  int height,
                                  const Inventory& inventory,
                                  double mouseX,
-                                 double mouseY) const;
+                                 double mouseY,int page=0) const;
     void renderFurnace(int width,
                        int height,
                        const Inventory& inventory,

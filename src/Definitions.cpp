@@ -1,4 +1,5 @@
 #include "Definitions.h"
+#include "Building.h"
 #include "BiomeContent.h"
 #include "UndergroundContent.h"
 #include <limits>
@@ -22,7 +23,7 @@ using Items = std::array<ItemDefinition, static_cast<std::size_t>(Item::Count)>;
 const Items& items() {
     static const Items definitions = [] {
         Items result{};
-        auto put = [&](Item item, std::uint8_t id, int sprite, const char* name) {
+        auto put = [&](Item item, std::uint16_t id, int sprite, const char* name) {
             ItemDefinition& definition = result[static_cast<std::size_t>(item)];
             definition.displayName = spacedName(name);
             definition.saveId = id;
@@ -348,6 +349,10 @@ const Items& items() {
         result[int(Item::CookedBeef)].saturation=11.2f;
         result[int(Item::CookedPork)].saturation=11.2f;
         result[int(Item::CookedMutton)].saturation=9.6f;
+        for(const auto& c:buildingContent()) {
+            put(c.item,std::uint16_t(c.item),int(c.item),c.name);
+            result[int(c.item)].placedBlock=c.block;
+        }
         return result;
     }();
     return definitions;
@@ -356,7 +361,7 @@ using Blocks = std::array<BlockDefinition, static_cast<std::size_t>(Block::Count
 const Blocks& blocks() {
     static const Blocks definitions = [] {
         Blocks result{};
-        auto put = [&](Block block, std::uint8_t id, int top, int side, int bottom, Item drop) {
+        auto put = [&](Block block, std::uint16_t id, int top, int side, int bottom, Item drop) {
             BlockDefinition& definition = result[static_cast<std::size_t>(block)];
             definition.saveId = id;
             definition.topTexture = top;
@@ -663,6 +668,12 @@ const Blocks& blocks() {
             auto& d=result[int(i?Block::WetFarmland:Block::Farmland)];
             d.topTexture=141+i;
         }
+        for(const auto& c:buildingContent()) {
+            const auto base=result[int(c.material)];
+            put(c.block,std::uint16_t(c.block),base.topTexture,base.sideTexture,base.bottomTexture,c.item);
+            auto& d=result[int(c.block)];d.hardness=base.hardness;d.correctTool=base.correctTool;d.soundMaterial=base.soundMaterial;
+            d.emittedLight=blockLightEmission(c.block);
+        }
         return result;
     }();
     return definitions;
@@ -674,33 +685,24 @@ const ItemDefinition& itemDefinition(Item item) {
     return items()[index < items().size() ? index : 0];
 }
 const BlockDefinition& blockDefinition(Block block) {
-    const std::size_t index = static_cast<std::size_t>(block);
+    const std::size_t index = static_cast<std::size_t>(blockType(block));
     return blocks()[index < blocks().size() ? index : 0];
 }
-bool itemFromSaveId(std::uint8_t id, Item& item) {
-    static const auto ids = [] {
-        std::array<Item, 256> lookup{};
-        lookup.fill(Item::Count);
-        for (std::size_t index = 0; index < items().size(); ++index)
-            lookup[items()[index].saveId] = static_cast<Item>(index);
-        return lookup;
-    }();
-    item = ids[id];
-    return item != Item::Count;
+bool itemFromSaveId(std::uint16_t id, Item& item) {
+    if(id>=std::uint16_t(Item::Count))return false;
+    item=Item(id);return itemDefinition(item).saveId==id;
 }
-bool blockFromSaveId(std::uint8_t id, Block& block) {
-    static const auto ids = [] {
-        std::array<Block, 256> lookup{};
-        lookup.fill(Block::Count);
-        for (std::size_t index = 0; index < blocks().size(); ++index)
-            lookup[blocks()[index].saveId] = static_cast<Block>(index);
-        return lookup;
-    }();
-    block = ids[id];
-    return block != Block::Count;
+bool validBlockState(Block block) {
+    return isBuilding(block)?validBuildingState(block):std::uint32_t(blockType(block))<198 && (blockProperties(block)==0 || (isLog(block) && blockProperties(block)<=2) || (isTorch(block) && blockProperties(block)<=4));
+}
+bool blockFromSaveId(std::uint32_t id, Block& block) {
+    const Block candidate=Block(id);if(!validBlockState(candidate))return false;
+    block=candidate;return true;
 }
 int blockTexture(Block block, int faceIndex) {
+    if(isBuilding(block))return buildingTexture(block,faceIndex);
     const BlockDefinition& definition = blockDefinition(block);
+    if(isLog(block) && blockProperties(block)){const bool end=blockProperties(block)==1?(faceIndex<2):(faceIndex>=4);return end?definition.topTexture:definition.sideTexture;}
     return faceIndex == 2 ? definition.topTexture
          : faceIndex == 3 ? definition.bottomTexture : definition.sideTexture;
 }

@@ -24,6 +24,7 @@ struct PlayerInput {
 
 class Player {
     friend class FarmingTest;
+    friend class BuildingTest;
 public:
     static constexpr float Width = 0.60f, Height = 1.80f, EyeHeight = 1.62f;
     explicit Player(const glm::vec3& spawnPosition);
@@ -46,6 +47,9 @@ public:
     void exhaust(float amount);
     void addExperience(int amount);
     void respawn(const World& world);
+    void setPersonalBed(glm::ivec3 bed){personalBed_=bed;hasPersonalBed_=true;}
+    bool hasPersonalBed() const {return hasPersonalBed_;}
+    glm::ivec3 personalBed() const {return personalBed_;}
     void setCreativeMode(bool enabled);
     void setSpectatorMode(bool enabled);
     void adjustSpectatorSpeed(double scrollSteps);
@@ -115,6 +119,9 @@ public:
     float xpProgress() const;
 
 private:
+    bool walkStep_=false;
+    bool hasPersonalBed_=false;
+    glm::ivec3 personalBed_{0};
     const Transportation* transportation_=nullptr;
     bool riding_=false;
     std::uint32_t positionRevision_=0;

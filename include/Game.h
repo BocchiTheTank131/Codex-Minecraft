@@ -31,6 +31,7 @@ namespace SaveFile { class Session; struct CommitStatus; }
 
 class Game {
     friend class FarmingTest;
+    friend class BuildingTest;
     friend class StabilityTest;
 public:
     Game();
@@ -56,6 +57,13 @@ private:
     void pollSave(bool wait=false);
     void blockSaving(const std::string& reason);
     void reclaimMapsIfNeeded();
+    bool buildingUse(Item held,bool offhand);
+    bool buildingInput();
+    void updateBuilding(float deltaTime);
+    bool signEditorOpen_=false;glm::ivec3 signPosition_{0};std::string signDraft_;
+    float buildingFeedbackTimer_=0;
+    std::optional<glm::ivec3> pressedPlate_;
+    std::vector<std::pair<glm::ivec3,float>> pressedButtons_;
     int recoverWorldPending_=-1;
     double recoverWorldUntil_=0;
     struct TimingState {

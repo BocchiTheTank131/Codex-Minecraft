@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Block.h"
+#include "Building.h"
 #include <glm/glm.hpp>
 #include <algorithm>
 #include <array>
@@ -16,12 +17,14 @@ inline const BlockGeometryProperties& geometry(Block block) {
             result[i] = blockGeometry(static_cast<Block>(i));
         return result;
     }();
-    return properties[static_cast<std::size_t>(block)];
+    if(blockProperties(block)){thread_local BlockGeometryProperties state;state=blockGeometry(block);return state;}
+    return properties[static_cast<std::size_t>(blockType(block))];
 }
 
 // The sample is the face corner expressed in the neighbor block's local space.
 // A bounded distance to the block's occupied box softens partial-shape contacts.
 inline float contribution(Block block, const glm::vec3& sample) {
+    if(isBuilding(block)){if(buildingTransparent(block))return 0;const auto parts=buildingBoxes(block);float result=0;for(int i=0;i<parts.count;++i){auto box=parts.boxes[i];auto delta=glm::max(glm::max(box.minimum-sample,sample-box.maximum),glm::vec3(0));float distance=std::max({delta.x,delta.y,delta.z});result=std::max(result,(buildingOccludesLight(block)?1.f:.15f)*std::clamp(1-distance/.375f,0.f,1.f));}return result;}
     const BlockGeometryProperties& shape = geometry(block);
     if (shape.aoOcclusion <= 0.0f) return 0.0f;
     if (shape.aoOcclusion >= 1.0f &&

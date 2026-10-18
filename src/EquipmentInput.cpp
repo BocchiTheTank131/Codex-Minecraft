@@ -4,6 +4,7 @@
 #include "Survival.h"
 #include "Definitions.h"
 #include "Farming.h"
+#include "Building.h"
 #include <GLFW/glfw3.h>
 
 void Game::updateEquipmentInput(bool enabled) {
@@ -32,7 +33,7 @@ void Game::updateEquipmentInput(bool enabled) {
                (held==Item::BoneMeal && (isCrop(block)||isBerryBush(block)||block==Block::SugarCane)) ||
                isComposter(block) || (isBerryBush(block) && block>=Block::BerryBush2))raise=false;
             if(input_.mousePressed(GLFW_MOUSE_BUTTON_RIGHT) &&
-               (isDoor(block)||block==Block::Chest||block==Block::Furnace||block==Block::CraftingTable))
+               (isBuilding(block)||isDoor(block)||block==Block::Chest||block==Block::Furnace||block==Block::CraftingTable))
                 raise=false;
         }
     }

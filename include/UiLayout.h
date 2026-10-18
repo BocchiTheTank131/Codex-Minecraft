@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <algorithm>
 #include <initializer_list>
 
 enum class UiMode { Inventory, CraftingTable, Creative, Furnace, Chest };
@@ -14,7 +15,7 @@ enum class UiSlotKind {
     FurnaceFuel,
     FurnaceOutput,
     ChestSlot,
-    CreativeItem,
+    CreativeItem, CreativePrevious, CreativeNext,
     RecipeItem, RecipeCategory, RecipeCraftable, RecipeSearch,
     RecipePrevious, RecipeNext
 };
@@ -41,7 +42,9 @@ struct UiHit {
 };
 
 namespace UiLayout {
-inline constexpr int CreativeColumns = 16;
+inline constexpr int CreativeColumns = 12;
+inline constexpr int CreativeRows = 9;
+inline constexpr int CreativePageSize = CreativeColumns*CreativeRows;
 inline UiRect panel(UiMode mode, int width, int height) {
     const bool creative = mode == UiMode::Creative;
     return {width * .5f - 325.0f, height * .5f - (creative ? 315.0f : 280.0f),
@@ -74,9 +77,10 @@ inline UiRect craftingOutput(int width, int height) {
 }
 inline UiRect creativeItem(int index, int width, int height) {
     const UiRect p = panel(UiMode::Creative, width, height);
-    return {p.x + (p.width - (CreativeColumns * 35.0f - 3.0f)) * .5f +
-                (index % CreativeColumns) * 35.0f,
-            p.y + 45.0f + (index / CreativeColumns) * 35.0f, 32.0f, 32.0f};
+    index%=CreativePageSize;
+    return {p.x + (p.width - (CreativeColumns * 48.0f - 4.0f)) * .5f +
+                (index % CreativeColumns) * 48.0f,
+            p.y + 35.0f + (index / CreativeColumns) * 48.0f, 44.0f, 44.0f};
 }
 inline UiRect furnaceSlot(UiSlotKind kind, int width, int height) {
     const UiRect p = panel(UiMode::Furnace, width, height);
@@ -114,7 +118,7 @@ inline UiRect recipePageButton(bool next, int width, int height) {
 }
 inline UiHit hit(UiMode mode, double mouseX, double mouseY,
                  int width, int height, std::size_t creativeCount = 0,
-                 std::size_t recipeCount = 0, int recipePage = 0) {
+                 std::size_t recipeCount = 0, int recipePage = 0,int creativePage=0) {
     for(int index=0;index<5;++index)
         if(equipmentSlot(mode,index,width,height).contains(mouseX,mouseY))
             return {UiSlotKind::EquipmentSlot,index};
@@ -157,7 +161,10 @@ inline UiHit hit(UiMode mode, double mouseX, double mouseY,
                 return {UiSlotKind::ChestSlot, index};
     }
     if (mode == UiMode::Creative) {
-        for (int index = 0; index < static_cast<int>(creativeCount); ++index)
+        const auto p=panel(mode,width,height);
+        if(UiRect{p.x+450,p.y+475,40,30}.contains(mouseX,mouseY))return {UiSlotKind::CreativePrevious,0};
+        if(UiRect{p.x+550,p.y+475,40,30}.contains(mouseX,mouseY))return {UiSlotKind::CreativeNext,0};
+        for (int index = creativePage*CreativePageSize; index < std::min(static_cast<int>(creativeCount),(creativePage+1)*CreativePageSize); ++index)
             if (creativeItem(index, width, height).contains(mouseX, mouseY))
                 return {UiSlotKind::CreativeItem, index};
     }

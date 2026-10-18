@@ -111,7 +111,7 @@ bool Inventory::runEquipmentSelfTest(std::string& report) {
         check(inventory.handleCreativeClick(creativeOwned.x+20,creativeOwned.y+20,1280,720,false,true)&&
             inventory.equipment(4).durability==81&&inventory.slot(0).empty(),"Creative owned shift equip");
         const auto armorCatalog=UiLayout::creativeItem(int(Item::IronHelmet)-1,1280,720);
-        check(inventory.handleCreativeClick(armorCatalog.x+15,armorCatalog.y+15,1280,720,false,true)&&
+        check(inventory.handleCreativeClick(armorCatalog.x+15,armorCatalog.y+15,1280,720,false,true,(int(Item::IronHelmet)-1)/UiLayout::CreativePageSize)&&
             inventory.equipment(0).item==Item::IronHelmet&&inventory.cursor_.empty(),"Creative catalog shift equip");
         inventory.clear();inventory.setCreativeCursor(Item::IronHelmet);
         inventory.clickEquipment(1,false);check(!inventory.cursor_.empty()&&inventory.equipment(1).empty(),"wrong slot");
@@ -146,10 +146,13 @@ bool Inventory::runEquipmentSelfTest(std::string& report) {
             std::ifstream in(path,std::ios::binary);std::string bytes((std::istreambuf_iterator<char>(in)),{});in.close();
             std::ofstream truncated(path,std::ios::binary|std::ios::trunc);truncated.write(bytes.data(),bytes.size()-1);truncated.close();
             check(!restored.load(path,99)&&restored.equipment(4).durability==before.durability,"transactional truncated inventory");
-            // V6 has 9-byte stacks (including identity); V4 has 5-byte stacks
-            // and no equipment section. Convert each record, not just the tail.
+            // Construct exact historical V4 records independently of the current
+            // 16-bit writer: byte ID, 16-bit count/durability, no identity/gear.
             std::string legacy=bytes.substr(0,16);legacy[5]='4';
-            for(int slot=0;slot<TotalSlots+CraftSlots+1;++slot)legacy.append(bytes,16+slot*9,5);
+            auto appendLegacy=[&](const ItemStack& stack){const auto id=std::uint8_t(stack.item);const auto count=std::int16_t(stack.count),durability=std::int16_t(stack.durability);legacy.append(reinterpret_cast<const char*>(&id),1);legacy.append(reinterpret_cast<const char*>(&count),2);legacy.append(reinterpret_cast<const char*>(&durability),2);};
+            for(int slot=0;slot<TotalSlots;++slot)appendLegacy(inventory.slot(slot));
+            for(int slot=0;slot<CraftSlots;++slot)appendLegacy(inventory.craftSlot(slot));
+            appendLegacy(inventory.cursorStack());
             bytes=std::move(legacy);
             check(bytes.size()==16+(TotalSlots+CraftSlots+1)*5,"V4 fixture record lengths");
             std::ofstream out(path,std::ios::binary|std::ios::trunc);out.write(bytes.data(),bytes.size());out.close();
@@ -208,7 +211,9 @@ bool World::runEquipmentWorldSelfTest(std::string& report) {
         if(!contents||contents->slots[0].durability!=74||contents->slots[1].durability!=101)
             throw std::runtime_error("Modified gear chest persistence");
         std::ifstream in(path,std::ios::binary);std::string bytes((std::istreambuf_iterator<char>(in)),{});in.close();
-        bytes.resize(bytes.size()-9); // Actual legacy payload: no appended gear-rule marker.
+        const auto gearOffset=bytes.rfind(std::string("VXGEAR1\0",8));
+        if(gearOffset==std::string::npos)throw std::runtime_error("Missing gear-rule fixture boundary");
+        bytes.resize(gearOffset); // Payload before optional gear/building extensions.
         std::ofstream out(path,std::ios::binary|std::ios::trunc);out.write(bytes.data(),bytes.size());out.close();
         World legacy(99,21);
         if(!legacy.loadWorld(path,position)||legacy.equipmentLoot_) throw std::runtime_error("Legacy world loot rules changed");

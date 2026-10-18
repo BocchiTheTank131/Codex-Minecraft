@@ -112,7 +112,8 @@ void Player::respawn(const World& world) {
     riding_=false; ++positionRevision_;
     // The loaded player position is not a world spawn point. Resolve current
     // terrain and saved edits at the versioned world spawn on every respawn.
-    position_ = world.generationVersion()>=22 && !creativeMode_ && !spectatorMode_ ?
+    auto bed=hasPersonalBed_?world.findBedSpawn(personalBed_):std::optional<glm::vec3>{};
+    position_ = bed?*bed:world.generationVersion()>=22 && !creativeMode_ && !spectatorMode_ ?
         world.findSurvivalSpawnNear(0,0) : world.findSafeSpawnNear(0, 0);
     velocity_ = glm::vec3(0.0f);
     health_ = hunger_ = 20.0f; saturation_=5;
@@ -179,11 +180,13 @@ void Player::setFlying(bool enabled) {
         velocity_ = glm::vec3(0.0f);
 }
 bool Player::save(const std::string& p, std::uint32_t seed) const {
+    if(hasPersonalBed_ && (!SaveValidation::position(glm::vec3(personalBed_)) || personalBed_.y< -64 || personalBed_.y>=320))return false;
     if(!std::isfinite(health_) || health_<0 || health_>20 || !std::isfinite(hunger_) || hunger_<0 || hunger_>20 || experience_<0 || !std::isfinite(saturation_) || saturation_<0 || saturation_>hunger_ || !std::isfinite(exhaustion_) || exhaustion_<0 || exhaustion_>40 || !std::isfinite(regenTimer_) || regenTimer_<0 || regenTimer_>4.1f)return false;
     return SaveFile::write(p, std::ios::binary, [&](std::ofstream& f) {
         f.write(Magic, 8);
         if(!(wr(f, seed) && wr(f, health_) && wr(f, hunger_) && wr(f, experience_)))return false;
-        f.write("NUT1",4);return wr(f,saturation_) && wr(f,exhaustion_) && wr(f,regenTimer_);
+        f.write("NUT1",4);if(!(wr(f,saturation_) && wr(f,exhaustion_) && wr(f,regenTimer_)))return false;
+        f.write("BED1",4);return wr(f,std::uint8_t(hasPersonalBed_)) && wr(f,personalBed_.x) && wr(f,personalBed_.y) && wr(f,personalBed_.z);
     });
 }
 bool Player::load(const std::string& p, std::uint32_t seed) {
@@ -202,7 +205,11 @@ bool Player::load(const std::string& p, std::uint32_t seed) {
         if(std::memcmp(tag,"NUT1",4) || !rd(f,saturation) || !rd(f,exhaustion) || !rd(f,regen) ||
            !std::isfinite(saturation) || saturation<0 || saturation>hunger || !std::isfinite(exhaustion) || exhaustion<0 || exhaustion>40 || !std::isfinite(regen) || regen<0 || regen>4.1f)return false;
     }
+    bool hasBed=false;glm::ivec3 bed(0);
+    if(f.peek()!=std::char_traits<char>::eof()){char tag[4]{};std::uint8_t enabled=0;f.read(tag,4);
+      if(std::memcmp(tag,"BED1",4)||!rd(f,enabled)||enabled>1||!rd(f,bed.x)||!rd(f,bed.y)||!rd(f,bed.z)||!SaveValidation::position(glm::vec3(bed))||bed.y< -64||bed.y>=320)return false;hasBed=enabled!=0;}
     if(f.peek()!=std::char_traits<char>::eof())return false;
+    hasPersonalBed_=hasBed;personalBed_=bed;
     health_=health;hunger_=hunger;experience_=experience;saturation_=saturation;exhaustion_=exhaustion;regenTimer_=regen;
     dead_=health_==0;respawnTimer_=dead_?2.f:0.f;
     return true;
@@ -490,6 +497,7 @@ void Player::moveAndCollide(float dt, const World& w) {
     float longest = std::max({std::abs(d.x), std::abs(d.y), std::abs(d.z)});
     int steps = std::max(1, (int)std::ceil(longest / .4f));
     glm::vec3 step = d / (float)steps;
+    walkStep_=grounded_ && velocity_.y<=0 && !flying_ && !riding_ && !spectatorMode_;
     grounded_ = false;
     for (int i = 0; i < steps; ++i) {
         if (velocity_.x)
@@ -510,17 +518,34 @@ void Player::resolveAxis(int axis, float amount, const World& w) {
     auto mn = aabbMinimum(), mx = aabbMaximum();
     glm::ivec3 first = glm::ivec3(glm::floor(mn + glm::vec3(e))),
                last = glm::ivec3(glm::floor(mx - glm::vec3(e)));
-    for (int y = first.y; y <= last.y; ++y)
+    for (int y = first.y-1; y <= last.y; ++y)
         for (int z = first.z; z <= last.z; ++z)
             for (int x = first.x; x <= last.x; ++x) {
                 const Block block = w.getBlock(x, y, z);
                 if (!isSolid(block) ||
                     !w.blockIntersectsAabb({x, y, z}, mn, mx))
                     continue;
-                glm::vec3 blockMinimum;
-                glm::vec3 blockMaximum;
-                if (!w.blockCollisionBounds({x, y, z}, blockMinimum, blockMaximum))
-                    continue;
+                if(axis==1 && blockType(block)==Block::Scaffold && (amount>0 || sneaking_))continue;
+                const auto boxes=w.blockBoxes({x,y,z},true);
+                for(int part=0;part<boxes.count;++part){
+                const glm::vec3 blockMinimum=glm::vec3(x,y,z)+boxes.boxes[part].minimum;
+                const glm::vec3 blockMaximum=glm::vec3(x,y,z)+boxes.boxes[part].maximum;
+                mn=aabbMinimum();mx=aabbMaximum();
+                if(!(blockMinimum.x<mx.x && blockMaximum.x>mn.x && blockMinimum.y<mx.y && blockMaximum.y>mn.y && blockMinimum.z<mx.z && blockMaximum.z>mn.z))continue;
+                const auto building=buildingDefinition(block);
+                if(axis!=1 && walkStep_){
+                    const float rise=blockMaximum.y-position_.y;
+                    const bool thin=boxes.boxes[part].maximum.y-boxes.boxes[part].minimum.y<=1.f/16.f+e;
+                    const bool stairOrSlab=isSlab(block)||(building && (building->shape==BuildingShape::Stairs || building->shape==BuildingShape::Slab));
+                    const float allowedRise=(!sneaking_ && stairOrSlab)?.6001f:(thin?1.f/16.f+e:0.f);
+                    if(rise>0 && rise<=allowedRise){
+                        const auto candidate=position_+glm::vec3(0,rise+e,0);
+                        const auto low=candidate+glm::vec3(-Width*.5f,0,-Width*.5f),high=candidate+glm::vec3(Width*.5f,Height,Width*.5f);
+                        if(w.collisionReady(low,high)&&!w.aabbIntersectsSolid(low,high)){
+                            position_=candidate;velocity_.y=std::max(0.f,velocity_.y);grounded_=true;continue;
+                        }
+                    }
+                }
                 if (axis == 0) {
                     position_.x = amount > 0 ? blockMinimum.x - Width * .5f - e
                                              : blockMaximum.x + Width * .5f + e;
@@ -539,6 +564,7 @@ void Player::resolveAxis(int axis, float amount, const World& w) {
                     velocity_.z = 0;
                 }
             }
+                }
     if(transportation_ && !transportation_->boats().empty() && !riding_ && !spectatorMode_ && transportation_->intersectsBox(aabbMinimum(),aabbMaximum())){
         const float requested=position_[axis],delta=requested-previousCoordinate;
         // Landing on a moving hull uses its actual top contact, including a

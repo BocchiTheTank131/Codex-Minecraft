@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelFrontier VERSION 2.15.1 LANGUAGES C CXX)
+project(VoxelFrontier VERSION 2.16.0 LANGUAGES C CXX)
 set(VOXELFRONTIER_VERSION_SUFFIX "")
 set(VOXELFRONTIER_DISPLAY_VERSION "${PROJECT_VERSION}${VOXELFRONTIER_VERSION_SUFFIX}")
 
@@ -66,6 +66,8 @@ add_executable(VoxelFrontier
     src/ChunkStreaming.cpp
     src/WorldStreaming.cpp
     src/Farming.cpp
+    src/Building.cpp
+    src/GameBuilding.cpp
     src/InventoryUI.cpp
     src/Player.cpp
     src/Renderer.cpp

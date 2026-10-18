@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Block.h"
+#include "CompactBlocks.h"
+#include "Building.h"
 #include "Biome.h"
 #include "Noise.h"
 #include "Structure.h"
@@ -127,6 +129,8 @@ struct ChestData {
     std::array<ItemStack, 27> slots{};
 };
 
+struct BuildingText { std::string text; };
+
 struct MeshBounds {
     glm::vec3 minimum{0};
     glm::vec3 maximum{0};
@@ -177,8 +181,9 @@ public:
         return static_cast<std::size_t>(((y - minimumY) * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX);
     }
     void ensureHeight(int y);
-    std::vector<Block> blocks;
+    CompactBlocks blocks;
     std::vector<std::uint8_t> packedLight;
+    std::vector<std::uint32_t> buildingCells,signCells,displayCells;
     // Sorted local indices, owned by the chunk. Bulk block replacement must
     // rebuild this index; ordinary mutations go through setLocal.
     mutable bool climateColorsReady = false;
@@ -226,6 +231,7 @@ public:
 };
 
 class World {
+    friend class BuildingTest;
 public:
     struct VisibleChunks {
         std::vector<const Chunk*> opaque;
@@ -277,9 +283,18 @@ public:
     bool hasBlockNear(const glm::vec3& position, Block block, float radius) const;
     bool hasClimbableNear(const glm::vec3& position, float radius) const;
     FurnaceData* furnaceAt(const glm::ivec3& position, bool create = false);
+    const auto& buildingTexts() const {return buildingTexts_;}
+    bool setBuildingText(const glm::ivec3&,const std::string&);
+    std::string buildingText(const glm::ivec3&) const;
+    void refreshBuildingConnections(int chunkX,int chunkZ);
+    void flushBuildingDrops(SurvivalWorld&);
+    void retainBuildingDrop(const glm::vec3& position,const ItemStack& stack) {buildingDrops_.emplace_back(position,stack);}
+    void nearbyBuildingSigns(const glm::vec3&,std::vector<glm::ivec3>&) const;
+    void renderBuildingItems(std::vector<RenderItemSprite>&,const glm::vec3&) const;
     ChestData* chestAt(const glm::ivec3& position, bool create = false);
     std::vector<ItemStack> takeBlockEntityContents(const glm::ivec3& position);
     int terrainHeight(int worldX, int worldZ) const;
+    std::optional<glm::vec3> findBedSpawn(const glm::ivec3&) const;
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
     glm::vec3 findSurvivalSpawnNear(int worldX, int worldZ) const;
     bool runDiversityAudit(const std::string& directory, std::string& report, bool spawnOnly=false) const;
@@ -316,6 +331,7 @@ public:
     bool blockIntersectsAabb(const glm::ivec3& block,
                              const glm::vec3& minimum,
                              const glm::vec3& maximum) const;
+    BuildingBoxes blockBoxes(const glm::ivec3& block,bool collision=false) const;
     bool blockCollisionBounds(const glm::ivec3& block,
                               glm::vec3& minimum,
                               glm::vec3& maximum) const;
@@ -409,6 +425,7 @@ private:
         std::uint64_t epoch = 0;
         std::shared_ptr<std::atomic<std::uint64_t>> revisionToken;
         int lod=0;
+        bool buildingShapes = false;
         bool climateTinted = false;
         std::array<std::array<glm::vec3,4>,3> climateColors{};
         int meshHeight = WORLD_HEIGHT;
@@ -470,6 +487,8 @@ private:
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;
     std::unordered_map<BlockEntityPosition, ChestData, BlockEntityPositionHash> chests_;
+    std::unordered_map<BlockEntityPosition, BuildingText, BlockEntityPositionHash> buildingTexts_;
+    std::vector<std::pair<glm::vec3,ItemStack>> buildingDrops_;
     std::vector<StructureMobMarker> pendingStructureMobs_;
     std::unordered_set<std::uint64_t> pendingStructureMobIds_;
     std::deque<std::int64_t> dirtyQueue_;
@@ -487,7 +506,7 @@ private:
     std::condition_variable generationCv_;
     struct GenerationRequest { int x,y; std::uint64_t epoch; };
     struct RetiredChunkPayload {
-        std::vector<Block> blocks;
+        CompactBlocks blocks;
         std::vector<std::uint8_t> light;
         std::vector<std::uint32_t> emitters;
     };
@@ -571,7 +590,7 @@ private:
         std::shared_ptr<TerrainBufferPage> page;
         std::size_t first=0,count=0;
         GLuint vao=0,vbo=0;
-        std::vector<Block> blocks;
+        CompactBlocks blocks;
         std::vector<std::uint8_t> light;
         std::vector<std::uint32_t> emitters;
         std::shared_ptr<RetirementFence> fence;

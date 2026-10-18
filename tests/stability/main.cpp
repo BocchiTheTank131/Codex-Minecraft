@@ -3,6 +3,7 @@
 #include "World.h"
 #include "Player.h"
 #include "Farming.h"
+#include "Definitions.h"
 #include "Survival.h"
 #include "Settings.h"
 #include "WorldLibrary.h"
@@ -42,6 +43,7 @@ static bool farmingControls(Game&);
 static bool farmingMining(Game&);
 };
 int runFarmingTests(int argc,char** argv);
+int runBuildingTests(int argc,char** argv);
 bool testFarmingControls(Game& g){return StabilityTest::farmingControls(g);}
 bool testFarmingMining(Game& g){return StabilityTest::farmingMining(g);}
 bool StabilityTest::farmingMining(Game& g) {
@@ -86,6 +88,7 @@ int main(int argc,char** argv){
     try{return StabilityTest::run(argc,argv);}catch(const std::exception& e){std::cerr<<e.what()<<std::endl;return 1;}
 }
 int StabilityTest::run(int argc,char** argv){
+ if(argc>1 && (std::string(argv[1])=="--building" || std::string(argv[1])=="--building-visual" || std::string(argv[1])=="--building-benchmark" || std::string(argv[1])=="--creative-ui"))return runBuildingTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--farming")==0)return runFarmingTests(argc,argv);
  if(argc==2 && std::string(argv[1]).find("--session-probe=")==0){
     const auto target=std::filesystem::weakly_canonical(std::string(argv[1]).substr(16));
@@ -94,6 +97,40 @@ int StabilityTest::run(int argc,char** argv){
  }
  if(argc>1 && std::string(argv[1])=="--traversal")return traversal(argc>2?std::stoi(argv[2]):8,argc>3?std::filesystem::path(argv[3]):std::filesystem::current_path());
  auto log=[](const char* name,bool passed){std::cout<<name<<" passed="<<passed<<std::endl;if(!passed)throw std::runtime_error(name);};
+ if(argc>2 && std::string(argv[1])=="--building-foundation") {
+  const auto legacy=std::filesystem::absolute(argv[2]);
+  auto bytes=[](const std::filesystem::path& p){std::ifstream f(p,std::ios::binary);return std::string(std::istreambuf_iterator<char>(f),{});};
+  std::map<std::string,std::string> originals;for(const auto& e:std::filesystem::directory_iterator(legacy))if(e.is_regular_file())originals[e.path().filename().string()]=bytes(e.path());
+  World w(991,22);glm::vec3 position;Inventory inv;Player player({0,300,0});SurvivalWorld mobs(991);
+  log("legacy_checkpoint_valid",SaveFile::verifyCheckpoint(legacy.string()));
+  log("legacy_world_load",w.loadWorld((legacy/"voxel_world.vxw").string(),position));
+  log("legacy_inventory_load",inv.load((legacy/"voxel_inventory.vxi").string(),991));
+  log("legacy_player_load",player.load((legacy/"voxel_player.vps").string(),991));
+  log("legacy_mobs_load",mobs.load((legacy/"voxel_mobs.vxm").string(),991));
+  log("legacy_items",inv.count(Item::Carrot)==13 && inv.count(Item::DiamondHoe)==1);
+  auto write=[](const std::filesystem::path& p,const std::string& s){std::ofstream f(p,std::ios::binary);f.write(s.data(),s.size());};
+  auto badInventory=bytes(legacy/"voxel_inventory.vxi");badInventory[16]=char(206);write("unknown-legacy.vxi",badInventory);
+  log("unknown_legacy_item_stays_invalid",!inv.load("unknown-legacy.vxi",991)&&inv.count(Item::Carrot)==13);
+  auto badWorld=bytes(legacy/"voxel_world.vxw");badWorld[52]=char(198);write("unknown-legacy.vxw",badWorld);
+  log("unknown_legacy_block_stays_invalid",!w.loadWorld("unknown-legacy.vxw",position));
+  auto badChest=bytes(legacy/"voxel_world.vxw");auto chestMarker=badChest.find("VXENTS2");if(chestMarker==std::string::npos)throw std::runtime_error("Legacy chest marker absent");badChest[chestMarker+28]=char(206);write("unknown-chest.vxw",badChest);log("unknown_legacy_container_stays_invalid",!w.loadWorld("unknown-chest.vxw",position));
+  auto badMobs=bytes(legacy/"voxel_mobs.vxm");auto marker=badMobs.find("DRP1");if(marker==std::string::npos)throw std::runtime_error("Legacy drop marker absent");badMobs[marker+32]=char(206);write("unknown-legacy.vxm",badMobs);
+  log("unknown_legacy_drop_stays_invalid",!mobs.load("unknown-legacy.vxm",991)&&mobs.drops_.size()==1&&mobs.drops_[0].stack.identity==77);
+
+  w.prepareSpawnTerrain({-8,300,-8});auto* chest=w.chestAt({-8,300,-8});
+  log("legacy_chest_identity",chest && chest->slots[0].durability==123 && chest->slots[1].identity==77);
+  log("legacy_drop_identity",mobs.drops_.size()==1 && mobs.drops_[0].stack.identity==77);
+  log("wide_save",w.saveWorld("wide.vxw",position) && inv.save("wide.vxi",991) && mobs.save("wide.vxm",991));
+  World newer(991,22);Inventory newInv;SurvivalWorld newMobs(991);
+  log("wide_roundtrip",newer.loadWorld("wide.vxw",position) && newInv.load("wide.vxi",991) && newMobs.load("wide.vxm",991) && newInv.count(Item::Carrot)==13 && newMobs.drops_[0].stack.identity==77);
+  for(const auto& e:originals)log("legacy_untouched",bytes(legacy/e.first)==e.second);
+  CompactBlocks ordinary(std::vector<Block>(98304,Block::Stone));log("compact_ordinary",ordinary.storageBytes()<=98304+1024);
+  for(int i=0;i<300;++i)ordinary.set(i,Block(65536U+unsigned(i)));
+  log("compact_fallback",ordinary.wide());for(int i=0;i<300;++i)if(ordinary[i]!=Block(65536U+unsigned(i)))throw std::runtime_error("palette truncated");
+  log("compact_tail",ordinary[98303]==Block::Stone);
+  Block invalid;log("invalid_state_rejected",!blockFromSaveId(0xffffffffU,invalid));
+  std::cout<<"ordinary bytes=98304; decorated fallback="<<ordinary.storageBytes()<<std::endl;return 0;
+ }
  if(argc>1 && std::string(argv[1])=="--checkpoint") {
   Game g;char app[]="checkpoint-regression";char* args[]={app};if(!g.initialize(1,args))return 5;glfwHideWindow(g.window_);
   const auto selected=WorldLibrary::create("Metadata regression",42,GameMode::Survival,true);
@@ -251,7 +288,7 @@ int StabilityTest::run(int argc,char** argv){
   DWORD code=1;auto wait=WaitForSingleObject(pi.hProcess,10000);GetExitCodeProcess(pi.hProcess,&code);CloseHandle(pi.hThread);CloseHandle(pi.hProcess);log("cross_process_session_exclusive",wait==WAIT_OBJECT_0 && code==0);
  }
 #endif
- {Inventory inv;inv.add(Item::Stone,5);inv.save("bad-stack.vxi",42);std::fstream f("bad-stack.vxi",std::ios::binary|std::ios::in|std::ios::out);f.seekp(17);std::int16_t count=65;f.write((const char*)&count,2);f.close();log("invalid_inventory_no_partial_mutation",!inv.load("bad-stack.vxi",42)&&inv.count(Item::Stone)==5);}
+ {Inventory inv;inv.add(Item::Stone,5);inv.save("bad-stack.vxi",42);std::fstream f("bad-stack.vxi",std::ios::binary|std::ios::in|std::ios::out);f.seekp(18);std::int16_t count=65;f.write((const char*)&count,2);f.close();log("invalid_inventory_no_partial_mutation",!inv.load("bad-stack.vxi",42)&&inv.count(Item::Stone)==5);}
  {Transportation nav({0,80,0});auto id=nav.createMap({0,80,0});nav.save("bad-nav.vtn",42);std::fstream f("bad-nav.vtn",std::ios::binary|std::ios::in|std::ios::out);f.seekp(12);float value=std::numeric_limits<float>::infinity();f.write((const char*)&value,4);f.close();log("invalid_navigation_no_partial_mutation",!nav.load("bad-nav.vtn",42)&&nav.map(id) && nav.originalSpawn().y==80);}
  {Player p({0,80,0});p.damage(3);p.eat(-4);p.save("partial.vps",42);std::filesystem::resize_file("partial.vps",17);log("player_failed_load_transactional",!p.load("partial.vps",42)&&p.health()==17&&p.hunger()==16);}
 

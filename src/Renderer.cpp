@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "Building.h"
 #include "Transportation.h"
 #include "Player.h"
 #include "RenderScratch.h"
@@ -1979,22 +1980,46 @@ void Renderer::renderItemSprites(const std::vector<RenderItemSprite>& sprites,
         vertices.insert(vertices.end(), {p.x, p.y, p.z, u, v});
     };
     for (const auto& s : sprites) {
-        if (!visibility.visible(s.center, s.size))
+        if (s.worldPlant || !visibility.visible(s.center, s.size))
             continue;
         ItemSpriteUv uv;
         if (!itemSpriteUv(s.item, uv))
             continue;
         ++visibleEntityCount_;
-        glm::vec3 c = s.center + glm::vec3(0, .12f + std::sin(time * 2.7f + s.center.x) * .05f, 0);
+        glm::vec3 c = s.center;
+        glm::vec3 spriteRight=right,spriteUp=up;
+        if(s.fixed){spriteRight=glm::normalize(glm::cross(glm::vec3(0,1,0),s.normal));spriteUp={0,1,0};for(int i=0;i<s.rotation;++i){auto old=spriteRight;spriteRight=spriteUp;spriteUp=-old;}}
+        else c+=glm::vec3(0,.12f+std::sin(time*2.7f+s.center.x)*.05f,0);
         float h = s.size * .5f;
-        glm::vec3 a = c - right * h + up * h, b = c - right * h - up * h,
-                  d = c + right * h + up * h, e = c + right * h - up * h;
+        glm::vec3 a = c - spriteRight * h + spriteUp * h, b = c - spriteRight * h - spriteUp * h,
+                  d = c + spriteRight * h + spriteUp * h, e = c + spriteRight * h - spriteUp * h;
         push(a, uv.u0, uv.v0);
         push(b, uv.u0, uv.v1);
         push(e, uv.u1, uv.v1);
         push(a, uv.u0, uv.v0);
         push(e, uv.u1, uv.v1);
         push(d, uv.u1, uv.v0);
+    }
+    const auto itemVertexCount=static_cast<GLsizei>(vertices.size()/5);
+    // Crossed, double-sided planes use the same plant tile as the ground mesh.
+    // Keep them in one extra batch, sharing the item shader and streaming buffer.
+    for(const auto& s:sprites){
+        if(!s.worldPlant || !visibility.visible(s.center,s.size))continue;
+        const Block plant=itemToBlock(s.item);
+        if(plant==Block::Air)continue;
+        ++visibleEntityCount_;
+        constexpr float inset=.0005f;
+        const int tile=blockTexture(plant,0);
+        const float u0=float(tile)/BlockAtlasTiles+inset,u1=float(tile+1)/BlockAtlasTiles-inset;
+        const float h=s.size*.5f;
+        for(const glm::vec3 diagonal:{glm::vec3(.70710678f,0,.70710678f),glm::vec3(.70710678f,0,-.70710678f)}){
+            const auto a=s.center-diagonal*h+glm::vec3(0,h,0),b=a-glm::vec3(0,s.size,0);
+            const auto d=s.center+diagonal*h+glm::vec3(0,h,0),e=d-glm::vec3(0,s.size,0);
+            push(a,u0,inset);push(b,u0,1-inset);push(e,u1,1-inset);
+            push(a,u0,inset);push(e,u1,1-inset);push(d,u1,inset);
+            push(a,u0,inset);push(e,u1,1-inset);push(b,u0,1-inset);
+            push(a,u0,inset);push(d,u1,inset);push(e,u1,1-inset);
+        }
     }
     if (vertices.empty())
         return;
@@ -2014,7 +2039,9 @@ void Renderer::renderItemSprites(const std::vector<RenderItemSprite>& sprites,
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBindVertexArray(itemVao_);
-    glDrawArrays(GL_TRIANGLES, 0, static_cast<GLsizei>(vertices.size() / 5));
+    if(itemVertexCount)glDrawArrays(GL_TRIANGLES,0,itemVertexCount);
+    const auto plantVertexCount=static_cast<GLsizei>(vertices.size()/5)-itemVertexCount;
+    if(plantVertexCount){glBindTexture(GL_TEXTURE_2D,atlasTexture_);glDrawArrays(GL_TRIANGLES,itemVertexCount,plantVertexCount);}
     glBindVertexArray(0);
     glDisable(GL_BLEND);
 }
@@ -2022,7 +2049,11 @@ void Renderer::renderSelectionOutline(const glm::ivec3& block, Block type,
                                       const glm::mat4& view,
                                       const glm::mat4& projection) const {
     glUseProgram(entityProgram_);
-    const BlockGeometryProperties bounds = blockGeometry(type);
+    BuildingBoxes boxes;
+    if(isBuilding(type))boxes=buildingBoxes(type);
+    else {auto g=blockGeometry(type);boxes.add(g.minX,g.minY,g.minZ,g.maxX,g.maxY,g.maxZ);}
+    for(int part=0;part<boxes.count;++part){
+    const auto b=boxes.boxes[part];BlockGeometryProperties bounds;bounds.minX=b.minimum.x;bounds.minY=b.minimum.y;bounds.minZ=b.minimum.z;bounds.maxX=b.maximum.x;bounds.maxY=b.maximum.y;bounds.maxZ=b.maximum.z;
     const glm::vec3 minimum(bounds.minX, bounds.minY, bounds.minZ);
     const glm::vec3 maximum(bounds.maxX, bounds.maxY, bounds.maxZ);
     glm::mat4 model = glm::translate(glm::mat4(1), glm::vec3(block) +
@@ -2047,6 +2078,7 @@ void Renderer::renderSelectionOutline(const glm::ivec3& block, Block type,
     glDrawArrays(GL_TRIANGLES, 0, 36);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     glBindVertexArray(0);
+    }
 }
 void Renderer::renderMobOutline(const RenderCuboid& bounds,
                                 const glm::mat4& view,
@@ -2856,4 +2888,21 @@ void Renderer::renderNavigation(int width,int height,const Transportation& trave
         };
         stroke(15,5,{.03f,.03f,.03f,1});stroke(12,3,{1,.25f,.1f,1});
     }drawMenuVertices(v.data(),v.size());
+}
+
+void Renderer::renderBuildingOverlay(int width,int height,const World& world,const Player& player,const glm::mat4& view,const glm::mat4& projection,bool editor,const std::string& draft,const glm::ivec3& target) const {
+ thread_local std::vector<UiVertex> data;data.clear();
+ if(editor){const float x=width*.5f-230,y=height*.5f-100;addRect(data,x-12,y-10,460,215,{.12f,.075f,.04f,.93f},width,height);textGeometry_->append(data,"EDIT SIGN (4 lines, 24 characters)\n\n"+draft+"_\n\nTAB: NEW LINE   ENTER: SAVE\nESC: CANCEL   CTRL+A: CLEAR",x,y,1.7f,{.98f,.91f,.73f,1},width,height);}
+ else {
+  thread_local std::vector<glm::ivec3> signs;world.nearbyBuildingSigns(player.cameraPosition(),signs);
+  const auto vp=projection*view;
+  for(auto p:signs){auto block=world.getBlock(p.x,p.y,p.z);auto props=blockProperties(block);auto normal=glm::vec3(buildingFacing(props));const auto center=glm::vec3(p)+glm::vec3(.5f,.7f,.5f);if(glm::dot(player.cameraPosition()-center,normal)<=0)continue;
+   const auto delta=center-player.cameraPosition();RayHit hit;if(world.raycast(player.cameraPosition(),glm::normalize(delta),glm::length(delta)+.1f,hit)&&hit.block!=p)continue;
+   const auto start=data.size();textGeometry_->append(data,world.buildingText(p),0,0,1,{.10f,.065f,.035f,1},144,40);bool visible=true;
+   for(std::size_t i=start;i<data.size();++i){auto& v=data[i];float u=(v.position.x+1)*.5f,y=(1-v.position.y)*.5f;glm::vec3 point(.94f-u*.88f,.9f-y*.45f,props&16?.873f:.435f);for(int r=0;r<(props&3);++r){float x=point.x;point.x=1-point.z;point.z=x;}auto clip=vp*glm::vec4(glm::vec3(p)+point,1);if(clip.w<=0){visible=false;break;}v.position=glm::vec2(clip)/clip.w;}
+   if(!visible)data.resize(start);
+  }
+ }
+ if(data.empty())return;
+ glUseProgram(uiProgram_);glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,itemTexture_);glUniform1i(uiItemAtlasUniform_,0);glBindVertexArray(uiVao_);glBindBuffer(GL_ARRAY_BUFFER,uiVbo_);glBufferData(GL_ARRAY_BUFFER,data.size()*sizeof(UiVertex),data.data(),GL_STREAM_DRAW);glDisable(GL_DEPTH_TEST);glDisable(GL_CULL_FACE);glDrawArrays(GL_TRIANGLES,0,GLsizei(data.size()));glBindVertexArray(0);glEnable(GL_CULL_FACE);glEnable(GL_DEPTH_TEST);
 }

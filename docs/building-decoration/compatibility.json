@@ -1,0 +1,17 @@
+{
+  "baseline": "v2.15.1",
+  "Block": {
+    "historical_ids_unchanged": 198,
+    "current_types": 340
+  },
+  "Item": {
+    "historical_ids_unchanged": 206,
+    "current_types": 348
+  },
+  "crafting_blocks.png": {
+    "old_pixels_identical": true
+  },
+  "inventory_atlas_16.png": {
+    "occupied_cells_identical": 206
+  }
+}

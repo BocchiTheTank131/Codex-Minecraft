@@ -116,10 +116,13 @@ void Game::runCraftingContentSmokeTest() {
         ItemSpriteUv uv;
         if (!itemSpriteUv(item, uv)) throw std::runtime_error("new item sprite UV");
     }
+    const auto contentPosition=[](int id){const int offset=id-static_cast<int>(Block::CoalBlock);return glm::ivec3((offset%CHUNK_SIZE)*3,240,(offset/CHUNK_SIZE)*3);};
     for (int id = static_cast<int>(Block::CoalBlock); id < static_cast<int>(Block::Count); ++id) {
         const Block block = static_cast<Block>(id);
-        const int offset=id-static_cast<int>(Block::CoalBlock);
-        testWorld.setBlock(offset%CHUNK_SIZE,240,offset/CHUNK_SIZE,block);
+        const auto p=contentPosition(id);testWorld.prepareSpawnTerrain(glm::vec3(p));
+        testWorld.setBlock(p.x,p.y-1,p.z,Block::Stone);
+        testWorld.setBlock(p.x,p.y,p.z,block);
+        if(testWorld.getBlock(p.x,p.y,p.z)!=block)throw std::runtime_error("Content fixture placement failed");
         Block restored;
         if (!blockFromSaveId(blockDefinition(block).saveId, restored) || restored != block)
             throw std::runtime_error("new block stable ID");
@@ -135,8 +138,8 @@ void Game::runCraftingContentSmokeTest() {
         if (!testWorld.canPlacePlant(positions[facing], static_cast<Block>(static_cast<int>(Block::VineNorth)+facing)))
             throw std::runtime_error("Vine wall support validation");
     }
-    const glm::ivec3 furnacePosition(6,240,8);
-    testWorld.setBlock(6,240,8,Block::Furnace);
+    const glm::ivec3 furnacePosition(-6,240,-8);
+    testWorld.setBlock(-6,240,-8,Block::Furnace);
     FurnaceData* furnace = testWorld.furnaceAt(furnacePosition, true);
     for (Item fuel : {Item::Coal,Item::Charcoal,Item::CoalBlock}) {
         *furnace = FurnaceData{};
@@ -179,9 +182,11 @@ void Game::runCraftingContentSmokeTest() {
                !restoredInventory.load(inventoryPath,seed_) || restoredInventory.count(item)!=3)
                 throw std::runtime_error("new inventory persistence: "+itemDefinition(item).displayName);
         }
-        for (int id = static_cast<int>(Block::CoalBlock); id < static_cast<int>(Block::Count); ++id)
-            if (restoredWorld.getBlock((id-static_cast<int>(Block::CoalBlock))%CHUNK_SIZE,240,(id-static_cast<int>(Block::CoalBlock))/CHUNK_SIZE) != static_cast<Block>(id))
-                throw std::runtime_error("new block persistence id "+std::to_string(id)+" actual "+std::to_string(int(restoredWorld.getBlock((id-static_cast<int>(Block::CoalBlock))%CHUNK_SIZE,240,(id-static_cast<int>(Block::CoalBlock))/CHUNK_SIZE))));
+        for (int id = static_cast<int>(Block::CoalBlock); id < static_cast<int>(Block::Count); ++id){
+            const auto p=contentPosition(id);restoredWorld.prepareSpawnTerrain(glm::vec3(p));
+            if (restoredWorld.getBlock(p.x,p.y,p.z) != static_cast<Block>(id))
+                throw std::runtime_error("new block persistence id "+std::to_string(id)+" actual "+std::to_string(int(restoredWorld.getBlock(p.x,p.y,p.z))));
+        }
         std::remove(inventoryPath); std::remove(worldPath);
     }
     std::cout << "Content: appended item IDs/icons and block states, support, furnace fuels, "

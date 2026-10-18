@@ -1,0 +1,38 @@
+{
+  "baseline": "v2.15.1",
+  "Block": {
+    "historical_ids_unchanged": 198,
+    "current_types": 340
+  },
+  "Item": {
+    "historical_ids_unchanged": 206,
+    "current_types": 348
+  },
+  "crafting_blocks.png": {
+    "old_pixels_identical": true
+  },
+  "inventory_atlas_16.png": {
+    "occupied_cells_identical": 206
+  },
+  "new_icons": {
+    "centered_and_unclipped": 142,
+    "individual_atlas_matches": 142
+  },
+  "production_pot_views": {
+    "pot-front": {
+      "flower_pixels": 566,
+      "stalk_pixels": 656,
+      "upright": true
+    },
+    "pot-side": {
+      "flower_pixels": 578,
+      "stalk_pixels": 560,
+      "upright": true
+    },
+    "pot-back": {
+      "flower_pixels": 566,
+      "stalk_pixels": 656,
+      "upright": true
+    }
+  }
+}

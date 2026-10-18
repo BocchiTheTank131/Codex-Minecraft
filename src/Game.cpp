@@ -1,4 +1,5 @@
 #include "Game.h"
+#include "Building.h"
 #include "Transportation.h"
 #include "Weather.h"
 #include "WeatherRenderer.h"
@@ -559,7 +560,7 @@ void Game::createWorldAndSystems() {
         creativeMode_=activeWorld_.mode==GameMode::Creative;spectatorMode_=activeWorld_.mode==GameMode::Spectator;
     }
     saveRetryAt_=0;saveRetryCount_=0;saveBlockedReason_.clear();saveQueued_=false;
-    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
+    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=signEditorOpen_=false;pressedPlate_.reset();pressedButtons_.clear(); viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setTerrainLod(settings_.terrainLod);
@@ -669,7 +670,7 @@ void Game::createWorldAndSystems() {
 }
 
 void Game::synchronizeCursorCapture() {
-    input_.setCursorCaptured(ui_.cursorShouldBeCaptured() && !chat_.isOpen() && !navigationOpen_);
+    input_.setCursorCaptured(ui_.cursorShouldBeCaptured() && !chat_.isOpen() && !navigationOpen_ && !signEditorOpen_);
 }
 
 void Game::applyFullscreenSetting() {
@@ -712,6 +713,7 @@ void Game::pollSave(bool wait) {
 }
 
 bool Game::saveAll(bool asynchronous) {
+    if(world_ && survival_)world_->flushBuildingDrops(*survival_);
     if(pendingSave_.valid()){
         if(asynchronous){saveQueued_=true;return true;} // Coalesce to one fresh capture after this commit.
         pollSave(true);
@@ -952,7 +954,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     spectatorMode_ = mode == GameMode::Spectator;
     timing_.worldTime = WorldTime::DefaultSeconds;
 
-    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=false; viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
+    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=signEditorOpen_=false;pressedPlate_.reset();pressedButtons_.clear(); viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setTerrainLod(settings_.terrainLod);
@@ -1042,6 +1044,7 @@ void Game::handleGlobalInput() {
         return;
     }
     if(transportPreview_)updateTransportationPreview(glfwGetTime());
+    if(buildingInput())return;
     if(navigationInput()) return;
     if (chat_.isOpen()) {
         const std::string submitted = chat_.update(input_, window_, commands_);
@@ -1582,6 +1585,7 @@ void Game::updateSimulation(float deltaTime) {
 }
 
 void Game::simulationStep(float deltaTime) {
+    updateBuilding(deltaTime);
     simulationTime_.advance(timing_.worldTime,SimulationClock::Step);
     interaction_.attackCooldown = std::max(0.0f, interaction_.attackCooldown - deltaTime);
     interaction_.cameraKickDegrees =
@@ -1770,9 +1774,6 @@ void Game::updateMining(float deltaTime) {
             }
         }
 
-        for (const ItemStack& stack : storedItems)
-            survival_->spawnDrop(dropPosition, stack.item, stack.count, stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity);
-
         if (block == Block::Crop3) {
             survival_->spawnExperience(dropPosition, 2);
         } else if (isOre(block) && canHarvestBlock(inventory_->selectedItem(), block)) {
@@ -1783,6 +1784,10 @@ void Game::updateMining(float deltaTime) {
         }
     }
 
+    // Container/display contents are owned stacks even in Creative. Keep them in
+    // the checkpoint if the bounded live drop population cannot accept them.
+    for(const auto& stack:storedItems)
+        if(!survival_->spawnDrop(dropPosition,stack.item,stack.count,stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity))world_->retainBuildingDrop(dropPosition,stack);
     sounds_->playBlockBreak(block, glm::vec3(brokenPosition) + glm::vec3(.5f));
     interaction_.breakProgress = 0.0f;
     interaction_.hasMiningTarget = false;
@@ -1799,6 +1804,7 @@ void Game::handleUseAction() {
     if(transportationUse(useOffhand)) return;
     const Item heldItem = useOffhand?inventory_->equipment(4).item:inventory_->selectedItem();
     const auto consume=[&] {return useOffhand?inventory_->consumeOffhand():inventory_->consumeSelected();};
+    if(buildingUse(heldItem,useOffhand))return;
     bool used = false;
     bool placed = false;
 
@@ -1880,6 +1886,8 @@ void Game::handleUseAction() {
 
         {
             Block placedBlock = itemToBlock(heldItem);
+            if(isTorch(placedBlock) && interaction_.blockTarget.normal.y==0){auto n=interaction_.blockTarget.normal;placedBlock=blockState(placedBlock,(n.x>0?1:n.x<0?3:n.z>0?2:0)+1);}
+            if(isLog(placedBlock))placedBlock=blockState(placedBlock,interaction_.blockTarget.normal.x?1:interaction_.blockTarget.normal.z?2:0);
             const glm::vec3 blockHitPoint = player_->cameraPosition() +
                                             player_->lookDirection() *
                                                 (interaction_.blockTarget.distance + 0.001f);
@@ -1894,6 +1902,10 @@ void Game::handleUseAction() {
                  (isStoneSlab(targetBlock) && heldItem == Item::StoneSlab))) {
                 const Block combinedBlock =
                     heldItem == Item::WoodenSlab ? Block::Planks : Block::Stone;
+                const auto minimum=glm::vec3(targetPosition),maximum=minimum+glm::vec3(1),playerMinimum=player_->aabbMinimum(),playerMaximum=player_->aabbMaximum();
+                if((minimum.x<playerMaximum.x&&maximum.x>playerMinimum.x&&minimum.y<playerMaximum.y&&maximum.y>playerMinimum.y&&minimum.z<playerMaximum.z&&maximum.z>playerMinimum.z)||transportation_->intersectsBox(minimum,maximum)||survival_->anyMobIntersects(minimum,maximum)){
+                    interaction_.heldItemSwing=0;return;
+                }
                 world_->setBlock(targetPosition.x,
                                  targetPosition.y,
                                  targetPosition.z,
@@ -2190,6 +2202,7 @@ void Game::renderFrame(float deltaTime) {
     transportation_->appendModels(cuboids.get(),player_->position(),entityDistance);
     survival_->renderBillboards(billboards.get());
     survival_->renderItemSprites(items.get(),player_->cameraPosition(),entityDistance);
+    world_->renderBuildingItems(items.get(),player_->cameraPosition());
     renderer_->renderEntities(cuboids.get(), view, projection, timing_.worldTime, entityDistance);
     renderer_->renderBillboards(billboards.get(), *world_, view, projection,
                                 timing_.worldTime, settings_.brightness, fullbright_, entityDistance);
@@ -2253,6 +2266,7 @@ void Game::renderFrame(float deltaTime) {
         }
         }
     }
+    if(ui_.state()==GameState::Playing && !chat_.isOpen()  )renderer_->renderBuildingOverlay(width,height,*world_,*player_,view,projection,signEditorOpen_,signDraft_,signEditorOpen_?signPosition_:interaction_.blockTarget.block);
     if(ui_.state()==GameState::Playing && !chat_.isOpen()) renderer_->renderNavigation(width,height,*transportation_,*player_,*inventory_,navigationOpen_,mapView_,viewedMap_,waypointName_,waypointCoordinates_,waypointCoordinatesFocused_,navigationMessage_);
 
     const glm::dvec2 cursor = input_.framebufferCursorPosition();
@@ -2261,7 +2275,7 @@ void Game::renderFrame(float deltaTime) {
             input_.mousePressed(GLFW_MOUSE_BUTTON_RIGHT))
             sounds_->playClick();
         if (creativeMode_ && ui_.state() == GameState::Inventory) {
-            renderer_->renderCreativeInventory(width, height, *inventory_, cursor.x, cursor.y);
+            renderer_->renderCreativeInventory(width, height, *inventory_, cursor.x, cursor.y,ui_.creativePage());
         } else if (ui_.state() == GameState::Furnace) {
             if (const FurnaceData* furnace = world_->furnaceAt(ui_.openedContainerPosition(), false)) {
                 renderer_->renderFurnace(width, height, *inventory_, *furnace, cursor.x, cursor.y);
@@ -2683,10 +2697,10 @@ void Game::runSurvivalSmokeTest() {
     constexpr int uiHeight = 720;
     bool uiLayoutPassed = true;
     const auto checkHit = [&](UiMode mode, const UiRect& rect, UiHit expected,
-                              std::size_t creativeCount = 0) {
+                              std::size_t creativeCount = 0,int creativePage = 0) {
         const UiHit actual = UiLayout::hit(
             mode, rect.x + rect.width * .5f, rect.y + rect.height * .5f,
-            uiWidth, uiHeight, creativeCount);
+            uiWidth, uiHeight, creativeCount,0,0,creativePage);
         uiLayoutPassed = uiLayoutPassed && actual == expected;
     };
     for (UiMode mode : {UiMode::Inventory, UiMode::CraftingTable,
@@ -2717,7 +2731,7 @@ void Game::runSurvivalSmokeTest() {
                  {UiSlotKind::ChestSlot, slot});
     for (int slot = 0; slot < static_cast<int>(creativeCatalog().size()); ++slot)
         checkHit(UiMode::Creative, UiLayout::creativeItem(slot, uiWidth, uiHeight),
-                 {UiSlotKind::CreativeItem, slot}, creativeCatalog().size());
+                 {UiSlotKind::CreativeItem, slot}, creativeCatalog().size(),slot/UiLayout::CreativePageSize);
     UIManager settingsUi;
     settingsUi.openPauseMenu();
     settingsUi.openSettings();
@@ -2769,8 +2783,8 @@ void Game::runSurvivalSmokeTest() {
                      containerInventory.count(Item::Stone) == 64;
 
     bool metadataPassed = foodValue(Item::Apple) > 0.0f;
-    std::array<bool, 256> seenItemIds{};
-    std::array<bool, 256> seenBlockIds{};
+    std::array<bool, 65536> seenItemIds{};
+    std::array<bool, 65536> seenBlockIds{};
     const ItemAtlasLayout atlas = itemAtlasLayout();
     metadataPassed = metadataPassed && atlas.width == atlas.columns * atlas.tilePixels &&
                      atlas.height == atlas.rows * atlas.tilePixels &&

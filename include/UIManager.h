@@ -92,6 +92,7 @@ public:
     const glm::ivec3& openedContainerPosition() const {
         return worldContainerPosition_;
     }
+    int creativePage() const {return creativePage_;}
     const RecipeBookView& recipeBook() const { return recipeBook_; }
     static bool runRecipeBookSelfTest(std::string& report);
 
@@ -104,6 +105,7 @@ private:
     UiHit inventoryLeftDragStart_{};
     RecipeBookView recipeBook_{};
     int selectedRecipe_ = -1;
+    int creativePage_=0;
     double lastLeftClickTime_ = -1.0;
     UiHit lastLeftClickHit_{};
     void refreshRecipeBook(const Inventory& inventory, bool tableMode);

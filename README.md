@@ -4,6 +4,34 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.16.0 - Building & Decoration
+
+Build with 142 additional materials and pieces: six wood families, corner stairs,
+slabs, connected fences/walls/panes, gates, trapdoors, doors, masonry, furniture,
+lanterns, beds, barrels, signs, paintings, item frames, pots, carpets and scaffolds.
+Beds provide sleeping and a safely validated personal respawn point. Signs and
+displayed items participate in the existing coordinated save checkpoints.
+
+Block types and items now have stable 16-bit identifiers. Block properties are
+separate from type IDs; ordinary terrain retains compact one-byte storage.
+Historical IDs and Generators V1–V22 remain unchanged. Older saves are readable;
+the new save formats cannot be opened by older game versions, so retain backups
+before upgrading.
+
+Controls: right-click to interact; Sneak to place beside interactive blocks;
+Sneak + right-click to remove a displayed item or plant. Sneak + shovel makes a
+dirt path; axes strip logs. Sneak places a medium painting. Signs use Tab for a
+new line, Enter to save and Escape to cancel. Scaffold uses jump/sneak to climb.
+Creative's four-page catalog uses the same slot size as inventory and separates
+unlimited catalog entries from owned stacks. Clicking or right-dragging an item
+selects the item displayed on the current page.
+Recolor beds, carpets and candles with red/yellow flowers or Bone Meal; Creative
+Sneak + empty hand cycles all four colors.
+
+See [architecture, validation, screenshots and limitations](docs/BUILDING_DECORATION_VALIDATION.md)
+and the [release notes](docs/RELEASE_v2.16.0.md).
+Download the installer or standalone demo from the [v2.16.0 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.16.0).
+
 ### v2.15.1 - Survival Statistics & Wheat XP
 
 Creative and Spectator simulation retain Survival health, hunger and saturation.

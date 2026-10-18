@@ -1,4 +1,5 @@
 #include "Survival.h"
+#include "Building.h"
 #include "Weather.h"
 #include "SaveFile.h"
 #include "SaveValidation.h"
@@ -25,7 +26,7 @@
 #include <thread>
 
 namespace {
-constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '6', '\0', '\0'};
+constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '7', '\0', '\0'};
 constexpr char MobMagic[8] = {'V', 'X', 'M', 'O', 'B', '1', '\0', '\0'};
 constexpr int PassiveMobCap = 26;
 constexpr int HostileMobCap = 18;
@@ -447,6 +448,53 @@ const std::vector<Recipe>& recipes() {
         r.push_back(recipe(2,2,{Item::Carrot,Item::Potato,Item::Beetroot,Item::Bowl},Item::VegetableStew,1,false,false,true));
         r.push_back(recipe(2,2,{Item::Pumpkin,Item::Sugar,Item::Egg},Item::PumpkinPie,1,false,false,true));
         r.push_back(recipe(3,1,{Item::Wheat,Item::SweetBerries,Item::Wheat},Item::Cookie,6,true));
+        for(const auto& c:buildingContent()) {
+            const Ingredient m(c.ingredient),none(Item::None),stick(Item::Stick);
+            switch(c.shape){
+            case BuildingShape::Stairs:r.push_back(recipe(3,3,{m,none,none,m,m,none,m,m,m},c.item,4,true,true));break;
+            case BuildingShape::Slab:
+                if(c.item==Item::OakSlab)r.push_back(recipe(1,1,{Item::WoodenSlab},c.item,1,false));
+                else if(c.item==Item::StoneCutSlab)r.push_back(recipe(1,1,{Item::StoneSlab},c.item,1,false));
+                else if(c.block>=Block::OakStairs && c.block<=Block::DarkOakShelf)r.push_back(recipe(2,1,{Item::WoodenSlab,m},c.item,3,false));
+                else r.push_back(recipe(3,1,{m,m,m},c.item,6,true));break;
+            case BuildingShape::Fence:r.push_back(recipe(3,2,{m,stick,m,m,stick,m},c.item,3,true));break;
+            case BuildingShape::FenceGate:r.push_back(recipe(3,2,{stick,m,stick,stick,m,stick},c.item,1,true));break;
+            case BuildingShape::Trapdoor:r.push_back(recipe(3,2,{m,m,m,m,m,m},c.item,2,true));break;
+            case BuildingShape::Door:
+                if(c.item==Item::OakDoor)r.push_back(recipe(1,1,{Item::WoodenDoor},c.item,1,false));
+                else r.push_back(recipe(2,1,{Item::WoodenDoor,m},c.item,1,false));break;
+            case BuildingShape::StrippedLog:r.push_back(recipe(2,1,{blockToItem(c.material),Item::Stick},c.item,1,false));break;
+            case BuildingShape::Button:r.push_back(recipe(1,1,{m},c.item,1,false));break;
+            case BuildingShape::PressurePlate:r.push_back(recipe(2,1,{m,m},c.item,1,false));break;
+            case BuildingShape::Table:r.push_back(recipe(3,2,{m,m,m,stick,none,stick},c.item,1,true));break;
+            case BuildingShape::Chair:r.push_back(recipe(2,3,{m,none,m,m,stick,stick},c.item,1,true));break;
+            case BuildingShape::Bench:r.push_back(recipe(3,2,{m,m,m,stick,stick,stick},c.item,1,true));break;
+            case BuildingShape::Sign:r.push_back(recipe(3,3,{m,m,m,m,m,m,none,stick,none},c.item,3,true));break;
+            case BuildingShape::Shelf:r.push_back(recipe(3,2,{stick,none,stick,m,m,m},c.item,2,true));break;
+            case BuildingShape::Wall:r.push_back(recipe(3,2,{m,m,m,m,m,m},c.item,6,true));break;
+            case BuildingShape::Pane:
+                if(c.item==Item::GlassPane)r.push_back(recipe(3,2,{m,m,m,m,m,m},c.item,16,true));
+                else r.push_back(recipe(2,1,{Item::GlassPane,c.item==Item::RoseGlassPane?Item::RedFlower:c.item==Item::AmberGlassPane?Item::YellowFlower:Item::Coal},c.item,1,false,false,true));break;
+            case BuildingShape::Lantern:r.push_back(recipe(2,2,{Item::IronIngot,Item::Torch,Item::None,Item::IronIngot},c.item,2,false));break;
+            case BuildingShape::Chain:r.push_back(recipe(1,2,{Item::IronIngot,Item::IronIngot},c.item,4,false));break;
+            case BuildingShape::Candle:r.push_back(recipe(1,2,{Item::Wool,Item::Stick},c.item,4,false));break;
+            case BuildingShape::Campfire:r.push_back(recipe(3,3,{none,stick,none,stick,Item::Coal,stick,m,m,m},c.item,1,true));break;
+            case BuildingShape::Bed:r.push_back(recipe(3,2,{Item::Wool,Item::Wool,Item::Wool,IngredientGroup::Planks,IngredientGroup::Planks,IngredientGroup::Planks},c.item,1,true));break;
+            case BuildingShape::Barrel:r.push_back(recipe(3,3,{m,Item::WoodenSlab,m,m,none,m,m,Item::WoodenSlab,m},c.item,1,true));break;
+            case BuildingShape::Painting:r.push_back(recipe(3,3,{stick,stick,stick,stick,m,stick,stick,stick,stick},c.item,1,true));break;
+            case BuildingShape::Frame:r.push_back(recipe(3,3,{stick,stick,stick,stick,m,stick,stick,stick,stick},c.item,1,true));break;
+            case BuildingShape::Pot:r.push_back(recipe(3,2,{m,none,m,none,m,none},c.item,1,true));break;
+            case BuildingShape::Carpet:r.push_back(recipe(2,1,{m,m},c.item,3,false));break;
+            case BuildingShape::Path:r.push_back(recipe(2,1,{m,Item::Gravel},c.item,2,false,false,true));break;
+            case BuildingShape::Scaffold:r.push_back(recipe(3,2,{m,Item::Vine,m,m,none,m},c.item,6,true));break;
+            default:
+                if(c.item==Item::ChiseledStoneBricks)r.push_back(recipe(1,2,{Item::StoneBricksSlab,Item::StoneBricksSlab},c.item,1,false));
+                else if(c.item==Item::CutSandstone||c.item==Item::PolishedDeepslate)r.push_back(recipe(2,2,{m,m,m,m},c.item,4,false));
+                else if(c.item==Item::DeepslateBricks)r.push_back(recipe(2,2,{Item::PolishedDeepslate,Item::PolishedDeepslate,Item::PolishedDeepslate,Item::PolishedDeepslate},c.item,4,false));
+                else if(c.item==Item::CrackedDeepslateBricks)r.push_back(recipe(1,2,{Item::DeepslateBricks,Item::DeepslateBricks},c.item,2,false));
+                else r.push_back(recipe(1,2,{m,m},c.item,2,false));break;
+            }
+        }
         return r;
     }();
     return all;
@@ -607,11 +655,15 @@ void Inventory::setCreativeCursor(Item item) {
 }
 
 bool Inventory::handleCreativeClick(
-    double mouseX, double mouseY, int width, int height, bool rightClick, bool shiftClick) {
+    double mouseX, double mouseY, int width, int height, bool rightClick, bool shiftClick,int page) {
     const UiHit hit = UiLayout::hit(
-        UiMode::Creative, mouseX, mouseY, width, height, creativeCatalog().size());
+        UiMode::Creative, mouseX, mouseY, width, height, creativeCatalog().size(),0,0,page);
+    return handleCreativeClick(hit,rightClick,shiftClick);
+}
+bool Inventory::handleCreativeClick(const UiHit& hit,bool rightClick,bool shiftClick) {
     if (hit.kind == UiSlotKind::EquipmentSlot) return clickEquipment(hit.index,rightClick,shiftClick);
     if (hit.kind == UiSlotKind::CreativeItem) {
+        if(hit.index<0 || hit.index>=int(creativeCatalog().size()))return false;
         const Item item=creativeCatalog()[static_cast<std::size_t>(hit.index)];
         const int target=item==Item::Shield ? OffhandSlot : armorSlot(item);
         if(shiftClick && target>=0) {
@@ -626,6 +678,7 @@ bool Inventory::handleCreativeClick(
         return true;
     }
     if (hit.kind == UiSlotKind::PlayerInventorySlot) {
+        if(hit.index<0 || hit.index>=TotalSlots)return false;
         if(shiftClick && equipFromSlot(hit.index)) return true;
         clickStack(slots_[static_cast<std::size_t>(hit.index)], cursor_, rightClick);
         return true;
@@ -1121,7 +1174,7 @@ bool Inventory::save(const std::string& p, std::uint32_t seed) const {
     wr(f, seed);
     wr(f, selectedSlot_);
     auto ws = [&](const ItemStack& s) {
-        std::uint8_t i = itemDefinition(s.item).saveId;
+        std::uint16_t i = itemDefinition(s.item).saveId;
         std::int16_t c = static_cast<std::int16_t>(s.count),
                      d = static_cast<std::int16_t>(s.durability);
         return wr(f, i) && wr(f, c) && wr(f, d) && wr(f, s.identity);
@@ -1148,14 +1201,15 @@ bool Inventory::load(const std::string& p, std::uint32_t seed) {
     const char legacy[8]={'V','X','I','N','V','4','\0','\0'};
     const bool old=std::memcmp(m,legacy,8)==0;
     const bool v5=std::memcmp(m,"VXINV5\0",8)==0;
-    if ((!old && !v5 && std::memcmp(m, InventoryMagic, 8)) || !rd(f, stored) || stored != seed ||
+    const bool v6=std::memcmp(m,"VXINV6\0",8)==0;
+    if ((!old && !v5 && !v6 && std::memcmp(m, InventoryMagic, 8)) || !rd(f, stored) || stored != seed ||
         !rd(f, loaded.selectedSlot_))
         return false;
     auto rs = [&](ItemStack& s) {
-        std::uint8_t i;
+        std::uint16_t i=0;
         std::int16_t c, d;
         Item loadedItem = Item::None;
-        if (!rd(f, i) || !rd(f, c) || !rd(f, d) || !itemFromSaveId(i, loadedItem))
+        if (!f.read(reinterpret_cast<char*>(&i),old||v5||v6?1:2) || !rd(f, c) || !rd(f, d) || ((old||v5||v6) && i>=206) || !itemFromSaveId(i, loadedItem))
             return false;
         s = {loadedItem, c, d};
         if(!old && !v5 && !rd(f,s.identity)) return false;
@@ -1425,6 +1479,7 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
                 smeltingResult(Item::RawMutton) == Item::CookedMutton;
     // Every authoritative recipe must work manually and through book autofill,
     // including repeated shapeless ingredients and compression output counts.
+    std::string recipeFailures;
     for (std::size_t index = 0; index < craftingRecipes().size(); ++index) {
         const RecipeInfo& definition = craftingRecipes()[index];
         Inventory manual;
@@ -1460,9 +1515,10 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
             report = "recipe/book/batch regression: " + itemDefinition(definition.output).displayName +
                 " manual " + std::to_string(static_cast<int>(output.item)) + "/" + std::to_string(output.count) +
                 " crafted " + std::to_string(crafted) + " stored " + std::to_string(book.count(definition.output));
-            return false;
+            recipeFailures+=report+"; ";
         }
     }
+    if(!recipeFailures.empty()){report=std::move(recipeFailures);return false;}
     improved &= test(false, {{0,Item::Charcoal},{3,Item::Stick}}, Item::Torch, 4) &&
                 smeltingResult(Item::ClayBall) == Item::Brick &&
                 smeltingResult(Item::Log) == Item::Charcoal &&
@@ -1678,15 +1734,15 @@ std::string SurvivalWorld::mobName(int index) const {
 std::int64_t SurvivalWorld::chunkKey(int x, int z) {
     return static_cast<std::int64_t>((std::uint64_t(std::uint32_t(x)) << 32) | std::uint32_t(z));
 }
-void SurvivalWorld::spawnDrop(const glm::vec3& p,
+bool SurvivalWorld::spawnDrop(const glm::vec3& p,
                               Item item,
                               int amount,
                               int durability,
                               const glm::vec3& velocity,
                               float pickupDelay, std::uint32_t identity) {
-    if (item == Item::None || item>=Item::Count || amount<=0 || !SaveValidation::position(p) || !SaveValidation::velocity(velocity) || !std::isfinite(pickupDelay))return;
+    if (item == Item::None || item>=Item::Count || amount<=0 || !SaveValidation::position(p) || !SaveValidation::velocity(velocity) || !std::isfinite(pickupDelay))return false;
     const int limit=Inventory::maxStack(item);
-    if(limit<=0 || (std::uint64_t(amount)+limit-1)/limit+ drops_.size()>SaveValidation::MaxDrops)return;
+    if(limit<=0 || (std::uint64_t(amount)+limit-1)/limit+ drops_.size()>SaveValidation::MaxDrops)return false;
     Drop d;
     d.position = p;
     d.velocity = velocity;
@@ -1694,7 +1750,10 @@ void SurvivalWorld::spawnDrop(const glm::vec3& p,
                amount,
                isDurable(item) ? (durability < 0 ? Inventory::maxDurability(item) : durability) : 0,identity};
     d.pickupDelay = std::max(0.0f, pickupDelay);
-    while(amount>0){d.stack.count=std::min(amount,limit);if(!SaveValidation::stack(d.stack))return;drops_.push_back(d);amount-=d.stack.count;}
+    d.stack.count=std::min(amount,limit);
+    if(!SaveValidation::stack(d.stack))return false;
+    while(amount>0){d.stack.count=std::min(amount,limit);drops_.push_back(d);amount-=d.stack.count;}
+    return true;
 }
 void SurvivalWorld::spawnExperience(const glm::vec3& p, int amount) {
     int n = std::max(1, amount / 2);
@@ -2495,6 +2554,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         next.z = a.position.z;
         a.thinkTimer = 0.0f;
     }
+    if(!billboard){const auto obstruction=w.getBlock(int(std::floor(next.x)),int(std::floor(a.position.y)),int(std::floor(next.z)));const auto building=buildingDefinition(obstruction);if(building && (building->shape==BuildingShape::Fence || building->shape==BuildingShape::Wall || (building->shape==BuildingShape::FenceGate && !(blockProperties(obstruction)&8)))){next.x=a.position.x;next.z=a.position.z;}}
     int ax = static_cast<int>(std::floor(next.x)), az = static_cast<int>(std::floor(next.z));
     if (!billboard && w.isSolidAt(ax, fy, az) &&
         !isDoorOpen(w.getBlock(ax, fy, az))) {
@@ -2861,7 +2921,7 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
         wr(f, length);
         f.write(name.data(), length);
     }
-    f.write("DRP1",4);
+    f.write("DRP2",4);
     wr(f,std::uint32_t(drops_.size()));
     for(const auto& d:drops_){wr(f,d.position);wr(f,d.velocity);wr(f,d.stack.item);wr(f,d.stack.count);wr(f,d.stack.durability);wr(f,d.stack.identity);wr(f,d.age);wr(f,d.pickupDelay);}
     f.write("PST1",4);wr(f,n);
@@ -2963,9 +3023,11 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
     std::vector<Drop> loadedDrops;
     if(f.peek()!=std::char_traits<char>::eof()){
         char marker[4]{};f.read(marker,4);std::uint32_t count;
-        if(std::memcmp(marker,"DRP1",4)||!rd(f,count)||count>SaveValidation::MaxDrops)return false;
+        const bool wideDrops=std::memcmp(marker,"DRP2",4)==0;
+        if((!wideDrops && std::memcmp(marker,"DRP1",4))||!rd(f,count)||count>SaveValidation::MaxDrops)return false;
         for(unsigned k=0;k<count;++k){Drop d;
-            if(!rd(f,d.position)||!rd(f,d.velocity)||!rd(f,d.stack.item)||!rd(f,d.stack.count)||!rd(f,d.stack.durability)||!rd(f,d.stack.identity)||!rd(f,d.age)||!rd(f,d.pickupDelay)||
+            std::uint16_t dropId=0;
+            if(!rd(f,d.position)||!rd(f,d.velocity)||!f.read(reinterpret_cast<char*>(&dropId),wideDrops?2:1)||(!wideDrops && dropId>=206)||!itemFromSaveId(dropId,d.stack.item)||!rd(f,d.stack.count)||!rd(f,d.stack.durability)||!rd(f,d.stack.identity)||!rd(f,d.age)||!rd(f,d.pickupDelay)||
                 !SaveValidation::stack(d.stack)||!SaveValidation::position(d.position)||!SaveValidation::velocity(d.velocity)||!std::isfinite(d.age)||d.age<0||!std::isfinite(d.pickupDelay)||d.pickupDelay<0) return false;
             loadedDrops.push_back(d);
         }
@@ -3792,3 +3854,5 @@ void SurvivalWorld::vehicleObstacles(std::vector<RenderCuboid>& out,const glm::v
         out.push_back({a.position+glm::vec3(0,height*.5f,0),{half*2,height,half*2},{1,1,1},{}});
     }
 }
+
+bool SurvivalWorld::anyMobIntersects(const glm::vec3& mn,const glm::vec3& mx) const {for(const auto& a:animals_){if(a.deathTimer>0)continue;float width=isBillboard(a.type)?BillboardMobHalfWidth:.38f;auto low=a.position-glm::vec3(width,0,width),high=a.position+glm::vec3(width,isBillboard(a.type)?BillboardMobHeight:1.15f,width);if(low.x<mx.x&&high.x>mn.x&&low.y<mx.y&&high.y>mn.y&&low.z<mx.z&&high.z>mn.z)return true;}return false;}

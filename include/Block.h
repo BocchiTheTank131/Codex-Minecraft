@@ -1,7 +1,8 @@
 #pragma once
 #include <cstdint>
 
-enum class Block : std::uint8_t {
+// A block value is a state: low 16 bits are the stable type ID, high 16 bits properties.
+enum class Block : std::uint32_t {
     Air = 0,
     Grass,
     Dirt,
@@ -134,8 +135,21 @@ enum class Block : std::uint8_t {
     LavaFlow1, LavaFlow2, LavaFlow3, LavaFlow4, LavaFalling,
     // v2.15.0 crop stages and persistent composter fill.
     Carrot0, Carrot1, Carrot2, Carrot3, Potato0, Potato1, Potato2, Potato3, Beetroot0, Beetroot1, Beetroot2, Beetroot3, PumpkinStem0, PumpkinStem1, PumpkinStem2, PumpkinStem3, MelonStem0, MelonStem1, MelonStem2, MelonStem3, Pumpkin, Melon, BerryBush0, BerryBush1, BerryBush2, BerryBush3, Composter0, Composter1, Composter2, Composter3, Composter4,
+    // v2.16.0: stable types; orientation and connections are properties.
+    OakStairs, OakSlab, OakFence, OakFenceGate, OakTrapdoor, OakDoor, OakStrippedLog, OakButton, OakPressurePlate, OakTable, OakChair, OakBench, OakSign, OakShelf, BirchStairs, BirchSlab, BirchFence, BirchFenceGate, BirchTrapdoor, BirchDoor, BirchStrippedLog, BirchButton, BirchPressurePlate, BirchTable, BirchChair, BirchBench, BirchSign, BirchShelf, SpruceStairs, SpruceSlab, SpruceFence, SpruceFenceGate, SpruceTrapdoor, SpruceDoor, SpruceStrippedLog, SpruceButton, SprucePressurePlate, SpruceTable, SpruceChair, SpruceBench, SpruceSign, SpruceShelf, JungleStairs, JungleSlab, JungleFence, JungleFenceGate, JungleTrapdoor, JungleDoor, JungleStrippedLog, JungleButton, JunglePressurePlate, JungleTable, JungleChair, JungleBench, JungleSign, JungleShelf, AcaciaStairs, AcaciaSlab, AcaciaFence, AcaciaFenceGate, AcaciaTrapdoor, AcaciaDoor, AcaciaStrippedLog, AcaciaButton, AcaciaPressurePlate, AcaciaTable, AcaciaChair, AcaciaBench, AcaciaSign, AcaciaShelf, DarkOakStairs, DarkOakSlab, DarkOakFence, DarkOakFenceGate, DarkOakTrapdoor, DarkOakDoor, DarkOakStrippedLog, DarkOakButton, DarkOakPressurePlate, DarkOakTable, DarkOakChair, DarkOakBench, DarkOakSign, DarkOakShelf, CobblestoneStairs, CobblestoneSlab, CobblestoneWall, StoneStairs, StoneCutSlab, StoneWall, StoneBricksStairs, StoneBricksSlab, StoneBricksWall, MossyCobblestoneStairs, MossyCobblestoneSlab, MossyCobblestoneWall, MossyStoneBricksStairs, MossyStoneBricksSlab, MossyStoneBricksWall, BricksStairs, BricksSlab, BricksWall, SandstoneStairs, SandstoneSlab, SandstoneWall, DeepslateStairs, DeepslateSlab, DeepslateWall, PolishedGraniteStairs, PolishedGraniteSlab, PolishedGraniteWall, PolishedDioriteStairs, PolishedDioriteSlab, PolishedDioriteWall, PolishedAndesiteStairs, PolishedAndesiteSlab, PolishedAndesiteWall, ChiseledStoneBricks, SmoothStone, SmoothSandstone, CutSandstone, PolishedDeepslate, DeepslateBricks, CrackedDeepslateBricks, RoofShingles, GlassPane, RoseGlassPane, AmberGlassPane, SmokedGlassPane, Lantern, Chain, Candle, Campfire, Bed, Barrel, Painting, ItemFrame, FlowerPot, Carpet, DirtPath, StonePaving, Scaffold,
     Count
 };
+
+using BlockId = std::uint16_t;
+inline Block blockType(Block b) { return Block(std::uint32_t(b)&0xffffU); }
+inline std::uint16_t blockProperties(Block b) { return std::uint16_t(std::uint32_t(b)>>16U); }
+inline Block blockState(Block type, std::uint16_t properties) { return Block(std::uint32_t(blockType(type)) | (std::uint32_t(properties)<<16U)); }
+bool validBlockState(Block block);
+inline bool isBuilding(Block b){const auto t=blockType(b);return t>=Block::OakStairs && t<Block::Count;}
+bool buildingSolid(Block block);
+bool buildingTransparent(Block block);
+bool buildingOccludesLight(Block block);
+std::uint8_t buildingEmission(Block block);
 
 inline bool isLava(Block b) { return b == Block::Lava || (b>=Block::LavaFlow1 && b<=Block::LavaFalling); }
 inline bool isLavaSource(Block b) { return b==Block::Lava; }
@@ -176,13 +190,13 @@ inline float waterHeight(Block b) {
     return 0.875f - static_cast<float>(waterLevel(b)) * 0.09375f;
 }
 inline bool isTorch(Block b) {
-    return b == Block::Torch;
+    return blockType(b) == Block::Torch;
 }
 
 // The existing block-light solver's source levels. Keep indexing and solving
 // on the same definition; non-emissive blocks must not enter the source index.
 inline std::uint8_t blockLightEmission(Block block) {
-    return block == Block::Torch || block == Block::Fire || isLava(block) ? 15U : 0U;
+    return isBuilding(block)?buildingEmission(block):isTorch(block) || block == Block::Fire || isLava(block) ? 15U : 0U;
 }
 inline bool isCrop(Block b) {
     return (b >= Block::Crop0 && b <= Block::Crop3) ||
@@ -194,8 +208,9 @@ inline bool isFarmland(Block b) { return b == Block::Farmland || b == Block::Wet
 inline int cropStage(Block b) { return b <= Block::Crop3 ? int(b)-int(Block::Crop0) : (int(b)-int(Block::Carrot0))%4; }
 inline Block cropBase(Block b) { return Block(int(b)-cropStage(b)); }
 inline bool isFarmTracked(Block b) { return isCrop(b) || isBerryBush(b) || isFarmland(b) || b==Block::SugarCane || b==Block::RedMushroom || b==Block::BrownMushroom; }
-static_assert(int(Block::Count) <= 255, "Block sentinel must fit the save byte");
+static_assert(int(Block::Count) <= 65535, "Block type ID overflow");
 inline bool isLog(Block b) {
+    b=blockType(b);
     return b==Block::Log||b==Block::BirchLog||b==Block::SpruceLog||b==Block::JungleLog||
            b==Block::AcaciaLog||b==Block::DarkOakLog;
 }
@@ -219,6 +234,7 @@ inline bool isLadder(Block b) {
 }
 inline bool isWallAttachment(Block b) { return isLadder(b) || isVine(b); }
 inline bool isTransparentBlock(Block b) {
+    if(isBuilding(b))return buildingTransparent(b);
     return isWater(b) || b == Block::Glass || b == Block::Ice || isLeaf(b) || isPlant(b) ||
            isWallAttachment(b);
 }
@@ -295,13 +311,15 @@ inline float blockCollisionHeight(Block b) {
     return 1.0f;
 }
 inline bool isSolid(Block b) {
-    return b != Block::Air && !isWater(b) && !isLava(b) && b != Block::Torch && !isCrop(b) &&
+    if(isBuilding(b))return buildingSolid(b);
+    return b != Block::Air && !isWater(b) && !isLava(b) && !isTorch(b) && !isCrop(b) &&
            b != Block::Snow && b != Block::LilyPad && b != Block::LightningRod && b != Block::Fire && !isPlant(b) && !isWallAttachment(b);
 }
 inline bool isRenderable(Block b) {
     return b != Block::Air;
 }
 inline bool occludesLight(Block b) {
+    if(isBuilding(b))return buildingOccludesLight(b);
     return isSolid(b) && !isLeaf(b) && b != Block::Glass && b != Block::Ice && !isSlab(b) &&
            !isDoor(b) && !snowLayers(b);
 }
@@ -329,10 +347,13 @@ struct BlockGeometryProperties {
     float aoOcclusion = 1.0f;
 };
 
+BlockGeometryProperties buildingGeometry(Block block);
+
 // Describes the actual occupied bounds used by face occlusion. Rendering may use a
 // custom mesh (doors, ladders and crossed plants), but neighboring cube faces are
 // culled only when these bounds really cover their shared boundary.
 inline BlockGeometryProperties blockGeometry(Block block) {
+    if(isBuilding(block))return buildingGeometry(block);
     BlockGeometryProperties geometry;
     if (block == Block::Air) {
         geometry.shape = BlockShape::Empty;
@@ -395,6 +416,10 @@ inline BlockGeometryProperties blockGeometry(Block block) {
             }
         }
     } else if (isWallAttachment(block)) {
+        if(block==Block::LadderNorth||block==Block::VineNorth)geometry.maxZ=.07f;
+        else if(block==Block::LadderSouth||block==Block::VineSouth)geometry.minZ=.93f;
+        else if(block==Block::LadderEast||block==Block::VineEast)geometry.minX=.93f;
+        else geometry.maxX=.07f;
         geometry.shape = BlockShape::Thin;
         geometry.occludesNeighborFaces = false;
         geometry.aoOcclusion = 0.0f;
@@ -407,10 +432,11 @@ inline BlockGeometryProperties blockGeometry(Block block) {
         }
         geometry.occludesNeighborFaces = false;
         geometry.aoOcclusion = 0.0f;
-    } else if (block == Block::Torch) {
+    } else if (isTorch(block)) {
         geometry.minX = geometry.minZ = 0.4375f;
         geometry.maxX = geometry.maxZ = 0.5625f;
         geometry.maxY = 0.75f;
+        if(blockProperties(block)) {geometry.minY=.25f;geometry.maxY=.9f;switch((blockProperties(block)-1)&3){case 0:geometry.minZ=.875f;geometry.maxZ=1;break;case 1:geometry.minX=0;geometry.maxX=.125f;break;case 2:geometry.minZ=0;geometry.maxZ=.125f;break;case 3:geometry.minX=.875f;geometry.maxX=1;break;}}
         geometry.shape = BlockShape::Thin;
         geometry.occludesNeighborFaces = false;
         geometry.aoOcclusion = 0.0f;
@@ -428,6 +454,7 @@ inline BlockGeometryProperties blockGeometry(Block block) {
 }
 
 inline bool matchingOcclusionGroup(Block first, Block second) {
+    if((first==Block::Glass||isBuilding(first)) && (second==Block::Glass||isBuilding(second)) && (first==Block::Glass||buildingTransparent(first)) && (second==Block::Glass||buildingTransparent(second)))return true;
     if (first == second)
         return blockGeometry(first).mergeMatchingFaces;
     return isDoor(first) && isDoor(second) && doorFacing(first) == doorFacing(second) &&

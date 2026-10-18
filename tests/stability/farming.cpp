@@ -250,8 +250,8 @@ int FarmingTest::run(int argc,char** argv) {
         for(int i=0;i<10800;++i)boundary.update(1.f/120,edge,{.5f,300,.5f});
         check((edge.getBlock(16,300,4)==Block::Melon)+(edge.getBlock(14,300,4)==Block::Melon)==1,"fruit_boundary_regrows_once");
     }
-    for(int id=174;id<int(Item::Count);++id){Item restored;check(itemFromSaveId(std::uint8_t(id),restored) && int(restored)==id && !itemDefinition(restored).displayName.empty(),"item_registry_"+std::to_string(id));}
-    for(int id=167;id<int(Block::Count);++id){Block restored;check(blockFromSaveId(std::uint8_t(id),restored) && int(restored)==id && blockDefinition(restored).topTexture>=106,"block_registry_"+std::to_string(id));}
+    for(int id=174;id<206;++id){Item restored;check(itemFromSaveId(std::uint16_t(id),restored) && int(restored)==id && !itemDefinition(restored).displayName.empty(),"item_registry_"+std::to_string(id));}
+    for(int id=167;id<198;++id){Block restored;check(blockFromSaveId(std::uint32_t(id),restored) && int(restored)==id && blockDefinition(restored).topTexture>=106,"block_registry_"+std::to_string(id));}
     std::cout<<"Farming assertions="<<assertions<<std::endl;g.shutdown();return 0;
 }
 

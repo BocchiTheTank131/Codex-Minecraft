@@ -46,6 +46,7 @@ public:
 
 private:
     friend class StabilityTest;
+    friend class BuildingTest;
     friend class Game; // Opt-in native regression fixtures inject one input frame.
     static constexpr int KeyCount = 512;
     static constexpr int MouseButtonCount = 8;

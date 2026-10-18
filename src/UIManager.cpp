@@ -1,4 +1,5 @@
 #include "UIManager.h"
+#include "Building.h"
 
 #include "InputManager.h"
 #include "Player.h"
@@ -232,7 +233,7 @@ bool UIManager::validateOpenBlock(const World& world,
                                : (furnaceOpen() ? Block::Furnace : Block::Chest);
     const Block block = world.getBlock(position.x, position.y, position.z);
     const glm::vec3 center = glm::vec3(position) + glm::vec3(0.5f);
-    if (block == expected && glm::distance(player.position(), center) <= 6.0f) {
+    if ((block == expected || (expected==Block::Chest && buildingIsContainer(block))) && glm::distance(player.position(), center) <= 6.0f) {
         return true;
     }
 
@@ -272,8 +273,9 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
                       : tableMode ? UiMode::CraftingTable : UiMode::Inventory;
     const UiHit hit = UiLayout::hit(mode, cursor.x, cursor.y, framebufferWidth,
                                    framebufferHeight, creativeCatalog().size(),
-                                   recipeBook_.entries.size(), recipeBook_.page);
+                                   recipeBook_.entries.size(), recipeBook_.page,creativePage_);
     const bool leftPressed = input.mousePressed(GLFW_MOUSE_BUTTON_LEFT);
+    if(creativeInventory && leftPressed && (hit.kind==UiSlotKind::CreativePrevious || hit.kind==UiSlotKind::CreativeNext)){creativePage_=std::clamp(creativePage_+(hit.kind==UiSlotKind::CreativeNext?1:-1),0,int((creativeCatalog().size()-1)/UiLayout::CreativePageSize));return;}
     const bool rightPressed = input.mousePressed(GLFW_MOUSE_BUTTON_RIGHT);
     const bool rightDown = input.mouseDown(GLFW_MOUSE_BUTTON_RIGHT);
     const bool shiftDown = input.actionDown(ControlAction::Sneak);
@@ -436,8 +438,7 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
             furnaceOpen() || chestOpen()
                 ? handleContainerClick(rightPressed)
                 : creativeInventory
-                ? inventory.handleCreativeClick(cursor.x, cursor.y, framebufferWidth,
-                                                framebufferHeight, rightPressed,shiftDown)
+                ? inventory.handleCreativeClick(hit,rightPressed,shiftDown)
                 : inventory.handleInventoryClick(cursor.x, cursor.y, framebufferWidth,
                                                  framebufferHeight, rightPressed, tableMode,
                                                  shiftDown);
@@ -453,8 +454,7 @@ void UIManager::updateInventoryInteraction(const InputManager& input,
         if (furnaceOpen() || chestOpen()) {
             handleContainerClick(true);
         } else if (creativeInventory) {
-            inventory.handleCreativeClick(
-                cursor.x, cursor.y, framebufferWidth, framebufferHeight, true);
+            inventory.handleCreativeClick(hit,true);
         } else {
             inventory.handleInventoryClick(
                 cursor.x, cursor.y, framebufferWidth, framebufferHeight, true, tableMode, false);

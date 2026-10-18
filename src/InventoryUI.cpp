@@ -138,8 +138,8 @@ void slot(std::vector<V>& v,
 void tooltip(std::vector<V>& vertices, UiMode mode, int W, int H,
              const Inventory& inventory, double mouseX, double mouseY,
              const RecipeBookView* book = nullptr, const FurnaceData* furnace = nullptr,
-             const ChestData* chest = nullptr) {
-    const Item item = InventoryTooltip::hoveredItem(mode,W,H,mouseX,mouseY,inventory,book,furnace,chest);
+             const ChestData* chest = nullptr,int creativePage=0) {
+    const Item item = InventoryTooltip::hoveredItem(mode,W,H,mouseX,mouseY,inventory,book,furnace,chest,creativePage);
     if (item == Item::None) return;
     std::string name = itemDefinition(item).displayName;
     const auto hit=UiLayout::hit(mode,mouseX,mouseY,W,H,creativeCatalog().size());
@@ -332,7 +332,7 @@ void Renderer::renderInventory(
     flush(v, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 void Renderer::renderCreativeInventory(
-    int W, int H, const Inventory& inv, double mouseX, double mouseY) const {
+    int W, int H, const Inventory& inv, double mouseX, double mouseY,int page) const {
     std::vector<V> vertices;
     vertices.reserve(16000);
     const UiRect panel = UiLayout::panel(UiMode::Creative, W, H);
@@ -345,12 +345,13 @@ void Renderer::renderCreativeInventory(
          {.34f, .34f, .34f, .98f}, W, H);
     const auto& catalog = creativeCatalog();
     equipmentSlots(vertices,UiMode::Creative,W,H,inv);
-    const float catalogHeight = 22.0f +
-        ((catalog.size() + UiLayout::CreativeColumns - 1) / UiLayout::CreativeColumns) * 35.0f;
-    const float catalogWidth = UiLayout::CreativeColumns * 35.0f + 21.0f;
-    rect(vertices, panelX + (panel.width - catalogWidth) * .5f, panelY + 34,
+    const float catalogHeight = UiLayout::CreativeRows * 48.0f + 16.0f;
+    const float catalogWidth = UiLayout::CreativeColumns * 48.0f + 16.0f;
+    rect(vertices, panelX + (panel.width - catalogWidth) * .5f, panelY + 25,
          catalogWidth, catalogHeight, {.16f, .16f, .18f, 1}, W, H);
-    for (int index = 0; index < static_cast<int>(catalog.size()); ++index) {
+    rect(vertices,panelX+450,panelY+475,40,30,{.13f,.15f,.16f,1},W,H);rect(vertices,panelX+550,panelY+475,40,30,{.13f,.15f,.16f,1},W,H);
+    text(vertices,"<",panelX+465,panelY+483,1.5f,{1,1,1,1},W,H);text(vertices,">",panelX+565,panelY+483,1.5f,{1,1,1,1},W,H);text(vertices,std::to_string(page+1)+"/"+std::to_string((catalog.size()+UiLayout::CreativePageSize-1)/UiLayout::CreativePageSize),panelX+495,panelY+484,1.2f,{1,1,1,1},W,H);
+    for (int index = page*UiLayout::CreativePageSize; index < std::min(static_cast<int>(catalog.size()),(page+1)*UiLayout::CreativePageSize); ++index) {
         ItemStack stack{catalog[static_cast<std::size_t>(index)],
                         Inventory::maxStack(catalog[static_cast<std::size_t>(index)]),
                         Inventory::maxDurability(catalog[static_cast<std::size_t>(index)])};
@@ -377,7 +378,7 @@ void Renderer::renderCreativeInventory(
          44.0f,
          W,
          H);
-    tooltip(vertices,UiMode::Creative,W,H,inv,mouseX,mouseY);
+    tooltip(vertices,UiMode::Creative,W,H,inv,mouseX,mouseY,nullptr,nullptr,nullptr,page);
     flush(vertices, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 

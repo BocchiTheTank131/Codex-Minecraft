@@ -9,7 +9,7 @@ enum class SoundMaterial : std::uint8_t { Stone, Wood, Grass, Gravel, Sand, Snow
 
 struct ItemDefinition {
     std::string displayName;
-    std::uint8_t saveId = 0;
+    std::uint16_t saveId = 0;
     int spriteIndex = -1;
     int maxStack = 64;
     ToolKind tool = ToolKind::None;
@@ -26,7 +26,7 @@ struct ItemDefinition {
 };
 
 struct BlockDefinition {
-    std::uint8_t saveId = 0;
+    std::uint16_t saveId = 0;
     int topTexture = 3;
     int sideTexture = 3;
     int bottomTexture = 3;
@@ -44,10 +44,10 @@ struct BlockDefinition {
 
 const ItemDefinition& itemDefinition(Item item);
 const BlockDefinition& blockDefinition(Block block);
-bool itemFromSaveId(std::uint8_t id, Item& item);
-bool blockFromSaveId(std::uint8_t id, Block& block);
+bool itemFromSaveId(std::uint16_t id, Item& item);
+bool blockFromSaveId(std::uint32_t id, Block& block);
 int blockTexture(Block block, int faceIndex);
-inline constexpr int BlockAtlasTiles = 143;
+inline constexpr int BlockAtlasTiles = 187;
 float furnaceFuelSeconds(Item item);
 
 struct ItemAtlasLayout {

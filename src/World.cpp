@@ -343,6 +343,12 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
     ensureHeight(y);
     const auto index = static_cast<std::uint32_t>(
         ((y - minimumY) * CHUNK_SIZE + localZ) * CHUNK_SIZE + localX);
+    const auto sign=[](Block b){auto d=buildingDefinition(b);return d && d->shape==BuildingShape::Sign;};
+    if(sign(blocks[index])!=sign(block)){auto it=std::lower_bound(signCells.begin(),signCells.end(),index);if(sign(block))signCells.insert(it,index);else if(it!=signCells.end()&&*it==index)signCells.erase(it);}
+    auto display=[](Block b){return blockType(b)==Block::ItemFrame||blockType(b)==Block::FlowerPot;};
+    if(display(blocks[index])!=display(block)){auto it=std::lower_bound(displayCells.begin(),displayCells.end(),index);if(display(block))displayCells.insert(it,index);else if(it!=displayCells.end()&&*it==index)displayCells.erase(it);}
+    const bool wasBuilding=isBuilding(blocks[index]), nowBuilding=isBuilding(block);
+    if(wasBuilding!=nowBuilding){auto it=std::lower_bound(buildingCells.begin(),buildingCells.end(),index);if(nowBuilding)buildingCells.insert(it,index);else if(it!=buildingCells.end() && *it==index)buildingCells.erase(it);}
     const bool wasFarm = isFarmTracked(blocks[index]), nowFarm = isFarmTracked(block);
     if (wasFarm != nowFarm) {
         const auto it = std::lower_bound(farmCells.begin(), farmCells.end(), index);
@@ -377,9 +383,11 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
 void Chunk::rebuildLightEmitterIndex() {
     lightEmitters.clear();
     farmCells.clear();
+    buildingCells.clear();signCells.clear();displayCells.clear();
     precipitationTop.fill(static_cast<std::int16_t>(minimumY - 1));
     for (std::size_t index = 0; index < blocks.size(); ++index) {
         const Block b = blocks[index];
+        if(isBuilding(b)){buildingCells.push_back(std::uint32_t(index));if(blockType(b)==Block::ItemFrame||blockType(b)==Block::FlowerPot)displayCells.push_back(std::uint32_t(index));if(buildingDefinition(b)->shape==BuildingShape::Sign)signCells.push_back(std::uint32_t(index));}
         if (isFarmTracked(b)) farmCells.push_back(static_cast<std::uint32_t>(index));
         if (blockLightEmission(b)) lightEmitters.push_back(static_cast<std::uint32_t>(index));
         if (b != Block::Air && !isPlant(b) && !isCrop(b) && !isWallAttachment(b) && !isTorch(b))
@@ -1619,7 +1627,7 @@ bool World::runCraftingContentSmokeTest(std::string& report) {
     input.blocks.assign(static_cast<std::size_t>(span * span * 8), Block::Air);
     input.packedLight.assign(input.blocks.size(), 0xf0U);
     const std::size_t index = static_cast<std::size_t>((4 * span + 7) * span + 7);
-    for (int id = static_cast<int>(Block::CoalBlock); id < static_cast<int>(Block::Count); ++id) {
+    for (int id = static_cast<int>(Block::CoalBlock); id < 198; ++id) {
         const Block block = static_cast<Block>(id);
         input.blocks[index] = block;
         const MeshOutput mesh = buildMesh(input);
@@ -2169,6 +2177,7 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
             }
         }
         scheduleFluidBoundaryUpdates(generated.x, generated.z);
+        refreshBuildingConnections(generated.x,generated.z);
         markDirty(generated.x, generated.z);
         markDirty(generated.x + 1, generated.z);
         markDirty(generated.x - 1, generated.z);
@@ -2298,6 +2307,7 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
         input.meshHeight = std::clamp(center->highestRenderableY + 2, minimumY() + 1, maximumY());
     }
     const std::size_t count = static_cast<std::size_t>(span * span * (input.meshHeight - input.minimumY));
+    input.buildingShapes=false;
     input.blocks.resize(count, Block::Air);
     input.packedLight.resize(count, 0);
     std::fill(input.blocks.begin(),input.blocks.end(),Block::Air);
@@ -2323,6 +2333,7 @@ World::MeshInput World::captureMeshInput(int chunkX, int chunkZ) const {
                     ((y - input.minimumY) * span + z + sunlightHalo) * span + x + sunlightHalo);
                 const std::size_t sourceIndex = localIndex(localX, y, localZ);
                 input.blocks[target] = source->getLocal(localX, y, localZ);
+                input.buildingShapes |= isBuilding(input.blocks[target]);
                 input.packedLight[target] = sourceIndex < source->packedLight.size() ? source->packedLight[sourceIndex] : 0xf0U;
             }
         }
@@ -2510,7 +2521,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     input.read(reinterpret_cast<char*>(&editCount), sizeof(editCount));
     const char expected[8] = {'V', 'X', 'W', 'O', 'R', 'L', 'D', '3'};
     if (!input || std::memcmp(magic, expected, sizeof(magic)) != 0 ||
-        (version != 1U && version != 2U) ||
+        (version != 1U && version != 2U && version != 3U) ||
         savedSeed != seed_ || editCount > 10000000ULL ||
         !SaveValidation::position(loadedPlayerPosition))
         return false;
@@ -2532,11 +2543,14 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     decltype(edits_) loadedEdits;
     decltype(furnaces_) loadedFurnaces;
     decltype(chests_) loadedChests;
+    decltype(buildingTexts_) loadedTexts;
+    decltype(buildingDrops_) loadedBuildingDrops;
     const auto commit = [&] {
         equipmentLoot_=loadedEquipmentLoot;
         edits_.swap(loadedEdits);
         furnaces_.swap(loadedFurnaces);
         chests_.swap(loadedChests);
+        buildingTexts_.swap(loadedTexts);buildingDrops_.swap(loadedBuildingDrops);
         fluidQueue_.clear();
         fluidQueued_.clear(); fluidLavaDue_.clear();
         fluidUpdateAccumulator_ = 0.0f;
@@ -2548,14 +2562,14 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         std::int32_t chunkX = 0;
         std::int32_t chunkZ = 0;
         std::uint32_t index = 0;
-        std::uint8_t value = 0;
+        std::uint32_t value = 0;
         input.read(reinterpret_cast<char*>(&chunkX), sizeof(chunkX));
         input.read(reinterpret_cast<char*>(&chunkZ), sizeof(chunkZ));
         input.read(reinterpret_cast<char*>(&index), sizeof(index));
-        input.read(reinterpret_cast<char*>(&value), sizeof(value));
+        input.read(reinterpret_cast<char*>(&value), version>=3?4:1);
         Block loadedBlock = Block::Air;
         if (!input || std::abs(std::int64_t(chunkX))>1875000 || std::abs(std::int64_t(chunkZ))>1875000 || index >= static_cast<std::uint32_t>(CHUNK_SIZE * (loadedGenerationVersion >= 11 ? 384 : WORLD_HEIGHT) * CHUNK_SIZE) ||
-            !blockFromSaveId(value, loadedBlock)) {
+            (version<3 && value>=198) || !blockFromSaveId(value, loadedBlock)) {
             return false;
         }
         loadedEdits[chunkKey(chunkX, chunkZ)][index] = loadedBlock;
@@ -2569,18 +2583,19 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         return true;
     }
     const char expectedEntities[8] = {'V', 'X', 'E', 'N', 'T', 'S', '1', '\0'};
-    const bool identityStacks = std::memcmp(entityMagic,"VXENTS2",8)==0;
+    const bool wideStacks = std::memcmp(entityMagic,"VXENTS3",8)==0;
+    const bool identityStacks = wideStacks || std::memcmp(entityMagic,"VXENTS2",8)==0;
     if (!input || (!identityStacks && std::memcmp(entityMagic, expectedEntities, sizeof(entityMagic)) != 0))
         return false;
     auto readStack = [&](ItemStack& stack) {
-        std::uint8_t item = 0;
+        std::uint16_t item = 0;
         std::int16_t count = 0;
         std::int16_t durability = 0;
-        input.read(reinterpret_cast<char*>(&item), sizeof(item));
+        input.read(reinterpret_cast<char*>(&item), wideStacks?2:1);
         input.read(reinterpret_cast<char*>(&count), sizeof(count));
         input.read(reinterpret_cast<char*>(&durability), sizeof(durability));
         Item loadedItem = Item::None;
-        if (!input || !itemFromSaveId(item, loadedItem))
+        if (!input || (!wideStacks && item>=206) || !itemFromSaveId(item, loadedItem))
             return false;
         stack = {loadedItem, count, durability};
         if(identityStacks) input.read(reinterpret_cast<char*>(&stack.identity),sizeof(stack.identity));
@@ -2632,21 +2647,42 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         if(!input || std::memcmp(extension,"VXGEAR1",8)!=0 || enabled>1) return false;
         loadedEquipmentLoot=enabled!=0;
     }
+    if(input.peek()!=std::char_traits<char>::eof()) {
+        char tag[4]{};std::uint32_t n=0;input.read(tag,4);input.read(reinterpret_cast<char*>(&n),4);
+        if(!input || std::memcmp(tag,"BLD1",4) || n>100000)return false;
+        for(unsigned i=0;i<n;++i){BlockEntityPosition pos;std::uint16_t len=0;input.read(reinterpret_cast<char*>(&pos.x),4);input.read(reinterpret_cast<char*>(&pos.y),4);input.read(reinterpret_cast<char*>(&pos.z),4);input.read(reinterpret_cast<char*>(&len),2);
+            if(!input || len>99 || !SaveValidation::position(glm::vec3(pos.x,pos.y,pos.z)) || pos.y<(loadedGenerationVersion>=11?-64:0) || pos.y>=(loadedGenerationVersion>=11?320:WORLD_HEIGHT))return false;
+            std::string text(len,' ');input.read(text.data(),len);int lines=1,width=0;for(unsigned char c:text){if(c=='\n'){++lines;width=0;}else if(c<32||c>126||++width>24)return false;}if(!input||lines>4 || !loadedTexts.emplace(pos,BuildingText{text}).second)return false;
+            auto it=loadedEdits.find(chunkKey(floorDiv(pos.x,16),floorDiv(pos.z,16)));auto index=std::size_t(((pos.y-(loadedGenerationVersion>=11?-64:0))*16+floorMod(pos.z,16))*16+floorMod(pos.x,16));if(it==loadedEdits.end())return false;auto e=it->second.find(index);if(e==it->second.end())return false;auto definition=buildingDefinition(e->second);if(!definition||definition->shape!=BuildingShape::Sign)return false;
+        }
+    }
+    if(input.peek()!=std::char_traits<char>::eof()) {
+        char tag[4]{};std::uint32_t n=0;input.read(tag,4);input.read(reinterpret_cast<char*>(&n),4);
+        if(!input || std::memcmp(tag,"BDP1",4) || n>100000 || version<3)return false;
+        for(unsigned i=0;i<n;++i){glm::vec3 pos;ItemStack stack;
+            input.read(reinterpret_cast<char*>(&pos.x),4);input.read(reinterpret_cast<char*>(&pos.y),4);input.read(reinterpret_cast<char*>(&pos.z),4);
+            if(!input || !SaveValidation::position(pos) || !readStack(stack) || stack.empty())return false;
+            loadedBuildingDrops.emplace_back(pos,stack);
+        }
+    }
     if(input.peek()!=std::char_traits<char>::eof())return false;
     commit();
     return true;
 }
 
 bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) const {
-    if(!SaveValidation::position(playerPosition))return false;
+    if(!SaveValidation::position(playerPosition) || buildingTexts_.size()>100000 || buildingDrops_.size()>100000)return false;
+    for(const auto& drop:buildingDrops_)if(!SaveValidation::position(drop.first)||!SaveValidation::stack(drop.second)||drop.second.empty())return false;
+    for(const auto& e:buildingTexts_){if(e.second.text.size()>99 || !SaveValidation::position(glm::vec3(e.first.x,e.first.y,e.first.z)) || e.first.y<minimumY() || e.first.y>=maximumY())return false;int lines=1,width=0;for(unsigned char c:e.second.text){if(c=='\n'){++lines;width=0;}else if(c<32||c>126||++width>24)return false;}if(lines>4)return false;}
     std::uint64_t totalEdits=0;for(const auto& c:edits_)totalEdits+=c.second.size();
+    for(const auto& chunk:edits_)for(const auto& edit:chunk.second)if(!validBlockState(edit.second))return false;
     if(totalEdits>10000000 || furnaces_.size()>1000000 || chests_.size()>1000000)return false;
     for(const auto& entry:furnaces_){const auto& f=entry.second;
         if(!SaveValidation::stack(f.input)||!SaveValidation::stack(f.output)||!SaveValidation::stack(f.fuel)||!std::isfinite(f.fuelRemaining)||f.fuelRemaining<0||!std::isfinite(f.fuelCapacity)||f.fuelCapacity<0||!std::isfinite(f.progress)||f.progress<0||f.progress>1)return false;}
     for(const auto& c:chests_)for(const auto& stack:c.second.slots)if(!SaveValidation::stack(stack))return false;
     return SaveFile::write(path, std::ios::binary, [&](std::ofstream& output) {
     const char magic[8] = {'V', 'X', 'W', 'O', 'R', 'L', 'D', '3'};
-    const std::uint32_t version = 2U;
+    const std::uint32_t version = 3U;
     const std::uint32_t savedGenerationVersion = generationVersion_;
     std::uint64_t editCount = 0;
     for (const auto& chunkEdits : edits_)
@@ -2661,7 +2697,7 @@ bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) 
     output.write(reinterpret_cast<const char*>(&savedGenerationVersion),
                  sizeof(savedGenerationVersion));
     constexpr std::size_t EditRecordBytes = sizeof(std::int32_t) * 2 +
-                                            sizeof(std::uint32_t) + sizeof(std::uint8_t);
+                                            sizeof(std::uint32_t) + sizeof(std::uint32_t);
     thread_local std::array<char, 64 * 1024> editBuffer{};
     std::size_t buffered = 0;
     const auto flushEdits = [&] {
@@ -2679,15 +2715,15 @@ bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) 
         for (const auto& edit : chunkEdits.second) {
             if (buffered + EditRecordBytes > editBuffer.size()) flushEdits();
             const std::uint32_t index = static_cast<std::uint32_t>(edit.first);
-            const std::uint8_t value = blockDefinition(edit.second).saveId;
+            const std::uint32_t value = std::uint32_t(edit.second);
             appendField(chunkX); appendField(chunkZ); appendField(index); appendField(value);
         }
     }
     flushEdits();
-    const char entityMagic[8] = {'V', 'X', 'E', 'N', 'T', 'S', '2', '\0'};
+    const char entityMagic[8] = {'V', 'X', 'E', 'N', 'T', 'S', '3', '\0'};
     output.write(entityMagic, sizeof(entityMagic));
     auto writeStack = [&](const ItemStack& stack) {
-        const std::uint8_t item = itemDefinition(stack.item).saveId;
+        const std::uint16_t item = itemDefinition(stack.item).saveId;
         const std::int16_t count = static_cast<std::int16_t>(stack.count);
         const std::int16_t durability = static_cast<std::int16_t>(stack.durability);
         output.write(reinterpret_cast<const char*>(&item), sizeof(item));
@@ -2720,6 +2756,10 @@ bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) 
     output.write("VXGEAR1",8);
     const std::uint8_t equipmentLoot=equipmentLoot_?1:0;
     output.write(reinterpret_cast<const char*>(&equipmentLoot),1);
+    output.write("BLD1",4);const auto count=std::uint32_t(buildingTexts_.size());output.write(reinterpret_cast<const char*>(&count),4);
+    for(const auto& e:buildingTexts_){output.write(reinterpret_cast<const char*>(&e.first.x),4);output.write(reinterpret_cast<const char*>(&e.first.y),4);output.write(reinterpret_cast<const char*>(&e.first.z),4);auto len=std::uint16_t(e.second.text.size());output.write(reinterpret_cast<const char*>(&len),2);output.write(e.second.text.data(),len);}
+    output.write("BDP1",4);const auto pendingCount=std::uint32_t(buildingDrops_.size());output.write(reinterpret_cast<const char*>(&pendingCount),4);
+    for(const auto& drop:buildingDrops_){output.write(reinterpret_cast<const char*>(&drop.first.x),4);output.write(reinterpret_cast<const char*>(&drop.first.y),4);output.write(reinterpret_cast<const char*>(&drop.first.z),4);writeStack(drop.second);}
     return output.good();
     });
 }
@@ -3799,7 +3839,7 @@ bool World::hasClimbableNear(const glm::vec3& position, float radius) const {
     for (int y = std::max(minimumY(), minimum.y); y <= std::min(maximumY() - 1, maximum.y); ++y)
         for (int z = minimum.z; z <= maximum.z; ++z)
             for (int x = minimum.x; x <= maximum.x; ++x)
-                if (isLadder(getBlock(x, y, z)))
+                if (isLadder(getBlock(x, y, z)) || blockType(getBlock(x,y,z))==Block::Scaffold)
                     return true;
     return false;
 }
@@ -3835,7 +3875,13 @@ bool World::isSolidAt(int x, int y, int z) const {
 }
 
 void World::setBlock(int x, int y, int z, Block block) {
+    if(!validBlockState(block))return;
     setBlockInternal(x, y, z, block, true);
+    // Derived shapes update a fixed local neighborhood, never search the world.
+    for(int dz=-1;dz<=1;++dz)for(int dx=-1;dx<=1;++dx){
+        const glm::ivec3 pos(x+dx,y,z+dz);Block b=getBlock(pos.x,pos.y,pos.z);
+        if(isBuilding(b)){Block connected=buildingConnectedState(*this,pos,b);if(connected!=b)setBlockInternal(pos.x,pos.y,pos.z,connected,false);}
+    }
 }
 
 std::uint64_t World::farmResidencyAt(int x,int z) const {
@@ -3934,14 +3980,22 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
     const BlockEntityPosition entityPosition{x, y, z};
     if (previous == Block::Furnace && block != Block::Furnace)
         furnaces_.erase(entityPosition);
-    if (previous == Block::Chest && block != Block::Chest)
+    if(blockType(previous)!=blockType(block)){buildingTexts_.erase(entityPosition);if(blockType(previous)==Block::ItemFrame || blockType(previous)==Block::FlowerPot)chests_.erase(entityPosition);}
+    if ((previous == Block::Chest || buildingIsContainer(previous)) && block != Block::Chest && !buildingIsContainer(block))
         chests_.erase(entityPosition);
     if (block == Block::Furnace)
         furnaces_.try_emplace(entityPosition);
-    if (block == Block::Chest)
+    if (block == Block::Chest || buildingIsContainer(block))
         chests_.try_emplace(entityPosition);
 
     chunk->setLocal(localX, y, localZ, block);
+    if(rebuildImmediately && occludesLight(block) && blockType(getBlock(x,y-1,z))==Block::DirtPath)
+        setBlockInternal(x,y-1,z,Block::Dirt,true,false);
+    if(blockType(previous)!=blockType(block) && (buildingIsBed(previous)||buildingIsDoor(previous)||(blockType(previous)==Block::Painting && (blockProperties(previous)&32)))){
+        auto pp=blockProperties(previous);glm::ivec3 other(x,y,z);
+        if(buildingIsBed(previous))other+=(pp&16)?-buildingFacing(pp):buildingFacing(pp);else if(blockType(previous)==Block::Painting)other+=(pp&16)?-buildingFacing((pp+1)&3):buildingFacing((pp+1)&3);else other.y+=(pp&16)?-1:1;
+        auto mate=getBlock(other.x,other.y,other.z);if(blockType(mate)==blockType(previous) && ((blockProperties(mate)^pp)&16))setBlockInternal(other.x,other.y,other.z,Block::Air,rebuildImmediately,false);
+    }
     computeSunlightColumn(*chunk, localX, localZ);
     if (affectsBlockLighting)
         queueLightingUpdate(chunkX, chunkZ, true);
@@ -3954,6 +4008,14 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
     if (rebuildImmediately && dispatchImmediately && !synchronousMeshForSmokeTest_)
         dispatchMeshJobs(2);
     queueFluidNeighborhood(x, y, z);
+    if(rebuildImmediately)for(auto direction:FaceNormals){glm::ivec3 pos=glm::ivec3(x,y,z)+direction;Block b=getBlock(pos.x,pos.y,pos.z);if(isTorch(b) && blockProperties(b)){auto support=pos-buildingFacing(blockProperties(b)-1);if(support==glm::ivec3(x,y,z)&&!isSolid(getBlock(x,y,z))){buildingDrops_.push_back({glm::vec3(pos)+.5f,ItemStack{Item::Torch,1}});setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);}continue;}if(!buildingNeedsSupport(b))continue;
+        auto d=buildingDefinition(b);auto p=blockProperties(b);glm::ivec3 support=pos+glm::ivec3(0,-1,0);
+        if(d->shape==BuildingShape::Chain || ((d->shape==BuildingShape::Lantern)&&(p&4)))support=pos+glm::ivec3(0,1,0);
+        if(d->shape==BuildingShape::Frame||d->shape==BuildingShape::Painting||d->shape==BuildingShape::Button||(d->shape==BuildingShape::Sign && (p&16)))support=pos+(d->shape==BuildingShape::Button?buildingFacing(p):-buildingFacing(p));
+        if(support!=glm::ivec3(x,y,z)||isSolid(getBlock(support.x,support.y,support.z))||blockType(getBlock(support.x,support.y,support.z))==Block::Chain)continue;
+        for(auto stack:takeBlockEntityContents(pos))buildingDrops_.push_back({glm::vec3(pos)+.5f,stack});
+        buildingDrops_.push_back({glm::vec3(pos)+.5f,ItemStack{blockToItem(b),1}});setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);
+    }
     if (rebuildImmediately && isDoor(previous) && !isDoorUpper(previous) &&
         !isDoor(block) && y + 1 < maximumY()) {
         const Block upper = getBlock(x, y + 1, z);
@@ -3988,7 +4050,7 @@ ChestData* World::chestAt(const glm::ivec3& position, bool create) {
     auto found = chests_.find(key);
     if (found != chests_.end())
         return &found->second;
-    if (!create || getBlock(position.x, position.y, position.z) != Block::Chest)
+    if (!create || (getBlock(position.x, position.y, position.z) != Block::Chest && !buildingIsContainer(getBlock(position.x,position.y,position.z)) && blockType(getBlock(position.x,position.y,position.z))!=Block::ItemFrame && blockType(getBlock(position.x,position.y,position.z))!=Block::FlowerPot))
         return nullptr;
     return &chests_.try_emplace(key).first->second;
 }
@@ -4321,6 +4383,37 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
                     continue;
                 }
 
+
+                bool detailed=isBuilding(block);
+                if(!detailed && input.buildingShapes && blockGeometry(block).shape==BlockShape::Cube)
+                    for(auto n:FaceNormals)if(isBuilding(meshBlock(worldX+n.x,y+n.y,worldZ+n.z))){detailed=true;break;}
+                if(detailed){
+                    auto boxesFor=[](Block value){BuildingBoxes boxes;if(isBuilding(value))return buildingBoxes(value);if(value!=Block::Air){auto g=blockGeometry(value);boxes.add(g.minX,g.minY,g.minZ,g.maxX,g.maxY,g.maxZ);}return boxes;};
+                    const auto boxes=boxesFor(block);auto& vertices=(buildingTransparent(block)||block==Block::Glass||block==Block::Ice)?transparentVertices():opaqueVertices;
+                    const glm::vec3 origin(worldX,y,worldZ);
+                    for(int part=0;part<boxes.count;++part)for(int face=0;face<6;++face){
+                        const auto& box=boxes.boxes[part];auto normal=FaceNormals[face];int axis=normal.x?0:normal.y?1:2;int A=(axis+1)%3,B=(axis+2)%3;const bool positive=normal[axis]>0;
+                        const float plane=positive?box.maximum[axis]:box.minimum[axis];
+                        struct Rect {float a,b,A,B;};std::array<Rect,48> covers{};int nc=0;
+                        auto cover=[&](BuildingBox other){const float boundary=positive?other.minimum[axis]:other.maximum[axis];
+                            if(std::abs(boundary-plane)>.0001f || other.maximum[A]<=box.minimum[A] || other.minimum[A]>=box.maximum[A] || other.maximum[B]<=box.minimum[B] || other.minimum[B]>=box.maximum[B])return;
+                            covers[nc++]={std::max(box.minimum[A],other.minimum[A]),std::max(box.minimum[B],other.minimum[B]),std::min(box.maximum[A],other.maximum[A]),std::min(box.maximum[B],other.maximum[B])};};
+                        for(int other=0;other<boxes.count;++other)if(other!=part)cover(boxes.boxes[other]);
+                        if(std::abs(plane-(positive?1.f:0.f))<.0001f){Block neighbor=meshBlock(worldX+normal.x,y+normal.y,worldZ+normal.z);
+                            if(occludesLight(neighbor)||matchingOcclusionGroup(block,neighbor)|| (buildingTransparent(block)&&buildingTransparent(neighbor) && blockType(block)==blockType(neighbor)) || (isBuilding(neighbor)&&!buildingTransparent(neighbor))){
+                                auto neighborBoxes=boxesFor(neighbor);for(int j=0;j<neighborBoxes.count;++j){auto other=neighborBoxes.boxes[j];other.minimum+=glm::vec3(normal);other.maximum+=glm::vec3(normal);cover(other);}}}
+                        std::array<float,98> cutsA{},cutsB{};int na=2,nb=2;cutsA[0]=box.minimum[A];cutsA[1]=box.maximum[A];cutsB[0]=box.minimum[B];cutsB[1]=box.maximum[B];
+                        for(int j=0;j<nc;++j){cutsA[na++]=covers[j].a;cutsA[na++]=covers[j].A;cutsB[nb++]=covers[j].b;cutsB[nb++]=covers[j].B;}
+                        std::sort(cutsA.begin(),cutsA.begin()+na);std::sort(cutsB.begin(),cutsB.begin()+nb);na=int(std::unique(cutsA.begin(),cutsA.begin()+na)-cutsA.begin());nb=int(std::unique(cutsB.begin(),cutsB.begin()+nb)-cutsB.begin());
+                        for(int a=0;a+1<na;++a)for(int b=0;b+1<nb;++b){float u=(cutsA[a]+cutsA[a+1])*.5f,v=(cutsB[b]+cutsB[b+1])*.5f;bool hidden=false;for(int j=0;j<nc;++j)if(u>covers[j].a && u<covers[j].A && v>covers[j].b && v<covers[j].B){hidden=true;break;}if(hidden)continue;
+                            std::array<glm::vec3,4> points{};for(auto& point:points)point[axis]=plane;
+                            points[0][A]=points[3][A]=cutsA[a];points[1][A]=points[2][A]=cutsA[a+1];points[0][B]=points[1][B]=cutsB[b];points[2][B]=points[3][B]=cutsB[b+1];if(!positive)std::swap(points[1],points[3]);
+                            const int tile=atlasTile(block,face);const float sunlight=std::max(float(std::max(meshSunlight(worldX,y,worldZ),meshSunlight(worldX+normal.x,y+normal.y,worldZ+normal.z)))/15.f,sideDaylight(worldX,y,worldZ,normal));const float emitted=float(std::max(meshBlockLight(worldX,y,worldZ),meshBlockLight(worldX+normal.x,y+normal.y,worldZ+normal.z)))/15.f;std::array<float,4> cornerAo;const auto own=blockGeometry(block);for(int corner=0;corner<4;++corner)cornerAo[corner]=meshCornerAo(worldX,y,worldZ,normal,points[corner],own);
+                            for(int index:Indices){const auto point=points[index];glm::vec2 uv(axis==0?point.z:point.x,axis==1?point.z:1-point.y);if(blockType(block)==Block::Painting && (blockProperties(block)&32)){if((blockProperties(block)&3)>=2)uv.x=1-uv.x;uv.x=(uv.x+((blockProperties(block)&16)?1.f:0.f))*.5f;}vertices.push_back({origin+point,uv,glm::vec3(normal),sunlight,emitted,cornerAo[index],VoxelMaterial(float(tile))});}
+                        }
+                    }
+                    continue;
+                }
                 const BlockGeometryProperties ownGeometry = blockGeometry(block);
                 if (isSlab(block) || isDoor(block) || isTorch(block) || block == Block::LightningRod) {
                     const BlockGeometryProperties& geometry = ownGeometry;
@@ -4773,7 +4866,11 @@ bool World::raycast(const glm::vec3& origin,
         const Block block = getBlock(cell.x, cell.y, cell.z);
         if (isRenderable(block) && !isWater(block)) {
             { // Every selectable shape uses its actual bounds; crossed plants retain their deliberate cell box.
-                auto bounds = blockGeometry(block);
+                auto selection=blockBoxes(cell);
+                float closest=maxDistance+1;glm::ivec3 closestFace(0);
+                for(int part=0;part<selection.count;++part){
+                auto partBox=selection.boxes[part];
+                BlockGeometryProperties bounds;bounds.minX=partBox.minimum.x;bounds.minY=partBox.minimum.y;bounds.minZ=partBox.minimum.z;bounds.maxX=partBox.maximum.x;bounds.maxY=partBox.maximum.y;bounds.maxZ=partBox.maximum.z;
                 if(isWallAttachment(block)){
                     if(block==Block::LadderNorth || block==Block::VineNorth)bounds.maxZ=.07f;
                     else if(block==Block::LadderSouth || block==Block::VineSouth)bounds.minZ=.93f;
@@ -4807,8 +4904,10 @@ bool World::raycast(const glm::vec3& origin,
                 }
                 if (intersects && enter <= leave &&
                     enter <= std::min({next.x, next.y, next.z, maxDistance})) {
-                    hit = {cell, cell + face, face, enter};
-                    return true;
+                    if(enter<closest){closest=enter;closestFace=face;}
+                }
+                }
+                if(closest<=maxDistance){hit={cell,cell+closestFace,closestFace,closest};return true;
                 }
             }
         }
@@ -4836,6 +4935,7 @@ void World::mapReferences(std::unordered_set<std::uint32_t>& refs) const {
     auto add=[&](const auto& s){if(s.item==Item::FilledMap && s.identity)refs.insert(s.identity);};
     for(const auto& c:chests_)for(const auto& s:c.second.slots)add(s);
     for(const auto& f:furnaces_){add(f.second.input);add(f.second.output);add(f.second.fuel);}
+    for(const auto& drop:buildingDrops_)add(drop.second);
 }
 
 bool World::collisionReady(const glm::vec3& minimum,const glm::vec3& maximum) const {
@@ -4851,7 +4951,7 @@ bool World::aabbIntersectsSolid(const glm::vec3& minimum, const glm::vec3& maxim
     constexpr float epsilon = 0.0001f;
     const glm::ivec3 first = glm::ivec3(glm::floor(minimum + glm::vec3(epsilon)));
     const glm::ivec3 last = glm::ivec3(glm::floor(maximum - glm::vec3(epsilon)));
-    for (int y = first.y; y <= last.y; ++y)
+    for (int y = first.y-1; y <= last.y; ++y)
         for (int z = first.z; z <= last.z; ++z)
             for (int x = first.x; x <= last.x; ++x) {
                 const glm::ivec3 blockPosition(x, y, z);
@@ -4862,17 +4962,15 @@ bool World::aabbIntersectsSolid(const glm::vec3& minimum, const glm::vec3& maxim
     return false;
 }
 
-bool World::blockIntersectsAabb(const glm::ivec3& block,
-                                const glm::vec3& minimum,
-                                const glm::vec3& maximum) const {
-    glm::vec3 blockMin;
-    glm::vec3 blockMax;
-    if (!blockCollisionBounds(block, blockMin, blockMax))
-        return false;
-    return blockMin.x < maximum.x && blockMax.x > minimum.x && blockMin.y < maximum.y &&
-           blockMax.y > minimum.y && blockMin.z < maximum.z && blockMax.z > minimum.z;
+BuildingBoxes World::blockBoxes(const glm::ivec3& pos,bool collision) const {
+ const Block b=getBlock(pos.x,pos.y,pos.z);if(isBuilding(b)){if(collision && !isSolid(b))return {};return buildingBoxes(b,collision);}
+ BuildingBoxes boxes;if(b==Block::Air || (collision && !isSolid(b)))return boxes;
+ const auto g=blockGeometry(b);boxes.add(g.minX,g.minY,g.minZ,g.maxX,g.maxY,g.maxZ);return boxes;
 }
-
+bool World::blockIntersectsAabb(const glm::ivec3& pos,const glm::vec3& mn,const glm::vec3& mx) const {
+ const auto boxes=blockBoxes(pos,true);for(int i=0;i<boxes.count;++i){auto a=glm::vec3(pos)+boxes.boxes[i].minimum,b=glm::vec3(pos)+boxes.boxes[i].maximum;
+ if(a.x<mx.x && b.x>mn.x && a.y<mx.y && b.y>mn.y && a.z<mx.z && b.z>mn.z)return true;}return false;
+}
 bool World::blockCollisionBounds(const glm::ivec3& block,
                                  glm::vec3& minimum,
                                  glm::vec3& maximum) const {
@@ -4880,6 +4978,7 @@ bool World::blockCollisionBounds(const glm::ivec3& block,
     if (!isSolid(type))
         return false;
 
+    if(isBuilding(type)){const auto boxes=buildingBoxes(type,true);if(!boxes.count)return false;minimum=glm::vec3(block)+boxes.boxes[0].minimum;maximum=glm::vec3(block)+boxes.boxes[0].maximum;for(int i=1;i<boxes.count;++i){minimum=glm::min(minimum,glm::vec3(block)+boxes.boxes[i].minimum);maximum=glm::max(maximum,glm::vec3(block)+boxes.boxes[i].maximum);}return true;}
     minimum = glm::vec3(block);
     maximum = minimum + glm::vec3(1.0f);
     minimum.y += blockCollisionMinY(type);
@@ -4936,3 +5035,32 @@ bool World::aabbTouchesBlock(const glm::vec3& minimum,
     }
     return false;
 }
+
+bool World::setBuildingText(const glm::ivec3& p,const std::string& text){auto d=buildingDefinition(getBlock(p.x,p.y,p.z));if(!d || d->shape!=BuildingShape::Sign || text.size()>99)return false;int lines=1,width=0;for(unsigned char c:text){if(c=='\n'){++lines;width=0;}else if(c<32||c>126||++width>24)return false;}if(lines>4)return false;const BlockEntityPosition key{p.x,p.y,p.z};if(buildingTexts_.size()>=100000 && !buildingTexts_.count(key))return false;buildingTexts_[key].text=text;return true;}
+std::string World::buildingText(const glm::ivec3& p) const {auto it=buildingTexts_.find({p.x,p.y,p.z});return it==buildingTexts_.end()?std::string():it->second.text;}
+void World::flushBuildingDrops(SurvivalWorld& survival){
+    std::size_t delivered=0;
+    for(const auto& d:buildingDrops_){if(!survival.spawnDrop(d.first,d.second.item,d.second.count,d.second.durability,glm::vec3(.1f,.3f,.1f),0,d.second.identity))break;++delivered;}
+    if(delivered)buildingDrops_.erase(buildingDrops_.begin(),buildingDrops_.begin()+delivered);
+}
+void World::refreshBuildingConnections(int cx,int cz){for(int z=cz-1;z<=cz+1;++z)for(int x=cx-1;x<=cx+1;++x){auto* c=findChunk(x,z);if(!c)continue;for(auto index:c->buildingCells){glm::ivec3 p(x*16+int(index%16),c->minimumY+int(index/256),z*16+int((index/16)%16));auto b=getBlock(p.x,p.y,p.z),connected=buildingConnectedState(*this,p,b);auto definition=buildingDefinition(b);if(x==cx&&z==cz&&definition&&(definition->shape==BuildingShape::Button||definition->shape==BuildingShape::PressurePlate))connected=blockState(connected,blockProperties(connected)&~8);if(b!=connected)setBlockInternal(p.x,p.y,p.z,connected,true,false);}}}
+
+std::optional<glm::vec3> World::findBedSpawn(const glm::ivec3& foot) const {
+ // At most four columns of chunks, only on a real respawn. Never change terrain.
+ std::unordered_map<std::int64_t,GeneratedChunk> cache;
+ auto at=[&](glm::ivec3 p)->Block{if(p.y<minimumY()||p.y>=maximumY())return Block::Air;const int cx=floorDiv(p.x,16),cz=floorDiv(p.z,16);if(auto* c=findChunk(cx,cz))return c->getLocal(floorMod(p.x,16),p.y,floorMod(p.z,16));auto key=chunkKey(cx,cz);const auto edit=edits_.find(key);auto index=localIndex(floorMod(p.x,16),p.y,floorMod(p.z,16));if(edit!=edits_.end()){auto e=edit->second.find(index);if(e!=edit->second.end())return e->second;}auto it=cache.find(key);if(it==cache.end())it=cache.emplace(key,generateChunkData(cx,cz)).first;return index<it->second.blocks.size()?it->second.blocks[index]:Block::Air;};
+ auto b=at(foot);if(!buildingIsBed(b)||(blockProperties(b)&16))return {};auto head=foot+buildingFacing(blockProperties(b));auto h=at(head);if(!buildingIsBed(h)||!(blockProperties(h)&16)||(blockProperties(h)&3)!=(blockProperties(b)&3))return {};
+ for(int z=-1;z<=1;++z)for(int x=-1;x<=1;++x){if(!x&&!z)continue;auto p=foot+glm::ivec3(x,0,z);Block below=at(p-glm::ivec3(0,1,0)),a=at(p),c=at(p+glm::ivec3(0,1,0));if(isSolid(below)&&occludesLight(below)&&a==Block::Air&&c==Block::Air)return glm::vec3(p)+glm::vec3(.5f,0,.5f);}
+ return {};
+}
+
+void World::renderBuildingItems(std::vector<RenderItemSprite>& out,const glm::vec3& camera) const {
+ const int cx=floorDiv(int(std::floor(camera.x)),16),cz=floorDiv(int(std::floor(camera.z)),16);
+ for(int z=cz-2;z<=cz+2;++z)for(int x=cx-2;x<=cx+2;++x){auto* c=findChunk(x,z);if(!c)continue;
+ for(auto index:c->displayCells){auto b=Block(c->blocks[index]);if(blockType(b)!=Block::ItemFrame && blockType(b)!=Block::FlowerPot)continue;glm::ivec3 p(x*16+int(index%16),c->minimumY+int(index/256),z*16+int((index/16)%16));if(glm::length(glm::vec3(p)-camera)>24)continue;auto it=chests_.find({p.x,p.y,p.z});if(it==chests_.end()||it->second.slots[0].empty())continue;
+ if(blockType(b)==Block::ItemFrame){auto normal=glm::vec3(buildingFacing(blockProperties(b)));out.push_back({glm::vec3(p)+glm::vec3(.5f)+normal*-.42f,it->second.slots[0].item,.6f,true,normal,int(blockProperties(b)>>8)&3});}
+ else out.push_back({glm::vec3(p)+glm::vec3(.5f,.75f,.5f),it->second.slots[0].item,.5f,true,{0,0,1},0,true});
+ if(out.size()>2048)return;}}
+}
+
+void World::nearbyBuildingSigns(const glm::vec3& camera,std::vector<glm::ivec3>& out) const {out.clear();const int cx=floorDiv(int(std::floor(camera.x)),16),cz=floorDiv(int(std::floor(camera.z)),16);for(int z=cz-1;z<=cz+1;++z)for(int x=cx-1;x<=cx+1;++x){auto c=findChunk(x,z);if(!c)continue;for(auto index:c->signCells){glm::ivec3 p(x*16+int(index%16),c->minimumY+int(index/256),z*16+int((index/16)%16));if(glm::length(glm::vec3(p)+.5f-camera)<=8 && !buildingText(p).empty()){out.push_back(p);if(out.size()==8)return;}}}}
