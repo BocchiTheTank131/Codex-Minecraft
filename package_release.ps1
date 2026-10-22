@@ -14,6 +14,24 @@ $displayVersion = $version + $suffixMatch.Groups[1].Value
 $fullBuildDir = Join-Path $root 'build/installed-release'
 $demoBuildDir = Join-Path $root 'build/standalone-demo-release'
 $distDir = Join-Path $root 'dist'
+# Cached previews are generated offline. Reject stale definitions or overwritten
+# legacy output before distributing binaries; no Python is needed for packaging.
+$previewManifest=Join-Path $root 'assets/inventory_previews.json'
+if(-not (Test-Path -LiteralPath $previewManifest -PathType Leaf)){
+    throw 'Required inventory preview manifest is missing: assets/inventory_previews.json. Run tools/generate_item_thumbnails.py before packaging.'
+}
+if(Test-Path -LiteralPath $previewManifest){
+    $preview=Get-Content -LiteralPath $previewManifest -Raw | ConvertFrom-Json
+    foreach($group in @($preview.inputs,$preview.outputs)){
+        foreach($entry in $group.PSObject.Properties){
+            $asset=Join-Path $root $entry.Name
+            if(-not (Test-Path -LiteralPath $asset) -or (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant() -ne $entry.Value){
+                throw "Stale inventory preview input/output: $($entry.Name). Run tools/generate_item_thumbnails.py before packaging."
+            }
+        }
+    }
+}
+
 $icon = Join-Path $root 'packaging/VoxelFrontier.ico'
 $standalone = Join-Path $distDir "VoxelFrontier-v$displayVersion-Windows-Standalone.exe"
 $fullExe = Join-Path $fullBuildDir 'Release/VoxelFrontier.exe'

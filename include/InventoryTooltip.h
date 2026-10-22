@@ -10,8 +10,9 @@ namespace InventoryTooltip {
 // Share the clickable slot layout and authoritative item display names.
 inline Item hoveredItem(UiMode mode, int width, int height, double x, double y,
                         const Inventory& inventory, const RecipeBookView* book = nullptr,
-                        const FurnaceData* furnace = nullptr, const ChestData* chest = nullptr,int creativePage=0) {
-    const auto& catalog = creativeCatalog();
+                        const FurnaceData* furnace = nullptr, const ChestData* chest = nullptr,int creativePage=0,
+                        const std::vector<Item>* creativeItems=nullptr) {
+    const auto& catalog = creativeItems?*creativeItems:creativeCatalog();
     const UiHit hit = UiLayout::hit(mode, x, y, width, height, catalog.size(),
                                    book ? book->entries.size() : 0, book ? book->page : 0,creativePage);
     const auto itemOf=[](const ItemStack& stack) { return stack.empty()?Item::None:stack.item; };

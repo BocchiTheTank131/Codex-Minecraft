@@ -40,6 +40,7 @@ struct RecipeBookView {
 };
 
 class UIManager {
+    friend class IconTest;
 public:
     GameState state() const {
         return state_;
@@ -79,7 +80,7 @@ public:
     static float menuScale(int width, int height);
 
     bool validateOpenBlock(const World& world, const Player& player, Inventory& inventory);
-    void updateInventoryInteraction(const InputManager& input,
+    void updateInventoryInteraction(InputManager& input,
                                     int framebufferWidth,
                                     int framebufferHeight,
                                     Inventory& inventory,
@@ -93,6 +94,9 @@ public:
         return worldContainerPosition_;
     }
     int creativePage() const {return creativePage_;}
+    const std::vector<Item>& creativeItems() const {return creativeSearch_.empty()?creativeCatalog():creativeFiltered_;}
+    const std::string& creativeSearch() const {return creativeSearch_;}
+    bool creativeSearchFocused() const {return creativeSearchFocused_;}
     const RecipeBookView& recipeBook() const { return recipeBook_; }
     static bool runRecipeBookSelfTest(std::string& report);
 
@@ -106,6 +110,10 @@ private:
     RecipeBookView recipeBook_{};
     int selectedRecipe_ = -1;
     int creativePage_=0;
+    std::string creativeSearch_;
+    std::vector<Item> creativeFiltered_;
+    bool creativeSearchFocused_=false;
+    void refreshCreativeSearch();
     double lastLeftClickTime_ = -1.0;
     UiHit lastLeftClickHit_{};
     void refreshRecipeBook(const Inventory& inventory, bool tableMode);

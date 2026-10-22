@@ -19,6 +19,8 @@
 #include <stdexcept>
 #include <thread>
 #include <set>
+#include <algorithm>
+#include <cctype>
 #ifdef APIENTRY
 #undef APIENTRY
 #endif
@@ -49,6 +51,14 @@ int BuildingTest::run(int argc,char** argv){
  std::vector<Block> states;
  for(int id=0;id<int(Block::Count);++id){Block decoded;check(blockFromSaveId(unsigned(id),decoded)&&int(decoded)==id,"block_id_"+std::to_string(id));}
  for(const auto& d:buildingContent())for(unsigned prop=0;prop<1024;++prop){Block b=blockState(d.block,std::uint16_t(prop));if(!validBlockState(b))continue;states.push_back(b);auto shape=buildingBoxes(b);check(shape.count>0 && shape.count<=24,"shape_"+std::to_string(unsigned(b)));for(int i=0;i<shape.count;++i){auto box=shape.boxes[i];if(glm::any(glm::greaterThanEqual(box.minimum,box.maximum)))throw std::runtime_error("degenerate box");}for(int face=0;face<6;++face)if(blockTexture(b,face)<0||blockTexture(b,face)>=BlockAtlasTiles)throw std::runtime_error("texture overflow");}
+ // Independent facing-vector projection: the pillow's v=0 edge must point
+ // toward the head for every facing/color, including negative chunks.
+ for(int chunk:{0,-1})for(int color=0;color<4;++color)for(int facing=0;facing<4;++facing)for(bool head:{false,true}){
+  World::MeshInput input;input.x=chunk;input.z=chunk;input.meshHeight=8;input.buildingShapes=true;input.blocks.assign(22*22*8,Block::Air);input.packedLight.assign(input.blocks.size(),0xf0);
+  input.blocks[(4*22+11)*22+11]=blockState(Block::Bed,facing|(head?16:0)|(color<<8));auto mesh=w.buildMesh(input);const glm::vec3 origin(chunk*16+8,4,chunk*16+8);const auto direction=glm::vec3(buildingFacing(facing));const glm::vec3 right(-direction.z,0,direction.x);int tops=0;bool correct=true;
+  for(auto v:mesh.opaque)if(v.normal.y>.9f && std::abs(v.position.y-4.5625f)<.001f){++tops;const auto local=v.position-origin-glm::vec3(.5f,0,.5f);const glm::vec2 expected(.5f+glm::dot(local,right),.5f-glm::dot(local,direction));correct=correct && glm::length(v.uv-expected)<.0001f && int(float(v.atlasTile))==(head?170:181)+color;}
+  check(tops==6 && correct,"bed_texture_facing_"+std::to_string(chunk)+"_"+std::to_string(color)+"_"+std::to_string(facing)+"_"+std::to_string(head));
+ }
  World::MeshInput meshInput;meshInput.meshHeight=8;meshInput.buildingShapes=true;meshInput.blocks.assign(22*22*8,Block::Air);meshInput.packedLight.assign(meshInput.blocks.size(),0xf0);const auto meshIndex=(4*22+11)*22+11;
  for(Block state:states){meshInput.blocks[meshIndex]=state;auto mesh=w.buildMesh(meshInput);check(!mesh.opaque.empty()||!mesh.water.empty(),"renderable_state_"+std::to_string(unsigned(state)));w.packMeshOutput(mesh);}
  meshInput.blocks[meshIndex]=Block::StonePaving;meshInput.packedLight[meshIndex]=0;auto litMesh=w.buildMesh(meshInput);bool topLit=false;for(auto v:litMesh.opaque)if(v.normal.y==1 && v.sunLight>.9f)topLit=true;check(topLit,"opaque_surface_samples_neighbor_sunlight");
@@ -75,6 +85,33 @@ int BuildingTest::run(int argc,char** argv){
  // Production interaction and consumption, with invalid multi-block requests.
  g.setGameMode(GameMode::Survival);mobs.animals_.clear();inv.clear();inv.add(Item::OakSlab,3);
  auto target=[&](glm::ivec3 p,glm::ivec3 normal, float distance=3){g.interaction_.hasBlockTarget=true;g.interaction_.mobTarget={};g.interaction_.blockTarget={p,p+normal,normal,distance};};
+ // Actual RMB input traverses shield priority, hand selection and tool wear.
+ const glm::ivec3 toolTarget(3,299,6);
+ auto hands=[&](Item main,Item off,int durability=10){inv.clear();inv.selectSlot(0);if(off!=Item::None){inv.add(off,1,durability);inv.swapOffhand();}if(main!=Item::None)inv.add(main,1,durability);};
+ auto rightClick=[&](bool sneak){g.input_.keys_.fill(false);g.input_.previousKeys_.fill(false);g.input_.keys_[GLFW_KEY_LEFT_SHIFT]=sneak;g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_RIGHT]=true;target(toolTarget,{0,1,0});g.updateEquipmentInput(true);g.handleUseAction();g.input_.previousMouseButtons_[GLFW_MOUSE_BUTTON_RIGHT]=true;g.updateEquipmentInput(true);g.handleUseAction();g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);g.input_.keys_.fill(false);g.player_->setBlocking(false);};
+ for(auto mode:{GameMode::Survival,GameMode::Creative})for(bool off:{false,true})for(int log=0;log<6;++log){
+  const Block logs[]={Block::Log,Block::BirchLog,Block::SpruceLog,Block::JungleLog,Block::AcaciaLog,Block::DarkOakLog};
+  g.setGameMode(mode);hands(off?Item::IronSword:Item::IronAxe,off?Item::IronAxe:Item::Shield);w.setBlock(toolTarget.x,toolTarget.y,toolTarget.z,blockState(logs[log],log%3));rightClick(false);
+  check(blockType(w.getBlock(toolTarget.x,toolTarget.y,toolTarget.z))==Block(int(Block::OakStrippedLog)+log*14),"rmb_strip_"+std::to_string(log)+"_off_"+std::to_string(off));
+  check((off?inv.equipment(4):inv.selectedStack()).durability==(mode==GameMode::Creative?10:9) && (off?inv.selectedStack():inv.equipment(4)).durability==10,"rmb_axe_exact_hand_wear");
+ }
+ for(auto mode:{GameMode::Survival,GameMode::Creative})for(bool off:{false,true}){
+  g.setGameMode(mode);hands(off?Item::IronSword:Item::IronShovel,off?Item::IronShovel:Item::Shield);w.setBlock(toolTarget.x,toolTarget.y,toolTarget.z,Block::Grass);rightClick(true);
+  check(w.getBlock(toolTarget.x,toolTarget.y,toolTarget.z)==Block::DirtPath,"rmb_path");
+  check((off?inv.equipment(4):inv.selectedStack()).durability==(mode==GameMode::Creative?10:9) && (off?inv.selectedStack():inv.equipment(4)).durability==10,"rmb_shovel_exact_hand_wear");
+ }
+ g.setGameMode(GameMode::Survival);
+ for(auto tool:{Item::IronAxe,Item::IronShovel})for(bool off:{false,true}){
+  hands(off?Item::IronSword:tool,off?tool:Item::Shield,1);w.setBlock(toolTarget.x,toolTarget.y,toolTarget.z,tool==Item::IronAxe?Block::Log:Block::Dirt);rightClick(tool==Item::IronShovel);
+  check((off?inv.equipment(4):inv.selectedStack()).empty() && !(off?inv.selectedStack():inv.equipment(4)).empty(),"rmb_only_acting_tool_breaks");
+ }
+ // The targeted action can choose the offhand even when the main tool has a
+ // different right-click use. Both eligible tools still prefer the main hand.
+ hands(Item::IronShovel,Item::IronAxe);w.setBlock(toolTarget.x,toolTarget.y,toolTarget.z,Block::Log);rightClick(false);check(inv.selectedStack().durability==10&&inv.equipment(4).durability==9,"rmb_target_over_generic_main_use");
+ hands(Item::IronAxe,Item::IronShovel);w.setBlock(toolTarget.x,toolTarget.y,toolTarget.z,Block::Dirt);rightClick(true);check(w.getBlock(toolTarget.x,toolTarget.y,toolTarget.z)==Block::DirtPath&&inv.selectedStack().durability==10&&inv.equipment(4).durability==9,"rmb_shovel_target_over_main_axe");
+ hands(Item::IronAxe,Item::IronAxe);w.setBlock(toolTarget.x,toolTarget.y,toolTarget.z,Block::Log);rightClick(false);check(inv.selectedStack().durability==9&&inv.equipment(4).durability==10,"rmb_same_tool_main_priority");
+ hands(Item::IronAxe,Item::Shield);w.setBlock(toolTarget.x,toolTarget.y,toolTarget.z,Block::Stone);g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_RIGHT]=true;g.updateEquipmentInput(true);check(g.player_->isBlocking(),"axe_shield_still_blocks_non_log");g.input_.mouseButtons_.fill(false);g.player_->setBlocking(false);
+ inv.clear();inv.add(Item::OakSlab,3);
  target({2,299,2},{0,1,0});check(g.buildingUse(Item::OakSlab,false) && inv.count(Item::OakSlab)==2,"slab_placement_consumes_once");
  target({2,300,2},{0,1,0});g.buildingUse(Item::OakSlab,false);check(blockProperties(w.getBlock(2,300,2))==8 && inv.count(Item::OakSlab)==1,"double_slab_merge");check(FarmingSystem::harvest(w.getBlock(2,300,2),{2,300,2},991)[0].count==2,"double_slab_drops_two");
  inv.clear();inv.add(Item::Bed);g.player_->yaw_=-90;target({10,299,2},{0,1,0});g.buildingUse(Item::Bed,false);check(buildingIsBed(w.getBlock(10,300,2))&&buildingIsBed(w.getBlock(10,300,1))&&inv.count(Item::Bed)==0,"bed_two_blocks_one_item");
@@ -118,6 +155,9 @@ int BuildingTest::run(int argc,char** argv){
  mobs.spawnDrop({12,300,6},Item::Scaffold,3);check(mobs.save("wide-drops.vxm",991),"extended_drop_save");SurvivalWorld highDrops(991);check(highDrops.load("wide-drops.vxm",991)&&highDrops.drops_.back().stack.item==Item::Scaffold,"extended_drop_no_truncation");
  w.setBlock(14,300,2,Block::Barrel);auto* barrel=w.chestAt({14,300,2},true);barrel->slots[0]={Item::DiamondSword,1,31};barrel->slots[1]={Item::FilledMap,1,0,88};barrel->slots[2]={Item::Scaffold,64};check(w.saveWorld("barrel.vxw",g.player_->position()),"barrel_save");World barrelLoad(991,22);barrelLoad.loadWorld("barrel.vxw",location);barrelLoad.prepareSpawnTerrain({14,300,2});auto* loadedBarrel=barrelLoad.chestAt({14,300,2});check(loadedBarrel&&loadedBarrel->slots[0].durability==31&&loadedBarrel->slots[1].identity==88&&loadedBarrel->slots[2].item==Item::Scaffold&&loadedBarrel->slots[2].count==64,"barrel_contents_roundtrip");
  g.player_->teleport({14.5f,300,4.5f});target({14,300,2},{0,0,1});g.buildingUse(Item::None,false);check(g.ui_.chestOpen()&&g.ui_.validateOpenBlock(w,*g.player_,inv),"barrel_uses_container_gui");inv.clear();
+ // Like the Creative fixture, inject through GLFW's virtual cursor. A hidden,
+ // unfocused desktop cursor may ignore warps or race the physical mouse.
+ glfwShowWindow(g.window_);glfwFocusWindow(g.window_);glfwPollEvents();g.input_.setCursorCaptured(true);
  auto guiClick=[&](UiRect rect){int W,H,ww,wh;glfwGetFramebufferSize(g.window_,&W,&H);glfwGetWindowSize(g.window_,&ww,&wh);glfwSetCursorPos(g.window_,(rect.x+rect.width*.5)*ww/W,(rect.y+rect.height*.5)*wh/H);g.input_.keys_.fill(false);g.input_.keys_[GLFW_KEY_LEFT_SHIFT]=true;g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_LEFT]=true;g.ui_.updateInventoryInteraction(g.input_,W,H,inv,mobs,w,*g.player_,false);g.input_.mouseButtons_.fill(false);g.ui_.updateInventoryInteraction(g.input_,W,H,inv,mobs,w,*g.player_,false);};
  int bw,bh;glfwGetFramebufferSize(g.window_,&bw,&bh);guiClick(UiLayout::chestSlot(2,bw,bh));check(inv.count(Item::Scaffold)==64&&barrel->slots[2].empty(),"barrel_shift_click_withdraw");guiClick(UiLayout::playerSlot(UiMode::Chest,0,bw,bh));check(inv.count(Item::Scaffold)==0&&barrel->slots[2].count==64,"barrel_shift_click_deposit");inv.add(Item::Stone,Inventory::TotalSlots*64);guiClick(UiLayout::chestSlot(0,bw,bh));check(barrel->slots[0].item==Item::DiamondSword&&barrel->slots[0].durability==31&&inv.count(Item::DiamondSword)==0,"barrel_full_inventory_retains_gear");g.ui_.closeGameplayInterface(inv);g.input_.keys_.fill(false);inv.clear();g.player_->teleport({9.5f,300,4.5f});
  w.setBlock(9,300,5,Block::OakSign);check(w.setBuildingText({9,300,5},"VOXEL FRONTIER\nBUILDING TEST"),"sign_text_valid");check(!w.setBuildingText({9,300,5},std::string(25,'A')) && !w.setBuildingText({9,300,5},"a\nb\nc\nd\ne"),"sign_text_bounds");
@@ -177,6 +217,8 @@ int BuildingTest::visual(Game& g,const std::filesystem::path& output){
  g.setGameMode(GameMode::Spectator);g.settings_.renderDistance=8;g.timing_.worldTime=180;g.player_->setFlying(true);
  auto view=[&](const char* name,glm::vec3 p,float yaw,float pitch){g.player_->teleport(p+glm::vec3(0,y,0));g.player_->yaw_=yaw;g.player_->pitch_=pitch;auto started=glfwGetTime();while(glfwGetTime()-started<3){glfwPollEvents();w.updateStreaming(g.player_->cameraPosition(),8);g.renderFrame(.008f);std::this_thread::sleep_for(std::chrono::milliseconds(4));}g.screenshotRequested_=true;g.renderFrame(0);std::filesystem::path latest;for(const auto& f:std::filesystem::directory_iterator("screenshots"))if(latest.empty()||f.last_write_time()>std::filesystem::last_write_time(latest))latest=f.path();check(!latest.empty(),std::string("screenshot_")+name);std::filesystem::copy_file(latest,output/(std::string(name)+".bmp"),std::filesystem::copy_options::overwrite_existing);};
  block(20,1,10,Block::FlowerPot);w.chestAt({20,y+1,10},true)->slots[0]={Item::RedFlower,1};
+ for(int facing=0;facing<4;++facing){glm::ivec3 foot(-10+facing*4,y+1,17),head=foot+buildingFacing(facing);w.setBlockInternal(foot.x,foot.y,foot.z,blockState(Block::Bed,facing),true,false);w.setBlockInternal(head.x,head.y,head.z,blockState(Block::Bed,facing|16),true,false);}
+ view("bed-four-directions",{-3.5f,6.5f,24},-90,-45);
  view("pot-front",{20.5f,.2f,13},-90,0);view("pot-side",{23,.2f,10.5f},180,0);view("pot-back",{20.5f,.2f,8},90,0);
  view("wooden-house",{18,11,23},-126,-23);view("stone-fortress",{57,18,31},-139,-27);view("farm-and-gates",{20,8,47},-131,-25);g.timing_.worldTime=700;view("decorated-interior",{8,2,8},-128,-8);view("sign-closeup",{7.5f,1.2f,3.8f},-90,0);g.timing_.worldTime=180;view("timber-bridge",{48,7,47},-120,-17);view("shape-gallery",{25,14,76},-109,-32);
  check(g.saveAll(),"visual_checkpoint");g.shutdown();return 0;
@@ -230,5 +272,30 @@ int BuildingTest::creativeUi(Game& g,const std::filesystem::path& output){
   if(page+1<pages){auto p=UiLayout::panel(UiMode::Creative,W,H);click({p.x+550,p.y+475,40,30});}
  }
  for(auto size:{glm::ivec2(1280,720),glm::ivec2(1024,768),glm::ivec2(800,700)})for(int index=0;index<int(catalog.size());++index){auto r=UiLayout::creativeItem(index,size.x,size.y),owned=UiLayout::playerSlot(UiMode::Creative,0,size.x,size.y);check(r.width==owned.width&&r.height==owned.height,"creative_slot_matches_inventory_"+std::to_string(index));}
+ // Filtered catalog indices must stay aligned across draw, tooltip, clicks,
+ // paging and right-drag, including items from the original last page.
+ auto typeSearch=[&](const std::string& query){click(UiLayout::creativeSearch(W,H));g.input_.keys_[GLFW_KEY_LEFT_CONTROL]=true;g.input_.keys_[GLFW_KEY_A]=true;g.input_.previousKeys_.fill(false);update();g.input_.keys_.fill(false);g.input_.typedCharacters_=query;update();};
+ for(const auto& query:{std::string("STONE"),std::string("oak"),std::string("a"),std::string("zzzzzz")}){
+  typeSearch(query);check(g.ui_.creativePage()==0,"creative_search_resets_page");
+  std::string lower=query;std::transform(lower.begin(),lower.end(),lower.begin(),[](unsigned char c){return char(std::tolower(c));});
+  std::vector<Item> expected;for(auto item:catalog){std::string name=itemDefinition(item).displayName;std::transform(name.begin(),name.end(),name.begin(),[](unsigned char c){return char(std::tolower(c));});if(name.find(lower)!=std::string::npos)expected.push_back(item);}
+  check(g.ui_.creativeItems()==expected,"creative_search_exact_results_"+query);
+  int filteredPages=std::max(1,(int(expected.size())+UiLayout::CreativePageSize-1)/UiLayout::CreativePageSize);
+  for(int page=0;page<filteredPages;++page){
+   for(int i=page*UiLayout::CreativePageSize;i<std::min(int(expected.size()),(page+1)*UiLayout::CreativePageSize);++i){
+    auto r=UiLayout::creativeItem(i,W,H);inv.clear();click(r);check(inv.cursorStack().item==expected[i],"filtered_left_correct_item");inv.clear();click(r,true);check(inv.cursorStack().item==expected[i]&&inv.cursorStack().count==1,"filtered_right_correct_item");
+    check(InventoryTooltip::hoveredItem(UiMode::Creative,W,H,r.x+5,r.y+5,inv,nullptr,nullptr,nullptr,page,&g.ui_.creativeItems())==expected[i],"filtered_tooltip_correct_item");
+   }
+   if(page+1<filteredPages){auto p=UiLayout::panel(UiMode::Creative,W,H);click({p.x+550,p.y+475,40,30});check(g.ui_.creativePage()==page+1,"filtered_next_page");}
+  }
+  if(expected.empty()){inv.clear();click(UiLayout::creativeItem(0,W,H));check(inv.cursorStack().empty(),"empty_search_no_ghost_item");}
+ }
+ typeSearch("oak");inv.clear();pointer(UiLayout::creativeItem(0,W,H));g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_RIGHT]=true;g.input_.previousMouseButtons_.fill(false);update();pointer(UiLayout::creativeItem(1,W,H));g.input_.previousMouseButtons_[GLFW_MOUSE_BUTTON_RIGHT]=true;update();check(inv.cursorStack().item==g.ui_.creativeItems()[1],"filtered_right_drag_correct_item");g.input_.mouseButtons_.fill(false);update();
+ typeSearch("stone");inv.clear();g.screenshotRequested_=true;g.renderFrame(0);std::filesystem::path searchShot;for(const auto& f:std::filesystem::directory_iterator("screenshots"))if(searchShot.empty()||f.last_write_time()>std::filesystem::last_write_time(searchShot))searchShot=f.path();std::filesystem::copy_file(searchShot,output/"creative-search.bmp",std::filesystem::copy_options::overwrite_existing);
+ inv.clear();inv.add(Item::Stone,5);pointer(UiLayout::playerSlot(UiMode::Creative,0,W,H));auto drops=g.survival_->drops_.size();g.input_.keys_[GLFW_KEY_Q]=true;g.input_.previousKeys_.fill(false);g.input_.typedCharacters_="q";update();check(inv.count(Item::Stone)==5&&g.survival_->drops_.size()==drops,"search_typing_q_does_not_drop_owned_items");g.input_.keys_.fill(false);
+ g.ui_.handleEscape(inv);check(!g.ui_.creativeSearchFocused()&&g.ui_.state()==GameState::Inventory,"search_escape_blurs_before_closing");
+ typeSearch("");check(g.ui_.creativeItems()==catalog&&g.ui_.creativePage()==0,"search_clear_restores_all_items");
+ g.input_.keys_[GLFW_KEY_ENTER]=true;g.input_.previousKeys_.fill(false);update();check(!g.ui_.creativeSearchFocused(),"search_enter_blurs");g.input_.keys_.fill(false);
+ typeSearch("st");g.input_.keys_[GLFW_KEY_E]=true;g.input_.previousKeys_.fill(false);g.handleGlobalInput();check(g.ui_.state()==GameState::Inventory,"search_e_does_not_toggle_inventory");g.input_.keys_.fill(false);g.ui_.closeGameplayInterface(inv);check(!g.ui_.creativeSearchFocused(),"closing_inventory_clears_search_focus");
  std::cout<<"Creative production UI assertions="<<count<<" pages="<<pages<<" catalog="<<catalog.size()<<std::endl;g.shutdown();return 0;
 }

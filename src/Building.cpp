@@ -57,7 +57,13 @@ BuildingBoxes buildingBoxes(Block b,bool collision){BuildingBoxes out;auto d=bui
   for(int dir=0;dir<4;++dir)if(p&(16<<dir)){const auto v=buildingFacing(dir);float x=v.x<0?0:v.x>0?hi:lo,X=v.x>0?1:v.x<0?lo:hi,z=v.z<0?0:v.z>0?hi:lo,Z=v.z>0?1:v.z<0?lo:hi;
    if(collision)out.add(x,0,z,X,1.5f,Z);else if(wall)out.add(x,0,z,X,.875f,Z);else{out.add(x,.375f,z,X,.5f,Z);out.add(x,.75f,z,X,.875f,Z);}}break;}
  case BuildingShape::Pane:{out.add(.4375f,0,.4375f,.5625f,1,.5625f);for(int dir=0;dir<4;++dir)if(p&(16<<dir)){auto v=buildingFacing(dir);out.add(v.x<0?0:v.x>0?.5625f:.4375f,0,v.z<0?0:v.z>0?.5625f:.4375f,v.x>0?1:v.x<0?.4375f:.5625f,1,v.z>0?1:v.z<0?.4375f:.5625f);}break;}
- case BuildingShape::FenceGate:{if(p&8){if(!collision){out.add(0,0,.375f,.125f,1,.625f);out.add(.875f,0,.375f,1,1,.625f);}}else{out.add(0,.25f,.4375f,1,collision?1.5f:1,.5625f);}rotate=true;break;}
+ case BuildingShape::FenceGate:{if(p&8){if(!collision){out.add(0,0,.375f,.125f,1,.625f);out.add(.875f,0,.375f,1,1,.625f);}}else if(collision){out.add(0,.25f,.4375f,1,1.5f,.5625f);}else{
+  // Visible gate frame and rails share the placed model and thumbnail. The
+  // closed collision barrier stays identical to v2.16.0.
+  out.add(0,.25f,.4375f,.125f,1,.5625f);out.add(.875f,.25f,.4375f,1,1,.5625f);
+  out.add(.125f,.375f,.4375f,.875f,.5f,.5625f);out.add(.125f,.75f,.4375f,.875f,.875f,.5625f);
+  out.add(.4375f,.375f,.4375f,.5625f,.875f,.5625f);
+ }rotate=true;break;}
  case BuildingShape::Trapdoor:if(p&8){out.add(0,0,0,1,1,.1875f);}else out.add(0,p&4?.8125f:0,0,1,p&4?1:.1875f,1);rotate=true;break;
  case BuildingShape::Door:out.add(0,0,0,1,1,.1875f);rotate=true;break;
  case BuildingShape::Button:out.add(.3125f,.375f,0,.6875f,.625f,p&8?.0625f:.125f);rotate=true;break;

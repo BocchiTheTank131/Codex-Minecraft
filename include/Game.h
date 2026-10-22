@@ -30,6 +30,7 @@ class Transportation;
 namespace SaveFile { class Session; struct CommitStatus; }
 
 class Game {
+    friend class IconTest;
     friend class FarmingTest;
     friend class BuildingTest;
     friend class StabilityTest;
@@ -236,6 +237,8 @@ private:
     void updateEquipmentInput(bool enabled);
     void handleDropAction();
     void damageSelectedToolWithSound();
+    void damageToolWithSound(bool offhand);
+    std::optional<bool> buildingToolHand() const;
     void finishSimulationFrame(float deltaTime, float oldHealth);
 
     void renderFrame(float deltaTime);

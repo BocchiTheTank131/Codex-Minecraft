@@ -1,0 +1,133 @@
+Isolated fixture: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900"
+Audio: loaded 104 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/Chronostasis.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+initial_world_loaded passed=1
+initial_checkpoint passed=1
+gamemode_preserves_manifest passed=1
+gamemode_checkpoint passed=1
+mode_time_weather_commands passed=1
+commands_only_change_memory passed=1
+mode_autosave_queued passed=1
+mode_autosave_valid passed=1
+mode_time_weather_reload passed=1
+mode_time_weather_commands passed=1
+commands_only_change_memory passed=1
+mode_autosave_queued passed=1
+mode_autosave_valid passed=1
+mode_time_weather_reload passed=1
+mode_time_weather_commands passed=1
+commands_only_change_memory passed=1
+mode_autosave_queued passed=1
+mode_autosave_valid passed=1
+mode_time_weather_reload passed=1
+background_first_snapshot passed=1
+background_pending_change passed=1
+background_save_coalesced passed=1
+background_latest_state_committed passed=1
+owned_metadata_cannot_bypass_session passed=1
+World session reservation failed: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900\\saves\\world-303373001-3144328381\\.session.lock" code=32 message=The process cannot access the file because it is being used by another process. requester_pid=25164 (already reserved by another handle; same or other process)
+Metadata serialization requires the complete world checkpoint
+active_metadata_serializer_guard passed=1
+Save failure stage=checkpoint-transaction-required path="C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900\\saves\\world-303373001-3144328381\\world_seed.txt" domain=system code=0 message=no OS error supplied (see stage) thread=20740 save not reported successful; preserve checkpoint/backup files for recovery
+standalone_managed_write_refused passed=1
+Save failure stage=checkpoint-transaction-required path="C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900\\saves\\world-303373001-3144328381\\world.info" domain=system code=0 message=no OS error supplied (see stage) thread=20740 save not reported successful; preserve checkpoint/backup files for recovery
+standalone_managed_write_refused passed=1
+standalone_managed_write_refused passed=1
+Save failure stage=checkpoint-transaction-required path="C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900\\saves\\world-303373001-3144328381\\voxel_world.vxw" domain=system code=0 message=no OS error supplied (see stage) thread=20740 save not reported successful; preserve checkpoint/backup files for recovery
+Save failure stage=checkpoint-transaction-required path="C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900\\saves\\world-303373001-3144328381\\voxel_inventory.vxi" domain=system code=0 message=no OS error supplied (see stage) thread=20740 save not reported successful; preserve checkpoint/backup files for recovery
+standalone_managed_write_refused passed=1
+Save failure stage=checkpoint-transaction-required path="C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900\\saves\\world-303373001-3144328381\\voxel_player.vps" domain=system code=0 message=no OS error supplied (see stage) thread=20740 save not reported successful; preserve checkpoint/backup files for recovery
+standalone_managed_write_refused passed=1
+Save failure stage=checkpoint-transaction-required path="C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900\\saves\\world-303373001-3144328381\\voxel_mobs.vxm" domain=system code=0 message=no OS error supplied (see stage) thread=20740 save not reported successful; preserve checkpoint/backup files for recovery
+standalone_managed_write_refused passed=1
+Save failure stage=checkpoint-transaction-required path="C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900\\saves\\world-303373001-3144328381\\voxel_travel.vtn" domain=system code=0 message=no OS error supplied (see stage) thread=20740 save not reported successful; preserve checkpoint/backup files for recovery
+standalone_managed_write_refused passed=1
+Save failure stage=checkpoint-transaction-required path="C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-92448505910900\\saves\\world-303373001-3144328381\\checkpoint.manifest" domain=system code=0 message=no OS error supplied (see stage) thread=20740 save not reported successful; preserve checkpoint/backup files for recovery
+standalone_managed_write_refused passed=1
+standalone_guard_preserves_all_files passed=1
+cheats_transaction passed=1
+cheats_preserve_current_metadata passed=1
+cheats_executor_denies_command passed=1
+cheats_reenabled passed=1
+shutdown_async_snapshot passed=1
+Audio: loaded 104 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/That band.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+shutdown_reload_latest_checkpoint passed=1
+Audio: playing background track background/Me and the three primary colors.ogg
+Audio: playing background track background/Karakara.ogg
+Audio: playing background track background/Bundle up your dreams.ogg
+Audio: playing background track background/Doppelganger.ogg
+Audio: playing background track background/Now, Im going from underground.ogg
+Audio: playing background track background/Flashbacker.ogg
+Audio: playing background track background/Distortion.ogg
+Audio: playing background track background/hitoribocchi tokyo.ogg
+Audio: playing background track background/Guitar, Loneliness and Blue Planet.ogg
+Audio: playing background track background/ReRe.ogg
+Audio: playing background track background/Planet.ogg
+Audio: playing background track background/The Little Sea.ogg
+Audio: playing background track background/Rockn Roll, Morning Light Falls on You.ogg
+Audio: playing background track background/UNITE.ogg
+Audio: playing background track background/If I could be a constellation.ogg
+Audio: playing background track background/Shine as usual.ogg
+Audio: playing background track background/What is wrong with.ogg
+Audio: playing background track background/milky way.ogg
+Audio: playing background track background/I cant sing a love song.ogg
+Audio: playing background track background/Never forget.ogg
+Audio: playing background track background/seisyun complex.ogg
+Audio: playing background track background/Secret base.ogg
+Audio: playing background track background/Chronostasis.ogg
+Audio: playing background track background/milky way.ogg
+Music smoke: 24 unique streamed tracks, automatic transitions, shuffle boundary, and exact category gain passed
+all_background_music_playable passed=1
+worker_fixture_ready passed=1
+worker_fixture_staged passed=1
+Save failure stage=checkpoint-integrity path="saves\\world-303373001-3144328381\\world_seed.txt" domain=system code=0 message=no OS error supplied (see stage) thread=17480 save not reported successful; preserve checkpoint/backup files for recovery
+Checkpoint detail: generation=16 expected_bytes=90 actual_bytes=37 expected_hash=12061489730487317056 actual_hash=7659750154752014162; automatic retries stopped; use verified recovery copy
+Saving stopped: world_seed.txt: generation=16 expected_bytes=90 actual_bytes=37 expected_hash=12061489730487317056 actual_hash=7659750154752014162. Original files preserved; use recovery into a separate world. Automatic retries disabled.
+worker_integrity_failure_classified passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+permanent_failure_no_retry passed=1
+autosave_does_not_rearm_integrity_retry passed=1
+Save failure stage=checkpoint-integrity path="saves\\world-303373001-3144328381\\world_seed.txt" domain=system code=0 message=no OS error supplied (see stage) thread=20740 save not reported successful; preserve checkpoint/backup files for recovery
+Checkpoint detail: generation=16 expected_bytes=90 actual_bytes=37 expected_hash=12061489730487317056 actual_hash=7659750154752014162; automatic retries stopped; use verified recovery copy
+reset_does_not_overwrite_damaged_world passed=1
+recovery_creates_verified_separate_copy passed=1
+missing_verified_backup_refused passed=1
+invalid_backup_refused_without_repair passed=1
+Audio: loaded 104 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/The Little Sea.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+legacy_copy_loads passed=1
+legacy_copy_migrates_transactionally passed=1
+legacy_copy_reloads passed=1
+recovered_copy_loads passed=1
+affected_originals_still_identical passed=1
+root_legacy_import_transaction passed=1
+root_legacy_original_preserved passed=1
+root_legacy_original_preserved passed=1
+root_legacy_original_preserved passed=1
+root_legacy_original_preserved passed=1
+root_legacy_original_preserved passed=1

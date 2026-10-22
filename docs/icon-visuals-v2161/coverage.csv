@@ -1,0 +1,348 @@
+item,sprite,name,category,block,state,vertices,render_ms
+1,0,"Grass",world-mesh,1,0,36,5.2392
+2,1,"Dirt",world-mesh,2,0,36,0.2201
+3,2,"Stone",world-mesh,3,0,36,0.1594
+4,3,"Sand",world-mesh,4,0,36,0.1508
+5,4,"Log",world-mesh,5,0,36,0.149
+6,5,"Leaves",world-mesh,6,0,36,0.1497
+7,6,"Water",world-mesh,7,0,36,0.1498
+8,7,"Coal Ore",world-mesh,8,0,36,0.1471
+9,8,"Iron Ore",world-mesh,9,0,36,0.1455
+10,9,"Gold Ore",world-mesh,10,0,36,0.1449
+11,10,"Copper Ore",world-mesh,11,0,36,0.1491
+12,11,"Diamond Ore",world-mesh,12,0,36,0.146
+13,12,"Planks",world-mesh,13,0,36,0.1548
+14,13,"Stick",extruded-item-art,0,0,1800,0.2427
+15,14,"Crafting Table",world-mesh,14,0,36,0.1726
+16,15,"Torch",world-mesh,15,0,36,0.1362
+17,20,"Wood Pickaxe",extruded-item-art,0,0,2628,0.2707
+18,21,"Stone Pickaxe",extruded-item-art,0,0,2628,0.2722
+19,22,"Iron Pickaxe",extruded-item-art,0,0,2628,0.2045
+20,23,"Wood Axe",extruded-item-art,0,0,2376,0.2076
+21,24,"Stone Axe",extruded-item-art,0,0,2376,0.4763
+22,25,"Iron Axe",extruded-item-art,0,0,2376,0.7709
+23,26,"Wood Shovel",extruded-item-art,0,0,2232,0.1994
+24,27,"Stone Shovel",extruded-item-art,0,0,2232,0.2205
+25,28,"Iron Shovel",extruded-item-art,0,0,2232,0.2049
+26,16,"Seeds",extruded-item-art,0,0,1296,0.158
+27,17,"Wheat",extruded-item-art,0,0,2916,0.2469
+28,18,"Bread",extruded-item-art,0,0,3780,0.3056
+29,19,"Raw Meat",extruded-item-art,0,0,3204,0.211
+30,30,"Raw Beef",extruded-item-art,0,0,3312,0.2101
+31,31,"Raw Pork",extruded-item-art,0,0,3888,0.2316
+32,32,"Wool",extruded-item-art,0,0,3888,0.2799
+33,33,"Cooked Beef",extruded-item-art,0,0,3312,0.2132
+34,34,"Cooked Pork",extruded-item-art,0,0,3888,0.2195
+35,35,"Cobblestone",world-mesh,29,0,36,0.1554
+36,36,"Stone Bricks",world-mesh,30,0,36,0.1475
+37,37,"Bricks",world-mesh,31,0,36,0.148
+38,38,"Glass",world-mesh,32,0,36,0.1715
+39,39,"Gravel",world-mesh,33,0,36,0.1819
+40,40,"Clay",world-mesh,34,0,36,0.1618
+41,41,"Snow",world-mesh,35,0,36,0.1382
+42,42,"Snow Block",world-mesh,36,0,36,0.151
+43,43,"Birch Planks",world-mesh,37,0,36,0.1634
+44,44,"Birch Log",world-mesh,38,0,36,0.1496
+45,45,"Birch Leaves",world-mesh,39,0,36,0.145
+46,46,"Cactus",world-mesh,40,0,36,0.1444
+47,47,"Furnace",world-mesh,41,0,36,0.1451
+48,48,"Bookshelf",world-mesh,42,0,36,0.1663
+49,49,"Wooden Door",world-mesh,63,0,60,0.1662
+50,50,"Wooden Slab",world-mesh,44,0,36,0.1716
+51,51,"Stone Slab",world-mesh,45,0,36,0.1742
+52,52,"Coal",extruded-item-art,0,0,3132,0.213
+53,53,"Iron Ingot",extruded-item-art,0,0,2808,0.2189
+54,54,"Gold Ingot",extruded-item-art,0,0,2808,0.2537
+55,55,"Diamond",extruded-item-art,0,0,3312,0.2244
+56,56,"Copper Ingot",extruded-item-art,0,0,2808,0.2832
+57,57,"Apple",extruded-item-art,0,0,4140,0.3053
+58,58,"Leather",extruded-item-art,0,0,3780,0.2268
+59,59,"Raw Mutton",extruded-item-art,0,0,2916,0.1893
+60,60,"Cooked Mutton",extruded-item-art,0,0,2916,0.2235
+61,61,"Granite",world-mesh,46,0,36,0.157
+62,62,"Diorite",world-mesh,47,0,36,0.1629
+63,63,"Andesite",world-mesh,48,0,36,0.2104
+64,64,"Mossy Cobblestone",world-mesh,49,0,36,0.1698
+65,65,"Mossy Stone Bricks",world-mesh,50,0,36,0.1478
+66,66,"Ice",world-mesh,51,0,36,0.1459
+67,67,"Mud",world-mesh,52,0,36,0.144
+68,68,"Tall Grass",world-mesh,53,0,24,0.1252
+69,69,"Red Flower",world-mesh,54,0,24,0.1182
+70,70,"Yellow Flower",world-mesh,55,0,24,0.1298
+71,71,"Ladder",world-mesh,56,0,12,0.123
+72,72,"Chest",world-mesh,60,0,36,0.145
+73,73,"Gold Pickaxe",extruded-item-art,0,0,2628,0.1734
+74,74,"Gold Axe",extruded-item-art,0,0,2376,0.1612
+75,75,"Gold Shovel",extruded-item-art,0,0,2232,0.1565
+76,76,"Diamond Pickaxe",extruded-item-art,0,0,2628,0.1666
+77,77,"Diamond Axe",extruded-item-art,0,0,2376,0.1601
+78,78,"Diamond Shovel",extruded-item-art,0,0,2232,0.1565
+79,79,"Wood Sword",extruded-item-art,0,0,2484,0.1595
+80,80,"Stone Sword",extruded-item-art,0,0,2484,0.1658
+81,81,"Iron Sword",extruded-item-art,0,0,2484,0.1626
+82,82,"Gold Sword",extruded-item-art,0,0,2484,0.1607
+83,83,"Diamond Sword",extruded-item-art,0,0,2484,0.1642
+84,84,"Paper",extruded-item-art,0,0,4644,0.2329
+85,85,"Book",extruded-item-art,0,0,4752,0.2371
+86,86,"Clay Ball",extruded-item-art,0,0,3888,0.2958
+87,87,"Brick",extruded-item-art,0,0,2808,0.2029
+88,88,"Snowball",extruded-item-art,0,0,3888,0.2072
+89,89,"Charcoal",extruded-item-art,0,0,3636,0.183
+90,90,"Sugar Cane",world-mesh,105,0,24,0.1639
+91,91,"Vine",world-mesh,106,0,12,0.1301
+92,92,"Coal Block",world-mesh,95,0,36,0.24
+93,93,"Iron Block",world-mesh,96,0,36,0.1753
+94,94,"Gold Block",world-mesh,97,0,36,0.1793
+95,95,"Copper Block",world-mesh,98,0,36,0.177
+96,96,"Diamond Block",world-mesh,99,0,36,0.1641
+97,97,"Hay Bale",world-mesh,100,0,36,0.3231
+98,98,"Sandstone",world-mesh,101,0,36,0.1769
+99,99,"Polished Granite",world-mesh,102,0,36,0.1742
+100,100,"Polished Diorite",world-mesh,103,0,36,0.1501
+101,101,"Polished Andesite",world-mesh,104,0,36,0.1457
+102,102,"Lightning Rod",world-mesh,110,0,36,0.1266
+103,103,"Spruce Log",world-mesh,120,0,36,0.1452
+104,104,"Spruce Planks",world-mesh,121,0,36,0.1664
+105,105,"Spruce Leaves",world-mesh,122,0,36,0.1545
+106,106,"Jungle Log",world-mesh,123,0,36,0.1457
+107,107,"Jungle Planks",world-mesh,124,0,36,0.1472
+108,108,"Jungle Leaves",world-mesh,125,0,36,0.1501
+109,109,"Acacia Log",world-mesh,126,0,36,0.1499
+110,110,"Acacia Planks",world-mesh,127,0,36,0.1564
+111,111,"Acacia Leaves",world-mesh,128,0,36,0.153
+112,112,"Dark Oak Log",world-mesh,129,0,36,0.1554
+113,113,"Dark Oak Planks",world-mesh,130,0,36,0.1489
+114,114,"Dark Oak Leaves",world-mesh,131,0,36,0.1445
+115,115,"Podzol",world-mesh,132,0,36,0.1495
+116,116,"Mycelium",world-mesh,133,0,36,0.1862
+117,117,"Coarse Dirt",world-mesh,134,0,36,0.1553
+118,118,"Packed Ice",world-mesh,135,0,36,0.1448
+119,119,"Blue Ice",world-mesh,136,0,36,0.1456
+120,120,"Terracotta",world-mesh,137,0,36,0.1544
+121,121,"Terracotta Red",world-mesh,138,0,36,0.1572
+122,122,"Terracotta Orange",world-mesh,139,0,36,0.1471
+123,123,"Terracotta Yellow",world-mesh,140,0,36,0.1559
+124,124,"Terracotta White",world-mesh,141,0,36,0.1557
+125,125,"Terracotta Brown",world-mesh,142,0,36,0.1513
+126,126,"Bamboo",world-mesh,143,0,24,0.1228
+127,127,"Fern",world-mesh,144,0,24,0.122
+128,128,"Dead Bush",world-mesh,145,0,24,0.1181
+129,129,"Lily Pad",world-mesh,146,0,36,0.139
+130,130,"Red Mushroom",world-mesh,147,0,24,0.1281
+131,131,"Brown Mushroom",world-mesh,148,0,24,0.166
+132,132,"Mushroom Stem",world-mesh,149,0,36,0.2191
+133,133,"Red Mushroom Block",world-mesh,150,0,36,0.1896
+134,134,"Brown Mushroom Block",world-mesh,151,0,36,0.1699
+135,135,"Deepslate",world-mesh,152,0,36,0.2042
+136,136,"Deepslate Coal Ore",world-mesh,153,0,36,0.1883
+137,137,"Deepslate Iron Ore",world-mesh,154,0,36,0.1882
+138,138,"Deepslate Copper Ore",world-mesh,155,0,36,0.1944
+139,139,"Deepslate Gold Ore",world-mesh,156,0,36,0.2025
+140,140,"Deepslate Diamond Ore",world-mesh,157,0,36,0.18
+141,141,"Bedrock",world-mesh,158,0,36,0.1649
+142,142,"Lava",world-mesh,159,0,36,0.1519
+143,143,"Cobweb",world-mesh,160,0,24,0.1284
+144,144,"Cracked Stone Bricks",world-mesh,161,0,36,0.1486
+145,145,"Surveyor Token",extruded-item-art,0,0,4320,0.2414
+146,146,"Cavern Shard",extruded-item-art,0,0,3240,0.1909
+147,147,"Ancient Seal",extruded-item-art,0,0,4968,0.2538
+148,148,"Leather Helmet",extruded-item-art,0,0,3312,0.2125
+149,149,"Leather Chestplate",extruded-item-art,0,0,4536,0.218
+150,150,"Leather Leggings",extruded-item-art,0,0,3996,0.2031
+151,151,"Leather Boots",extruded-item-art,0,0,4104,0.1942
+152,152,"Gold Helmet",extruded-item-art,0,0,3312,0.2186
+153,153,"Gold Chestplate",extruded-item-art,0,0,4536,0.2039
+154,154,"Gold Leggings",extruded-item-art,0,0,3996,0.2007
+155,155,"Gold Boots",extruded-item-art,0,0,4104,0.1937
+156,156,"Iron Helmet",extruded-item-art,0,0,3312,0.2004
+157,157,"Iron Chestplate",extruded-item-art,0,0,4536,0.2616
+158,158,"Iron Leggings",extruded-item-art,0,0,3996,0.2262
+159,159,"Iron Boots",extruded-item-art,0,0,4104,0.2318
+160,160,"Diamond Helmet",extruded-item-art,0,0,3312,0.2353
+161,161,"Diamond Chestplate",extruded-item-art,0,0,4536,0.234
+162,162,"Diamond Leggings",extruded-item-art,0,0,3996,0.21
+163,163,"Diamond Boots",extruded-item-art,0,0,4104,0.1957
+164,164,"Shield",extruded-item-art,0,0,5292,0.2196
+165,165,"Oak Boat",boat-model,0,0,288,0.1684
+166,166,"Birch Boat",boat-model,0,0,288,0.1893
+167,167,"Spruce Boat",boat-model,0,0,288,0.1343
+168,168,"Jungle Boat",boat-model,0,0,288,0.1349
+169,169,"Acacia Boat",boat-model,0,0,288,0.1312
+170,170,"Dark Oak Boat",boat-model,0,0,288,0.2016
+171,171,"Empty Map",extruded-item-art,0,0,6300,0.4267
+172,172,"Filled Map",extruded-item-art,0,0,6300,0.4167
+173,173,"Compass",extruded-item-art,0,0,5328,0.2601
+174,174,"Carrot",extruded-item-art,0,0,3384,0.2174
+175,175,"Potato",extruded-item-art,0,0,4536,0.2557
+176,176,"Baked Potato",extruded-item-art,0,0,4536,0.2227
+177,177,"Beetroot",extruded-item-art,0,0,3708,0.1897
+178,178,"Beetroot Seeds",extruded-item-art,0,0,2160,0.1758
+179,179,"Pumpkin Seeds",extruded-item-art,0,0,2160,0.1629
+180,180,"Pumpkin",world-mesh,187,0,36,0.1964
+181,181,"Melon Seeds",extruded-item-art,0,0,2160,0.1705
+182,182,"Melon",world-mesh,188,0,36,0.155
+183,183,"Melon Slice",extruded-item-art,0,0,3816,0.2209
+184,184,"Sweet Berries",extruded-item-art,0,0,2952,0.1769
+185,185,"Wood Hoe",extruded-item-art,0,0,3060,0.1742
+186,186,"Stone Hoe",extruded-item-art,0,0,3060,0.1712
+187,187,"Iron Hoe",extruded-item-art,0,0,3060,0.1722
+188,188,"Gold Hoe",extruded-item-art,0,0,3060,0.2224
+189,189,"Diamond Hoe",extruded-item-art,0,0,3060,0.1721
+190,190,"Bone Meal",extruded-item-art,0,0,2700,0.1739
+191,191,"Composter",world-mesh,193,0,36,0.1501
+192,192,"Shears",extruded-item-art,0,0,3780,0.1891
+193,193,"Bucket",extruded-item-art,0,0,4644,0.2373
+194,194,"Milk Bucket",extruded-item-art,0,0,4644,0.2232
+195,195,"Egg",extruded-item-art,0,0,4140,0.2363
+196,196,"Raw Chicken",extruded-item-art,0,0,3456,0.2152
+197,197,"Cooked Chicken",extruded-item-art,0,0,3456,0.1947
+198,198,"Feather",extruded-item-art,0,0,2916,0.1739
+199,199,"Bowl",extruded-item-art,0,0,4428,0.204
+200,200,"Sugar",extruded-item-art,0,0,2700,0.1702
+201,201,"Beetroot Soup",extruded-item-art,0,0,4428,0.2137
+202,202,"Mushroom Stew",extruded-item-art,0,0,4428,0.2443
+203,203,"Pumpkin Pie",extruded-item-art,0,0,3888,0.244
+204,204,"Cookie",extruded-item-art,0,0,4536,0.3387
+205,205,"Vegetable Stew",extruded-item-art,0,0,4428,0.3088
+206,206,"Oak Stairs",world-mesh,198,0,66,0.1853
+207,207,"Oak Slab",world-mesh,199,0,36,0.176
+208,208,"Oak Fence",world-mesh,200,160,180,0.1741
+209,209,"Oak Fence Gate",world-mesh,201,0,180,0.1601
+210,210,"Oak Trapdoor",world-mesh,202,0,36,0.1836
+211,211,"Oak Door",world-mesh,203,0,60,0.1438
+212,212,"Oak Stripped Log",world-mesh,204,0,36,0.1532
+213,213,"Oak Button",world-mesh,205,0,36,0.1421
+214,214,"Oak Pressure Plate",world-mesh,206,0,36,0.1641
+215,215,"Oak Table",world-mesh,207,0,276,0.1901
+216,216,"Oak Chair",world-mesh,208,0,210,0.1595
+217,217,"Oak Bench",world-mesh,209,0,180,0.1504
+218,218,"Oak Sign",world-mesh,210,0,72,0.1339
+219,219,"Oak Shelf",world-mesh,211,0,138,0.1457
+220,220,"Birch Stairs",world-mesh,212,0,66,0.1776
+221,221,"Birch Slab",world-mesh,213,0,36,0.1471
+222,222,"Birch Fence",world-mesh,214,160,180,0.1573
+223,223,"Birch Fence Gate",world-mesh,215,0,180,0.1778
+224,224,"Birch Trapdoor",world-mesh,216,0,36,0.1617
+225,225,"Birch Door",world-mesh,217,0,60,0.1464
+226,226,"Birch Stripped Log",world-mesh,218,0,36,0.1497
+227,227,"Birch Button",world-mesh,219,0,36,0.1516
+228,228,"Birch Pressure Plate",world-mesh,220,0,36,0.1359
+229,229,"Birch Table",world-mesh,221,0,276,0.1564
+230,230,"Birch Chair",world-mesh,222,0,210,0.1589
+231,231,"Birch Bench",world-mesh,223,0,180,0.1464
+232,232,"Birch Sign",world-mesh,224,0,72,0.1364
+233,233,"Birch Shelf",world-mesh,225,0,138,0.145
+234,234,"Spruce Stairs",world-mesh,226,0,66,0.1506
+235,235,"Spruce Slab",world-mesh,227,0,36,0.1386
+236,236,"Spruce Fence",world-mesh,228,160,180,0.161
+237,237,"Spruce Fence Gate",world-mesh,229,0,180,0.1518
+238,238,"Spruce Trapdoor",world-mesh,230,0,36,0.1352
+239,239,"Spruce Door",world-mesh,231,0,60,0.1326
+240,240,"Spruce Stripped Log",world-mesh,232,0,36,0.1821
+241,241,"Spruce Button",world-mesh,233,0,36,0.1459
+242,242,"Spruce Pressure Plate",world-mesh,234,0,36,0.1625
+243,243,"Spruce Table",world-mesh,235,0,276,0.1703
+244,244,"Spruce Chair",world-mesh,236,0,210,0.234
+245,245,"Spruce Bench",world-mesh,237,0,180,0.2088
+246,246,"Spruce Sign",world-mesh,238,0,72,0.1535
+247,247,"Spruce Shelf",world-mesh,239,0,138,0.1731
+248,248,"Jungle Stairs",world-mesh,240,0,66,0.1572
+249,249,"Jungle Slab",world-mesh,241,0,36,0.251
+250,250,"Jungle Fence",world-mesh,242,160,180,0.1732
+251,251,"Jungle Fence Gate",world-mesh,243,0,180,0.1616
+252,252,"Jungle Trapdoor",world-mesh,244,0,36,0.1383
+253,253,"Jungle Door",world-mesh,245,0,60,0.1361
+254,254,"Jungle Stripped Log",world-mesh,246,0,36,0.1476
+255,255,"Jungle Button",world-mesh,247,0,36,0.1502
+256,256,"Jungle Pressure Plate",world-mesh,248,0,36,0.1318
+257,257,"Jungle Table",world-mesh,249,0,276,0.1549
+258,258,"Jungle Chair",world-mesh,250,0,210,0.151
+259,259,"Jungle Bench",world-mesh,251,0,180,0.1516
+260,260,"Jungle Sign",world-mesh,252,0,72,0.1404
+261,261,"Jungle Shelf",world-mesh,253,0,138,0.1448
+262,262,"Acacia Stairs",world-mesh,254,0,66,0.1512
+263,263,"Acacia Slab",world-mesh,255,0,36,0.15
+264,264,"Acacia Fence",world-mesh,256,160,180,0.1625
+265,265,"Acacia Fence Gate",world-mesh,257,0,180,0.1614
+266,266,"Acacia Trapdoor",world-mesh,258,0,36,0.1398
+267,267,"Acacia Door",world-mesh,259,0,60,0.1348
+268,268,"Acacia Stripped Log",world-mesh,260,0,36,0.1616
+269,269,"Acacia Button",world-mesh,261,0,36,0.1777
+270,270,"Acacia Pressure Plate",world-mesh,262,0,36,0.1439
+271,271,"Acacia Table",world-mesh,263,0,276,0.1592
+272,272,"Acacia Chair",world-mesh,264,0,210,0.1589
+273,273,"Acacia Bench",world-mesh,265,0,180,0.179
+274,274,"Acacia Sign",world-mesh,266,0,72,0.1474
+275,275,"Acacia Shelf",world-mesh,267,0,138,0.1454
+276,276,"Dark Oak Stairs",world-mesh,268,0,66,0.1487
+277,277,"Dark Oak Slab",world-mesh,269,0,36,0.1417
+278,278,"Dark Oak Fence",world-mesh,270,160,180,0.148
+279,279,"Dark Oak Fence Gate",world-mesh,271,0,180,0.1488
+280,280,"Dark Oak Trapdoor",world-mesh,272,0,36,0.1339
+281,281,"Dark Oak Door",world-mesh,273,0,60,0.1631
+282,282,"Dark Oak Stripped Log",world-mesh,274,0,36,0.1458
+283,283,"Dark Oak Button",world-mesh,275,0,36,0.1434
+284,284,"Dark Oak Pressure Plate",world-mesh,276,0,36,0.1916
+285,285,"Dark Oak Table",world-mesh,277,0,276,0.2042
+286,286,"Dark Oak Chair",world-mesh,278,0,210,0.1962
+287,287,"Dark Oak Bench",world-mesh,279,0,180,0.2077
+288,288,"Dark Oak Sign",world-mesh,280,0,72,0.1863
+289,289,"Dark Oak Shelf",world-mesh,281,0,138,0.1639
+290,290,"Cobblestone Stairs",world-mesh,282,0,66,0.2496
+291,291,"Cobblestone Slab",world-mesh,283,0,36,0.1516
+292,292,"Cobblestone Wall",world-mesh,284,160,96,0.1882
+293,293,"Stone Stairs",world-mesh,285,0,66,0.1569
+294,294,"Stone Cut Slab",world-mesh,286,0,36,0.1587
+295,295,"Stone Wall",world-mesh,287,160,96,0.1473
+296,296,"Stone Bricks Stairs",world-mesh,288,0,66,0.1779
+297,297,"Stone Bricks Slab",world-mesh,289,0,36,0.1574
+298,298,"Stone Bricks Wall",world-mesh,290,160,96,0.1669
+299,299,"Mossy Cobblestone Stairs",world-mesh,291,0,66,0.1604
+300,300,"Mossy Cobblestone Slab",world-mesh,292,0,36,0.1423
+301,301,"Mossy Cobblestone Wall",world-mesh,293,160,96,0.1468
+302,302,"Mossy Stone Bricks Stairs",world-mesh,294,0,66,0.1459
+303,303,"Mossy Stone Bricks Slab",world-mesh,295,0,36,0.1415
+304,304,"Mossy Stone Bricks Wall",world-mesh,296,160,96,0.1558
+305,305,"Bricks Stairs",world-mesh,297,0,66,0.1487
+306,306,"Bricks Slab",world-mesh,298,0,36,0.1399
+307,307,"Bricks Wall",world-mesh,299,160,96,0.1464
+308,308,"Sandstone Stairs",world-mesh,300,0,66,0.1444
+309,309,"Sandstone Slab",world-mesh,301,0,36,0.1411
+310,310,"Sandstone Wall",world-mesh,302,160,96,0.1906
+311,311,"Deepslate Stairs",world-mesh,303,0,66,0.1595
+312,312,"Deepslate Slab",world-mesh,304,0,36,0.1821
+313,313,"Deepslate Wall",world-mesh,305,160,96,0.1554
+314,314,"Polished Granite Stairs",world-mesh,306,0,66,0.1483
+315,315,"Polished Granite Slab",world-mesh,307,0,36,0.1407
+316,316,"Polished Granite Wall",world-mesh,308,160,96,0.1498
+317,317,"Polished Diorite Stairs",world-mesh,309,0,66,0.1452
+318,318,"Polished Diorite Slab",world-mesh,310,0,36,0.1383
+319,319,"Polished Diorite Wall",world-mesh,311,160,96,0.1442
+320,320,"Polished Andesite Stairs",world-mesh,312,0,66,0.2066
+321,321,"Polished Andesite Slab",world-mesh,313,0,36,0.1462
+322,322,"Polished Andesite Wall",world-mesh,314,160,96,0.1493
+323,323,"Chiseled Stone Bricks",world-mesh,315,0,36,0.1453
+324,324,"Smooth Stone",world-mesh,316,0,36,0.1471
+325,325,"Smooth Sandstone",world-mesh,317,0,36,0.1445
+326,326,"Cut Sandstone",world-mesh,318,0,36,0.1878
+327,327,"Polished Deepslate",world-mesh,319,0,36,0.1382
+328,328,"Deepslate Bricks",world-mesh,320,0,36,0.1485
+329,329,"Cracked Deepslate Bricks",world-mesh,321,0,36,0.1435
+330,330,"Roof Shingles",world-mesh,322,0,36,0.2541
+331,331,"Glass Pane",world-mesh,323,160,84,0.1838
+332,332,"Rose Glass Pane",world-mesh,324,160,84,0.1702
+333,333,"Amber Glass Pane",world-mesh,325,160,84,0.1896
+334,334,"Smoked Glass Pane",world-mesh,326,160,84,0.1897
+335,335,"Lantern",world-mesh,327,0,108,0.156
+336,336,"Chain",world-mesh,328,0,36,0.1318
+337,337,"Candle",world-mesh,329,0,36,0.1368
+338,338,"Campfire",world-mesh,330,0,108,0.1843
+339,339,"Bed",world-mesh,331,0,540,0.2179
+340,340,"Barrel",world-mesh,332,0,36,0.1599
+341,341,"Painting",world-mesh,333,0,36,0.1533
+342,342,"Item Frame",world-mesh,334,0,36,0.1392
+343,343,"Flower Pot",world-mesh,335,0,108,0.1506
+344,344,"Carpet",world-mesh,336,0,36,0.1274
+345,345,"Dirt Path",world-mesh,337,0,36,0.1481
+346,346,"Stone Paving",world-mesh,338,0,36,0.1441
+347,347,"Scaffold",world-mesh,339,0,180,0.1506

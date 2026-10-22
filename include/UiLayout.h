@@ -15,7 +15,7 @@ enum class UiSlotKind {
     FurnaceFuel,
     FurnaceOutput,
     ChestSlot,
-    CreativeItem, CreativePrevious, CreativeNext,
+    CreativeItem, CreativePrevious, CreativeNext, CreativeSearch,
     RecipeItem, RecipeCategory, RecipeCraftable, RecipeSearch,
     RecipePrevious, RecipeNext
 };
@@ -81,6 +81,10 @@ inline UiRect creativeItem(int index, int width, int height) {
     return {p.x + (p.width - (CreativeColumns * 48.0f - 4.0f)) * .5f +
                 (index % CreativeColumns) * 48.0f,
             p.y + 35.0f + (index / CreativeColumns) * 48.0f, 44.0f, 44.0f};
+}
+inline UiRect creativeSearch(int width,int height) {
+    const auto p=panel(UiMode::Creative,width,height);
+    return {p.x+32,p.y+475,340,30};
 }
 inline UiRect furnaceSlot(UiSlotKind kind, int width, int height) {
     const UiRect p = panel(UiMode::Furnace, width, height);
@@ -161,6 +165,7 @@ inline UiHit hit(UiMode mode, double mouseX, double mouseY,
                 return {UiSlotKind::ChestSlot, index};
     }
     if (mode == UiMode::Creative) {
+        if(creativeSearch(width,height).contains(mouseX,mouseY))return {UiSlotKind::CreativeSearch,0};
         const auto p=panel(mode,width,height);
         if(UiRect{p.x+450,p.y+475,40,30}.contains(mouseX,mouseY))return {UiSlotKind::CreativePrevious,0};
         if(UiRect{p.x+550,p.y+475,40,30}.contains(mouseX,mouseY))return {UiSlotKind::CreativeNext,0};

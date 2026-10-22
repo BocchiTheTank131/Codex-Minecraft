@@ -28,6 +28,7 @@ struct RecipeBookView;
 inline constexpr float DayNightCycleSeconds = WorldTime::CycleSeconds;
 
 class Renderer {
+    friend class IconTest;
 public:
     Renderer();
     ~Renderer();
@@ -85,7 +86,8 @@ public:
                                  int height,
                                  const Inventory& inventory,
                                  double mouseX,
-                                 double mouseY,int page=0) const;
+                                 double mouseY,int page=0,const std::vector<Item>* creativeItems=nullptr,
+                                 const std::string& search={},bool searchFocused=false) const;
     void renderFurnace(int width,
                        int height,
                        const Inventory& inventory,

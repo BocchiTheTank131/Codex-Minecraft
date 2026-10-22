@@ -1,0 +1,5935 @@
+{
+  "schema": 1,
+  "tile_pixels": 64,
+  "supersample_pixels": 128,
+  "columns": 10,
+  "rows": 35,
+  "items": 347,
+  "camera": {
+    "azimuth_degrees": 45,
+    "elevation_degrees": 30,
+    "projection": "orthographic",
+    "padding_factor": 1.13
+  },
+  "inputs": {
+    "src/World.cpp": "0a770a64cf7d21cc3d4c367469549c6d87a3d5c2a2c63f4e8a69d7a324e3ea0f",
+    "src/Renderer.cpp": "42afbdc1a2019579a99d892a72fd6576afdae5b0c9896b77448fc41a4aa2718d",
+    "src/Building.cpp": "b78d4a9d05e9309fe34b78e6378ef54c4b8f7b7e7e1d482b498bb5335a220002",
+    "src/Definitions.cpp": "c1276e0bb48a22a6679bdbfad9a8852782b1ffb9c6328984c272a58d1abe5157",
+    "src/Transportation.cpp": "b5966d365f1a31113b163c28e7022f3d06dd46020c8e43f81af957eeb89583fc",
+    "include/Block.h": "d9dcb7cb51454140a9e20b7ed81571a46ab673aa257416df915b6213dc6e7e7d",
+    "include/Survival.h": "77b86d1eff9f48a9c47ae8d5fb89a50e7beea17bc41f19b7f4ad7cde4eccdb10",
+    "include/BuildingContent.inc": "6a741be6169f0336aed124f383e40a68f6908ae63f5ea3540e7ec45a7f285823",
+    "include/Definitions.h": "e5d6824af5cbe2356969d2fa50e11e0cbb70972136d0233a6843767a451c64f5",
+    "assets/crafting_blocks.rgba": "73a66c5ea245d0bfbeb26ad24fc856683544cd10bc716366d1c0ed97dde22531",
+    "assets/inventory_atlas_16.png": "868325e5a82920076b7bdd034a20c9bb1bfa90cfbdf4ad1adee970779e3d2f26",
+    "tests/stability/icons.cpp": "13eff078d217655646e207df7e32d999c4de6fb7fdecc4f1fa25042b557d94cf",
+    "tools/generate_item_thumbnails.py": "24b4b179299f6a7a04bfe84f5d6759891da6142ee1f9e38897ac4d652a6205e9"
+  },
+  "outputs": {
+    "assets/item_icons_expansion.png": "c35d0d2e6b5c22b672db7aba1fc788e46f9dd6ccc31ddecd41d3150bfea84975",
+    "assets/item_icons_expansion.rgba": "d541c2cf98ceb7e05945a603f6d432109fe865bae6009ec85e4a39880d304cd2",
+    "assets/inventory_art_source.rgba": "28e00091f74a1f75ca505659fdc4735d8df0419ce0cd695b3f46d1afb5ad3192",
+    "assets/inventory_previews/001.png": "a370236a9871bb6c9169e1302fbde6ac1952f06fea51521b7e9f915394221888",
+    "assets/inventory_previews/002.png": "8c3e5e027c2d8ce98d86fe2d1e58d992a0c242cf2fe80a0172887de4b0cf97e3",
+    "assets/inventory_previews/003.png": "7fb9d481066c6f5cc2ff73341f7d221f80b71a42151d5b9bdbf5cb18ba308cbe",
+    "assets/inventory_previews/004.png": "0d63d11e6e275715ce2ed3c660977ff548422a1c2a51e72666b2833e028088af",
+    "assets/inventory_previews/005.png": "769af88dcd696267b56e92929bc5c6f938c49483be3d3c6e504e58ecf6eab173",
+    "assets/inventory_previews/006.png": "5d6298c08dc42b2856047d7a006b8fa02b26bffc9f782f316eec1854eee27a76",
+    "assets/inventory_previews/007.png": "b6c4d174236c90a91686967d64903512a92da35a53f0f7671ef90f6aed038c21",
+    "assets/inventory_previews/008.png": "378a36bc0f0d908f4314aa19dc1787986a5a73de4dbc22f5ef9a05afc6807fc2",
+    "assets/inventory_previews/009.png": "5ebc20a1b8cc42af972866a8f6b60ca359cdb4b1b987e5061ce4a7f9b9f8e961",
+    "assets/inventory_previews/010.png": "a4d7b723c63f14c7c0fb5976e3b1e204fd1098bb088042d4d6fe95398bfe7d61",
+    "assets/inventory_previews/011.png": "89727fe6cdc4c887cced007ffaa8b93391a017b23620e11d64811a963270152f",
+    "assets/inventory_previews/012.png": "c26e82cddaa3592754da9e8c2c2796b4f4caeac06b8be99cbfc0df01cb07fbd7",
+    "assets/inventory_previews/013.png": "531e46ee8b0be7b098b2db51c2d503fd9f2618cdb149f6c5470f74c9008a2486",
+    "assets/inventory_previews/014.png": "b2a898ad7fdace8cfe246454bf4cf47b8127c1c627a9a90604f9057797524c57",
+    "assets/inventory_previews/015.png": "604e8e91868fb891b4c5e612c48457a40c1bceca93c530e2bc041fbe6fe0fd72",
+    "assets/inventory_previews/016.png": "9c75d0ba9d45d3b8189977e438841aa9cc42036dc5b948124cfb91f7cf9a6499",
+    "assets/inventory_previews/017.png": "7ddce8924ba45bcc3cf897845b134bb4a1d592411e5da15ad21a958d59b4bf6b",
+    "assets/inventory_previews/018.png": "c827b96a6080d6b2b92fcdc4b6a73087879f322734f511c376430e0612288ff7",
+    "assets/inventory_previews/019.png": "aefa1d683364afefdf51496b328e1932e1bd8328c1e988e67b4dc270ad39814d",
+    "assets/inventory_previews/020.png": "ab74bad195af410889b844b500345792e6d2cc6e1df618c77e7d775d562f1fcd",
+    "assets/inventory_previews/021.png": "828fc75b0699a655ecd6582b2b12d2e92232ee4ce5763ccd27bd9acaafc3c0ec",
+    "assets/inventory_previews/022.png": "cb63989d2c72814c7e5425f019902ea7068ffef786545442e0bec40c11325cc4",
+    "assets/inventory_previews/023.png": "435a1e86d5cd3876024f442ffcd39104e04fe5a06400256bdaeb8edfe79ee6d0",
+    "assets/inventory_previews/024.png": "b0fab0bd67fbcd3bf50d18f1bd5d328e9ff67ae15ab72955f17e2873ec17194b",
+    "assets/inventory_previews/025.png": "62444d64e7c95b7bfb3c9fb2f33b4e8b1ae62cd49b64c37e5a820a5fca18530f",
+    "assets/inventory_previews/026.png": "c19a4bedaec0562dbfc37242f1b689c42b3330bb65226261e056e42c2581ee7e",
+    "assets/inventory_previews/027.png": "f8e3a35b5b40cfbc0dc55993e2b2441c4ad65ca6258c7b6acf58328b4620879c",
+    "assets/inventory_previews/028.png": "21a17a8dc69c64512409d0af1e7e0e1476733b4093c092696eddc6d256dad5b4",
+    "assets/inventory_previews/029.png": "891a19ceb6badefa5bcc7b5ff8412775e5c4f0611bae7e4c5394ba836dec136e",
+    "assets/inventory_previews/030.png": "03b4c094286a9485819b71de94fd43d97b855c95fc587eeaacb45c2549b69317",
+    "assets/inventory_previews/031.png": "3f5a0d553470bac5f4ed5d7138d3a5725b40cf85c17dae2ea09f20ecd2d10cf9",
+    "assets/inventory_previews/032.png": "281b879f98035c0cf0e9f3691a9124c14d5fc96a1f50a273b9893c3355ac714c",
+    "assets/inventory_previews/033.png": "8a99a3674caff510fe59ac8156a30e270407e80dc5c29da56154a5e3d173df20",
+    "assets/inventory_previews/034.png": "bf9c4ac63ee2df5d67a845c68a7246382e7747edcf4a66917355afdb7b7d928a",
+    "assets/inventory_previews/035.png": "397f8c3e624fca836f4ff5c3b99f6599c45493f3539548378fbdde5c3de462ad",
+    "assets/inventory_previews/036.png": "8a33c83573d15127bb9a648aeb5bf88e3255e58f9b19b86972ab9b4d1bba47d5",
+    "assets/inventory_previews/037.png": "acfe30228a8ce78827617e26391832b112fc0b298c9694d7e1189a7b114e6dd8",
+    "assets/inventory_previews/038.png": "e167d1fc17ac8e9eeb2bdf85fefe2e6a798ab28891cae05027af3fea0db299b5",
+    "assets/inventory_previews/039.png": "6fe9e6edee548e9d5c6508abe80573b93001ebe0d45c310c4c7e50e4db427f90",
+    "assets/inventory_previews/040.png": "f721db25bbf1cb2e78003f989dbf9f642cd573f7c5dcc3e9d58e95d8c46b6353",
+    "assets/inventory_previews/041.png": "ac1e31602a92090a9e2b8f78ee7cd83054ba4bd4ac8d227a30fa364a97909a98",
+    "assets/inventory_previews/042.png": "14b1c66039c332b46563bcdb0c2cf55b10dc9ab23e62578130ea133c5af6c987",
+    "assets/inventory_previews/043.png": "a7aed566d266f372513223b5c9988dc3645f456726d3a30e355a6d557c0311e6",
+    "assets/inventory_previews/044.png": "217e665427886a28e23e318ebc569018a41f1ba6489f7115ffb55fe4251cb029",
+    "assets/inventory_previews/045.png": "547fc19c57b33a6412faa89156c566d2c5acba849293909bfff44b8da2403916",
+    "assets/inventory_previews/046.png": "28682d652bf4b08b79b507a6fd3b1e1f2c63bd24ec56e32be6e65051fb4969ae",
+    "assets/inventory_previews/047.png": "448ca0b0de2ffa16c74877d87413c1807e61ea18d74c4d04a1e82a4a614813a0",
+    "assets/inventory_previews/048.png": "ed0f0692affa65e2ac60be7de0f82166c343c28398b971255bce32fd8b3307f9",
+    "assets/inventory_previews/049.png": "5ee684a35c89273b2d3ec1c25f2446aec8dcb9735350168908b2b716bbd0aed5",
+    "assets/inventory_previews/050.png": "c48d242d8c8ad7e6b547e9e9084fb3fbedae73a10fe49f41ac10b2f42d0f05ea",
+    "assets/inventory_previews/051.png": "e7357fa8761192c6506b2e2637b978c98fea7a9ec8543d5118463bd636a1d50d",
+    "assets/inventory_previews/052.png": "0ae3986a7e931a74106a952ef6a20a251c34083ad8ea60c991b03a842102b151",
+    "assets/inventory_previews/053.png": "5849c7a5f8faa9e4734f4cd3b3412f49d23000cebad09f2ae623010a178406cb",
+    "assets/inventory_previews/054.png": "cefbc02c6cdef943ea8369edf556b9c2f22c44e467b9b4abe87755cb60d8a278",
+    "assets/inventory_previews/055.png": "03b1353f0d6d0de152b451029ec0607b3ae5152eb54e30662cbc27924b6584da",
+    "assets/inventory_previews/056.png": "158cd5f57ad20cbfe616cd33d04f8337ad0924a6940c69481f2fc7f275b20311",
+    "assets/inventory_previews/057.png": "60a15eef56f9a56001f45859d6cc6cc5acc6ae513f9236c2e1e8bda7d10fa0b7",
+    "assets/inventory_previews/058.png": "7a5579a46896fac076719008ae14d8971b6881a674ee84ea00adf485808054ba",
+    "assets/inventory_previews/059.png": "b1c44f5c716302dd8185178d08d010b93648388f381f50ebbba28bff08d252eb",
+    "assets/inventory_previews/060.png": "90453c2ad3f10a7117b65c27e988ba00ceb610fa80527f74a19a02b8c697b2fc",
+    "assets/inventory_previews/061.png": "d3c97ed8814b93b2f2ba4806c35908badd40d7908c4cea3dc0df05f6efcc4ee1",
+    "assets/inventory_previews/062.png": "46047bbbde7466e8d745421a929952b116aa3a8d874bfc96bf4558f85d97e506",
+    "assets/inventory_previews/063.png": "b8485e2342a35c0ef76c22721083d314f09cefefe1a45f358344642b9ce629a6",
+    "assets/inventory_previews/064.png": "a7b7fff7b126e1c3d5287afa9ac7378c07738b776ccfcd906ddc81d26e9d170b",
+    "assets/inventory_previews/065.png": "5273888060fe11017148a32cb29a1fbdc00abe728dae5f6e430dfa8d48abdda9",
+    "assets/inventory_previews/066.png": "edf445f68967727f38c073c8e39170d01dbee6fc82533c152bab186027bae282",
+    "assets/inventory_previews/067.png": "954ccb1e3d431036d2a792769e0d35063b6532eb6aefe64e450963e14a10cf7c",
+    "assets/inventory_previews/068.png": "d62088da5d4de3d334aaab8141a01c3dd45f3dc88b9c26d6c255fcaa84727157",
+    "assets/inventory_previews/069.png": "1191664b922206c682a54518008c384d14d0dd17af6ddff6b9d4670f538f7c75",
+    "assets/inventory_previews/070.png": "0c2added516cf0bcc7fda59ce9cf702ea86005287715ecb803c57e30706c4789",
+    "assets/inventory_previews/071.png": "1cb54dd357aec2bf59ea8320ecb6d865a692492908f105e4749be31c57db7d92",
+    "assets/inventory_previews/072.png": "76a881f3a7746237f1c12db1ad9fe7c69952e8e18823e78df4a86b00c4250ec1",
+    "assets/inventory_previews/073.png": "53aeb46daccc0a926ea0cedd86a31ffe0f8bc63cb8e82afde3214932c180b2fa",
+    "assets/inventory_previews/074.png": "862ce2212c035c14d474d8aba9c7ac143673a5ed7da40f7d3557d4bcaacd506b",
+    "assets/inventory_previews/075.png": "24170221961700a836c1caf312a797a7af05cb832aa216bdca4f6cdb723d1853",
+    "assets/inventory_previews/076.png": "5acba1fed9d7ce48581b6c8f556e8020b210ba7c19c44f893d5fee7eb4980876",
+    "assets/inventory_previews/077.png": "92754824ca5a08e7b7cf06c57745e8850568cdb0cd90b5a24f40a4e722736239",
+    "assets/inventory_previews/078.png": "3bf5326d7898acb4cc42e1864dcc90250de99352b09a55c9862f75a06bcd5ae5",
+    "assets/inventory_previews/079.png": "a90a96adbc283298c98e8a72003b687595cb01ff9be8ad196d3db1d88cca2b40",
+    "assets/inventory_previews/080.png": "b37d6b724bd659100aa6ff6d3462d8e92f55040e214fd3e2c878e440285ffc29",
+    "assets/inventory_previews/081.png": "b37ae96b15cdb9d332a0dc9adc573149e78063c7a097d61b755434e3b8d225dc",
+    "assets/inventory_previews/082.png": "7de977c0ce1693905e9afc5f005824c317d7e005a68008896c660b8f830bee38",
+    "assets/inventory_previews/083.png": "e9c88c36fc85cf0033c7b2b9617206a98eda5b6b7a1107d654edc1bb9882bfe7",
+    "assets/inventory_previews/084.png": "81b0066d88d6bec63de441c66b0a18a255fd7165f497ebe1317f74ba11b4b3c4",
+    "assets/inventory_previews/085.png": "e0af38b4ed82cf12ffc304bd49de1e0e65757f652ad7f8ca0bbbefc1fa58753c",
+    "assets/inventory_previews/086.png": "305b90240e7092ca816ae85458e4c36fef27b5fd2a7f99caa89f4850cd3861ff",
+    "assets/inventory_previews/087.png": "19105ddb5f31039f00cd6a746393bd78401d60fecc5d37b0692fa6d863717f6d",
+    "assets/inventory_previews/088.png": "cccbdede0626ea0ebc44d2a1a45ea6b0446515b256e0187a46f4076f1f1452ef",
+    "assets/inventory_previews/089.png": "5894d1bae06dc2b7d65c226ff1e080eb1764ba981d32e1a4089a11bc51c23863",
+    "assets/inventory_previews/090.png": "7cf4b911c974f3742706f00e1ecd0d1e100532566256ae4c696a480ac60fbc16",
+    "assets/inventory_previews/091.png": "df573793bb308c407954b910853882e4216338f5420c70d4b9a107ab26e8e5e9",
+    "assets/inventory_previews/092.png": "9affabb13c068811c65c52b47ffef8c36feb499a8978ae6ad3c11ca26af28af7",
+    "assets/inventory_previews/093.png": "4724cc846af770eeef5aa9c022e702e57e277e9893f1cb28baab7a28c5f4ec8d",
+    "assets/inventory_previews/094.png": "1a860389ae32ae2d50b4e5cc21679bf362965f60008e3edd5e8c025997784b83",
+    "assets/inventory_previews/095.png": "ea7536edfadf717a81080d42860f6905c4bd9457e0a240b05fd2a54c832d2b0a",
+    "assets/inventory_previews/096.png": "3a397ae4cd21fb65db36e798510c9e0602ca7f190d1862b21b5aa714cdad4df2",
+    "assets/inventory_previews/097.png": "0209fac1747fe8cc2d71f7f876b205d9a33614e59bd6faa548c66b5aee21bd75",
+    "assets/inventory_previews/098.png": "9025b05c53e588b78efbea500edf0baa6c6c317443522478d7de4d55e62333e5",
+    "assets/inventory_previews/099.png": "5a1992b917a0153fea874ab639029476bdf5c7088d25f78f3a968292bb4b6e6d",
+    "assets/inventory_previews/100.png": "6e5b752b8d7675200a5226c911bc9456cc0db5ccde9f509e5cb174584451261f",
+    "assets/inventory_previews/101.png": "c3c470377c11c49e7f3ffedb36fffe405fb4f1c4b550891eff88e6177c2b19a5",
+    "assets/inventory_previews/102.png": "982a3045b9641068000bfdfd58341e04c822def5ca30b4c0738efe4a4e27b015",
+    "assets/inventory_previews/103.png": "9c3db3dc3e24ae441bef62bd93b2618788def4b97b761adbd141842d3c0dc712",
+    "assets/inventory_previews/104.png": "83482d9983fbc96f53b8debe1cbc1ab4f4ecea64228d2050374110eaacb59bed",
+    "assets/inventory_previews/105.png": "60b1a262609625e98fe5fd47d3539810dab04989cfe9fe1373ead4f4122f62e9",
+    "assets/inventory_previews/106.png": "c7efdc20cb9744bec1fdef3157a5aca149f140f913fc5e38af50d7bfff2b5508",
+    "assets/inventory_previews/107.png": "be577490e728e3d071f60e3c4199f93e3f8c38707a4202a8d6825c7a37a5b9af",
+    "assets/inventory_previews/108.png": "1b7bd24cfd088fa551f7d8cf592237744c4aacb42fed90c05ab864192a1495d0",
+    "assets/inventory_previews/109.png": "9b45027c1c2f5870817baf84e9843c3ca676be417d84269d112a97e50271a459",
+    "assets/inventory_previews/110.png": "988a6d2adb650dc46fd12b75f86b52033d41e1d5869417c784066317ccd47605",
+    "assets/inventory_previews/111.png": "0d89c54636ae2525c106bb6b5db5d7c9aacae2df06fc04eb1e16126b1c84b4b8",
+    "assets/inventory_previews/112.png": "2d7965f0aeeea1efcd8d133c94b84a58a7b51cf7f1bb27d1d2450028a0686d1e",
+    "assets/inventory_previews/113.png": "2121da6c749e343c1d2426c8381476f081e4f00a48bbf2aba8424922a7d1d6aa",
+    "assets/inventory_previews/114.png": "39cbaf88c47692026a25e69448d63e2066fd92a8561334807e1789cc3ac60c0f",
+    "assets/inventory_previews/115.png": "50a594b0df845eef44134a2e4a8e648bda11e612bc652c7acceaae7686c668f9",
+    "assets/inventory_previews/116.png": "7c22f2e74727bdc42f1ae0cfe7de58dabfeeaa89fa72ee53ce36e938e6a3e72f",
+    "assets/inventory_previews/117.png": "3a50fd01f691315b3af93701184c65b334a6e455ea87c4934b6b13928f20f9cd",
+    "assets/inventory_previews/118.png": "cd85a91cfb813addf46400e73f49a0c8d12c13e7328a7d7c97b2c34abe0b4f7e",
+    "assets/inventory_previews/119.png": "48bcee7c3c4938efa185aeb2bd8640a390784f6f75489ae41f2be2952102e09b",
+    "assets/inventory_previews/120.png": "f42fc9e73bd85f6b31778c1d58dc7e399ad024bb0bc7eadb4514e4cf58ecace2",
+    "assets/inventory_previews/121.png": "317594b51081898403be7780c8b88ad26af2312c7439ab57eb30f803b364fd55",
+    "assets/inventory_previews/122.png": "5f22e869fe7ce036c3ccf8c759cab0c937a28ebbfece5abbc0d85f34356cf792",
+    "assets/inventory_previews/123.png": "a3a424a4e9cdd5cdcb5eb2adad8bf3e5cccbc9d4e5e338a8e9596b74fcbc5c91",
+    "assets/inventory_previews/124.png": "b77b7fb81d9aabdc6d25f2eb9cd6027e49010fc0faae913787e04cb9b31731a8",
+    "assets/inventory_previews/125.png": "c514f854fdae5359e4fad968f42e2ad778e1bb0bacdf83b51ae06f04f7f66ab3",
+    "assets/inventory_previews/126.png": "f86e1b8ee1526550911d28dfd7294d6298d63753d4553f33f5a14f1e4e704694",
+    "assets/inventory_previews/127.png": "fa17e7e80560c63dce859cb3aca41a0c4cd02b26bef3bb54e883ad0d39422899",
+    "assets/inventory_previews/128.png": "87a921c7cf3a4b300f87b7acf23b51fc6a322113afdfac350e2cd1ccb4cfc445",
+    "assets/inventory_previews/129.png": "2487760ad196e57506370e9ae3a40f166f52cbbd79b8dcbcb842a43cee9edf0d",
+    "assets/inventory_previews/130.png": "abd121a571effa2df902df354c404fb30a94ebd347c0febcf012739296782a8b",
+    "assets/inventory_previews/131.png": "63f9d421785565a2384f42a50278139c5037027d965efe5a62b194b033b6c84a",
+    "assets/inventory_previews/132.png": "eb8405ee74ce5bed9a97c8d579cab857f9601d85bd838952e481ddb48e5f7635",
+    "assets/inventory_previews/133.png": "19dda790d9cd185d28f874f7c7d9dcb81f541a1da84d9d3679183a125cbe2a6b",
+    "assets/inventory_previews/134.png": "f453fafa757afef20e939cdbfdce94fbe0b6eec36aece089677027b0e75c7d30",
+    "assets/inventory_previews/135.png": "e2948ea965d4ff5b6482dd7feba13318d5e18b54309855e98beafd1a9a2242b4",
+    "assets/inventory_previews/136.png": "52b646335bf16a5604a51f4c61519fcbf4732408e9989cd201abe41c70d49399",
+    "assets/inventory_previews/137.png": "ffb72f41f980785184cee301eccf882b07aaa22f4f94652b20e9c9a60a21a21a",
+    "assets/inventory_previews/138.png": "fd0881b5bf72a383b8c65fc3d54348ca06be49db75457f8c0e0a88435f11a877",
+    "assets/inventory_previews/139.png": "7127560921fb1733f50e1a309d286d95cf3910142ede5c0bf951b80d1ba506c2",
+    "assets/inventory_previews/140.png": "a0bb271abba13bbbda88e66b443f137b67e385eb967a27dcc7609b4b13687ba6",
+    "assets/inventory_previews/141.png": "438d516f05c0a224d3fc71ade4778852c9bd4dcb2cc2f0ee48492336737b7b34",
+    "assets/inventory_previews/142.png": "303a36e9bf9d5174669a89f2b9997efdb9b7a4bdd90d6a91ac959a950c02c580",
+    "assets/inventory_previews/143.png": "6a08b1458d5bb5788347ea1e1bc1f7335e4fe5af503ea6040778ba8f7ef6cef7",
+    "assets/inventory_previews/144.png": "2ca40f11632e409fb026f7d8a7d7a8eb24991c313102343223df91f700ae5b18",
+    "assets/inventory_previews/145.png": "eeace78d0ef946180e6eb0177885f65b3ae9de02048dd58fee17c21ed692fa04",
+    "assets/inventory_previews/146.png": "828d3b658bdf535f3cab0a217c5f8ba19e43799acb883fa11e528cabe0ee3d50",
+    "assets/inventory_previews/147.png": "31d793267082e0d1122f62610ba164dedaff3d08cfdf4cc1571d8d90978e46f2",
+    "assets/inventory_previews/148.png": "0c9074c3b0bbf3cfe9372a9a4f5a6a562599195b65af1551efeb4f2abf8d72b2",
+    "assets/inventory_previews/149.png": "7d7610f8c6ca3dcb3f549088cc56c030b5227225b9276056d42e6a47808eded3",
+    "assets/inventory_previews/150.png": "82de6fa752477c1d75aa659e05bfea0b2cccc638e4f392190b032e951d0a6c93",
+    "assets/inventory_previews/151.png": "b086a3b84314970d3bdbf5e16e44cfe149af94bb399934098b03159c205f9bd7",
+    "assets/inventory_previews/152.png": "1a3e11194be1d3bec71409763718e3afbeffa25cf5b5afc43464b9ed3139f434",
+    "assets/inventory_previews/153.png": "574fee663197b3ccc46fe996303cc33fa107d958cc71ee4d4b6eafe29742a259",
+    "assets/inventory_previews/154.png": "6fae71ddb54ee0b8a7a41dff3666e442c5285e33689d16ddac2904c08d71e59b",
+    "assets/inventory_previews/155.png": "49a9fbe812fb414197e06f707a4b322aaff981b2a75509a81da9b6a952f0053e",
+    "assets/inventory_previews/156.png": "7d1f13f93caf4eb040928dee60185b09a2ac4a2fa3d35b4df3419ae7c1e245a1",
+    "assets/inventory_previews/157.png": "f572c27098e7e237a5ad9c537eeb836a384cc6268def878ce83446c7b33b376e",
+    "assets/inventory_previews/158.png": "29ed23f0558097483f7229e1ee9d20407f13dd6e0732eee4368a864527373d41",
+    "assets/inventory_previews/159.png": "bd99958685f23763a9a8ec5a2a7340855c519446cee58bb6545c0e22985adcf3",
+    "assets/inventory_previews/160.png": "bbe53a7565cdeb081fea63a49c3dda637c4579cddb2e909b76341b1f80fbc960",
+    "assets/inventory_previews/161.png": "e0714e46a47c706980728323366a13f6c012614d399ab644ff6b85e6ad6eef53",
+    "assets/inventory_previews/162.png": "8b635618363bfbcb63585167bec82c63b84e8466f40c7882d05a5dae183c94e0",
+    "assets/inventory_previews/163.png": "bf557253cc9914a5153526f9f971a99397ebd8c6dbbdc3d7c0e130be0bd32a29",
+    "assets/inventory_previews/164.png": "a833b0a8605a6a89897be6d6a70b7aa1553911be89c75d764eaf0973c3742f9b",
+    "assets/inventory_previews/165.png": "d928a596c31dc12eeeba710bc73b6bc6e52f201d1bd39f0d97b6a44c8dd65be1",
+    "assets/inventory_previews/166.png": "cb18c3c1a515a4fb81ec4be95603d373d2822fd2c7f3865e541f671f8f5874ab",
+    "assets/inventory_previews/167.png": "6a05d6a9ebd50799f74ff21b7b776eaafa1317b9a69a8bf465de0605d89ddf30",
+    "assets/inventory_previews/168.png": "85b4a2c95e1c9035adaa5edf1a3540f77eb477be07f0dd047744476856827f94",
+    "assets/inventory_previews/169.png": "0957635a29f006f62151ec4f953b3e64494e03e85b679476d926eb322e01064d",
+    "assets/inventory_previews/170.png": "361867d8879ad777cecf2ecc67634ea50bcc0501d4845a74b12e3848d46f4599",
+    "assets/inventory_previews/171.png": "58b25753f854d979b3fad81a9bbe5f85e772654c8e3ea2ef5485bde06a56255a",
+    "assets/inventory_previews/172.png": "20e4797c5d5ecb7239003d651198eb160de4d361311a490e76d0ee245a7a5145",
+    "assets/inventory_previews/173.png": "d635a0f3c4144a8a770620b39f9c732782a1b54d1f3c30f918267e58d1942879",
+    "assets/inventory_previews/174.png": "ca3e79b7bbac5add8ef71eebe35abe01e739fce60193e10d6228b7ceec71c3bb",
+    "assets/inventory_previews/175.png": "e0ea94c16af9c6ab3eb02b791cf1624d1e4fb94710f952f806cbab8b3ff256d7",
+    "assets/inventory_previews/176.png": "23b163571def6b877d2bab139820b3696b80d803c3a593e730e813ed247dab14",
+    "assets/inventory_previews/177.png": "cb11f69f0e8f0e7d32a08d739b819411db493d99baa7f5ff1351414cd496a542",
+    "assets/inventory_previews/178.png": "f802787cbe5e99dae7109836d25a54f763e68c075453f815d073cbf979c1bc4f",
+    "assets/inventory_previews/179.png": "49f097a2fc1bc0a62b0bc1978c6539a6deaf1c875904cf38d498c0380710eeeb",
+    "assets/inventory_previews/180.png": "d4a4c23eeaf23c8737a337d2ec21344af34ea9f51798181cee04ced5a68036ba",
+    "assets/inventory_previews/181.png": "3e2a6f3c89f71b19e37c4cadb55a8db366fba57f7aa1a97df40f78dd61713e36",
+    "assets/inventory_previews/182.png": "223b7ebd90ba624dca86fb599a4c24693bda9e534b2e26342c0fa88853c4e261",
+    "assets/inventory_previews/183.png": "dd91b8c627da7e32c82df201c6756486ad8d0b7b510c74f9344caa4659d2037a",
+    "assets/inventory_previews/184.png": "28b30ff8d3af1801cd2299e2eb8b7294d511bebf3c6c2ff1d8f2964ac9a156fd",
+    "assets/inventory_previews/185.png": "11504c06491086d6338166158520e30d6ab8a43d9f4b94a097424d28a38ba558",
+    "assets/inventory_previews/186.png": "cd01a7ebd85150f974a9ebbc28b396fe7504b1b2c434a8c9774f5b8962aa2d4e",
+    "assets/inventory_previews/187.png": "d58fcfaae7ebb327d6f6e44011d1ba55ccc401790b58f02af90401ccc0ca8500",
+    "assets/inventory_previews/188.png": "24d376c75877c8b0ed9354351d95acd0ac1ce1def42ebd3c77ea53d16d0293e3",
+    "assets/inventory_previews/189.png": "147a07576b8565f963344eba8c376c028683e08cba318f7d51d3b871e5d5ea91",
+    "assets/inventory_previews/190.png": "6a97afcbebc8a83e147bb5f86541a1f7ac087a26be65bfdd1903340bb65d0a1d",
+    "assets/inventory_previews/191.png": "14258a82d148f551bac87c0ea4b4106017bbb7c75d7b3005981454f38449cfd2",
+    "assets/inventory_previews/192.png": "be652309d11e7c9bc74d7897b1afcea16bd057104f4699d2f674648c77989faa",
+    "assets/inventory_previews/193.png": "ad624a05ea3d5954e77b05b9d73995a2a2daae18bac25d7f7f0874a2f444f333",
+    "assets/inventory_previews/194.png": "f9394fa11659f1f3b6dc96ea68f48a9033ea950dee28e03bfa3eef04fb842fb1",
+    "assets/inventory_previews/195.png": "7911c0513e00f3859e2ff80a4775a6e32ad5618f93a1839a158ef2ca6aadd69c",
+    "assets/inventory_previews/196.png": "0893f72ec39036db353d240cdd77d64f0bc57c0a3d1133c46fc54ff21728acff",
+    "assets/inventory_previews/197.png": "715683639043349110fbd19bdb034d73465c04dd80de518f7b17b5bc579aa9b2",
+    "assets/inventory_previews/198.png": "42b6135d5162d293ecd55bde593cc007c5a278558f45b1c3cc0ca68edb1f71c9",
+    "assets/inventory_previews/199.png": "2146f7d0b8f524869e93baf341f69acb96c153af3082fa577798ca1c27a492ee",
+    "assets/inventory_previews/200.png": "6b6bca4e6bf79db89aa4421686c9485772d8553493af3f9ec6784d2724385408",
+    "assets/inventory_previews/201.png": "028ab7d89b05e87efb8b1d1d6e62978ca7261b7c43ce2b9072cc1ac73f7c5e55",
+    "assets/inventory_previews/202.png": "169e9f40997df00df9b9248470833959a76b461be0df5b1e7380cddb013c9eb6",
+    "assets/inventory_previews/203.png": "d3c577ae2b7437ac571fe450b7182ba834ac2d66f70f908b9f103275ce2980a1",
+    "assets/inventory_previews/204.png": "9bf743357bf79811f644699d3f96b2ddd4731a99357ba536e213901b95a795cc",
+    "assets/inventory_previews/205.png": "ea98f09b4c73d11133f3f3d52ac268447b0cc7fd0090b290c109a303d8c89d53",
+    "assets/inventory_previews/206.png": "61c81b7a98b169359da85f2cec5c193d27ea85b8b6cc41f2af280966b8046a48",
+    "assets/inventory_previews/207.png": "5ee673e9769df19ba72593c54effcd6f11c0ed53c5c8a70ffd946a84a89d8047",
+    "assets/inventory_previews/208.png": "658216a6981611e37b9c57328900c0d33340cdf65bf9d7b4baa324b39470eb36",
+    "assets/inventory_previews/209.png": "15a7e74deb05ef9872d7202c6e2de8849a765891ec0da50b8c87f715b8415d38",
+    "assets/inventory_previews/210.png": "1fd8f2faeeda549c35655807de9f67568962e0d03191fd452fcec04fa9c0517c",
+    "assets/inventory_previews/211.png": "599ec248922a6df8ccce90cc01c62f0c698a36d4c3e83eb65c41ee501eee97ef",
+    "assets/inventory_previews/212.png": "8d64671d0a4d5297e332215c200c632586a2b4c3bf79861f2fb31ae3780d0cec",
+    "assets/inventory_previews/213.png": "ce3a4928d6d069f352108c0a636a8894a0d59ed09514105ad7a762820f565470",
+    "assets/inventory_previews/214.png": "38103a154ddc908ebf896d8ca5ccefb5ac6a524a7c75c668200de150e53a5c12",
+    "assets/inventory_previews/215.png": "7504f402ca24c02aa277787c663deb970229c89e10da442081f2965bdfad2892",
+    "assets/inventory_previews/216.png": "edaf618e755b9a89e2123865ac0294aa685ffef71d46d8f0299fe4e561d4ec0c",
+    "assets/inventory_previews/217.png": "aeadb69792f4b899d9a48867d2f108425b4fd4f2388d6c645cab17d3171963ca",
+    "assets/inventory_previews/218.png": "7c594f03203b294a9b4599dbacd3ccd882a3d6ee346b14f9d4fe0a3e52fb76b2",
+    "assets/inventory_previews/219.png": "8c7d3404668af7a06b1a036ac8e89f5de174ed1199ef725d4d74ab0a4b5a6103",
+    "assets/inventory_previews/220.png": "67c2b6991ad06bf9393a74e3a384c849583180998f36457c25cf5fcbc72addcb",
+    "assets/inventory_previews/221.png": "54a02bccbc25e23f45a1f70691059fdbdf80c7f110b25071a46d2195ccfbfd65",
+    "assets/inventory_previews/222.png": "fcc6740a47b59453e21a58850141d7361f01485126c335ff50ee6a670e2e62de",
+    "assets/inventory_previews/223.png": "7e4759ede4f6ae56e606ab70b4e679f5b16c6aee18d05038eedf56bb9bb7e9eb",
+    "assets/inventory_previews/224.png": "cbfd5fd4119bcded5b7f491e89f0cb891ab0df385cf8c9727095bc04671c72f2",
+    "assets/inventory_previews/225.png": "4a4d2887b8745d69ce86eeab4cb6637db2ed12975a8d97c2e62fd6cefb96971d",
+    "assets/inventory_previews/226.png": "ccc4b338325643c7226fa99ef3e7d5879b06ed0d764270ad4fe15e65e3181c1e",
+    "assets/inventory_previews/227.png": "d2c9cf2c3d67424ec1f04351245811a3332d228b1fe1e0a8c47cb8aab91fdaa4",
+    "assets/inventory_previews/228.png": "c0b005ea8a3ef08dfc58a6ac2866457f7a793efe15e1c485ebb9e47479d9f02c",
+    "assets/inventory_previews/229.png": "a52e3874b4e9ae955ee4f95782df8e62dbe48da56620e968c0b141e17e2fc505",
+    "assets/inventory_previews/230.png": "2578f3429f4e45cd2e50fffa9baec74bf0dd4c7d226c030b3bd2562d232a3ead",
+    "assets/inventory_previews/231.png": "6b7edfa35941aa52983ba4802d1bc97e301a0318ef6fd9318da563b8a5e6bb46",
+    "assets/inventory_previews/232.png": "fff7d0c0451c4350a3f233250fce2937b860f8ebcf9c9630721174112dfe6347",
+    "assets/inventory_previews/233.png": "ecdec68bedd600b4ebdf9a804ecbdce423f9f85677c5567412c839728ffd5aa9",
+    "assets/inventory_previews/234.png": "8336f9af9482d6e80271b624b859f215e3fba2f881ff5ce7a7cdbcf9738d71c2",
+    "assets/inventory_previews/235.png": "691f2f528d7450011b2aa1a4ab9683c1bdc9a8c9723bcd5ced69539c40c4b9b1",
+    "assets/inventory_previews/236.png": "c5c7b270b2a68cb8775dbc228633ba21e9bdb2036f3b7c274ce94f599fcc4033",
+    "assets/inventory_previews/237.png": "245aa91c786c1f3aa929837c6b5cbfcf9c68b36425e3ad18c715a9d6fb15f0ce",
+    "assets/inventory_previews/238.png": "aafb0f9c074c6c7933b43941dc18461a3329c7e5ccd3eb7b376f74a9989bd16d",
+    "assets/inventory_previews/239.png": "593289682bd5c1c3570516216647c61e37f2f6d2b62e3277b25dc2dc92ecd92c",
+    "assets/inventory_previews/240.png": "f1d8ebe42033a6277c3f5b7f5a2cb91e6b201a60aa48d204deca43ea91a2ca16",
+    "assets/inventory_previews/241.png": "2487c2feeb6f844276334e7037befeb2250d71298ca1c8aeb35f7873823c8aa3",
+    "assets/inventory_previews/242.png": "d173737b88b069716ec2230e5403bbfd36c5d745da236ecff030e16c37a674c3",
+    "assets/inventory_previews/243.png": "e700098a6b83d5fc1a6c82862ef8d2d6b0a882c53d162cd670c7278546b4ed27",
+    "assets/inventory_previews/244.png": "f58d1f37d660f2458095f7f3135568e2d0b538152df4b0e352b9d15b8e211361",
+    "assets/inventory_previews/245.png": "cbdcef731a28c2094e0c71f1259b7d39f80893a54f817c1135bc634bd3799a60",
+    "assets/inventory_previews/246.png": "961a7496cb16668e2b17d67c9f91d678889c8b71dc4564ead212fbbd1c8b02fb",
+    "assets/inventory_previews/247.png": "36b547a45eba728fe490fb85a9702c768f246c480f06b972f4cb6ee1dd2e4768",
+    "assets/inventory_previews/248.png": "a24860d84ae57bec5f7bdeda5bb42f4580bf9a453341a23cdca0f16f1064ddbf",
+    "assets/inventory_previews/249.png": "c08d7a648c57d483590524d94fcf21e24e2ad1214d2531cc1a4ac7ca556d4f90",
+    "assets/inventory_previews/250.png": "c7e1f67ed29c93a82cbded0602cefccbfde77e95d3adc7c2adc0b8231830c8d0",
+    "assets/inventory_previews/251.png": "c3ab79e54a9bd81deac8ebd8bf8736869cba5cd404481fa65e09b26e49a8bca7",
+    "assets/inventory_previews/252.png": "f028180500e517ee8cf875da2c0c63cf78b230fe6dcc922526783f1e94d57ad0",
+    "assets/inventory_previews/253.png": "496600c9cc2a83e03ccfb4ca675dba83ee98bcd2f42c02c9429973705e9907fe",
+    "assets/inventory_previews/254.png": "dcf7723f4aa5da1a58740cd1d3844d091bc13791321b53f81056cf83360fe5e1",
+    "assets/inventory_previews/255.png": "abc636cd5701c937e24588259976c557b9f059845265707d62cb49a0b03d7c83",
+    "assets/inventory_previews/256.png": "262d04628c39cf9169b23e85966590247cc9c61d84a49db511b5d3f7d2c996a7",
+    "assets/inventory_previews/257.png": "f36382be43255e858ff4d190c8797988f2da79f272ef57194a14c875396b88de",
+    "assets/inventory_previews/258.png": "fdcd76be258f9f35ccb05442f87af5a77d16c287cf930c9589b257b40cbf4bee",
+    "assets/inventory_previews/259.png": "f23aae1e1f9c6645d37c9d2dc19d9de6514bac248428716c651ae545932cee27",
+    "assets/inventory_previews/260.png": "7da59e6e7ed8205cffd55eb9b8689f1d1d8e5f1d34150774e9c50ac931c69e49",
+    "assets/inventory_previews/261.png": "fe3b4a3bee0bad3d24e133c157d3af527d06a14f62f86293c7a5ccc1c49bba4d",
+    "assets/inventory_previews/262.png": "a17197dfbe628b42eaba94484796c3c64e82d3743c6ef80420f7c33102d9afb6",
+    "assets/inventory_previews/263.png": "84167373a20639f99285edee43b529e30178b1535fca53a3d0f661ddbcaa4d95",
+    "assets/inventory_previews/264.png": "8d431afd5097f6766d042a3fe933b7d8ee48de82dca986da28ce5a00ba1eb9c3",
+    "assets/inventory_previews/265.png": "ec78c1f4d5736c130c8b04d83c948200d111d4656ebcede0990009c0fa9607cb",
+    "assets/inventory_previews/266.png": "ab4344d9e586c47762024e886999827e820b35ba7aa8a7f8cd646b6efca7e273",
+    "assets/inventory_previews/267.png": "f099ea5ebe11558255569e61a08a06a3f85da8c0615603d9cfb5fd9a5a7688d2",
+    "assets/inventory_previews/268.png": "49d8a5cbfe3c9d1750ace6400c4c8792147276f0a5018a23cb0f902d6240cb88",
+    "assets/inventory_previews/269.png": "bb1bd2853e3af1a56cf03fe7a1b368a548b4d75e0831fdf7078037f334be5c76",
+    "assets/inventory_previews/270.png": "8f569e9fdd9e49ec8752ca27796736e43e606682a728e499251738120e7edce3",
+    "assets/inventory_previews/271.png": "bf56ca538ea4ad05ef1292ffb5f6f165744c29b47fa4972ce77e6db6e841befa",
+    "assets/inventory_previews/272.png": "e70fcbd4fccf762d44bded1b380ec379d38cf06220f8c0fce6919d103ea77a6e",
+    "assets/inventory_previews/273.png": "87c396b402551d3076bbc815f6aad2ff339d2b649654baf6f36d439d3ea3a403",
+    "assets/inventory_previews/274.png": "64066deabaedec186e8110fccda9d9c76e4023d7840530cfbcd5a2469e3d2af4",
+    "assets/inventory_previews/275.png": "bac9993e2adcae58bce5e7f0572c0b570f6e32b9611648b69457e0c12020f3ab",
+    "assets/inventory_previews/276.png": "f5f39a03a5eb7bb9c87e8dd9df5d75cff7bba9b3bfd4a4693f6d04092a2d89a9",
+    "assets/inventory_previews/277.png": "18a6d1d6abca45f6de41005d510fea8ca7d707af582ab4abef449a73808f7ab2",
+    "assets/inventory_previews/278.png": "244a2d79ca1676a3de9a16cf65a34a84d2b75828845706735de73bbeccaacfbc",
+    "assets/inventory_previews/279.png": "79624311350c0c0b1454aa3a35bdd44125baee7a068a1f320518adfa75bb20be",
+    "assets/inventory_previews/280.png": "397ba5e20674f7084951eaf1e96c27da9c66e6f4e6081257eb05b1d698591189",
+    "assets/inventory_previews/281.png": "8faa7622c491275bef93f948f18162a85783bb9a7f9ddc392a5fa17f2cd1dad7",
+    "assets/inventory_previews/282.png": "a783dc4eab9cbbb504b859fad0fc8d24ab75cd93e6ec288b9a4fdbccb845eb42",
+    "assets/inventory_previews/283.png": "c1181358e87dc1068ec2a88b62f7ace8592af8d2ce14bd3cb2899b147fd1059a",
+    "assets/inventory_previews/284.png": "29e4de021c1b7bbaf5181e4eefda36d36805956e55aa5ceecde4668fc6066582",
+    "assets/inventory_previews/285.png": "8bbfab61c408a3c3457b09ea176e76247418ad8f09f4c448a44c43779ae19b3e",
+    "assets/inventory_previews/286.png": "8af8bedd3258d1567865b6695ab63dd5fac6d717fc86641059da87444b5fec19",
+    "assets/inventory_previews/287.png": "b2f5fe910462b917ddb3807417dfa5b5c92d2075ddfd5602d6ff792b70c8fcc8",
+    "assets/inventory_previews/288.png": "ce1e0c93afb4f901353f76963cd95443246df8bc7a75d739b10f12f9fd2dc6ca",
+    "assets/inventory_previews/289.png": "80044043ef5b3ee0e69a87192d45fc931f85115b59d717478df28d9c07f97e7a",
+    "assets/inventory_previews/290.png": "b12b9008ecda52406a0e8785c5f4bc2b5f62a0393804363d3252121eff5100fe",
+    "assets/inventory_previews/291.png": "27876e902f29584a650ae1f81b190b541138a34841a36940874006d8d6bf292e",
+    "assets/inventory_previews/292.png": "1fa552aa8ac0969300d67d1f280572cd817067cd70c179a8a255896b207aace3",
+    "assets/inventory_previews/293.png": "2f188953fcce5723d5d47c8847bbc216d81af89aadc050820ebd8ccb07fe32e7",
+    "assets/inventory_previews/294.png": "b166f02d6915cbcd95b38399aa1494199001502e8d871f028649cab8fba56dd3",
+    "assets/inventory_previews/295.png": "7794fa29c041be37fcf5826bda68873145e5bbfe3716b2680fa6dd3c1acdad31",
+    "assets/inventory_previews/296.png": "3c8869ad0e7f003943eb2ec42e2ed5dac5d05ed876f34f446f2382531b302c27",
+    "assets/inventory_previews/297.png": "cbc1308474d6c780ee106033c99fb2019960be617f08f15a35212d4eac67c793",
+    "assets/inventory_previews/298.png": "fb09457d4c85aec43272b054687fc2e77f8b9b2377a59d22dccba35185d67ed4",
+    "assets/inventory_previews/299.png": "530fc8b924e65e5c4d32255c9b0c3e71b9daa595911008ebc1b472481964832e",
+    "assets/inventory_previews/300.png": "b297cb9fc11aedf46143aef4c47b30583ea53b28deda0ebbf1e8816ae2308425",
+    "assets/inventory_previews/301.png": "9229988c1aee6ffe02d7c5ab1eb30dbb6b9acafc9d06444b9e9ed56e4a3c8a47",
+    "assets/inventory_previews/302.png": "4cd6610ca68db561f830913eb83d5ea68a73bc473b72245f551e696bb44c5786",
+    "assets/inventory_previews/303.png": "c2680c106f793d42227b52750300f2ee466e0ff25ba0b9242e12f4220141df52",
+    "assets/inventory_previews/304.png": "a08863f54ebe2c0e8df2ea02510b78cdce27753facb16fcc2dab67eeeffac177",
+    "assets/inventory_previews/305.png": "0535229c8807201f81d5e274c541941da6df477aa155283bc8706bbafee9a579",
+    "assets/inventory_previews/306.png": "7a1965203ad1c0675b762a241802b7d39d75e7cd447bdeddaeb8e09c5aa5e43b",
+    "assets/inventory_previews/307.png": "4531af08e94cf33f52894f32aed850ada90a16a7f4fce65ac079d0281f4136a5",
+    "assets/inventory_previews/308.png": "a93df56eb220d36126adda8402f3ce3bde71a88b6e16bde14f18c62370525b45",
+    "assets/inventory_previews/309.png": "c7dac115fd3a793aa5b50c40831ea3ad1a0e8b499183ec9e3deba55e72a23144",
+    "assets/inventory_previews/310.png": "6cfed18ac972db3a88fbe648e957010d243f95869f35037bacdbc54bec09af75",
+    "assets/inventory_previews/311.png": "c18138061dc634832c21dc1a799391a6a298933f471396e671e86e19e44c7a96",
+    "assets/inventory_previews/312.png": "4598882d73f78396ac149a584cc53e3e7709a1ab5dcdc62a5d915e338a876677",
+    "assets/inventory_previews/313.png": "1fd1760d4ff49827c03d408ee4ae667eb0dcf22aa4ae46dd12e7dd776dcd27c0",
+    "assets/inventory_previews/314.png": "88fa5c035356084fa1b621901f9a3b62aba957d497534c2defcc28ac75d192ee",
+    "assets/inventory_previews/315.png": "6eed63b63b12dc83d8556aa7abb740e5fbdddb6c43f9c1361e9b7e20ddfad413",
+    "assets/inventory_previews/316.png": "f11af798249e18ef8f9442e36dbda3c15bac0b6ae89f8271d8e2741155941cfd",
+    "assets/inventory_previews/317.png": "0beb36dcee587aa558eeefec52af9c3986ce9ad08e209d727d70cb11486e4a68",
+    "assets/inventory_previews/318.png": "5c01b29725a08b40e28fdba6d4563b0b7772436978be11ad66f07a3ac6064987",
+    "assets/inventory_previews/319.png": "da119fea91148e6816882264f75e807e6e0d33d4497ce016848e368d6fb19a4d",
+    "assets/inventory_previews/320.png": "a83b4572553432246a68e7b9797f1762eb0829a2bc868bedcb05c86bb21f40d0",
+    "assets/inventory_previews/321.png": "535498fd0acfffaf3c402aeb4b619bb5464b85caeeb9b7ac1642378c4f76cff4",
+    "assets/inventory_previews/322.png": "3e675903df27f3904dd8ea83c8dea7a7baab987ecdec9c00f7e3d51b3ce5b866",
+    "assets/inventory_previews/323.png": "d2cc6021bd25f19cd93ff9e6696c65839dc673123ed149d1075b093858643cbf",
+    "assets/inventory_previews/324.png": "66b01ba82dd54612bf185a8018c6a1121ec0210080e01120a6b8d806b42bbaab",
+    "assets/inventory_previews/325.png": "200543021800cfec37267a883d151453a5f284f34447620a55111f399c3f6c40",
+    "assets/inventory_previews/326.png": "f2813d4445295197cd03a69aa3fc440ba0a4e19985958a8a70925a09faf9de16",
+    "assets/inventory_previews/327.png": "054a8d3b3ce767fd51697016857060a3385a7176dad17838037006ee46f66047",
+    "assets/inventory_previews/328.png": "99b9583ae425d2f3c89cf045d524d6aa0acd449b5acb990459aa8b31406a7ea5",
+    "assets/inventory_previews/329.png": "af4c3578d1a0745f29905c318ca5e3f04581087b52d851b1ee47e89536cbf099",
+    "assets/inventory_previews/330.png": "49755d6919256d611724537123b2fba9e0cb29695a6c8614fb3f2ced261c3b8a",
+    "assets/inventory_previews/331.png": "667700828b814f6f35de8685d889817fda843c82b6ccb30ad34ebf01b3f419ee",
+    "assets/inventory_previews/332.png": "437ee462425d4b5e65df0bb82f5e71df74054399fd2b5232d5257f293ab72374",
+    "assets/inventory_previews/333.png": "d0038f28014949ed6ab455916787c397a2cd121f3b4cb71ec55d2ca19ea0a68d",
+    "assets/inventory_previews/334.png": "1fc8d8204ced15438aab6517b98e5ab36e79268ff96c39161ed5a8c02f2bd4c0",
+    "assets/inventory_previews/335.png": "3924af6464f996faa7403ae25d5d6ac35beb7dbe2d7406315e46ff06ef4f49c4",
+    "assets/inventory_previews/336.png": "6d4d28f6e61862293a36ec9cb8b9695425cfb7f930df055cb5a24ae74872f4ca",
+    "assets/inventory_previews/337.png": "66836e675ef34726c972f67c32071004ceb021aa9e180ee3e473d04249e2ae52",
+    "assets/inventory_previews/338.png": "2b6b00f16e8a86136ea0db345ea5e04bfcd0e57a4e37ed6255086db4b30337bd",
+    "assets/inventory_previews/339.png": "af06402edaf6f21a67e8e6f8c61cdf513aed4e51e98a9e74ce468ceec4e54a8b",
+    "assets/inventory_previews/340.png": "3d4ba164967e00ba875c18dd0f8440bfb46bc845a90127f4a4f2c4a702c6074b",
+    "assets/inventory_previews/341.png": "549a21dcab8817a6ff021746ec8bae2f51e8b58ca83b96180b1ea7d14582d068",
+    "assets/inventory_previews/342.png": "e6590e9265a9bff6628921eecca731335ca82d8009cae0c0edef4da2998f038e",
+    "assets/inventory_previews/343.png": "395708971c8719d19ab31c250358205fbc5e387fb1af0fa74d7fad22b3033dea",
+    "assets/inventory_previews/344.png": "d279444c25473966e6477353f358a6bce6a5aa1ac62c371ecbd5be6e3bb60690",
+    "assets/inventory_previews/345.png": "ddceb6e5fad3abaa906c4b8529cd7da5d35113d3c29e6e43d9be8bc7af4222d0",
+    "assets/inventory_previews/346.png": "e1921c0a62cff96a0dcb1e5017326f8468b7905df50c0dca664be95ac2ce3517",
+    "assets/inventory_previews/347.png": "80caf9eec8b52bf4503d0b7e6c530940e2209b4a4c1b2850185e3e7ade7372fc"
+  },
+  "entries": [
+    {
+      "id": 1,
+      "sprite": 0,
+      "name": "Grass",
+      "category": "world-mesh",
+      "block": 1,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "001.png"
+    },
+    {
+      "id": 2,
+      "sprite": 1,
+      "name": "Dirt",
+      "category": "world-mesh",
+      "block": 2,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "002.png"
+    },
+    {
+      "id": 3,
+      "sprite": 2,
+      "name": "Stone",
+      "category": "world-mesh",
+      "block": 3,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "003.png"
+    },
+    {
+      "id": 4,
+      "sprite": 3,
+      "name": "Sand",
+      "category": "world-mesh",
+      "block": 4,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "004.png"
+    },
+    {
+      "id": 5,
+      "sprite": 4,
+      "name": "Log",
+      "category": "world-mesh",
+      "block": 5,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "005.png"
+    },
+    {
+      "id": 6,
+      "sprite": 5,
+      "name": "Leaves",
+      "category": "world-mesh",
+      "block": 6,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "006.png"
+    },
+    {
+      "id": 7,
+      "sprite": 6,
+      "name": "Water",
+      "category": "world-mesh",
+      "block": 7,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "007.png"
+    },
+    {
+      "id": 8,
+      "sprite": 7,
+      "name": "Coal Ore",
+      "category": "world-mesh",
+      "block": 8,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "008.png"
+    },
+    {
+      "id": 9,
+      "sprite": 8,
+      "name": "Iron Ore",
+      "category": "world-mesh",
+      "block": 9,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "009.png"
+    },
+    {
+      "id": 10,
+      "sprite": 9,
+      "name": "Gold Ore",
+      "category": "world-mesh",
+      "block": 10,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "010.png"
+    },
+    {
+      "id": 11,
+      "sprite": 10,
+      "name": "Copper Ore",
+      "category": "world-mesh",
+      "block": 11,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "011.png"
+    },
+    {
+      "id": 12,
+      "sprite": 11,
+      "name": "Diamond Ore",
+      "category": "world-mesh",
+      "block": 12,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "012.png"
+    },
+    {
+      "id": 13,
+      "sprite": 12,
+      "name": "Planks",
+      "category": "world-mesh",
+      "block": 13,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "013.png"
+    },
+    {
+      "id": 14,
+      "sprite": 13,
+      "name": "Stick",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 1800,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "014.png"
+    },
+    {
+      "id": 15,
+      "sprite": 14,
+      "name": "Crafting Table",
+      "category": "world-mesh",
+      "block": 14,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "015.png"
+    },
+    {
+      "id": 16,
+      "sprite": 15,
+      "name": "Torch",
+      "category": "world-mesh",
+      "block": 15,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        25,
+        4,
+        39,
+        60
+      ],
+      "file": "016.png"
+    },
+    {
+      "id": 17,
+      "sprite": 20,
+      "name": "Wood Pickaxe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2628,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "017.png"
+    },
+    {
+      "id": 18,
+      "sprite": 21,
+      "name": "Stone Pickaxe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2628,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "018.png"
+    },
+    {
+      "id": 19,
+      "sprite": 22,
+      "name": "Iron Pickaxe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2628,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "019.png"
+    },
+    {
+      "id": 20,
+      "sprite": 23,
+      "name": "Wood Axe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2376,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "020.png"
+    },
+    {
+      "id": 21,
+      "sprite": 24,
+      "name": "Stone Axe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2376,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "021.png"
+    },
+    {
+      "id": 22,
+      "sprite": 25,
+      "name": "Iron Axe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2376,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "022.png"
+    },
+    {
+      "id": 23,
+      "sprite": 26,
+      "name": "Wood Shovel",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2232,
+      "bounds": [
+        4,
+        4,
+        60,
+        60
+      ],
+      "file": "023.png"
+    },
+    {
+      "id": 24,
+      "sprite": 27,
+      "name": "Stone Shovel",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2232,
+      "bounds": [
+        4,
+        4,
+        60,
+        60
+      ],
+      "file": "024.png"
+    },
+    {
+      "id": 25,
+      "sprite": 28,
+      "name": "Iron Shovel",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2232,
+      "bounds": [
+        4,
+        4,
+        60,
+        60
+      ],
+      "file": "025.png"
+    },
+    {
+      "id": 26,
+      "sprite": 16,
+      "name": "Seeds",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 1296,
+      "bounds": [
+        4,
+        6,
+        60,
+        57
+      ],
+      "file": "026.png"
+    },
+    {
+      "id": 27,
+      "sprite": 17,
+      "name": "Wheat",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2916,
+      "bounds": [
+        10,
+        4,
+        53,
+        60
+      ],
+      "file": "027.png"
+    },
+    {
+      "id": 28,
+      "sprite": 18,
+      "name": "Bread",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3780,
+      "bounds": [
+        4,
+        8,
+        60,
+        56
+      ],
+      "file": "028.png"
+    },
+    {
+      "id": 29,
+      "sprite": 19,
+      "name": "Raw Meat",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3204,
+      "bounds": [
+        4,
+        6,
+        60,
+        57
+      ],
+      "file": "029.png"
+    },
+    {
+      "id": 30,
+      "sprite": 30,
+      "name": "Raw Beef",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3312,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "030.png"
+    },
+    {
+      "id": 31,
+      "sprite": 31,
+      "name": "Raw Pork",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3888,
+      "bounds": [
+        4,
+        8,
+        60,
+        56
+      ],
+      "file": "031.png"
+    },
+    {
+      "id": 32,
+      "sprite": 32,
+      "name": "Wool",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3888,
+      "bounds": [
+        4,
+        6,
+        60,
+        58
+      ],
+      "file": "032.png"
+    },
+    {
+      "id": 33,
+      "sprite": 33,
+      "name": "Cooked Beef",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3312,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "033.png"
+    },
+    {
+      "id": 34,
+      "sprite": 34,
+      "name": "Cooked Pork",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3888,
+      "bounds": [
+        4,
+        8,
+        60,
+        56
+      ],
+      "file": "034.png"
+    },
+    {
+      "id": 35,
+      "sprite": 35,
+      "name": "Cobblestone",
+      "category": "world-mesh",
+      "block": 29,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "035.png"
+    },
+    {
+      "id": 36,
+      "sprite": 36,
+      "name": "Stone Bricks",
+      "category": "world-mesh",
+      "block": 30,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "036.png"
+    },
+    {
+      "id": 37,
+      "sprite": 37,
+      "name": "Bricks",
+      "category": "world-mesh",
+      "block": 31,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "037.png"
+    },
+    {
+      "id": 38,
+      "sprite": 38,
+      "name": "Glass",
+      "category": "world-mesh",
+      "block": 32,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "038.png"
+    },
+    {
+      "id": 39,
+      "sprite": 39,
+      "name": "Gravel",
+      "category": "world-mesh",
+      "block": 33,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "039.png"
+    },
+    {
+      "id": 40,
+      "sprite": 40,
+      "name": "Clay",
+      "category": "world-mesh",
+      "block": 34,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "040.png"
+    },
+    {
+      "id": 41,
+      "sprite": 41,
+      "name": "Snow",
+      "category": "world-mesh",
+      "block": 35,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        16,
+        60,
+        47
+      ],
+      "file": "041.png"
+    },
+    {
+      "id": 42,
+      "sprite": 42,
+      "name": "Snow Block",
+      "category": "world-mesh",
+      "block": 36,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "042.png"
+    },
+    {
+      "id": 43,
+      "sprite": 43,
+      "name": "Birch Planks",
+      "category": "world-mesh",
+      "block": 37,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "043.png"
+    },
+    {
+      "id": 44,
+      "sprite": 44,
+      "name": "Birch Log",
+      "category": "world-mesh",
+      "block": 38,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "044.png"
+    },
+    {
+      "id": 45,
+      "sprite": 45,
+      "name": "Birch Leaves",
+      "category": "world-mesh",
+      "block": 39,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "045.png"
+    },
+    {
+      "id": 46,
+      "sprite": 46,
+      "name": "Cactus",
+      "category": "world-mesh",
+      "block": 40,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "046.png"
+    },
+    {
+      "id": 47,
+      "sprite": 47,
+      "name": "Furnace",
+      "category": "world-mesh",
+      "block": 41,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "047.png"
+    },
+    {
+      "id": 48,
+      "sprite": 48,
+      "name": "Bookshelf",
+      "category": "world-mesh",
+      "block": 42,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "048.png"
+    },
+    {
+      "id": 49,
+      "sprite": 49,
+      "name": "Wooden Door",
+      "category": "world-mesh",
+      "block": 63,
+      "state": 0,
+      "vertices": 60,
+      "bounds": [
+        21,
+        4,
+        43,
+        60
+      ],
+      "file": "049.png"
+    },
+    {
+      "id": 50,
+      "sprite": 50,
+      "name": "Wooden Slab",
+      "category": "world-mesh",
+      "block": 44,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "050.png"
+    },
+    {
+      "id": 51,
+      "sprite": 51,
+      "name": "Stone Slab",
+      "category": "world-mesh",
+      "block": 45,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "051.png"
+    },
+    {
+      "id": 52,
+      "sprite": 52,
+      "name": "Coal",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3132,
+      "bounds": [
+        4,
+        6,
+        60,
+        58
+      ],
+      "file": "052.png"
+    },
+    {
+      "id": 53,
+      "sprite": 53,
+      "name": "Iron Ingot",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2808,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "053.png"
+    },
+    {
+      "id": 54,
+      "sprite": 54,
+      "name": "Gold Ingot",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2808,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "054.png"
+    },
+    {
+      "id": 55,
+      "sprite": 55,
+      "name": "Diamond",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3312,
+      "bounds": [
+        4,
+        6,
+        60,
+        58
+      ],
+      "file": "055.png"
+    },
+    {
+      "id": 56,
+      "sprite": 56,
+      "name": "Copper Ingot",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2808,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "056.png"
+    },
+    {
+      "id": 57,
+      "sprite": 57,
+      "name": "Apple",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4140,
+      "bounds": [
+        4,
+        4,
+        60,
+        60
+      ],
+      "file": "057.png"
+    },
+    {
+      "id": 58,
+      "sprite": 58,
+      "name": "Leather",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3780,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "058.png"
+    },
+    {
+      "id": 59,
+      "sprite": 59,
+      "name": "Raw Mutton",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2916,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "059.png"
+    },
+    {
+      "id": 60,
+      "sprite": 60,
+      "name": "Cooked Mutton",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2916,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "060.png"
+    },
+    {
+      "id": 61,
+      "sprite": 61,
+      "name": "Granite",
+      "category": "world-mesh",
+      "block": 46,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "061.png"
+    },
+    {
+      "id": 62,
+      "sprite": 62,
+      "name": "Diorite",
+      "category": "world-mesh",
+      "block": 47,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "062.png"
+    },
+    {
+      "id": 63,
+      "sprite": 63,
+      "name": "Andesite",
+      "category": "world-mesh",
+      "block": 48,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "063.png"
+    },
+    {
+      "id": 64,
+      "sprite": 64,
+      "name": "Mossy Cobblestone",
+      "category": "world-mesh",
+      "block": 49,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "064.png"
+    },
+    {
+      "id": 65,
+      "sprite": 65,
+      "name": "Mossy Stone Bricks",
+      "category": "world-mesh",
+      "block": 50,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "065.png"
+    },
+    {
+      "id": 66,
+      "sprite": 66,
+      "name": "Ice",
+      "category": "world-mesh",
+      "block": 51,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "066.png"
+    },
+    {
+      "id": 67,
+      "sprite": 67,
+      "name": "Mud",
+      "category": "world-mesh",
+      "block": 52,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "067.png"
+    },
+    {
+      "id": 68,
+      "sprite": 68,
+      "name": "Tall Grass",
+      "category": "world-mesh",
+      "block": 53,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        6,
+        60,
+        57
+      ],
+      "file": "068.png"
+    },
+    {
+      "id": 69,
+      "sprite": 69,
+      "name": "Red Flower",
+      "category": "world-mesh",
+      "block": 54,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        10,
+        60,
+        53
+      ],
+      "file": "069.png"
+    },
+    {
+      "id": 70,
+      "sprite": 70,
+      "name": "Yellow Flower",
+      "category": "world-mesh",
+      "block": 55,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        10,
+        60,
+        53
+      ],
+      "file": "070.png"
+    },
+    {
+      "id": 71,
+      "sprite": 71,
+      "name": "Ladder",
+      "category": "world-mesh",
+      "block": 56,
+      "state": 0,
+      "vertices": 12,
+      "bounds": [
+        14,
+        4,
+        50,
+        60
+      ],
+      "file": "071.png"
+    },
+    {
+      "id": 72,
+      "sprite": 72,
+      "name": "Chest",
+      "category": "world-mesh",
+      "block": 60,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "072.png"
+    },
+    {
+      "id": 73,
+      "sprite": 73,
+      "name": "Gold Pickaxe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2628,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "073.png"
+    },
+    {
+      "id": 74,
+      "sprite": 74,
+      "name": "Gold Axe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2376,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "074.png"
+    },
+    {
+      "id": 75,
+      "sprite": 75,
+      "name": "Gold Shovel",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2232,
+      "bounds": [
+        4,
+        4,
+        60,
+        60
+      ],
+      "file": "075.png"
+    },
+    {
+      "id": 76,
+      "sprite": 76,
+      "name": "Diamond Pickaxe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2628,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "076.png"
+    },
+    {
+      "id": 77,
+      "sprite": 77,
+      "name": "Diamond Axe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2376,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "077.png"
+    },
+    {
+      "id": 78,
+      "sprite": 78,
+      "name": "Diamond Shovel",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2232,
+      "bounds": [
+        4,
+        4,
+        60,
+        60
+      ],
+      "file": "078.png"
+    },
+    {
+      "id": 79,
+      "sprite": 79,
+      "name": "Wood Sword",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2484,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "079.png"
+    },
+    {
+      "id": 80,
+      "sprite": 80,
+      "name": "Stone Sword",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2484,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "080.png"
+    },
+    {
+      "id": 81,
+      "sprite": 81,
+      "name": "Iron Sword",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2484,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "081.png"
+    },
+    {
+      "id": 82,
+      "sprite": 82,
+      "name": "Gold Sword",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2484,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "082.png"
+    },
+    {
+      "id": 83,
+      "sprite": 83,
+      "name": "Diamond Sword",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2484,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "083.png"
+    },
+    {
+      "id": 84,
+      "sprite": 84,
+      "name": "Paper",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4644,
+      "bounds": [
+        7,
+        4,
+        57,
+        60
+      ],
+      "file": "084.png"
+    },
+    {
+      "id": 85,
+      "sprite": 85,
+      "name": "Book",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4752,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "085.png"
+    },
+    {
+      "id": 86,
+      "sprite": 86,
+      "name": "Clay Ball",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3888,
+      "bounds": [
+        4,
+        6,
+        60,
+        58
+      ],
+      "file": "086.png"
+    },
+    {
+      "id": 87,
+      "sprite": 87,
+      "name": "Brick",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2808,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "087.png"
+    },
+    {
+      "id": 88,
+      "sprite": 88,
+      "name": "Snowball",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3888,
+      "bounds": [
+        4,
+        6,
+        60,
+        58
+      ],
+      "file": "088.png"
+    },
+    {
+      "id": 89,
+      "sprite": 89,
+      "name": "Charcoal",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3636,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "089.png"
+    },
+    {
+      "id": 90,
+      "sprite": 90,
+      "name": "Sugar Cane",
+      "category": "world-mesh",
+      "block": 105,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        12,
+        60,
+        51
+      ],
+      "file": "090.png"
+    },
+    {
+      "id": 91,
+      "sprite": 91,
+      "name": "Vine",
+      "category": "world-mesh",
+      "block": 106,
+      "state": 0,
+      "vertices": 12,
+      "bounds": [
+        14,
+        4,
+        49,
+        60
+      ],
+      "file": "091.png"
+    },
+    {
+      "id": 92,
+      "sprite": 92,
+      "name": "Coal Block",
+      "category": "world-mesh",
+      "block": 95,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "092.png"
+    },
+    {
+      "id": 93,
+      "sprite": 93,
+      "name": "Iron Block",
+      "category": "world-mesh",
+      "block": 96,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "093.png"
+    },
+    {
+      "id": 94,
+      "sprite": 94,
+      "name": "Gold Block",
+      "category": "world-mesh",
+      "block": 97,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "094.png"
+    },
+    {
+      "id": 95,
+      "sprite": 95,
+      "name": "Copper Block",
+      "category": "world-mesh",
+      "block": 98,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "095.png"
+    },
+    {
+      "id": 96,
+      "sprite": 96,
+      "name": "Diamond Block",
+      "category": "world-mesh",
+      "block": 99,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "096.png"
+    },
+    {
+      "id": 97,
+      "sprite": 97,
+      "name": "Hay Bale",
+      "category": "world-mesh",
+      "block": 100,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "097.png"
+    },
+    {
+      "id": 98,
+      "sprite": 98,
+      "name": "Sandstone",
+      "category": "world-mesh",
+      "block": 101,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "098.png"
+    },
+    {
+      "id": 99,
+      "sprite": 99,
+      "name": "Polished Granite",
+      "category": "world-mesh",
+      "block": 102,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "099.png"
+    },
+    {
+      "id": 100,
+      "sprite": 100,
+      "name": "Polished Diorite",
+      "category": "world-mesh",
+      "block": 103,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "100.png"
+    },
+    {
+      "id": 101,
+      "sprite": 101,
+      "name": "Polished Andesite",
+      "category": "world-mesh",
+      "block": 104,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "101.png"
+    },
+    {
+      "id": 102,
+      "sprite": 102,
+      "name": "Lightning Rod",
+      "category": "world-mesh",
+      "block": 110,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        27,
+        4,
+        37,
+        60
+      ],
+      "file": "102.png"
+    },
+    {
+      "id": 103,
+      "sprite": 103,
+      "name": "Spruce Log",
+      "category": "world-mesh",
+      "block": 120,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "103.png"
+    },
+    {
+      "id": 104,
+      "sprite": 104,
+      "name": "Spruce Planks",
+      "category": "world-mesh",
+      "block": 121,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "104.png"
+    },
+    {
+      "id": 105,
+      "sprite": 105,
+      "name": "Spruce Leaves",
+      "category": "world-mesh",
+      "block": 122,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "105.png"
+    },
+    {
+      "id": 106,
+      "sprite": 106,
+      "name": "Jungle Log",
+      "category": "world-mesh",
+      "block": 123,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "106.png"
+    },
+    {
+      "id": 107,
+      "sprite": 107,
+      "name": "Jungle Planks",
+      "category": "world-mesh",
+      "block": 124,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "107.png"
+    },
+    {
+      "id": 108,
+      "sprite": 108,
+      "name": "Jungle Leaves",
+      "category": "world-mesh",
+      "block": 125,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "108.png"
+    },
+    {
+      "id": 109,
+      "sprite": 109,
+      "name": "Acacia Log",
+      "category": "world-mesh",
+      "block": 126,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "109.png"
+    },
+    {
+      "id": 110,
+      "sprite": 110,
+      "name": "Acacia Planks",
+      "category": "world-mesh",
+      "block": 127,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "110.png"
+    },
+    {
+      "id": 111,
+      "sprite": 111,
+      "name": "Acacia Leaves",
+      "category": "world-mesh",
+      "block": 128,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "111.png"
+    },
+    {
+      "id": 112,
+      "sprite": 112,
+      "name": "Dark Oak Log",
+      "category": "world-mesh",
+      "block": 129,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "112.png"
+    },
+    {
+      "id": 113,
+      "sprite": 113,
+      "name": "Dark Oak Planks",
+      "category": "world-mesh",
+      "block": 130,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "113.png"
+    },
+    {
+      "id": 114,
+      "sprite": 114,
+      "name": "Dark Oak Leaves",
+      "category": "world-mesh",
+      "block": 131,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "114.png"
+    },
+    {
+      "id": 115,
+      "sprite": 115,
+      "name": "Podzol",
+      "category": "world-mesh",
+      "block": 132,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "115.png"
+    },
+    {
+      "id": 116,
+      "sprite": 116,
+      "name": "Mycelium",
+      "category": "world-mesh",
+      "block": 133,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "116.png"
+    },
+    {
+      "id": 117,
+      "sprite": 117,
+      "name": "Coarse Dirt",
+      "category": "world-mesh",
+      "block": 134,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "117.png"
+    },
+    {
+      "id": 118,
+      "sprite": 118,
+      "name": "Packed Ice",
+      "category": "world-mesh",
+      "block": 135,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "118.png"
+    },
+    {
+      "id": 119,
+      "sprite": 119,
+      "name": "Blue Ice",
+      "category": "world-mesh",
+      "block": 136,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "119.png"
+    },
+    {
+      "id": 120,
+      "sprite": 120,
+      "name": "Terracotta",
+      "category": "world-mesh",
+      "block": 137,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "120.png"
+    },
+    {
+      "id": 121,
+      "sprite": 121,
+      "name": "Terracotta Red",
+      "category": "world-mesh",
+      "block": 138,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "121.png"
+    },
+    {
+      "id": 122,
+      "sprite": 122,
+      "name": "Terracotta Orange",
+      "category": "world-mesh",
+      "block": 139,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "122.png"
+    },
+    {
+      "id": 123,
+      "sprite": 123,
+      "name": "Terracotta Yellow",
+      "category": "world-mesh",
+      "block": 140,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "123.png"
+    },
+    {
+      "id": 124,
+      "sprite": 124,
+      "name": "Terracotta White",
+      "category": "world-mesh",
+      "block": 141,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "124.png"
+    },
+    {
+      "id": 125,
+      "sprite": 125,
+      "name": "Terracotta Brown",
+      "category": "world-mesh",
+      "block": 142,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "125.png"
+    },
+    {
+      "id": 126,
+      "sprite": 126,
+      "name": "Bamboo",
+      "category": "world-mesh",
+      "block": 143,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        12,
+        60,
+        52
+      ],
+      "file": "126.png"
+    },
+    {
+      "id": 127,
+      "sprite": 127,
+      "name": "Fern",
+      "category": "world-mesh",
+      "block": 144,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        14,
+        60,
+        49
+      ],
+      "file": "127.png"
+    },
+    {
+      "id": 128,
+      "sprite": 128,
+      "name": "Dead Bush",
+      "category": "world-mesh",
+      "block": 145,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        14,
+        60,
+        49
+      ],
+      "file": "128.png"
+    },
+    {
+      "id": 129,
+      "sprite": 129,
+      "name": "Lily Pad",
+      "category": "world-mesh",
+      "block": 146,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        5,
+        60,
+        59
+      ],
+      "file": "129.png"
+    },
+    {
+      "id": 130,
+      "sprite": 130,
+      "name": "Red Mushroom",
+      "category": "world-mesh",
+      "block": 147,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        16,
+        60,
+        47
+      ],
+      "file": "130.png"
+    },
+    {
+      "id": 131,
+      "sprite": 131,
+      "name": "Brown Mushroom",
+      "category": "world-mesh",
+      "block": 148,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        16,
+        60,
+        47
+      ],
+      "file": "131.png"
+    },
+    {
+      "id": 132,
+      "sprite": 132,
+      "name": "Mushroom Stem",
+      "category": "world-mesh",
+      "block": 149,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "132.png"
+    },
+    {
+      "id": 133,
+      "sprite": 133,
+      "name": "Red Mushroom Block",
+      "category": "world-mesh",
+      "block": 150,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "133.png"
+    },
+    {
+      "id": 134,
+      "sprite": 134,
+      "name": "Brown Mushroom Block",
+      "category": "world-mesh",
+      "block": 151,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "134.png"
+    },
+    {
+      "id": 135,
+      "sprite": 135,
+      "name": "Deepslate",
+      "category": "world-mesh",
+      "block": 152,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "135.png"
+    },
+    {
+      "id": 136,
+      "sprite": 136,
+      "name": "Deepslate Coal Ore",
+      "category": "world-mesh",
+      "block": 153,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "136.png"
+    },
+    {
+      "id": 137,
+      "sprite": 137,
+      "name": "Deepslate Iron Ore",
+      "category": "world-mesh",
+      "block": 154,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "137.png"
+    },
+    {
+      "id": 138,
+      "sprite": 138,
+      "name": "Deepslate Copper Ore",
+      "category": "world-mesh",
+      "block": 155,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "138.png"
+    },
+    {
+      "id": 139,
+      "sprite": 139,
+      "name": "Deepslate Gold Ore",
+      "category": "world-mesh",
+      "block": 156,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "139.png"
+    },
+    {
+      "id": 140,
+      "sprite": 140,
+      "name": "Deepslate Diamond Ore",
+      "category": "world-mesh",
+      "block": 157,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "140.png"
+    },
+    {
+      "id": 141,
+      "sprite": 141,
+      "name": "Bedrock",
+      "category": "world-mesh",
+      "block": 158,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "141.png"
+    },
+    {
+      "id": 142,
+      "sprite": 142,
+      "name": "Lava",
+      "category": "world-mesh",
+      "block": 159,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "142.png"
+    },
+    {
+      "id": 143,
+      "sprite": 143,
+      "name": "Cobweb",
+      "category": "world-mesh",
+      "block": 160,
+      "state": 0,
+      "vertices": 24,
+      "bounds": [
+        4,
+        13,
+        60,
+        50
+      ],
+      "file": "143.png"
+    },
+    {
+      "id": 144,
+      "sprite": 144,
+      "name": "Cracked Stone Bricks",
+      "category": "world-mesh",
+      "block": 161,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "144.png"
+    },
+    {
+      "id": 145,
+      "sprite": 145,
+      "name": "Surveyor Token",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4320,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "145.png"
+    },
+    {
+      "id": 146,
+      "sprite": 146,
+      "name": "Cavern Shard",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3240,
+      "bounds": [
+        13,
+        4,
+        50,
+        60
+      ],
+      "file": "146.png"
+    },
+    {
+      "id": 147,
+      "sprite": 147,
+      "name": "Ancient Seal",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4968,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "147.png"
+    },
+    {
+      "id": 148,
+      "sprite": 148,
+      "name": "Leather Helmet",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3312,
+      "bounds": [
+        4,
+        6,
+        60,
+        58
+      ],
+      "file": "148.png"
+    },
+    {
+      "id": 149,
+      "sprite": 149,
+      "name": "Leather Chestplate",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4536,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "149.png"
+    },
+    {
+      "id": 150,
+      "sprite": 150,
+      "name": "Leather Leggings",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3996,
+      "bounds": [
+        13,
+        4,
+        51,
+        60
+      ],
+      "file": "150.png"
+    },
+    {
+      "id": 151,
+      "sprite": 151,
+      "name": "Leather Boots",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4104,
+      "bounds": [
+        4,
+        11,
+        60,
+        53
+      ],
+      "file": "151.png"
+    },
+    {
+      "id": 152,
+      "sprite": 152,
+      "name": "Gold Helmet",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3312,
+      "bounds": [
+        4,
+        6,
+        60,
+        58
+      ],
+      "file": "152.png"
+    },
+    {
+      "id": 153,
+      "sprite": 153,
+      "name": "Gold Chestplate",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4536,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "153.png"
+    },
+    {
+      "id": 154,
+      "sprite": 154,
+      "name": "Gold Leggings",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3996,
+      "bounds": [
+        13,
+        4,
+        51,
+        60
+      ],
+      "file": "154.png"
+    },
+    {
+      "id": 155,
+      "sprite": 155,
+      "name": "Gold Boots",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4104,
+      "bounds": [
+        4,
+        11,
+        60,
+        53
+      ],
+      "file": "155.png"
+    },
+    {
+      "id": 156,
+      "sprite": 156,
+      "name": "Iron Helmet",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3312,
+      "bounds": [
+        4,
+        6,
+        60,
+        58
+      ],
+      "file": "156.png"
+    },
+    {
+      "id": 157,
+      "sprite": 157,
+      "name": "Iron Chestplate",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4536,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "157.png"
+    },
+    {
+      "id": 158,
+      "sprite": 158,
+      "name": "Iron Leggings",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3996,
+      "bounds": [
+        13,
+        4,
+        51,
+        60
+      ],
+      "file": "158.png"
+    },
+    {
+      "id": 159,
+      "sprite": 159,
+      "name": "Iron Boots",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4104,
+      "bounds": [
+        4,
+        11,
+        60,
+        53
+      ],
+      "file": "159.png"
+    },
+    {
+      "id": 160,
+      "sprite": 160,
+      "name": "Diamond Helmet",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3312,
+      "bounds": [
+        4,
+        6,
+        60,
+        58
+      ],
+      "file": "160.png"
+    },
+    {
+      "id": 161,
+      "sprite": 161,
+      "name": "Diamond Chestplate",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4536,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "161.png"
+    },
+    {
+      "id": 162,
+      "sprite": 162,
+      "name": "Diamond Leggings",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3996,
+      "bounds": [
+        13,
+        4,
+        51,
+        60
+      ],
+      "file": "162.png"
+    },
+    {
+      "id": 163,
+      "sprite": 163,
+      "name": "Diamond Boots",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4104,
+      "bounds": [
+        4,
+        11,
+        60,
+        53
+      ],
+      "file": "163.png"
+    },
+    {
+      "id": 164,
+      "sprite": 164,
+      "name": "Shield",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 5292,
+      "bounds": [
+        10,
+        4,
+        54,
+        60
+      ],
+      "file": "164.png"
+    },
+    {
+      "id": 165,
+      "sprite": 165,
+      "name": "Oak Boat",
+      "category": "boat-model",
+      "block": 0,
+      "state": 0,
+      "vertices": 288,
+      "bounds": [
+        4,
+        12,
+        60,
+        52
+      ],
+      "file": "165.png"
+    },
+    {
+      "id": 166,
+      "sprite": 166,
+      "name": "Birch Boat",
+      "category": "boat-model",
+      "block": 0,
+      "state": 0,
+      "vertices": 288,
+      "bounds": [
+        4,
+        12,
+        60,
+        52
+      ],
+      "file": "166.png"
+    },
+    {
+      "id": 167,
+      "sprite": 167,
+      "name": "Spruce Boat",
+      "category": "boat-model",
+      "block": 0,
+      "state": 0,
+      "vertices": 288,
+      "bounds": [
+        4,
+        12,
+        60,
+        52
+      ],
+      "file": "167.png"
+    },
+    {
+      "id": 168,
+      "sprite": 168,
+      "name": "Jungle Boat",
+      "category": "boat-model",
+      "block": 0,
+      "state": 0,
+      "vertices": 288,
+      "bounds": [
+        4,
+        12,
+        60,
+        52
+      ],
+      "file": "168.png"
+    },
+    {
+      "id": 169,
+      "sprite": 169,
+      "name": "Acacia Boat",
+      "category": "boat-model",
+      "block": 0,
+      "state": 0,
+      "vertices": 288,
+      "bounds": [
+        4,
+        12,
+        60,
+        52
+      ],
+      "file": "169.png"
+    },
+    {
+      "id": 170,
+      "sprite": 170,
+      "name": "Dark Oak Boat",
+      "category": "boat-model",
+      "block": 0,
+      "state": 0,
+      "vertices": 288,
+      "bounds": [
+        4,
+        12,
+        60,
+        52
+      ],
+      "file": "170.png"
+    },
+    {
+      "id": 171,
+      "sprite": 171,
+      "name": "Empty Map",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 6300,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "171.png"
+    },
+    {
+      "id": 172,
+      "sprite": 172,
+      "name": "Filled Map",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 6300,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "172.png"
+    },
+    {
+      "id": 173,
+      "sprite": 173,
+      "name": "Compass",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 5328,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "173.png"
+    },
+    {
+      "id": 174,
+      "sprite": 174,
+      "name": "Carrot",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3384,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "174.png"
+    },
+    {
+      "id": 175,
+      "sprite": 175,
+      "name": "Potato",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4536,
+      "bounds": [
+        4,
+        4,
+        60,
+        60
+      ],
+      "file": "175.png"
+    },
+    {
+      "id": 176,
+      "sprite": 176,
+      "name": "Baked Potato",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4536,
+      "bounds": [
+        4,
+        4,
+        60,
+        60
+      ],
+      "file": "176.png"
+    },
+    {
+      "id": 177,
+      "sprite": 177,
+      "name": "Beetroot",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3708,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "177.png"
+    },
+    {
+      "id": 178,
+      "sprite": 178,
+      "name": "Beetroot Seeds",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2160,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "178.png"
+    },
+    {
+      "id": 179,
+      "sprite": 179,
+      "name": "Pumpkin Seeds",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2160,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "179.png"
+    },
+    {
+      "id": 180,
+      "sprite": 180,
+      "name": "Pumpkin",
+      "category": "world-mesh",
+      "block": 187,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "180.png"
+    },
+    {
+      "id": 181,
+      "sprite": 181,
+      "name": "Melon Seeds",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2160,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "181.png"
+    },
+    {
+      "id": 182,
+      "sprite": 182,
+      "name": "Melon",
+      "category": "world-mesh",
+      "block": 188,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "182.png"
+    },
+    {
+      "id": 183,
+      "sprite": 183,
+      "name": "Melon Slice",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3816,
+      "bounds": [
+        4,
+        8,
+        60,
+        55
+      ],
+      "file": "183.png"
+    },
+    {
+      "id": 184,
+      "sprite": 184,
+      "name": "Sweet Berries",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2952,
+      "bounds": [
+        10,
+        4,
+        53,
+        60
+      ],
+      "file": "184.png"
+    },
+    {
+      "id": 185,
+      "sprite": 185,
+      "name": "Wood Hoe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3060,
+      "bounds": [
+        8,
+        4,
+        56,
+        60
+      ],
+      "file": "185.png"
+    },
+    {
+      "id": 186,
+      "sprite": 186,
+      "name": "Stone Hoe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3060,
+      "bounds": [
+        8,
+        4,
+        56,
+        60
+      ],
+      "file": "186.png"
+    },
+    {
+      "id": 187,
+      "sprite": 187,
+      "name": "Iron Hoe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3060,
+      "bounds": [
+        8,
+        4,
+        56,
+        60
+      ],
+      "file": "187.png"
+    },
+    {
+      "id": 188,
+      "sprite": 188,
+      "name": "Gold Hoe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3060,
+      "bounds": [
+        8,
+        4,
+        56,
+        60
+      ],
+      "file": "188.png"
+    },
+    {
+      "id": 189,
+      "sprite": 189,
+      "name": "Diamond Hoe",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3060,
+      "bounds": [
+        8,
+        4,
+        56,
+        60
+      ],
+      "file": "189.png"
+    },
+    {
+      "id": 190,
+      "sprite": 190,
+      "name": "Bone Meal",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2700,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "190.png"
+    },
+    {
+      "id": 191,
+      "sprite": 191,
+      "name": "Composter",
+      "category": "world-mesh",
+      "block": 193,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "191.png"
+    },
+    {
+      "id": 192,
+      "sprite": 192,
+      "name": "Shears",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3780,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "192.png"
+    },
+    {
+      "id": 193,
+      "sprite": 193,
+      "name": "Bucket",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4644,
+      "bounds": [
+        10,
+        4,
+        54,
+        60
+      ],
+      "file": "193.png"
+    },
+    {
+      "id": 194,
+      "sprite": 194,
+      "name": "Milk Bucket",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4644,
+      "bounds": [
+        10,
+        4,
+        54,
+        60
+      ],
+      "file": "194.png"
+    },
+    {
+      "id": 195,
+      "sprite": 195,
+      "name": "Egg",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4140,
+      "bounds": [
+        12,
+        4,
+        52,
+        60
+      ],
+      "file": "195.png"
+    },
+    {
+      "id": 196,
+      "sprite": 196,
+      "name": "Raw Chicken",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3456,
+      "bounds": [
+        8,
+        4,
+        56,
+        60
+      ],
+      "file": "196.png"
+    },
+    {
+      "id": 197,
+      "sprite": 197,
+      "name": "Cooked Chicken",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3456,
+      "bounds": [
+        8,
+        4,
+        56,
+        60
+      ],
+      "file": "197.png"
+    },
+    {
+      "id": 198,
+      "sprite": 198,
+      "name": "Feather",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2916,
+      "bounds": [
+        7,
+        4,
+        56,
+        60
+      ],
+      "file": "198.png"
+    },
+    {
+      "id": 199,
+      "sprite": 199,
+      "name": "Bowl",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4428,
+      "bounds": [
+        4,
+        9,
+        60,
+        54
+      ],
+      "file": "199.png"
+    },
+    {
+      "id": 200,
+      "sprite": 200,
+      "name": "Sugar",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 2700,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "200.png"
+    },
+    {
+      "id": 201,
+      "sprite": 201,
+      "name": "Beetroot Soup",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4428,
+      "bounds": [
+        4,
+        9,
+        60,
+        54
+      ],
+      "file": "201.png"
+    },
+    {
+      "id": 202,
+      "sprite": 202,
+      "name": "Mushroom Stew",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4428,
+      "bounds": [
+        4,
+        9,
+        60,
+        54
+      ],
+      "file": "202.png"
+    },
+    {
+      "id": 203,
+      "sprite": 203,
+      "name": "Pumpkin Pie",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3888,
+      "bounds": [
+        4,
+        8,
+        60,
+        56
+      ],
+      "file": "203.png"
+    },
+    {
+      "id": 204,
+      "sprite": 204,
+      "name": "Cookie",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4536,
+      "bounds": [
+        4,
+        5,
+        60,
+        58
+      ],
+      "file": "204.png"
+    },
+    {
+      "id": 205,
+      "sprite": 205,
+      "name": "Vegetable Stew",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4428,
+      "bounds": [
+        4,
+        9,
+        60,
+        54
+      ],
+      "file": "205.png"
+    },
+    {
+      "id": 206,
+      "sprite": 206,
+      "name": "Oak Stairs",
+      "category": "world-mesh",
+      "block": 198,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "206.png"
+    },
+    {
+      "id": 207,
+      "sprite": 207,
+      "name": "Oak Slab",
+      "category": "world-mesh",
+      "block": 199,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "207.png"
+    },
+    {
+      "id": 208,
+      "sprite": 208,
+      "name": "Oak Fence",
+      "category": "world-mesh",
+      "block": 200,
+      "state": 160,
+      "vertices": 180,
+      "bounds": [
+        9,
+        4,
+        55,
+        60
+      ],
+      "file": "208.png"
+    },
+    {
+      "id": 209,
+      "sprite": 209,
+      "name": "Oak Fence Gate",
+      "category": "world-mesh",
+      "block": 201,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "209.png"
+    },
+    {
+      "id": 210,
+      "sprite": 210,
+      "name": "Oak Trapdoor",
+      "category": "world-mesh",
+      "block": 202,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        15,
+        60,
+        49
+      ],
+      "file": "210.png"
+    },
+    {
+      "id": 211,
+      "sprite": 211,
+      "name": "Oak Door",
+      "category": "world-mesh",
+      "block": 203,
+      "state": 0,
+      "vertices": 60,
+      "bounds": [
+        21,
+        4,
+        43,
+        60
+      ],
+      "file": "211.png"
+    },
+    {
+      "id": 212,
+      "sprite": 212,
+      "name": "Oak Stripped Log",
+      "category": "world-mesh",
+      "block": 204,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "212.png"
+    },
+    {
+      "id": 213,
+      "sprite": 213,
+      "name": "Oak Button",
+      "category": "world-mesh",
+      "block": 205,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        7,
+        4,
+        57,
+        60
+      ],
+      "file": "213.png"
+    },
+    {
+      "id": 214,
+      "sprite": 214,
+      "name": "Oak Pressure Plate",
+      "category": "world-mesh",
+      "block": 206,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        17,
+        60,
+        47
+      ],
+      "file": "214.png"
+    },
+    {
+      "id": 215,
+      "sprite": 215,
+      "name": "Oak Table",
+      "category": "world-mesh",
+      "block": 207,
+      "state": 0,
+      "vertices": 276,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "215.png"
+    },
+    {
+      "id": 216,
+      "sprite": 216,
+      "name": "Oak Chair",
+      "category": "world-mesh",
+      "block": 208,
+      "state": 0,
+      "vertices": 210,
+      "bounds": [
+        8,
+        4,
+        55,
+        60
+      ],
+      "file": "216.png"
+    },
+    {
+      "id": 217,
+      "sprite": 217,
+      "name": "Oak Bench",
+      "category": "world-mesh",
+      "block": 209,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "217.png"
+    },
+    {
+      "id": 218,
+      "sprite": 218,
+      "name": "Oak Sign",
+      "category": "world-mesh",
+      "block": 210,
+      "state": 0,
+      "vertices": 72,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "218.png"
+    },
+    {
+      "id": 219,
+      "sprite": 219,
+      "name": "Oak Shelf",
+      "category": "world-mesh",
+      "block": 211,
+      "state": 0,
+      "vertices": 138,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "219.png"
+    },
+    {
+      "id": 220,
+      "sprite": 220,
+      "name": "Birch Stairs",
+      "category": "world-mesh",
+      "block": 212,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "220.png"
+    },
+    {
+      "id": 221,
+      "sprite": 221,
+      "name": "Birch Slab",
+      "category": "world-mesh",
+      "block": 213,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "221.png"
+    },
+    {
+      "id": 222,
+      "sprite": 222,
+      "name": "Birch Fence",
+      "category": "world-mesh",
+      "block": 214,
+      "state": 160,
+      "vertices": 180,
+      "bounds": [
+        9,
+        4,
+        55,
+        60
+      ],
+      "file": "222.png"
+    },
+    {
+      "id": 223,
+      "sprite": 223,
+      "name": "Birch Fence Gate",
+      "category": "world-mesh",
+      "block": 215,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "223.png"
+    },
+    {
+      "id": 224,
+      "sprite": 224,
+      "name": "Birch Trapdoor",
+      "category": "world-mesh",
+      "block": 216,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        15,
+        60,
+        49
+      ],
+      "file": "224.png"
+    },
+    {
+      "id": 225,
+      "sprite": 225,
+      "name": "Birch Door",
+      "category": "world-mesh",
+      "block": 217,
+      "state": 0,
+      "vertices": 60,
+      "bounds": [
+        21,
+        4,
+        43,
+        60
+      ],
+      "file": "225.png"
+    },
+    {
+      "id": 226,
+      "sprite": 226,
+      "name": "Birch Stripped Log",
+      "category": "world-mesh",
+      "block": 218,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "226.png"
+    },
+    {
+      "id": 227,
+      "sprite": 227,
+      "name": "Birch Button",
+      "category": "world-mesh",
+      "block": 219,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        7,
+        4,
+        57,
+        60
+      ],
+      "file": "227.png"
+    },
+    {
+      "id": 228,
+      "sprite": 228,
+      "name": "Birch Pressure Plate",
+      "category": "world-mesh",
+      "block": 220,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        17,
+        60,
+        47
+      ],
+      "file": "228.png"
+    },
+    {
+      "id": 229,
+      "sprite": 229,
+      "name": "Birch Table",
+      "category": "world-mesh",
+      "block": 221,
+      "state": 0,
+      "vertices": 276,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "229.png"
+    },
+    {
+      "id": 230,
+      "sprite": 230,
+      "name": "Birch Chair",
+      "category": "world-mesh",
+      "block": 222,
+      "state": 0,
+      "vertices": 210,
+      "bounds": [
+        8,
+        4,
+        55,
+        60
+      ],
+      "file": "230.png"
+    },
+    {
+      "id": 231,
+      "sprite": 231,
+      "name": "Birch Bench",
+      "category": "world-mesh",
+      "block": 223,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "231.png"
+    },
+    {
+      "id": 232,
+      "sprite": 232,
+      "name": "Birch Sign",
+      "category": "world-mesh",
+      "block": 224,
+      "state": 0,
+      "vertices": 72,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "232.png"
+    },
+    {
+      "id": 233,
+      "sprite": 233,
+      "name": "Birch Shelf",
+      "category": "world-mesh",
+      "block": 225,
+      "state": 0,
+      "vertices": 138,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "233.png"
+    },
+    {
+      "id": 234,
+      "sprite": 234,
+      "name": "Spruce Stairs",
+      "category": "world-mesh",
+      "block": 226,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "234.png"
+    },
+    {
+      "id": 235,
+      "sprite": 235,
+      "name": "Spruce Slab",
+      "category": "world-mesh",
+      "block": 227,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "235.png"
+    },
+    {
+      "id": 236,
+      "sprite": 236,
+      "name": "Spruce Fence",
+      "category": "world-mesh",
+      "block": 228,
+      "state": 160,
+      "vertices": 180,
+      "bounds": [
+        9,
+        4,
+        55,
+        60
+      ],
+      "file": "236.png"
+    },
+    {
+      "id": 237,
+      "sprite": 237,
+      "name": "Spruce Fence Gate",
+      "category": "world-mesh",
+      "block": 229,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "237.png"
+    },
+    {
+      "id": 238,
+      "sprite": 238,
+      "name": "Spruce Trapdoor",
+      "category": "world-mesh",
+      "block": 230,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        15,
+        60,
+        49
+      ],
+      "file": "238.png"
+    },
+    {
+      "id": 239,
+      "sprite": 239,
+      "name": "Spruce Door",
+      "category": "world-mesh",
+      "block": 231,
+      "state": 0,
+      "vertices": 60,
+      "bounds": [
+        21,
+        4,
+        43,
+        60
+      ],
+      "file": "239.png"
+    },
+    {
+      "id": 240,
+      "sprite": 240,
+      "name": "Spruce Stripped Log",
+      "category": "world-mesh",
+      "block": 232,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "240.png"
+    },
+    {
+      "id": 241,
+      "sprite": 241,
+      "name": "Spruce Button",
+      "category": "world-mesh",
+      "block": 233,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        7,
+        4,
+        57,
+        60
+      ],
+      "file": "241.png"
+    },
+    {
+      "id": 242,
+      "sprite": 242,
+      "name": "Spruce Pressure Plate",
+      "category": "world-mesh",
+      "block": 234,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        17,
+        60,
+        47
+      ],
+      "file": "242.png"
+    },
+    {
+      "id": 243,
+      "sprite": 243,
+      "name": "Spruce Table",
+      "category": "world-mesh",
+      "block": 235,
+      "state": 0,
+      "vertices": 276,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "243.png"
+    },
+    {
+      "id": 244,
+      "sprite": 244,
+      "name": "Spruce Chair",
+      "category": "world-mesh",
+      "block": 236,
+      "state": 0,
+      "vertices": 210,
+      "bounds": [
+        8,
+        4,
+        55,
+        60
+      ],
+      "file": "244.png"
+    },
+    {
+      "id": 245,
+      "sprite": 245,
+      "name": "Spruce Bench",
+      "category": "world-mesh",
+      "block": 237,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "245.png"
+    },
+    {
+      "id": 246,
+      "sprite": 246,
+      "name": "Spruce Sign",
+      "category": "world-mesh",
+      "block": 238,
+      "state": 0,
+      "vertices": 72,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "246.png"
+    },
+    {
+      "id": 247,
+      "sprite": 247,
+      "name": "Spruce Shelf",
+      "category": "world-mesh",
+      "block": 239,
+      "state": 0,
+      "vertices": 138,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "247.png"
+    },
+    {
+      "id": 248,
+      "sprite": 248,
+      "name": "Jungle Stairs",
+      "category": "world-mesh",
+      "block": 240,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "248.png"
+    },
+    {
+      "id": 249,
+      "sprite": 249,
+      "name": "Jungle Slab",
+      "category": "world-mesh",
+      "block": 241,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "249.png"
+    },
+    {
+      "id": 250,
+      "sprite": 250,
+      "name": "Jungle Fence",
+      "category": "world-mesh",
+      "block": 242,
+      "state": 160,
+      "vertices": 180,
+      "bounds": [
+        9,
+        4,
+        55,
+        60
+      ],
+      "file": "250.png"
+    },
+    {
+      "id": 251,
+      "sprite": 251,
+      "name": "Jungle Fence Gate",
+      "category": "world-mesh",
+      "block": 243,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "251.png"
+    },
+    {
+      "id": 252,
+      "sprite": 252,
+      "name": "Jungle Trapdoor",
+      "category": "world-mesh",
+      "block": 244,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        15,
+        60,
+        49
+      ],
+      "file": "252.png"
+    },
+    {
+      "id": 253,
+      "sprite": 253,
+      "name": "Jungle Door",
+      "category": "world-mesh",
+      "block": 245,
+      "state": 0,
+      "vertices": 60,
+      "bounds": [
+        21,
+        4,
+        43,
+        60
+      ],
+      "file": "253.png"
+    },
+    {
+      "id": 254,
+      "sprite": 254,
+      "name": "Jungle Stripped Log",
+      "category": "world-mesh",
+      "block": 246,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "254.png"
+    },
+    {
+      "id": 255,
+      "sprite": 255,
+      "name": "Jungle Button",
+      "category": "world-mesh",
+      "block": 247,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        7,
+        4,
+        57,
+        60
+      ],
+      "file": "255.png"
+    },
+    {
+      "id": 256,
+      "sprite": 256,
+      "name": "Jungle Pressure Plate",
+      "category": "world-mesh",
+      "block": 248,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        17,
+        60,
+        47
+      ],
+      "file": "256.png"
+    },
+    {
+      "id": 257,
+      "sprite": 257,
+      "name": "Jungle Table",
+      "category": "world-mesh",
+      "block": 249,
+      "state": 0,
+      "vertices": 276,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "257.png"
+    },
+    {
+      "id": 258,
+      "sprite": 258,
+      "name": "Jungle Chair",
+      "category": "world-mesh",
+      "block": 250,
+      "state": 0,
+      "vertices": 210,
+      "bounds": [
+        8,
+        4,
+        55,
+        60
+      ],
+      "file": "258.png"
+    },
+    {
+      "id": 259,
+      "sprite": 259,
+      "name": "Jungle Bench",
+      "category": "world-mesh",
+      "block": 251,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "259.png"
+    },
+    {
+      "id": 260,
+      "sprite": 260,
+      "name": "Jungle Sign",
+      "category": "world-mesh",
+      "block": 252,
+      "state": 0,
+      "vertices": 72,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "260.png"
+    },
+    {
+      "id": 261,
+      "sprite": 261,
+      "name": "Jungle Shelf",
+      "category": "world-mesh",
+      "block": 253,
+      "state": 0,
+      "vertices": 138,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "261.png"
+    },
+    {
+      "id": 262,
+      "sprite": 262,
+      "name": "Acacia Stairs",
+      "category": "world-mesh",
+      "block": 254,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "262.png"
+    },
+    {
+      "id": 263,
+      "sprite": 263,
+      "name": "Acacia Slab",
+      "category": "world-mesh",
+      "block": 255,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "263.png"
+    },
+    {
+      "id": 264,
+      "sprite": 264,
+      "name": "Acacia Fence",
+      "category": "world-mesh",
+      "block": 256,
+      "state": 160,
+      "vertices": 180,
+      "bounds": [
+        9,
+        4,
+        55,
+        60
+      ],
+      "file": "264.png"
+    },
+    {
+      "id": 265,
+      "sprite": 265,
+      "name": "Acacia Fence Gate",
+      "category": "world-mesh",
+      "block": 257,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "265.png"
+    },
+    {
+      "id": 266,
+      "sprite": 266,
+      "name": "Acacia Trapdoor",
+      "category": "world-mesh",
+      "block": 258,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        15,
+        60,
+        49
+      ],
+      "file": "266.png"
+    },
+    {
+      "id": 267,
+      "sprite": 267,
+      "name": "Acacia Door",
+      "category": "world-mesh",
+      "block": 259,
+      "state": 0,
+      "vertices": 60,
+      "bounds": [
+        21,
+        4,
+        43,
+        60
+      ],
+      "file": "267.png"
+    },
+    {
+      "id": 268,
+      "sprite": 268,
+      "name": "Acacia Stripped Log",
+      "category": "world-mesh",
+      "block": 260,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "268.png"
+    },
+    {
+      "id": 269,
+      "sprite": 269,
+      "name": "Acacia Button",
+      "category": "world-mesh",
+      "block": 261,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        7,
+        4,
+        57,
+        60
+      ],
+      "file": "269.png"
+    },
+    {
+      "id": 270,
+      "sprite": 270,
+      "name": "Acacia Pressure Plate",
+      "category": "world-mesh",
+      "block": 262,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        17,
+        60,
+        47
+      ],
+      "file": "270.png"
+    },
+    {
+      "id": 271,
+      "sprite": 271,
+      "name": "Acacia Table",
+      "category": "world-mesh",
+      "block": 263,
+      "state": 0,
+      "vertices": 276,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "271.png"
+    },
+    {
+      "id": 272,
+      "sprite": 272,
+      "name": "Acacia Chair",
+      "category": "world-mesh",
+      "block": 264,
+      "state": 0,
+      "vertices": 210,
+      "bounds": [
+        8,
+        4,
+        55,
+        60
+      ],
+      "file": "272.png"
+    },
+    {
+      "id": 273,
+      "sprite": 273,
+      "name": "Acacia Bench",
+      "category": "world-mesh",
+      "block": 265,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "273.png"
+    },
+    {
+      "id": 274,
+      "sprite": 274,
+      "name": "Acacia Sign",
+      "category": "world-mesh",
+      "block": 266,
+      "state": 0,
+      "vertices": 72,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "274.png"
+    },
+    {
+      "id": 275,
+      "sprite": 275,
+      "name": "Acacia Shelf",
+      "category": "world-mesh",
+      "block": 267,
+      "state": 0,
+      "vertices": 138,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "275.png"
+    },
+    {
+      "id": 276,
+      "sprite": 276,
+      "name": "Dark Oak Stairs",
+      "category": "world-mesh",
+      "block": 268,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "276.png"
+    },
+    {
+      "id": 277,
+      "sprite": 277,
+      "name": "Dark Oak Slab",
+      "category": "world-mesh",
+      "block": 269,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "277.png"
+    },
+    {
+      "id": 278,
+      "sprite": 278,
+      "name": "Dark Oak Fence",
+      "category": "world-mesh",
+      "block": 270,
+      "state": 160,
+      "vertices": 180,
+      "bounds": [
+        9,
+        4,
+        55,
+        60
+      ],
+      "file": "278.png"
+    },
+    {
+      "id": 279,
+      "sprite": 279,
+      "name": "Dark Oak Fence Gate",
+      "category": "world-mesh",
+      "block": 271,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "279.png"
+    },
+    {
+      "id": 280,
+      "sprite": 280,
+      "name": "Dark Oak Trapdoor",
+      "category": "world-mesh",
+      "block": 272,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        15,
+        60,
+        49
+      ],
+      "file": "280.png"
+    },
+    {
+      "id": 281,
+      "sprite": 281,
+      "name": "Dark Oak Door",
+      "category": "world-mesh",
+      "block": 273,
+      "state": 0,
+      "vertices": 60,
+      "bounds": [
+        21,
+        4,
+        43,
+        60
+      ],
+      "file": "281.png"
+    },
+    {
+      "id": 282,
+      "sprite": 282,
+      "name": "Dark Oak Stripped Log",
+      "category": "world-mesh",
+      "block": 274,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "282.png"
+    },
+    {
+      "id": 283,
+      "sprite": 283,
+      "name": "Dark Oak Button",
+      "category": "world-mesh",
+      "block": 275,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        7,
+        4,
+        57,
+        60
+      ],
+      "file": "283.png"
+    },
+    {
+      "id": 284,
+      "sprite": 284,
+      "name": "Dark Oak Pressure Plate",
+      "category": "world-mesh",
+      "block": 276,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        17,
+        60,
+        47
+      ],
+      "file": "284.png"
+    },
+    {
+      "id": 285,
+      "sprite": 285,
+      "name": "Dark Oak Table",
+      "category": "world-mesh",
+      "block": 277,
+      "state": 0,
+      "vertices": 276,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "285.png"
+    },
+    {
+      "id": 286,
+      "sprite": 286,
+      "name": "Dark Oak Chair",
+      "category": "world-mesh",
+      "block": 278,
+      "state": 0,
+      "vertices": 210,
+      "bounds": [
+        8,
+        4,
+        55,
+        60
+      ],
+      "file": "286.png"
+    },
+    {
+      "id": 287,
+      "sprite": 287,
+      "name": "Dark Oak Bench",
+      "category": "world-mesh",
+      "block": 279,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "287.png"
+    },
+    {
+      "id": 288,
+      "sprite": 288,
+      "name": "Dark Oak Sign",
+      "category": "world-mesh",
+      "block": 280,
+      "state": 0,
+      "vertices": 72,
+      "bounds": [
+        11,
+        4,
+        53,
+        60
+      ],
+      "file": "288.png"
+    },
+    {
+      "id": 289,
+      "sprite": 289,
+      "name": "Dark Oak Shelf",
+      "category": "world-mesh",
+      "block": 281,
+      "state": 0,
+      "vertices": 138,
+      "bounds": [
+        4,
+        9,
+        60,
+        55
+      ],
+      "file": "289.png"
+    },
+    {
+      "id": 290,
+      "sprite": 290,
+      "name": "Cobblestone Stairs",
+      "category": "world-mesh",
+      "block": 282,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "290.png"
+    },
+    {
+      "id": 291,
+      "sprite": 291,
+      "name": "Cobblestone Slab",
+      "category": "world-mesh",
+      "block": 283,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "291.png"
+    },
+    {
+      "id": 292,
+      "sprite": 292,
+      "name": "Cobblestone Wall",
+      "category": "world-mesh",
+      "block": 284,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "292.png"
+    },
+    {
+      "id": 293,
+      "sprite": 293,
+      "name": "Stone Stairs",
+      "category": "world-mesh",
+      "block": 285,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "293.png"
+    },
+    {
+      "id": 294,
+      "sprite": 294,
+      "name": "Stone Cut Slab",
+      "category": "world-mesh",
+      "block": 286,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "294.png"
+    },
+    {
+      "id": 295,
+      "sprite": 295,
+      "name": "Stone Wall",
+      "category": "world-mesh",
+      "block": 287,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "295.png"
+    },
+    {
+      "id": 296,
+      "sprite": 296,
+      "name": "Stone Bricks Stairs",
+      "category": "world-mesh",
+      "block": 288,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "296.png"
+    },
+    {
+      "id": 297,
+      "sprite": 297,
+      "name": "Stone Bricks Slab",
+      "category": "world-mesh",
+      "block": 289,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "297.png"
+    },
+    {
+      "id": 298,
+      "sprite": 298,
+      "name": "Stone Bricks Wall",
+      "category": "world-mesh",
+      "block": 290,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "298.png"
+    },
+    {
+      "id": 299,
+      "sprite": 299,
+      "name": "Mossy Cobblestone Stairs",
+      "category": "world-mesh",
+      "block": 291,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "299.png"
+    },
+    {
+      "id": 300,
+      "sprite": 300,
+      "name": "Mossy Cobblestone Slab",
+      "category": "world-mesh",
+      "block": 292,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "300.png"
+    },
+    {
+      "id": 301,
+      "sprite": 301,
+      "name": "Mossy Cobblestone Wall",
+      "category": "world-mesh",
+      "block": 293,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "301.png"
+    },
+    {
+      "id": 302,
+      "sprite": 302,
+      "name": "Mossy Stone Bricks Stairs",
+      "category": "world-mesh",
+      "block": 294,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "302.png"
+    },
+    {
+      "id": 303,
+      "sprite": 303,
+      "name": "Mossy Stone Bricks Slab",
+      "category": "world-mesh",
+      "block": 295,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "303.png"
+    },
+    {
+      "id": 304,
+      "sprite": 304,
+      "name": "Mossy Stone Bricks Wall",
+      "category": "world-mesh",
+      "block": 296,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "304.png"
+    },
+    {
+      "id": 305,
+      "sprite": 305,
+      "name": "Bricks Stairs",
+      "category": "world-mesh",
+      "block": 297,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "305.png"
+    },
+    {
+      "id": 306,
+      "sprite": 306,
+      "name": "Bricks Slab",
+      "category": "world-mesh",
+      "block": 298,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "306.png"
+    },
+    {
+      "id": 307,
+      "sprite": 307,
+      "name": "Bricks Wall",
+      "category": "world-mesh",
+      "block": 299,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "307.png"
+    },
+    {
+      "id": 308,
+      "sprite": 308,
+      "name": "Sandstone Stairs",
+      "category": "world-mesh",
+      "block": 300,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "308.png"
+    },
+    {
+      "id": 309,
+      "sprite": 309,
+      "name": "Sandstone Slab",
+      "category": "world-mesh",
+      "block": 301,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "309.png"
+    },
+    {
+      "id": 310,
+      "sprite": 310,
+      "name": "Sandstone Wall",
+      "category": "world-mesh",
+      "block": 302,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "310.png"
+    },
+    {
+      "id": 311,
+      "sprite": 311,
+      "name": "Deepslate Stairs",
+      "category": "world-mesh",
+      "block": 303,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "311.png"
+    },
+    {
+      "id": 312,
+      "sprite": 312,
+      "name": "Deepslate Slab",
+      "category": "world-mesh",
+      "block": 304,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "312.png"
+    },
+    {
+      "id": 313,
+      "sprite": 313,
+      "name": "Deepslate Wall",
+      "category": "world-mesh",
+      "block": 305,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "313.png"
+    },
+    {
+      "id": 314,
+      "sprite": 314,
+      "name": "Polished Granite Stairs",
+      "category": "world-mesh",
+      "block": 306,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "314.png"
+    },
+    {
+      "id": 315,
+      "sprite": 315,
+      "name": "Polished Granite Slab",
+      "category": "world-mesh",
+      "block": 307,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "315.png"
+    },
+    {
+      "id": 316,
+      "sprite": 316,
+      "name": "Polished Granite Wall",
+      "category": "world-mesh",
+      "block": 308,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "316.png"
+    },
+    {
+      "id": 317,
+      "sprite": 317,
+      "name": "Polished Diorite Stairs",
+      "category": "world-mesh",
+      "block": 309,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "317.png"
+    },
+    {
+      "id": 318,
+      "sprite": 318,
+      "name": "Polished Diorite Slab",
+      "category": "world-mesh",
+      "block": 310,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "318.png"
+    },
+    {
+      "id": 319,
+      "sprite": 319,
+      "name": "Polished Diorite Wall",
+      "category": "world-mesh",
+      "block": 311,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "319.png"
+    },
+    {
+      "id": 320,
+      "sprite": 320,
+      "name": "Polished Andesite Stairs",
+      "category": "world-mesh",
+      "block": 312,
+      "state": 0,
+      "vertices": 66,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "320.png"
+    },
+    {
+      "id": 321,
+      "sprite": 321,
+      "name": "Polished Andesite Slab",
+      "category": "world-mesh",
+      "block": 313,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        10,
+        60,
+        54
+      ],
+      "file": "321.png"
+    },
+    {
+      "id": 322,
+      "sprite": 322,
+      "name": "Polished Andesite Wall",
+      "category": "world-mesh",
+      "block": 314,
+      "state": 160,
+      "vertices": 96,
+      "bounds": [
+        9,
+        4,
+        54,
+        60
+      ],
+      "file": "322.png"
+    },
+    {
+      "id": 323,
+      "sprite": 323,
+      "name": "Chiseled Stone Bricks",
+      "category": "world-mesh",
+      "block": 315,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "323.png"
+    },
+    {
+      "id": 324,
+      "sprite": 324,
+      "name": "Smooth Stone",
+      "category": "world-mesh",
+      "block": 316,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "324.png"
+    },
+    {
+      "id": 325,
+      "sprite": 325,
+      "name": "Smooth Sandstone",
+      "category": "world-mesh",
+      "block": 317,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "325.png"
+    },
+    {
+      "id": 326,
+      "sprite": 326,
+      "name": "Cut Sandstone",
+      "category": "world-mesh",
+      "block": 318,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "326.png"
+    },
+    {
+      "id": 327,
+      "sprite": 327,
+      "name": "Polished Deepslate",
+      "category": "world-mesh",
+      "block": 319,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "327.png"
+    },
+    {
+      "id": 328,
+      "sprite": 328,
+      "name": "Deepslate Bricks",
+      "category": "world-mesh",
+      "block": 320,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "328.png"
+    },
+    {
+      "id": 329,
+      "sprite": 329,
+      "name": "Cracked Deepslate Bricks",
+      "category": "world-mesh",
+      "block": 321,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "329.png"
+    },
+    {
+      "id": 330,
+      "sprite": 330,
+      "name": "Roof Shingles",
+      "category": "world-mesh",
+      "block": 322,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "330.png"
+    },
+    {
+      "id": 331,
+      "sprite": 331,
+      "name": "Glass Pane",
+      "category": "world-mesh",
+      "block": 323,
+      "state": 160,
+      "vertices": 84,
+      "bounds": [
+        14,
+        4,
+        49,
+        60
+      ],
+      "file": "331.png"
+    },
+    {
+      "id": 332,
+      "sprite": 332,
+      "name": "Rose Glass Pane",
+      "category": "world-mesh",
+      "block": 324,
+      "state": 160,
+      "vertices": 84,
+      "bounds": [
+        14,
+        4,
+        49,
+        60
+      ],
+      "file": "332.png"
+    },
+    {
+      "id": 333,
+      "sprite": 333,
+      "name": "Amber Glass Pane",
+      "category": "world-mesh",
+      "block": 325,
+      "state": 160,
+      "vertices": 84,
+      "bounds": [
+        14,
+        4,
+        49,
+        60
+      ],
+      "file": "333.png"
+    },
+    {
+      "id": 334,
+      "sprite": 334,
+      "name": "Smoked Glass Pane",
+      "category": "world-mesh",
+      "block": 326,
+      "state": 160,
+      "vertices": 84,
+      "bounds": [
+        14,
+        4,
+        49,
+        60
+      ],
+      "file": "334.png"
+    },
+    {
+      "id": 335,
+      "sprite": 335,
+      "name": "Lantern",
+      "category": "world-mesh",
+      "block": 327,
+      "state": 0,
+      "vertices": 108,
+      "bounds": [
+        12,
+        4,
+        51,
+        60
+      ],
+      "file": "335.png"
+    },
+    {
+      "id": 336,
+      "sprite": 336,
+      "name": "Chain",
+      "category": "world-mesh",
+      "block": 328,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        27,
+        4,
+        37,
+        60
+      ],
+      "file": "336.png"
+    },
+    {
+      "id": 337,
+      "sprite": 337,
+      "name": "Candle",
+      "category": "world-mesh",
+      "block": 329,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        21,
+        4,
+        42,
+        60
+      ],
+      "file": "337.png"
+    },
+    {
+      "id": 338,
+      "sprite": 338,
+      "name": "Campfire",
+      "category": "world-mesh",
+      "block": 330,
+      "state": 0,
+      "vertices": 108,
+      "bounds": [
+        4,
+        12,
+        60,
+        51
+      ],
+      "file": "338.png"
+    },
+    {
+      "id": 339,
+      "sprite": 339,
+      "name": "Bed",
+      "category": "world-mesh",
+      "block": 331,
+      "state": 0,
+      "vertices": 540,
+      "bounds": [
+        4,
+        12,
+        60,
+        51
+      ],
+      "file": "339.png"
+    },
+    {
+      "id": 340,
+      "sprite": 340,
+      "name": "Barrel",
+      "category": "world-mesh",
+      "block": 332,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "340.png"
+    },
+    {
+      "id": 341,
+      "sprite": 341,
+      "name": "Painting",
+      "category": "world-mesh",
+      "block": 333,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        15,
+        4,
+        49,
+        60
+      ],
+      "file": "341.png"
+    },
+    {
+      "id": 342,
+      "sprite": 342,
+      "name": "Item Frame",
+      "category": "world-mesh",
+      "block": 334,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        15,
+        4,
+        49,
+        60
+      ],
+      "file": "342.png"
+    },
+    {
+      "id": 343,
+      "sprite": 343,
+      "name": "Flower Pot",
+      "category": "world-mesh",
+      "block": 335,
+      "state": 0,
+      "vertices": 108,
+      "bounds": [
+        5,
+        4,
+        59,
+        60
+      ],
+      "file": "343.png"
+    },
+    {
+      "id": 344,
+      "sprite": 344,
+      "name": "Carpet",
+      "category": "world-mesh",
+      "block": 336,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        4,
+        17,
+        60,
+        46
+      ],
+      "file": "344.png"
+    },
+    {
+      "id": 345,
+      "sprite": 345,
+      "name": "Dirt Path",
+      "category": "world-mesh",
+      "block": 337,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        5,
+        4,
+        58,
+        60
+      ],
+      "file": "345.png"
+    },
+    {
+      "id": 346,
+      "sprite": 346,
+      "name": "Stone Paving",
+      "category": "world-mesh",
+      "block": 338,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "346.png"
+    },
+    {
+      "id": 347,
+      "sprite": 347,
+      "name": "Scaffold",
+      "category": "world-mesh",
+      "block": 339,
+      "state": 0,
+      "vertices": 180,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "347.png"
+    }
+  ]
+}

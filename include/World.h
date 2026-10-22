@@ -231,6 +231,7 @@ public:
 };
 
 class World {
+    friend class IconTest;
     friend class BuildingTest;
 public:
     struct VisibleChunks {

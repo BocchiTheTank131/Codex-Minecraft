@@ -1,0 +1,17 @@
+[
+  {
+    "case": "missing-manifest",
+    "passed": true,
+    "error": "Required inventory preview manifest is missing: assets/inventory_previews.json. Run tools/generate_item_thumbnails.py before packaging."
+  },
+  {
+    "case": "stale-input",
+    "passed": true,
+    "error": "Stale inventory preview input/output: assets/stale.txt. Run tools/generate_item_thumbnails.py before packaging."
+  },
+  {
+    "case": "missing-output",
+    "passed": true,
+    "error": "Stale inventory preview input/output: assets/missing.txt. Run tools/generate_item_thumbnails.py before packaging."
+  }
+]

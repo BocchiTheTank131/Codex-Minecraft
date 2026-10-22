@@ -138,8 +138,8 @@ void slot(std::vector<V>& v,
 void tooltip(std::vector<V>& vertices, UiMode mode, int W, int H,
              const Inventory& inventory, double mouseX, double mouseY,
              const RecipeBookView* book = nullptr, const FurnaceData* furnace = nullptr,
-             const ChestData* chest = nullptr,int creativePage=0) {
-    const Item item = InventoryTooltip::hoveredItem(mode,W,H,mouseX,mouseY,inventory,book,furnace,chest,creativePage);
+             const ChestData* chest = nullptr,int creativePage=0,const std::vector<Item>* creativeItems=nullptr) {
+    const Item item = InventoryTooltip::hoveredItem(mode,W,H,mouseX,mouseY,inventory,book,furnace,chest,creativePage,creativeItems);
     if (item == Item::None) return;
     std::string name = itemDefinition(item).displayName;
     const auto hit=UiLayout::hit(mode,mouseX,mouseY,W,H,creativeCatalog().size());
@@ -169,7 +169,7 @@ void equipmentSlots(std::vector<V>& vertices,UiMode mode,int W,int H,const Inven
         if(inv.equipment(i).empty()) text(vertices,labels[i],b.x+17,b.y+17,1.3f,{.65f,.7f,.75f,1},W,H);
     }
     const auto p=UiLayout::panel(mode,W,H);
-    text(vertices,"ARMOR "+std::to_string(inv.armorPoints()),p.x+22,p.y+(mode==UiMode::Creative?490.f:272.f),1.1f,{.9f,.95f,1,1},W,H);
+    text(vertices,"ARMOR "+std::to_string(inv.armorPoints()),p.x+(mode==UiMode::Creative?360.f:22.f),p.y+(mode==UiMode::Creative?526.f:272.f),1.1f,{.9f,.95f,1,1},W,H);
 }
 void flush(std::vector<V>& vertices, GLuint vbo, GLuint vao, GLuint program, GLuint texture,
            GLint atlasUniform) {
@@ -332,7 +332,8 @@ void Renderer::renderInventory(
     flush(v, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 void Renderer::renderCreativeInventory(
-    int W, int H, const Inventory& inv, double mouseX, double mouseY,int page) const {
+    int W, int H, const Inventory& inv, double mouseX, double mouseY,int page,
+    const std::vector<Item>* creativeItems,const std::string& search,bool searchFocused) const {
     std::vector<V> vertices;
     vertices.reserve(16000);
     const UiRect panel = UiLayout::panel(UiMode::Creative, W, H);
@@ -343,14 +344,19 @@ void Renderer::renderCreativeInventory(
          {.08f, .075f, .07f, .97f}, W, H);
     rect(vertices, panelX + 10, panelY + 10, panel.width - 20, panel.height - 20,
          {.34f, .34f, .34f, .98f}, W, H);
-    const auto& catalog = creativeCatalog();
+    const auto& catalog = creativeItems?*creativeItems:creativeCatalog();
     equipmentSlots(vertices,UiMode::Creative,W,H,inv);
     const float catalogHeight = UiLayout::CreativeRows * 48.0f + 16.0f;
     const float catalogWidth = UiLayout::CreativeColumns * 48.0f + 16.0f;
     rect(vertices, panelX + (panel.width - catalogWidth) * .5f, panelY + 25,
          catalogWidth, catalogHeight, {.16f, .16f, .18f, 1}, W, H);
     rect(vertices,panelX+450,panelY+475,40,30,{.13f,.15f,.16f,1},W,H);rect(vertices,panelX+550,panelY+475,40,30,{.13f,.15f,.16f,1},W,H);
-    text(vertices,"<",panelX+465,panelY+483,1.5f,{1,1,1,1},W,H);text(vertices,">",panelX+565,panelY+483,1.5f,{1,1,1,1},W,H);text(vertices,std::to_string(page+1)+"/"+std::to_string((catalog.size()+UiLayout::CreativePageSize-1)/UiLayout::CreativePageSize),panelX+495,panelY+484,1.2f,{1,1,1,1},W,H);
+    text(vertices,"<",panelX+465,panelY+483,1.5f,{1,1,1,1},W,H);text(vertices,">",panelX+565,panelY+483,1.5f,{1,1,1,1},W,H);text(vertices,std::to_string(page+1)+"/"+std::to_string(std::max(1,int((catalog.size()+UiLayout::CreativePageSize-1)/UiLayout::CreativePageSize))),panelX+495,panelY+484,1.2f,{1,1,1,1},W,H);
+    const auto searchBox=UiLayout::creativeSearch(W,H);
+    rect(vertices,searchBox.x,searchBox.y,searchBox.width,searchBox.height,searchFocused?glm::vec4(.25f,.3f,.32f,1):glm::vec4(.13f,.15f,.16f,1),W,H);
+    text(vertices,(search.empty()?std::string("SEARCH ITEMS..."):search)+(searchFocused?"_":""),searchBox.x+8,searchBox.y+9,1.2f,{1,1,1,1},W,H);
+    text(vertices,std::to_string(catalog.size()),panelX+385,panelY+484,1.2f,{.8f,.8f,.8f,1},W,H);
+    if(catalog.empty())text(vertices,"NO MATCHING ITEMS",panelX+220,panelY+220,1.5f,{.8f,.8f,.8f,1},W,H);
     for (int index = page*UiLayout::CreativePageSize; index < std::min(static_cast<int>(catalog.size()),(page+1)*UiLayout::CreativePageSize); ++index) {
         ItemStack stack{catalog[static_cast<std::size_t>(index)],
                         Inventory::maxStack(catalog[static_cast<std::size_t>(index)]),
@@ -378,7 +384,7 @@ void Renderer::renderCreativeInventory(
          44.0f,
          W,
          H);
-    tooltip(vertices,UiMode::Creative,W,H,inv,mouseX,mouseY,nullptr,nullptr,nullptr,page);
+    tooltip(vertices,UiMode::Creative,W,H,inv,mouseX,mouseY,nullptr,nullptr,nullptr,page,&catalog);
     flush(vertices, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 

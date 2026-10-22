@@ -1089,7 +1089,7 @@ void Game::handleGlobalInput() {
     }
 
     if (input_.actionPressed(ControlAction::Inventory) && !ui_.simulationPaused() &&
-        !ui_.recipeBook().searchFocused) {
+        !ui_.recipeBook().searchFocused && !ui_.creativeSearchFocused()) {
         ui_.toggleInventory(*inventory_);
     }
     if (input_.keyPressed(GLFW_KEY_ESCAPE)) {
@@ -1111,7 +1111,7 @@ void Game::handleGlobalInput() {
     if (chestWasOpen && ui_.state() != GameState::Chest)
         sounds_->playChest(false, glm::vec3(chestPosition) + glm::vec3(.5f));
     if (input_.actionPressed(ControlAction::Fullbright) && !ui_.simulationPaused() &&
-        !ui_.recipeBook().searchFocused) {
+        !ui_.recipeBook().searchFocused && !ui_.creativeSearchFocused()) {
         fullbright_ = !fullbright_;
     }
     if (ui_.state() != GameState::Controls &&
@@ -1665,10 +1665,18 @@ void Game::handleDropAction() {
 }
 
 void Game::damageSelectedToolWithSound() {
-    const ItemStack before = inventory_->selectedStack();
+    damageToolWithSound(false);
+}
+
+void Game::damageToolWithSound(bool offhand) {
+    const ItemStack before = offhand ? inventory_->equipment(4) : inventory_->selectedStack();
     if (!isTool(before.item)) return;
-    inventory_->damageSelectedTool();
-    if (before.durability <= 1 && inventory_->selectedStack().item != before.item)
+    if(offhand) inventory_->damageOffhandTool();
+    else inventory_->damageSelectedTool();
+    const auto& after=offhand ? inventory_->equipment(4) : inventory_->selectedStack();
+    // Offhand break feedback is queued with equipment damage and consumed once
+    // by finishSimulationFrame; selected-tool feedback is immediate.
+    if (!offhand && before.durability <= 1 && after.item != before.item)
         sounds_->playToolBreak();
 }
 
@@ -1799,8 +1807,9 @@ void Game::handleUseAction() {
         return;
     }
 
-    const bool useOffhand=inventory_->selectedStack().empty() ||
-        (!inventory_->equipment(4).empty() && !hasMainHandUse(inventory_->selectedItem()));
+    const auto toolHand=buildingToolHand();
+    const bool useOffhand=toolHand.value_or(inventory_->selectedStack().empty() ||
+        (!inventory_->equipment(4).empty() && !hasMainHandUse(inventory_->selectedItem())));
     if(transportationUse(useOffhand)) return;
     const Item heldItem = useOffhand?inventory_->equipment(4).item:inventory_->selectedItem();
     const auto consume=[&] {return useOffhand?inventory_->consumeOffhand():inventory_->consumeSelected();};
@@ -2275,7 +2284,7 @@ void Game::renderFrame(float deltaTime) {
             input_.mousePressed(GLFW_MOUSE_BUTTON_RIGHT))
             sounds_->playClick();
         if (creativeMode_ && ui_.state() == GameState::Inventory) {
-            renderer_->renderCreativeInventory(width, height, *inventory_, cursor.x, cursor.y,ui_.creativePage());
+            renderer_->renderCreativeInventory(width, height, *inventory_, cursor.x, cursor.y,ui_.creativePage(),&ui_.creativeItems(),ui_.creativeSearch(),ui_.creativeSearchFocused());
         } else if (ui_.state() == GameState::Furnace) {
             if (const FurnaceData* furnace = world_->furnaceAt(ui_.openedContainerPosition(), false)) {
                 renderer_->renderFurnace(width, height, *inventory_, *furnace, cursor.x, cursor.y);

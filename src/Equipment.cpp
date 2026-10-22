@@ -10,7 +10,8 @@ bool hasMainHandUse(Item item) {
     return (item>=Item::OakBoat && item<=Item::Compass) || isFood(item) ||
         itemToBlock(item)!=Block::Air || FarmingSystem::plantedBlock(item)!=Block::Air ||
         item==Item::Wheat || item==Item::Bucket || item==Item::BoneMeal ||
-        itemDefinition(item).tool==ToolKind::Hoe || itemDefinition(item).tool==ToolKind::Shovel || itemDefinition(item).tool==ToolKind::Shears;
+        itemDefinition(item).tool==ToolKind::Hoe || itemDefinition(item).tool==ToolKind::Shovel ||
+        itemDefinition(item).tool==ToolKind::Axe || itemDefinition(item).tool==ToolKind::Shears;
 }
 int armorSlot(Item item) {
     const int index=int(item)-int(Item::LeatherHelmet);

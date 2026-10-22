@@ -4,6 +4,25 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.16.1 - Inventory Icon & Visual Clarity
+
+All 347 registered items now have cached 64×64 previews. Blocks use the actual
+terrain mesh and material tiles in a consistent three-quarter view; stairs,
+slabs, fences, furniture, beds and panes retain their real shapes. Boats use the
+existing hull models. Tools, armor, food and other non-block items use shaded,
+extruded pixel-art silhouettes. Four Creative pages and 44×44 slots are unchanged.
+
+The atlas is generated offline, embedded in both Windows variants, and uses the
+same 5.47 MiB of GPU texture storage as v2.16.0. There is no per-frame thumbnail
+rendering. World textures, item/block IDs, saves and Generators V1–V22 are unchanged.
+Gate rails/posts receive a matching visual model correction; collision is unchanged.
+Bed pillow and blanket textures now follow all four placement directions.
+Creative inventory now includes item-name search. Axe/shovel actions wear the
+correct hand, and packaging requires the thumbnail manifest.
+
+See the [visual validation report](docs/ICON_VISUAL_VALIDATION_v2.16.1.md) and
+[local release notes](docs/RELEASE_v2.16.1.md). Release packages are available on GitHub.
+
 ### v2.16.0 - Building & Decoration
 
 Build with 142 additional materials and pieces: six wood families, corner stairs,

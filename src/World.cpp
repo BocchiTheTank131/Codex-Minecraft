@@ -4409,7 +4409,12 @@ World::MeshOutput World::buildMesh(const MeshInput& input, MeshOutput result) {
                             std::array<glm::vec3,4> points{};for(auto& point:points)point[axis]=plane;
                             points[0][A]=points[3][A]=cutsA[a];points[1][A]=points[2][A]=cutsA[a+1];points[0][B]=points[1][B]=cutsB[b];points[2][B]=points[3][B]=cutsB[b+1];if(!positive)std::swap(points[1],points[3]);
                             const int tile=atlasTile(block,face);const float sunlight=std::max(float(std::max(meshSunlight(worldX,y,worldZ),meshSunlight(worldX+normal.x,y+normal.y,worldZ+normal.z)))/15.f,sideDaylight(worldX,y,worldZ,normal));const float emitted=float(std::max(meshBlockLight(worldX,y,worldZ),meshBlockLight(worldX+normal.x,y+normal.y,worldZ+normal.z)))/15.f;std::array<float,4> cornerAo;const auto own=blockGeometry(block);for(int corner=0;corner<4;++corner)cornerAo[corner]=meshCornerAo(worldX,y,worldZ,normal,points[corner],own);
-                            for(int index:Indices){const auto point=points[index];glm::vec2 uv(axis==0?point.z:point.x,axis==1?point.z:1-point.y);if(blockType(block)==Block::Painting && (blockProperties(block)&32)){if((blockProperties(block)&3)>=2)uv.x=1-uv.x;uv.x=(uv.x+((blockProperties(block)&16)?1.f:0.f))*.5f;}vertices.push_back({origin+point,uv,glm::vec3(normal),sunlight,emitted,cornerAo[index],VoxelMaterial(float(tile))});}
+                            for(int index:Indices){const auto point=points[index];glm::vec2 uv(axis==0?point.z:point.x,axis==1?point.z:1-point.y);
+                                // Bed artwork is authored facing north. Sample in the
+                                // bed's unrotated local frame so its pillow follows
+                                // the placed head instead of staying on world north.
+                                if(blockType(block)==Block::Bed && face==2)for(unsigned turn=0;turn<(blockProperties(block)&3);++turn)uv={uv.y,1-uv.x};
+                                if(blockType(block)==Block::Painting && (blockProperties(block)&32)){if((blockProperties(block)&3)>=2)uv.x=1-uv.x;uv.x=(uv.x+((blockProperties(block)&16)?1.f:0.f))*.5f;}vertices.push_back({origin+point,uv,glm::vec3(normal),sunlight,emitted,cornerAo[index],VoxelMaterial(float(tile))});}
                         }
                     }
                     continue;

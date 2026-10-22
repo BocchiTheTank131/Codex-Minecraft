@@ -15,6 +15,7 @@ void Game::updateEquipmentInput(bool enabled) {
     const auto navigation=[](Item i){return i>=Item::OakBoat && i<=Item::Compass;};
     if(raise && (navigation(inventory_->selectedItem()) || navigation(inventory_->equipment(4).item))) raise=false;
     if(raise) {
+        if(buildingToolHand().has_value()) raise=false;
         const auto selected=inventory_->selectedItem();
         const auto held=(inventory_->selectedStack().empty() ||
             (!inventory_->equipment(4).empty() && !hasMainHandUse(selected)))?inventory_->equipment(4).item:selected;

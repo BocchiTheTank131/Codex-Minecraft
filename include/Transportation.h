@@ -21,6 +21,7 @@ struct ExplorationMap {
 };
 struct Waypoint {std::string name; glm::vec3 position{0};};
 class Transportation {
+    friend class IconTest;
 public:
     explicit Transportation(glm::vec3 spawn):spawn_(spawn){}
     ~Transportation();

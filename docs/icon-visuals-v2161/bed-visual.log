@@ -1,0 +1,30 @@
+Isolated fixture: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-95006774964400"
+Audio: loaded 104 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/Doppelganger.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+building initialize passed=1
+building world passed=1
+Screenshot saved: screenshots\voxel_1792306608466.bmp
+building screenshot_bed-four-directions passed=1
+Screenshot saved: screenshots\voxel_1792306611481.bmp
+building screenshot_pot-front passed=1
+Screenshot saved: screenshots\voxel_1792306614489.bmp
+building screenshot_pot-side passed=1
+Screenshot saved: screenshots\voxel_1792306617510.bmp
+building screenshot_pot-back passed=1
+Screenshot saved: screenshots\voxel_1792306620522.bmp
+building screenshot_wooden-house passed=1
+Screenshot saved: screenshots\voxel_1792306623536.bmp
+building screenshot_stone-fortress passed=1
+Screenshot saved: screenshots\voxel_1792306626546.bmp
+building screenshot_farm-and-gates passed=1
+Screenshot saved: screenshots\voxel_1792306629555.bmp
+building screenshot_decorated-interior passed=1
+Screenshot saved: screenshots\voxel_1792306632574.bmp
+building screenshot_sign-closeup passed=1
+Screenshot saved: screenshots\voxel_1792306635592.bmp
+building screenshot_timber-bridge passed=1
+Screenshot saved: screenshots\voxel_1792306638600.bmp
+building screenshot_shape-gallery passed=1
+building visual_checkpoint passed=1

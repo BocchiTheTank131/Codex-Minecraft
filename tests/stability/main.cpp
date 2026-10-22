@@ -44,6 +44,7 @@ static bool farmingMining(Game&);
 };
 int runFarmingTests(int argc,char** argv);
 int runBuildingTests(int argc,char** argv);
+int runIconTests(int argc,char** argv);
 bool testFarmingControls(Game& g){return StabilityTest::farmingControls(g);}
 bool testFarmingMining(Game& g){return StabilityTest::farmingMining(g);}
 bool StabilityTest::farmingMining(Game& g) {
@@ -88,6 +89,7 @@ int main(int argc,char** argv){
     try{return StabilityTest::run(argc,argv);}catch(const std::exception& e){std::cerr<<e.what()<<std::endl;return 1;}
 }
 int StabilityTest::run(int argc,char** argv){
+ if(argc>1 && std::string(argv[1]).find("--icons")==0)return runIconTests(argc,argv);
  if(argc>1 && (std::string(argv[1])=="--building" || std::string(argv[1])=="--building-visual" || std::string(argv[1])=="--building-benchmark" || std::string(argv[1])=="--creative-ui"))return runBuildingTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--farming")==0)return runFarmingTests(argc,argv);
  if(argc==2 && std::string(argv[1]).find("--session-probe=")==0){

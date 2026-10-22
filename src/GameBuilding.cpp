@@ -33,6 +33,26 @@ void Game::updateBuilding(float dt){
  if(active && active!=pressedPlate_){auto p=*active;world_->setBlock(p.x,p.y,p.z,blockState(world_->getBlock(p.x,p.y,p.z),8));sounds_->playDoor(true,glm::vec3(p));}pressedPlate_=active;
 }
 
+std::optional<bool> Game::buildingToolHand() const {
+ if(!interaction_.hasBlockTarget || interaction_.mobTarget.valid())return std::nullopt;
+ const auto p=interaction_.blockTarget.block;
+ const auto block=world_->getBlock(p.x,p.y,p.z);
+ auto eligible=[&](const ItemStack& stack){
+  if(stack.empty())return false;
+  const auto tool=itemDefinition(stack.item).tool;
+  if(tool==ToolKind::Shovel)return input_.actionDown(ControlAction::Sneak) &&
+      (block==Block::Grass||block==Block::Dirt) && world_->getBlock(p.x,p.y+1,p.z)==Block::Air;
+  if(tool==ToolKind::Axe)return blockType(block)==Block::Log || blockType(block)==Block::BirchLog ||
+      blockType(block)==Block::SpruceLog || blockType(block)==Block::JungleLog ||
+      blockType(block)==Block::AcaciaLog || blockType(block)==Block::DarkOakLog;
+  return false;
+ };
+ // A valid main-hand action wins; otherwise try the offhand for this target.
+ if(eligible(inventory_->selectedStack()))return false;
+ if(eligible(inventory_->equipment(4)))return true;
+ return std::nullopt;
+}
+
 bool Game::buildingUse(Item held,bool offhand){
  if(!interaction_.hasBlockTarget || interaction_.mobTarget.valid())return false;
  const auto target=interaction_.blockTarget.block,normal=interaction_.blockTarget.normal;
@@ -64,8 +84,8 @@ bool Game::buildingUse(Item held,bool offhand){
   default:break;
   }
  }
- if(sneak && (old==Block::Grass||old==Block::Dirt) && itemDefinition(held).tool==ToolKind::Shovel && get(target+glm::ivec3(0,1,0))==Block::Air){set(target,Block::DirtPath);if(!creativeMode_)damageSelectedToolWithSound();return true;}
- if(isLog(old) && itemDefinition(held).tool==ToolKind::Axe){const Block logs[]={Block::Log,Block::BirchLog,Block::SpruceLog,Block::JungleLog,Block::AcaciaLog,Block::DarkOakLog};for(int i=0;i<6;++i)if(blockType(old)==logs[i]){set(target,blockState(Block(int(Block::OakStrippedLog)+i*14),blockProperties(old)));if(!creativeMode_)damageSelectedToolWithSound();return true;}}
+ if(sneak && (old==Block::Grass||old==Block::Dirt) && itemDefinition(held).tool==ToolKind::Shovel && get(target+glm::ivec3(0,1,0))==Block::Air){set(target,Block::DirtPath);if(!creativeMode_)damageToolWithSound(offhand);return true;}
+ if(isLog(old) && itemDefinition(held).tool==ToolKind::Axe){const Block logs[]={Block::Log,Block::BirchLog,Block::SpruceLog,Block::JungleLog,Block::AcaciaLog,Block::DarkOakLog};for(int i=0;i<6;++i)if(blockType(old)==logs[i]){set(target,blockState(Block(int(Block::OakStrippedLog)+i*14),blockProperties(old)));if(!creativeMode_)damageToolWithSound(offhand);return true;}}
  Block b=itemToBlock(held);if(!isBuilding(b))return false;
  const auto hit=player_->cameraPosition()+player_->lookDirection()*interaction_.blockTarget.distance;
  b=buildingPlacement(b,player_->lookDirection(),normal,hit);auto d=buildingDefinition(b);
