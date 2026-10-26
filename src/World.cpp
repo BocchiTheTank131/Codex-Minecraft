@@ -348,6 +348,8 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
     auto display=[](Block b){return blockType(b)==Block::ItemFrame||blockType(b)==Block::FlowerPot;};
     if(display(blocks[index])!=display(block)){auto it=std::lower_bound(displayCells.begin(),displayCells.end(),index);if(display(block))displayCells.insert(it,index);else if(it!=displayCells.end()&&*it==index)displayCells.erase(it);}
     const bool wasBuilding=isBuilding(blocks[index]), nowBuilding=isBuilding(block);
+    const bool wasAutomation=automationDevice(blocks[index]),nowAutomation=automationDevice(block);
+    if(wasAutomation!=nowAutomation){auto it=std::lower_bound(automationCells.begin(),automationCells.end(),index);if(nowAutomation)automationCells.insert(it,std::uint32_t(index));else if(it!=automationCells.end()&&*it==index)automationCells.erase(it);}
     if(wasBuilding!=nowBuilding){auto it=std::lower_bound(buildingCells.begin(),buildingCells.end(),index);if(nowBuilding)buildingCells.insert(it,index);else if(it!=buildingCells.end() && *it==index)buildingCells.erase(it);}
     const bool wasFarm = isFarmTracked(blocks[index]), nowFarm = isFarmTracked(block);
     if (wasFarm != nowFarm) {
@@ -383,10 +385,11 @@ void Chunk::setLocal(int localX, int y, int localZ, Block block) {
 void Chunk::rebuildLightEmitterIndex() {
     lightEmitters.clear();
     farmCells.clear();
-    buildingCells.clear();signCells.clear();displayCells.clear();
+    buildingCells.clear();signCells.clear();displayCells.clear();automationCells.clear();
     precipitationTop.fill(static_cast<std::int16_t>(minimumY - 1));
     for (std::size_t index = 0; index < blocks.size(); ++index) {
         const Block b = blocks[index];
+        if(automationDevice(b))automationCells.push_back(std::uint32_t(index));
         if(isBuilding(b)){buildingCells.push_back(std::uint32_t(index));if(blockType(b)==Block::ItemFrame||blockType(b)==Block::FlowerPot)displayCells.push_back(std::uint32_t(index));if(buildingDefinition(b)->shape==BuildingShape::Sign)signCells.push_back(std::uint32_t(index));}
         if (isFarmTracked(b)) farmCells.push_back(static_cast<std::uint32_t>(index));
         if (blockLightEmission(b)) lightEmitters.push_back(static_cast<std::uint32_t>(index));
@@ -871,6 +874,7 @@ void World::prepareSpawnTerrain(const glm::vec3& position) {
             chunk->meshIdentity = nextMeshIdentity_++;
             computeSunlight(*chunk);
             chunks_.emplace(chunkKey(cx,cz),std::move(chunk));
+            automation.activateChunk(*this,cx,cz);
             queueLightingUpdate(cx,cz,false);
             scheduleFluidBoundaryUpdates(cx,cz);
             markDirty(cx,cz,true);
@@ -1919,6 +1923,7 @@ void World::generate(int renderDistance, const glm::vec3& initialPosition) {
     renderDistance_ = std::clamp(renderDistance, 2, 64);
     requestRadius_ = -1;
     nextRequestOffset_ = 0;
+    for(const auto& entry:chunks_)automation.suspendChunk(entry.second->x,entry.second->z);
     chunks_.clear();
     releaseEmptyTerrainPages();
     pendingStructureMobs_.clear();
@@ -1945,6 +1950,7 @@ void World::generate(int renderDistance, const glm::vec3& initialPosition) {
     computeSunlight(*centerChunk);
     const bool generatedEmitter = !centerChunk->lightEmitters.empty();
     chunks_.emplace(key, std::move(centerChunk));
+    automation.activateChunk(*this,centerX,centerZ);
     if (center.hasStructure || generatedEmitter)
         queueLightingUpdate(centerX, centerZ, false);
     if (savedEdits != edits_.end()) {
@@ -2178,6 +2184,7 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
         }
         scheduleFluidBoundaryUpdates(generated.x, generated.z);
         refreshBuildingConnections(generated.x,generated.z);
+        automation.activateChunk(*this,generated.x,generated.z);
         markDirty(generated.x, generated.z);
         markDirty(generated.x + 1, generated.z);
         markDirty(generated.x - 1, generated.z);
@@ -2220,6 +2227,7 @@ void World::unloadDistant(int centerX, int centerZ) {
                 chunk.waterBufferCapacity/sizeof(PackedTerrainVertex)});
             chunk.waterVao=chunk.waterVbo=0;
             ++visibilityRevision_;
+            automation.suspendChunk(chunk.x,chunk.z);
             it = chunks_.erase(it);
         } else {
             ++it;
@@ -2545,12 +2553,14 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     decltype(chests_) loadedChests;
     decltype(buildingTexts_) loadedTexts;
     decltype(buildingDrops_) loadedBuildingDrops;
+    Automation loadedAutomation;
     const auto commit = [&] {
         equipmentLoot_=loadedEquipmentLoot;
         edits_.swap(loadedEdits);
         furnaces_.swap(loadedFurnaces);
         chests_.swap(loadedChests);
         buildingTexts_.swap(loadedTexts);buildingDrops_.swap(loadedBuildingDrops);
+        automation=std::move(loadedAutomation);
         fluidQueue_.clear();
         fluidQueued_.clear(); fluidLavaDue_.clear();
         fluidUpdateAccumulator_ = 0.0f;
@@ -2665,13 +2675,23 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
             loadedBuildingDrops.emplace_back(pos,stack);
         }
     }
+    if(input.peek()!=std::char_traits<char>::eof()){
+        if(!loadedAutomation.read(input,loadedGenerationVersion>=11?-64:0,loadedGenerationVersion>=11?320:WORLD_HEIGHT))return false;
+    }
+    if(!loadedAutomation.placementsValid([&](glm::ivec3 p){
+        auto chunk=loadedEdits.find(chunkKey(floorDiv(p.x,16),floorDiv(p.z,16)));
+        const auto index=std::size_t(((p.y-(loadedGenerationVersion>=11?-64:0))*16+floorMod(p.z,16))*16+floorMod(p.x,16));
+        if(chunk!=loadedEdits.end()){auto edit=chunk->second.find(index);if(edit!=chunk->second.end())return blockType(edit->second);}
+        // Historical generated door blocks need no edit until their first change.
+        return Block::WoodenDoor;
+    }))return false;
     if(input.peek()!=std::char_traits<char>::eof())return false;
     commit();
     return true;
 }
 
 bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) const {
-    if(!SaveValidation::position(playerPosition) || buildingTexts_.size()>100000 || buildingDrops_.size()>100000)return false;
+    if(!automation.valid() || !SaveValidation::position(playerPosition) || buildingTexts_.size()>100000 || buildingDrops_.size()>100000)return false;
     for(const auto& drop:buildingDrops_)if(!SaveValidation::position(drop.first)||!SaveValidation::stack(drop.second)||drop.second.empty())return false;
     for(const auto& e:buildingTexts_){if(e.second.text.size()>99 || !SaveValidation::position(glm::vec3(e.first.x,e.first.y,e.first.z)) || e.first.y<minimumY() || e.first.y>=maximumY())return false;int lines=1,width=0;for(unsigned char c:e.second.text){if(c=='\n'){++lines;width=0;}else if(c<32||c>126||++width>24)return false;}if(lines>4)return false;}
     std::uint64_t totalEdits=0;for(const auto& c:edits_)totalEdits+=c.second.size();
@@ -2760,6 +2780,7 @@ bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) 
     for(const auto& e:buildingTexts_){output.write(reinterpret_cast<const char*>(&e.first.x),4);output.write(reinterpret_cast<const char*>(&e.first.y),4);output.write(reinterpret_cast<const char*>(&e.first.z),4);auto len=std::uint16_t(e.second.text.size());output.write(reinterpret_cast<const char*>(&len),2);output.write(e.second.text.data(),len);}
     output.write("BDP1",4);const auto pendingCount=std::uint32_t(buildingDrops_.size());output.write(reinterpret_cast<const char*>(&pendingCount),4);
     for(const auto& drop:buildingDrops_){output.write(reinterpret_cast<const char*>(&drop.first.x),4);output.write(reinterpret_cast<const char*>(&drop.first.y),4);output.write(reinterpret_cast<const char*>(&drop.first.z),4);writeStack(drop.second);}
+    if(!automation.write(output))return false;
     return output.good();
     });
 }
@@ -3959,6 +3980,7 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
     const Block previous = chunk->getLocal(localX, y, localZ);
     if (previous == block)
         return false;
+    if(!automation.canRegister({x,y,z},block))return false;
     const auto skylightAttenuation = [](Block value) {
         return occludesLight(value) ? 15 :
                (isLeaf(value) || isWater(value) ? 1 : 0);
@@ -3988,15 +4010,19 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
     if (block == Block::Chest || buildingIsContainer(block))
         chests_.try_emplace(entityPosition);
 
+    if(!automationMoving_ && (blockType(previous)==Block::Piston||blockType(previous)==Block::StickyPiston) && blockType(previous)!=blockType(block) && (blockProperties(previous)&8)){
+        auto head=glm::ivec3(x,y,z)+automationFacing(previous);auto h=getBlock(head.x,head.y,head.z);if(blockType(h)==Block::PistonHead&&(blockProperties(h)&7)==(blockProperties(previous)&7))setBlockInternal(head.x,head.y,head.z,Block::Air,true,false);
+    }
     chunk->setLocal(localX, y, localZ, block);
+    automation.changed(*this,{x,y,z},previous,block);
     if(rebuildImmediately && occludesLight(block) && blockType(getBlock(x,y-1,z))==Block::DirtPath)
         setBlockInternal(x,y-1,z,Block::Dirt,true,false);
-    if(blockType(previous)!=blockType(block) && (buildingIsBed(previous)||buildingIsDoor(previous)||(blockType(previous)==Block::Painting && (blockProperties(previous)&32)))){
+    if(!automationMoving_ && blockType(previous)!=blockType(block) && (buildingIsBed(previous)||buildingIsDoor(previous)||(blockType(previous)==Block::Painting && (blockProperties(previous)&32)))){
         auto pp=blockProperties(previous);glm::ivec3 other(x,y,z);
         if(buildingIsBed(previous))other+=(pp&16)?-buildingFacing(pp):buildingFacing(pp);else if(blockType(previous)==Block::Painting)other+=(pp&16)?-buildingFacing((pp+1)&3):buildingFacing((pp+1)&3);else other.y+=(pp&16)?-1:1;
         auto mate=getBlock(other.x,other.y,other.z);if(blockType(mate)==blockType(previous) && ((blockProperties(mate)^pp)&16))setBlockInternal(other.x,other.y,other.z,Block::Air,rebuildImmediately,false);
     }
-    computeSunlightColumn(*chunk, localX, localZ);
+    if(!automationBlock(previous)||!automationBlock(block)||nearbySkyChanged)computeSunlightColumn(*chunk, localX, localZ);
     if (affectsBlockLighting)
         queueLightingUpdate(chunkX, chunkZ, true);
     // Fluid propagation is transient. Player edits and placed source blocks
@@ -4008,7 +4034,7 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
     if (rebuildImmediately && dispatchImmediately && !synchronousMeshForSmokeTest_)
         dispatchMeshJobs(2);
     queueFluidNeighborhood(x, y, z);
-    if(rebuildImmediately)for(auto direction:FaceNormals){glm::ivec3 pos=glm::ivec3(x,y,z)+direction;Block b=getBlock(pos.x,pos.y,pos.z);if(isTorch(b) && blockProperties(b)){auto support=pos-buildingFacing(blockProperties(b)-1);if(support==glm::ivec3(x,y,z)&&!isSolid(getBlock(x,y,z))){buildingDrops_.push_back({glm::vec3(pos)+.5f,ItemStack{Item::Torch,1}});setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);}continue;}if(!buildingNeedsSupport(b))continue;
+    if(rebuildImmediately && !automationMoving_)for(auto direction:FaceNormals){glm::ivec3 pos=glm::ivec3(x,y,z)+direction;Block b=getBlock(pos.x,pos.y,pos.z);if(isTorch(b) && blockProperties(b)){auto support=pos-buildingFacing(blockProperties(b)-1);if(support==glm::ivec3(x,y,z)&&!isSolid(getBlock(x,y,z))){buildingDrops_.push_back({glm::vec3(pos)+.5f,ItemStack{Item::Torch,1}});setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);}continue;}if(!buildingNeedsSupport(b))continue;
         auto d=buildingDefinition(b);auto p=blockProperties(b);glm::ivec3 support=pos+glm::ivec3(0,-1,0);
         if(d->shape==BuildingShape::Chain || ((d->shape==BuildingShape::Lantern)&&(p&4)))support=pos+glm::ivec3(0,1,0);
         if(d->shape==BuildingShape::Frame||d->shape==BuildingShape::Painting||d->shape==BuildingShape::Button||(d->shape==BuildingShape::Sign && (p&16)))support=pos+(d->shape==BuildingShape::Button?buildingFacing(p):-buildingFacing(p));
@@ -5048,7 +5074,7 @@ void World::flushBuildingDrops(SurvivalWorld& survival){
     for(const auto& d:buildingDrops_){if(!survival.spawnDrop(d.first,d.second.item,d.second.count,d.second.durability,glm::vec3(.1f,.3f,.1f),0,d.second.identity))break;++delivered;}
     if(delivered)buildingDrops_.erase(buildingDrops_.begin(),buildingDrops_.begin()+delivered);
 }
-void World::refreshBuildingConnections(int cx,int cz){for(int z=cz-1;z<=cz+1;++z)for(int x=cx-1;x<=cx+1;++x){auto* c=findChunk(x,z);if(!c)continue;for(auto index:c->buildingCells){glm::ivec3 p(x*16+int(index%16),c->minimumY+int(index/256),z*16+int((index/16)%16));auto b=getBlock(p.x,p.y,p.z),connected=buildingConnectedState(*this,p,b);auto definition=buildingDefinition(b);if(x==cx&&z==cz&&definition&&(definition->shape==BuildingShape::Button||definition->shape==BuildingShape::PressurePlate))connected=blockState(connected,blockProperties(connected)&~8);if(b!=connected)setBlockInternal(p.x,p.y,p.z,connected,true,false);}}}
+void World::refreshBuildingConnections(int cx,int cz){for(int z=cz-1;z<=cz+1;++z)for(int x=cx-1;x<=cx+1;++x){auto* c=findChunk(x,z);if(!c)continue;for(auto index:c->buildingCells){glm::ivec3 p(x*16+int(index%16),c->minimumY+int(index/256),z*16+int((index/16)%16));auto b=getBlock(p.x,p.y,p.z),connected=buildingConnectedState(*this,p,b);auto definition=buildingDefinition(b);if(b!=connected)setBlockInternal(p.x,p.y,p.z,connected,true,false);}}}
 
 std::optional<glm::vec3> World::findBedSpawn(const glm::ivec3& foot) const {
  // At most four columns of chunks, only on a real respawn. Never change terrain.

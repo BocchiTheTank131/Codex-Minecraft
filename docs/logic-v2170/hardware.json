@@ -1,0 +1,9 @@
+{
+  "cpu": "Intel Core i7-14700F",
+  "logical_processors": 28,
+  "display_adapters": [
+    "AMD Radeon RX 9060 XT",
+    "Parsec Virtual Display Adapter"
+  ],
+  "physical_low_end_tested": false
+}

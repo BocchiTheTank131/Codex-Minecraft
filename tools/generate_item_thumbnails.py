@@ -19,7 +19,7 @@ assets=ROOT/'assets';manifest=assets/'inventory_previews.json'
 inputs=['src/World.cpp','src/Renderer.cpp','src/Building.cpp','src/Definitions.cpp','src/Transportation.cpp',
         'include/Block.h','include/Survival.h','include/BuildingContent.inc','include/Definitions.h',
         'assets/crafting_blocks.rgba','assets/inventory_atlas_16.png','tests/stability/icons.cpp',
-        'tools/generate_item_thumbnails.py']
+        'tools/generate_item_thumbnails.py','src/Automation.cpp','include/Automation.h','include/Building.h','include/AutomationContent.inc','tools/generate_automation_assets.py']
 def atomic_bytes(path, data):
     path=Path(path);temporary=path.with_name(path.name+'.'+uuid.uuid4().hex+'.tmp')
     temporary.write_bytes(data)
@@ -86,7 +86,7 @@ save_png(atlas,assets/'item_icons_expansion.png');atomic_bytes(assets/'item_icon
 # Contact sheets use the same cell positions for an immediate visual comparison.
 before=Image.open(ROOT/'build/v2161-validation/baseline/icons.png').convert('RGBA') if (ROOT/'build/v2161-validation/baseline/icons.png').exists() else art.resize(atlas.size,Image.Resampling.NEAREST)
 for title,sourceImage in [('before',before),('after',atlas)]:
-    sheet=Image.new('RGB',(800,35*82),(43,44,49));draw=ImageDraw.Draw(sheet)
+    sheet=Image.new('RGB',(800,((len(records)+9)//10)*82),(43,44,49));draw=ImageDraw.Draw(sheet)
     for entry in records:
         id=entry['id'];cell=entry['sprite'];icon=sourceImage.crop((cell%10*64,cell//10*64,cell%10*64+64,cell//10*64+64));x=cell%10*80;y=cell//10*82
         sheet.paste(icon,(x+8,y),icon);draw.text((x+6,y+65),str(id),fill='white')

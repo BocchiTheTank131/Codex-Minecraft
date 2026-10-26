@@ -31,6 +31,7 @@ class Transportation;
 namespace SaveFile { class Session; struct CommitStatus; }
 
 class Game {
+    friend class AutomationTest;
     friend class QolTest;
     friend class IconTest;
     friend class FarmingTest;

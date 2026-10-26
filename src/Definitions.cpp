@@ -353,6 +353,7 @@ const Items& items() {
             put(c.item,std::uint16_t(c.item),int(c.item),c.name);
             result[int(c.item)].placedBlock=c.block;
         }
+        for(const auto& c:automationContent())if(c.item!=Item::None){put(c.item,std::uint16_t(c.item),int(c.item),c.name);result[int(c.item)].placedBlock=c.block;result[int(c.item)].displayName=c.name;}
         return result;
     }();
     return definitions;
@@ -673,6 +674,10 @@ const Blocks& blocks() {
             put(c.block,std::uint16_t(c.block),base.topTexture,base.sideTexture,base.bottomTexture,c.item);
             auto& d=result[int(c.block)];d.hardness=base.hardness;d.correctTool=base.correctTool;d.soundMaterial=base.soundMaterial;
             d.emittedLight=blockLightEmission(c.block);
+        }
+        for(const auto& c:automationContent()){
+            put(c.block,std::uint16_t(c.block),187,187,187,c.item);
+            auto& d=result[int(c.block)];d.hardness=1.5f;d.correctTool=ToolKind::Pickaxe;d.soundMaterial=SoundMaterial::Stone;
         }
         return result;
     }();

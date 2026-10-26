@@ -147,7 +147,7 @@ void FarmingSystem::update(float dt,World& w,const glm::vec3&,const Weather* wea
     updateMilliseconds_=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-start).count();
 }
 std::vector<ItemStack> FarmingSystem::harvest(Block b,const glm::ivec3& p,std::uint32_t seed) {
-    std::vector<ItemStack> out;auto add=[&](Item i,int n=1){out.push_back({i,n});};const auto h=hash(p,seed);
+    std::vector<ItemStack> out;auto add=[&](Item i,int n=1){if(i!=Item::None&&n>0)out.push_back({i,n});};const auto h=hash(p,seed);
     if(isBuilding(b)){auto d=buildingDefinition(b);add(blockToItem(b),d->shape==BuildingShape::Slab && (blockProperties(b)&8)?2:1);return out;}
     if(isCrop(b)) {
         const auto base=cropBase(b);const bool ripe=cropStage(b)==3;

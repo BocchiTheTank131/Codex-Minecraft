@@ -3,8 +3,8 @@
   "tile_pixels": 64,
   "supersample_pixels": 128,
   "columns": 10,
-  "rows": 35,
-  "items": 347,
+  "rows": 37,
+  "items": 361,
   "camera": {
     "azimuth_degrees": 45,
     "elevation_degrees": 30,
@@ -12,31 +12,36 @@
     "padding_factor": 1.13
   },
   "inputs": {
-    "src/World.cpp": "0a770a64cf7d21cc3d4c367469549c6d87a3d5c2a2c63f4e8a69d7a324e3ea0f",
+    "src/World.cpp": "25a8167574fe998daaf96deda17e08e3f4ce08ca6be7ce5a4040a3f40078963f",
     "src/Renderer.cpp": "d63f657ff54c658a38c88297df16d0171717929f5a5a112886ab6ae31cb7e43a",
-    "src/Building.cpp": "b78d4a9d05e9309fe34b78e6378ef54c4b8f7b7e7e1d482b498bb5335a220002",
-    "src/Definitions.cpp": "c1276e0bb48a22a6679bdbfad9a8852782b1ffb9c6328984c272a58d1abe5157",
+    "src/Building.cpp": "c26f8ef3f147b5e66991bdbb6ead3ab99c82bb11dc2a23fff12baddaa5b80060",
+    "src/Definitions.cpp": "cafaf1ca087dcf59057cc799448c6bab29f85858fe53cdd00a21c63c8b0c9e37",
     "src/Transportation.cpp": "b5966d365f1a31113b163c28e7022f3d06dd46020c8e43f81af957eeb89583fc",
-    "include/Block.h": "d9dcb7cb51454140a9e20b7ed81571a46ab673aa257416df915b6213dc6e7e7d",
-    "include/Survival.h": "620b1d72cb3b59f67967a9b35309cd8e3b09b315ae8d200820c5db6658bd2af6",
+    "include/Block.h": "6187e31633cf2e96577e00f73f40f2288c7f809823f9fa7c0634677ea80a66c4",
+    "include/Survival.h": "539b8815496b52c061eab743a2ce3bb0468331723c03d3844e8aa9553e7e7314",
     "include/BuildingContent.inc": "6a741be6169f0336aed124f383e40a68f6908ae63f5ea3540e7ec45a7f285823",
-    "include/Definitions.h": "e5d6824af5cbe2356969d2fa50e11e0cbb70972136d0233a6843767a451c64f5",
-    "assets/crafting_blocks.rgba": "73a66c5ea245d0bfbeb26ad24fc856683544cd10bc716366d1c0ed97dde22531",
+    "include/Definitions.h": "83f686d1f54f9ff5a73f4c5194ada95d6dcb209cf7f983516706165a39bc20ac",
+    "assets/crafting_blocks.rgba": "2e4bb3d2581410e0eb0297115dc2092d01f229764e72e18cf1fb7538c962ae44",
     "assets/inventory_atlas_16.png": "868325e5a82920076b7bdd034a20c9bb1bfa90cfbdf4ad1adee970779e3d2f26",
-    "tests/stability/icons.cpp": "13eff078d217655646e207df7e32d999c4de6fb7fdecc4f1fa25042b557d94cf",
-    "tools/generate_item_thumbnails.py": "162f45ae3990d142cd8170b25041e5337d033ea84b25650803412e79b671aa2e"
+    "tests/stability/icons.cpp": "abf2e0bc44e3be7315bee6e77d08c562f23a036c395e733137f9e39f2cb97869",
+    "tools/generate_item_thumbnails.py": "5ff22aaec311e9309157352d69695a897608e5a89b402410b82d72b2bfb39201",
+    "src/Automation.cpp": "8cbc1845e5c0cf0ac951ba4ccc792a1660fdd4ab57d2f73dff2a9ddb0457ade5",
+    "include/Automation.h": "d9f038f8b89a5e2ee392b253c156031b0f11f9b6ec182368faa9e67028ba55fa",
+    "include/Building.h": "3bb4025df7aa6d42643052dfe11b5bba27f7939cd79ad075404933f2288a1627",
+    "include/AutomationContent.inc": "3553a77241e6cf672bf8eb1d51336a51edcb91b6fc5fd1ffd7d613c338b027a9",
+    "tools/generate_automation_assets.py": "fc5972ca2b17c7ad863e45a70e985eedf9d6c8f8cfc81b1af49794e60ee6cf15"
   },
   "outputs": {
-    "assets/item_icons_expansion.png": "c35d0d2e6b5c22b672db7aba1fc788e46f9dd6ccc31ddecd41d3150bfea84975",
-    "assets/item_icons_expansion.rgba": "d541c2cf98ceb7e05945a603f6d432109fe865bae6009ec85e4a39880d304cd2",
+    "assets/item_icons_expansion.png": "ec0536396e17a258c9fa2e38372da042aa1687215057806f1ee80a338593ac28",
+    "assets/item_icons_expansion.rgba": "4b910fecaa9f4f6f5f99336da40d7be82bc5bbd231cd3dc0264efd50ad6ac03d",
     "assets/inventory_art_source.rgba": "28e00091f74a1f75ca505659fdc4735d8df0419ce0cd695b3f46d1afb5ad3192",
     "assets/inventory_previews/001.png": "a370236a9871bb6c9169e1302fbde6ac1952f06fea51521b7e9f915394221888",
     "assets/inventory_previews/002.png": "8c3e5e027c2d8ce98d86fe2d1e58d992a0c242cf2fe80a0172887de4b0cf97e3",
     "assets/inventory_previews/003.png": "7fb9d481066c6f5cc2ff73341f7d221f80b71a42151d5b9bdbf5cb18ba308cbe",
     "assets/inventory_previews/004.png": "0d63d11e6e275715ce2ed3c660977ff548422a1c2a51e72666b2833e028088af",
     "assets/inventory_previews/005.png": "769af88dcd696267b56e92929bc5c6f938c49483be3d3c6e504e58ecf6eab173",
-    "assets/inventory_previews/006.png": "5d6298c08dc42b2856047d7a006b8fa02b26bffc9f782f316eec1854eee27a76",
-    "assets/inventory_previews/007.png": "b6c4d174236c90a91686967d64903512a92da35a53f0f7671ef90f6aed038c21",
+    "assets/inventory_previews/006.png": "799dbe493b480b5be3806c42bbbaad181ccb27988137489b815f172aa80cc4c7",
+    "assets/inventory_previews/007.png": "f6a64b3b55e9d98b6c62d724e7ec685eec78fc40c1a4e92fde629aaf18f6d515",
     "assets/inventory_previews/008.png": "378a36bc0f0d908f4314aa19dc1787986a5a73de4dbc22f5ef9a05afc6807fc2",
     "assets/inventory_previews/009.png": "5ebc20a1b8cc42af972866a8f6b60ca359cdb4b1b987e5061ce4a7f9b9f8e961",
     "assets/inventory_previews/010.png": "a4d7b723c63f14c7c0fb5976e3b1e204fd1098bb088042d4d6fe95398bfe7d61",
@@ -67,20 +72,20 @@
     "assets/inventory_previews/035.png": "397f8c3e624fca836f4ff5c3b99f6599c45493f3539548378fbdde5c3de462ad",
     "assets/inventory_previews/036.png": "8a33c83573d15127bb9a648aeb5bf88e3255e58f9b19b86972ab9b4d1bba47d5",
     "assets/inventory_previews/037.png": "acfe30228a8ce78827617e26391832b112fc0b298c9694d7e1189a7b114e6dd8",
-    "assets/inventory_previews/038.png": "e167d1fc17ac8e9eeb2bdf85fefe2e6a798ab28891cae05027af3fea0db299b5",
+    "assets/inventory_previews/038.png": "b1916888fd8242d6f4a07274d29292075104154dfed17e7ded0cabc0040a87a2",
     "assets/inventory_previews/039.png": "6fe9e6edee548e9d5c6508abe80573b93001ebe0d45c310c4c7e50e4db427f90",
     "assets/inventory_previews/040.png": "f721db25bbf1cb2e78003f989dbf9f642cd573f7c5dcc3e9d58e95d8c46b6353",
-    "assets/inventory_previews/041.png": "ac1e31602a92090a9e2b8f78ee7cd83054ba4bd4ac8d227a30fa364a97909a98",
+    "assets/inventory_previews/041.png": "11fc0f4967e09f32f851a9d02ccc69037e84922e7b96626ed8f1358da3f87037",
     "assets/inventory_previews/042.png": "14b1c66039c332b46563bcdb0c2cf55b10dc9ab23e62578130ea133c5af6c987",
     "assets/inventory_previews/043.png": "a7aed566d266f372513223b5c9988dc3645f456726d3a30e355a6d557c0311e6",
     "assets/inventory_previews/044.png": "217e665427886a28e23e318ebc569018a41f1ba6489f7115ffb55fe4251cb029",
-    "assets/inventory_previews/045.png": "547fc19c57b33a6412faa89156c566d2c5acba849293909bfff44b8da2403916",
-    "assets/inventory_previews/046.png": "28682d652bf4b08b79b507a6fd3b1e1f2c63bd24ec56e32be6e65051fb4969ae",
+    "assets/inventory_previews/045.png": "e8ab03c9acffc639573e2a8b7243f990d0e6d8cf30613e143f39301bc3fbfbb3",
+    "assets/inventory_previews/046.png": "3ddf030f6b21731ea8642a5259f4c3d12cbaf02a9208520dbf709f74f38712d7",
     "assets/inventory_previews/047.png": "448ca0b0de2ffa16c74877d87413c1807e61ea18d74c4d04a1e82a4a614813a0",
     "assets/inventory_previews/048.png": "ed0f0692affa65e2ac60be7de0f82166c343c28398b971255bce32fd8b3307f9",
-    "assets/inventory_previews/049.png": "5ee684a35c89273b2d3ec1c25f2446aec8dcb9735350168908b2b716bbd0aed5",
-    "assets/inventory_previews/050.png": "c48d242d8c8ad7e6b547e9e9084fb3fbedae73a10fe49f41ac10b2f42d0f05ea",
-    "assets/inventory_previews/051.png": "e7357fa8761192c6506b2e2637b978c98fea7a9ec8543d5118463bd636a1d50d",
+    "assets/inventory_previews/049.png": "4fcf8793c12ba3e3241ab7eaf78d2fe604dd94a6ae351dfdc9c285de5be048e9",
+    "assets/inventory_previews/050.png": "b21e31fed43c05f24c5fb442ab9590a3e1d4b61233f284ccf7bf4d1facdd1744",
+    "assets/inventory_previews/051.png": "3bd89d99e57ff0a3a6e014eb3f5c4b2b282f570333d327c358a29eae971a9fe0",
     "assets/inventory_previews/052.png": "0ae3986a7e931a74106a952ef6a20a251c34083ad8ea60c991b03a842102b151",
     "assets/inventory_previews/053.png": "5849c7a5f8faa9e4734f4cd3b3412f49d23000cebad09f2ae623010a178406cb",
     "assets/inventory_previews/054.png": "cefbc02c6cdef943ea8369edf556b9c2f22c44e467b9b4abe87755cb60d8a278",
@@ -95,12 +100,12 @@
     "assets/inventory_previews/063.png": "b8485e2342a35c0ef76c22721083d314f09cefefe1a45f358344642b9ce629a6",
     "assets/inventory_previews/064.png": "a7b7fff7b126e1c3d5287afa9ac7378c07738b776ccfcd906ddc81d26e9d170b",
     "assets/inventory_previews/065.png": "5273888060fe11017148a32cb29a1fbdc00abe728dae5f6e430dfa8d48abdda9",
-    "assets/inventory_previews/066.png": "edf445f68967727f38c073c8e39170d01dbee6fc82533c152bab186027bae282",
+    "assets/inventory_previews/066.png": "cec3772a24fbb949b4da256fd6628fa944d1e4152648143d188c11baa082a3db",
     "assets/inventory_previews/067.png": "954ccb1e3d431036d2a792769e0d35063b6532eb6aefe64e450963e14a10cf7c",
-    "assets/inventory_previews/068.png": "d62088da5d4de3d334aaab8141a01c3dd45f3dc88b9c26d6c255fcaa84727157",
-    "assets/inventory_previews/069.png": "1191664b922206c682a54518008c384d14d0dd17af6ddff6b9d4670f538f7c75",
-    "assets/inventory_previews/070.png": "0c2added516cf0bcc7fda59ce9cf702ea86005287715ecb803c57e30706c4789",
-    "assets/inventory_previews/071.png": "1cb54dd357aec2bf59ea8320ecb6d865a692492908f105e4749be31c57db7d92",
+    "assets/inventory_previews/068.png": "63fe8102c5f5418c50669e299c744ff81781bc9735f6d940da75498f2de89efe",
+    "assets/inventory_previews/069.png": "de22dbe955dbef7598d9cfbde7790f1889c1eaac295d3fa3cd96d4eadd93ef44",
+    "assets/inventory_previews/070.png": "0a1520841435e0225b7ab6319c5fc543878732101fb93efbe6542180f978cd91",
+    "assets/inventory_previews/071.png": "80a31a445858364610bbf31a8c5bde9d110e20da07ca6fbbf9796c1eaee40c83",
     "assets/inventory_previews/072.png": "76a881f3a7746237f1c12db1ad9fe7c69952e8e18823e78df4a86b00c4250ec1",
     "assets/inventory_previews/073.png": "53aeb46daccc0a926ea0cedd86a31ffe0f8bc63cb8e82afde3214932c180b2fa",
     "assets/inventory_previews/074.png": "862ce2212c035c14d474d8aba9c7ac143673a5ed7da40f7d3557d4bcaacd506b",
@@ -119,8 +124,8 @@
     "assets/inventory_previews/087.png": "19105ddb5f31039f00cd6a746393bd78401d60fecc5d37b0692fa6d863717f6d",
     "assets/inventory_previews/088.png": "cccbdede0626ea0ebc44d2a1a45ea6b0446515b256e0187a46f4076f1f1452ef",
     "assets/inventory_previews/089.png": "5894d1bae06dc2b7d65c226ff1e080eb1764ba981d32e1a4089a11bc51c23863",
-    "assets/inventory_previews/090.png": "7cf4b911c974f3742706f00e1ecd0d1e100532566256ae4c696a480ac60fbc16",
-    "assets/inventory_previews/091.png": "df573793bb308c407954b910853882e4216338f5420c70d4b9a107ab26e8e5e9",
+    "assets/inventory_previews/090.png": "eb58d84e622fdeb0bfce747fada1d603ea8bf261e3dd76aabfec49755ace516c",
+    "assets/inventory_previews/091.png": "885b3da6a1561a695d2bd27168c29929f389fcada98811beb9d8881e0ab479f3",
     "assets/inventory_previews/092.png": "9affabb13c068811c65c52b47ffef8c36feb499a8978ae6ad3c11ca26af28af7",
     "assets/inventory_previews/093.png": "4724cc846af770eeef5aa9c022e702e57e277e9893f1cb28baab7a28c5f4ec8d",
     "assets/inventory_previews/094.png": "1a860389ae32ae2d50b4e5cc21679bf362965f60008e3edd5e8c025997784b83",
@@ -131,19 +136,19 @@
     "assets/inventory_previews/099.png": "5a1992b917a0153fea874ab639029476bdf5c7088d25f78f3a968292bb4b6e6d",
     "assets/inventory_previews/100.png": "6e5b752b8d7675200a5226c911bc9456cc0db5ccde9f509e5cb174584451261f",
     "assets/inventory_previews/101.png": "c3c470377c11c49e7f3ffedb36fffe405fb4f1c4b550891eff88e6177c2b19a5",
-    "assets/inventory_previews/102.png": "982a3045b9641068000bfdfd58341e04c822def5ca30b4c0738efe4a4e27b015",
+    "assets/inventory_previews/102.png": "ee1e4f672deb186082d410aabe4fb797976aa15aad4565bb0386424961eb841b",
     "assets/inventory_previews/103.png": "9c3db3dc3e24ae441bef62bd93b2618788def4b97b761adbd141842d3c0dc712",
     "assets/inventory_previews/104.png": "83482d9983fbc96f53b8debe1cbc1ab4f4ecea64228d2050374110eaacb59bed",
-    "assets/inventory_previews/105.png": "60b1a262609625e98fe5fd47d3539810dab04989cfe9fe1373ead4f4122f62e9",
+    "assets/inventory_previews/105.png": "bbca9bae2d844426642af5adfa0b50817b87b4afdadba81ecdd7df756a0e5afa",
     "assets/inventory_previews/106.png": "c7efdc20cb9744bec1fdef3157a5aca149f140f913fc5e38af50d7bfff2b5508",
     "assets/inventory_previews/107.png": "be577490e728e3d071f60e3c4199f93e3f8c38707a4202a8d6825c7a37a5b9af",
-    "assets/inventory_previews/108.png": "1b7bd24cfd088fa551f7d8cf592237744c4aacb42fed90c05ab864192a1495d0",
+    "assets/inventory_previews/108.png": "989784473293ff063188029e580a74d8262ac848c9e30a5dbdecf35c03e6850b",
     "assets/inventory_previews/109.png": "9b45027c1c2f5870817baf84e9843c3ca676be417d84269d112a97e50271a459",
     "assets/inventory_previews/110.png": "988a6d2adb650dc46fd12b75f86b52033d41e1d5869417c784066317ccd47605",
-    "assets/inventory_previews/111.png": "0d89c54636ae2525c106bb6b5db5d7c9aacae2df06fc04eb1e16126b1c84b4b8",
+    "assets/inventory_previews/111.png": "e452a6f7abc68102a2bdad5d6cf06d5422eab8a70bcdc5af9cec1f18e277cc79",
     "assets/inventory_previews/112.png": "2d7965f0aeeea1efcd8d133c94b84a58a7b51cf7f1bb27d1d2450028a0686d1e",
     "assets/inventory_previews/113.png": "2121da6c749e343c1d2426c8381476f081e4f00a48bbf2aba8424922a7d1d6aa",
-    "assets/inventory_previews/114.png": "39cbaf88c47692026a25e69448d63e2066fd92a8561334807e1789cc3ac60c0f",
+    "assets/inventory_previews/114.png": "217c6944d7fbfe059d14d0a47d0472b272f8a62a58243f05c4bb089dddc1da70",
     "assets/inventory_previews/115.png": "50a594b0df845eef44134a2e4a8e648bda11e612bc652c7acceaae7686c668f9",
     "assets/inventory_previews/116.png": "7c22f2e74727bdc42f1ae0cfe7de58dabfeeaa89fa72ee53ce36e938e6a3e72f",
     "assets/inventory_previews/117.png": "3a50fd01f691315b3af93701184c65b334a6e455ea87c4934b6b13928f20f9cd",
@@ -155,12 +160,12 @@
     "assets/inventory_previews/123.png": "a3a424a4e9cdd5cdcb5eb2adad8bf3e5cccbc9d4e5e338a8e9596b74fcbc5c91",
     "assets/inventory_previews/124.png": "b77b7fb81d9aabdc6d25f2eb9cd6027e49010fc0faae913787e04cb9b31731a8",
     "assets/inventory_previews/125.png": "c514f854fdae5359e4fad968f42e2ad778e1bb0bacdf83b51ae06f04f7f66ab3",
-    "assets/inventory_previews/126.png": "f86e1b8ee1526550911d28dfd7294d6298d63753d4553f33f5a14f1e4e704694",
-    "assets/inventory_previews/127.png": "fa17e7e80560c63dce859cb3aca41a0c4cd02b26bef3bb54e883ad0d39422899",
-    "assets/inventory_previews/128.png": "87a921c7cf3a4b300f87b7acf23b51fc6a322113afdfac350e2cd1ccb4cfc445",
-    "assets/inventory_previews/129.png": "2487760ad196e57506370e9ae3a40f166f52cbbd79b8dcbcb842a43cee9edf0d",
-    "assets/inventory_previews/130.png": "abd121a571effa2df902df354c404fb30a94ebd347c0febcf012739296782a8b",
-    "assets/inventory_previews/131.png": "63f9d421785565a2384f42a50278139c5037027d965efe5a62b194b033b6c84a",
+    "assets/inventory_previews/126.png": "7c99abd15ab32f939e6827baf571ec78dbd653f83dc179646ac4e918c378256c",
+    "assets/inventory_previews/127.png": "1a0562904311646e5bcbcd39659eafbba34ff1981a779482eb19ba035e37e677",
+    "assets/inventory_previews/128.png": "3b68383cf4896aa0b47a697754bab4f2b512995f3758441dc9b2addc2cd93364",
+    "assets/inventory_previews/129.png": "d36402a4e5fa97f21709d88d1d022cdbdb6babc10635443d9a363399d1396987",
+    "assets/inventory_previews/130.png": "d9a43162a7d1de2873c785212c331b07f14437973cd9335d29c7bccff5ea2158",
+    "assets/inventory_previews/131.png": "f38c9bb00e4a4aa22e11749ddaba19540b6d98670092fb04e8bda9fd2cd2e21c",
     "assets/inventory_previews/132.png": "eb8405ee74ce5bed9a97c8d579cab857f9601d85bd838952e481ddb48e5f7635",
     "assets/inventory_previews/133.png": "19dda790d9cd185d28f874f7c7d9dcb81f541a1da84d9d3679183a125cbe2a6b",
     "assets/inventory_previews/134.png": "f453fafa757afef20e939cdbfdce94fbe0b6eec36aece089677027b0e75c7d30",
@@ -171,8 +176,8 @@
     "assets/inventory_previews/139.png": "7127560921fb1733f50e1a309d286d95cf3910142ede5c0bf951b80d1ba506c2",
     "assets/inventory_previews/140.png": "a0bb271abba13bbbda88e66b443f137b67e385eb967a27dcc7609b4b13687ba6",
     "assets/inventory_previews/141.png": "438d516f05c0a224d3fc71ade4778852c9bd4dcb2cc2f0ee48492336737b7b34",
-    "assets/inventory_previews/142.png": "303a36e9bf9d5174669a89f2b9997efdb9b7a4bdd90d6a91ac959a950c02c580",
-    "assets/inventory_previews/143.png": "6a08b1458d5bb5788347ea1e1bc1f7335e4fe5af503ea6040778ba8f7ef6cef7",
+    "assets/inventory_previews/142.png": "ac83b70355136263ec6e855e33b1d3e679832692ca88b30f577a718a788f8b97",
+    "assets/inventory_previews/143.png": "ab21703cd4fc16881b3d7dab5d821dd2f59bef98a270385c0987cd16767ae219",
     "assets/inventory_previews/144.png": "2ca40f11632e409fb026f7d8a7d7a8eb24991c313102343223df91f700ae5b18",
     "assets/inventory_previews/145.png": "eeace78d0ef946180e6eb0177885f65b3ae9de02048dd58fee17c21ed692fa04",
     "assets/inventory_previews/146.png": "828d3b658bdf535f3cab0a217c5f8ba19e43799acb883fa11e528cabe0ee3d50",
@@ -246,7 +251,7 @@
     "assets/inventory_previews/214.png": "38103a154ddc908ebf896d8ca5ccefb5ac6a524a7c75c668200de150e53a5c12",
     "assets/inventory_previews/215.png": "7504f402ca24c02aa277787c663deb970229c89e10da442081f2965bdfad2892",
     "assets/inventory_previews/216.png": "edaf618e755b9a89e2123865ac0294aa685ffef71d46d8f0299fe4e561d4ec0c",
-    "assets/inventory_previews/217.png": "aeadb69792f4b899d9a48867d2f108425b4fd4f2388d6c645cab17d3171963ca",
+    "assets/inventory_previews/217.png": "87a73fb161828bc376d3d73a310f0a3ef17994708745577c309507385570bf69",
     "assets/inventory_previews/218.png": "7c594f03203b294a9b4599dbacd3ccd882a3d6ee346b14f9d4fe0a3e52fb76b2",
     "assets/inventory_previews/219.png": "8c7d3404668af7a06b1a036ac8e89f5de174ed1199ef725d4d74ab0a4b5a6103",
     "assets/inventory_previews/220.png": "67c2b6991ad06bf9393a74e3a384c849583180998f36457c25cf5fcbc72addcb",
@@ -257,7 +262,7 @@
     "assets/inventory_previews/225.png": "4a4d2887b8745d69ce86eeab4cb6637db2ed12975a8d97c2e62fd6cefb96971d",
     "assets/inventory_previews/226.png": "ccc4b338325643c7226fa99ef3e7d5879b06ed0d764270ad4fe15e65e3181c1e",
     "assets/inventory_previews/227.png": "d2c9cf2c3d67424ec1f04351245811a3332d228b1fe1e0a8c47cb8aab91fdaa4",
-    "assets/inventory_previews/228.png": "c0b005ea8a3ef08dfc58a6ac2866457f7a793efe15e1c485ebb9e47479d9f02c",
+    "assets/inventory_previews/228.png": "7f0a57fa0b5da34fdbdb230ea4aa34641460fe8abd2238a7fbee6ab8b69740f5",
     "assets/inventory_previews/229.png": "a52e3874b4e9ae955ee4f95782df8e62dbe48da56620e968c0b141e17e2fc505",
     "assets/inventory_previews/230.png": "2578f3429f4e45cd2e50fffa9baec74bf0dd4c7d226c030b3bd2562d232a3ead",
     "assets/inventory_previews/231.png": "6b7edfa35941aa52983ba4802d1bc97e301a0318ef6fd9318da563b8a5e6bb46",
@@ -299,10 +304,10 @@
     "assets/inventory_previews/267.png": "f099ea5ebe11558255569e61a08a06a3f85da8c0615603d9cfb5fd9a5a7688d2",
     "assets/inventory_previews/268.png": "49d8a5cbfe3c9d1750ace6400c4c8792147276f0a5018a23cb0f902d6240cb88",
     "assets/inventory_previews/269.png": "bb1bd2853e3af1a56cf03fe7a1b368a548b4d75e0831fdf7078037f334be5c76",
-    "assets/inventory_previews/270.png": "8f569e9fdd9e49ec8752ca27796736e43e606682a728e499251738120e7edce3",
+    "assets/inventory_previews/270.png": "e2b3bfb60656d324330fb5e41f1188c56c4b9bd098f6955f187f5f57f48f2c59",
     "assets/inventory_previews/271.png": "bf56ca538ea4ad05ef1292ffb5f6f165744c29b47fa4972ce77e6db6e841befa",
     "assets/inventory_previews/272.png": "e70fcbd4fccf762d44bded1b380ec379d38cf06220f8c0fce6919d103ea77a6e",
-    "assets/inventory_previews/273.png": "87c396b402551d3076bbc815f6aad2ff339d2b649654baf6f36d439d3ea3a403",
+    "assets/inventory_previews/273.png": "938a70f90e7e7e4c8670df6c99ddd42417c5f9961696ff1759225a921519aac6",
     "assets/inventory_previews/274.png": "64066deabaedec186e8110fccda9d9c76e4023d7840530cfbcd5a2469e3d2af4",
     "assets/inventory_previews/275.png": "bac9993e2adcae58bce5e7f0572c0b570f6e32b9611648b69457e0c12020f3ab",
     "assets/inventory_previews/276.png": "f5f39a03a5eb7bb9c87e8dd9df5d75cff7bba9b3bfd4a4693f6d04092a2d89a9",
@@ -313,10 +318,10 @@
     "assets/inventory_previews/281.png": "8faa7622c491275bef93f948f18162a85783bb9a7f9ddc392a5fa17f2cd1dad7",
     "assets/inventory_previews/282.png": "a783dc4eab9cbbb504b859fad0fc8d24ab75cd93e6ec288b9a4fdbccb845eb42",
     "assets/inventory_previews/283.png": "c1181358e87dc1068ec2a88b62f7ace8592af8d2ce14bd3cb2899b147fd1059a",
-    "assets/inventory_previews/284.png": "29e4de021c1b7bbaf5181e4eefda36d36805956e55aa5ceecde4668fc6066582",
+    "assets/inventory_previews/284.png": "0d346b5cd530f78b686d9d01498061fc4b587ffc218f23b63446f3e6dd009ceb",
     "assets/inventory_previews/285.png": "8bbfab61c408a3c3457b09ea176e76247418ad8f09f4c448a44c43779ae19b3e",
     "assets/inventory_previews/286.png": "8af8bedd3258d1567865b6695ab63dd5fac6d717fc86641059da87444b5fec19",
-    "assets/inventory_previews/287.png": "b2f5fe910462b917ddb3807417dfa5b5c92d2075ddfd5602d6ff792b70c8fcc8",
+    "assets/inventory_previews/287.png": "9133818a6bedd2888f65ad47ffb0decad1006b962ab4663549e9d47086cc3a3a",
     "assets/inventory_previews/288.png": "ce1e0c93afb4f901353f76963cd95443246df8bc7a75d739b10f12f9fd2dc6ca",
     "assets/inventory_previews/289.png": "80044043ef5b3ee0e69a87192d45fc931f85115b59d717478df28d9c07f97e7a",
     "assets/inventory_previews/290.png": "b12b9008ecda52406a0e8785c5f4bc2b5f62a0393804363d3252121eff5100fe",
@@ -367,7 +372,7 @@
     "assets/inventory_previews/335.png": "3924af6464f996faa7403ae25d5d6ac35beb7dbe2d7406315e46ff06ef4f49c4",
     "assets/inventory_previews/336.png": "6d4d28f6e61862293a36ec9cb8b9695425cfb7f930df055cb5a24ae74872f4ca",
     "assets/inventory_previews/337.png": "66836e675ef34726c972f67c32071004ceb021aa9e180ee3e473d04249e2ae52",
-    "assets/inventory_previews/338.png": "2b6b00f16e8a86136ea0db345ea5e04bfcd0e57a4e37ed6255086db4b30337bd",
+    "assets/inventory_previews/338.png": "e6ef457202d9455a2f06fea34006023e5f8630addc1de34c17158236d52f8091",
     "assets/inventory_previews/339.png": "af06402edaf6f21a67e8e6f8c61cdf513aed4e51e98a9e74ce468ceec4e54a8b",
     "assets/inventory_previews/340.png": "3d4ba164967e00ba875c18dd0f8440bfb46bc845a90127f4a4f2c4a702c6074b",
     "assets/inventory_previews/341.png": "549a21dcab8817a6ff021746ec8bae2f51e8b58ca83b96180b1ea7d14582d068",
@@ -376,7 +381,21 @@
     "assets/inventory_previews/344.png": "d279444c25473966e6477353f358a6bce6a5aa1ac62c371ecbd5be6e3bb60690",
     "assets/inventory_previews/345.png": "ddceb6e5fad3abaa906c4b8529cd7da5d35113d3c29e6e43d9be8bc7af4222d0",
     "assets/inventory_previews/346.png": "e1921c0a62cff96a0dcb1e5017326f8468b7905df50c0dca664be95ac2ce3517",
-    "assets/inventory_previews/347.png": "80caf9eec8b52bf4503d0b7e6c530940e2209b4a4c1b2850185e3e7ade7372fc"
+    "assets/inventory_previews/347.png": "80caf9eec8b52bf4503d0b7e6c530940e2209b4a4c1b2850185e3e7ade7372fc",
+    "assets/inventory_previews/348.png": "251877653b5a94adf5549d93e753db616faa3e9d637cc9b3050314292ce2e389",
+    "assets/inventory_previews/349.png": "4b0f22e02a90ec2efd70be943b5162f594878fc7ee1e2077653ddd231e458b8e",
+    "assets/inventory_previews/350.png": "f4e4375e315432665af64b6ca695eabd51df0274aeb96bc12905833f664ed60e",
+    "assets/inventory_previews/351.png": "c618d0a74eea7a460ab853bc653968caa11a0b0506965e1f41ffa5b132528fbd",
+    "assets/inventory_previews/352.png": "4b47bcebfd4325f0467498c58e61a4d135cc7580800e783c48f192308c06db35",
+    "assets/inventory_previews/353.png": "9224acc6ab91844d664a215e386394ae4d30e6f5719887ae267954f3b7c56fe2",
+    "assets/inventory_previews/354.png": "ae969d5c816e21463a86cf6ff739cbad036e8afe68b44f061a8e1fb06ccdb179",
+    "assets/inventory_previews/355.png": "45c57afbc7c577d085f309ad67e22df272c46996628e8372eed86556408785d9",
+    "assets/inventory_previews/356.png": "45a9dc68b604b158e1e0028c0c625b97bf69d46f79e39918793424f4ebac608e",
+    "assets/inventory_previews/357.png": "524e44cb4d76fda5611953498e2395a91b1698d5616dbd3f651d4abb7c8d6797",
+    "assets/inventory_previews/358.png": "70215fb9e0f05e74c393840e67765eb16d5ab3b6a582d021db64a67800c2c884",
+    "assets/inventory_previews/359.png": "e28f0ee0f6b4733c1ef259b67273f9bb5374ee9a3297e38c29eec1fdbff76164",
+    "assets/inventory_previews/360.png": "90dcd3ad309e5675c0491bcf268aaba9d88232c7ceb8dbbdbfcc1b3ee0b36a21",
+    "assets/inventory_previews/361.png": "845bb32eccf105f75d3f79cedb7c68b025fbf5496e8096d812e3635d0bd0af0f"
   },
   "entries": [
     {
@@ -1461,9 +1480,9 @@
       "vertices": 24,
       "bounds": [
         4,
-        6,
+        7,
         60,
-        57
+        56
       ],
       "file": "068.png"
     },
@@ -1477,7 +1496,7 @@
       "vertices": 24,
       "bounds": [
         4,
-        10,
+        11,
         60,
         53
       ],
@@ -1493,7 +1512,7 @@
       "vertices": 24,
       "bounds": [
         4,
-        10,
+        11,
         60,
         53
       ],
@@ -1510,7 +1529,7 @@
       "bounds": [
         14,
         4,
-        50,
+        49,
         60
       ],
       "file": "071.png"
@@ -1813,7 +1832,7 @@
       "vertices": 24,
       "bounds": [
         4,
-        12,
+        13,
         60,
         51
       ],
@@ -1828,9 +1847,9 @@
       "state": 0,
       "vertices": 12,
       "bounds": [
-        14,
+        13,
         4,
-        49,
+        50,
         60
       ],
       "file": "091.png"
@@ -2389,9 +2408,9 @@
       "vertices": 24,
       "bounds": [
         4,
-        12,
+        13,
         60,
-        52
+        51
       ],
       "file": "126.png"
     },
@@ -2405,7 +2424,7 @@
       "vertices": 24,
       "bounds": [
         4,
-        14,
+        15,
         60,
         49
       ],
@@ -2421,7 +2440,7 @@
       "vertices": 24,
       "bounds": [
         4,
-        14,
+        15,
         60,
         49
       ],
@@ -2453,7 +2472,7 @@
       "vertices": 24,
       "bounds": [
         4,
-        16,
+        17,
         60,
         47
       ],
@@ -2469,7 +2488,7 @@
       "vertices": 24,
       "bounds": [
         4,
-        16,
+        17,
         60,
         47
       ],
@@ -5930,6 +5949,230 @@
         60
       ],
       "file": "347.png"
+    },
+    {
+      "id": 348,
+      "sprite": 348,
+      "name": "Power Wire",
+      "category": "world-mesh",
+      "block": 340,
+      "state": 240,
+      "vertices": 180,
+      "bounds": [
+        4,
+        16,
+        60,
+        47
+      ],
+      "file": "348.png"
+    },
+    {
+      "id": 349,
+      "sprite": 349,
+      "name": "Lever",
+      "category": "world-mesh",
+      "block": 341,
+      "state": 0,
+      "vertices": 90,
+      "bounds": [
+        5,
+        4,
+        59,
+        60
+      ],
+      "file": "349.png"
+    },
+    {
+      "id": 350,
+      "sprite": 350,
+      "name": "Repeater",
+      "category": "world-mesh",
+      "block": 342,
+      "state": 0,
+      "vertices": 270,
+      "bounds": [
+        4,
+        16,
+        60,
+        48
+      ],
+      "file": "350.png"
+    },
+    {
+      "id": 351,
+      "sprite": 351,
+      "name": "AND Gate",
+      "category": "world-mesh",
+      "block": 343,
+      "state": 0,
+      "vertices": 270,
+      "bounds": [
+        4,
+        16,
+        60,
+        48
+      ],
+      "file": "351.png"
+    },
+    {
+      "id": 352,
+      "sprite": 352,
+      "name": "OR Gate",
+      "category": "world-mesh",
+      "block": 344,
+      "state": 0,
+      "vertices": 270,
+      "bounds": [
+        4,
+        16,
+        60,
+        48
+      ],
+      "file": "352.png"
+    },
+    {
+      "id": 353,
+      "sprite": 353,
+      "name": "NOT Gate",
+      "category": "world-mesh",
+      "block": 345,
+      "state": 0,
+      "vertices": 270,
+      "bounds": [
+        4,
+        16,
+        60,
+        48
+      ],
+      "file": "353.png"
+    },
+    {
+      "id": 354,
+      "sprite": 354,
+      "name": "Powered Lamp",
+      "category": "world-mesh",
+      "block": 346,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "354.png"
+    },
+    {
+      "id": 355,
+      "sprite": 355,
+      "name": "Hopper",
+      "category": "world-mesh",
+      "block": 347,
+      "state": 0,
+      "vertices": 192,
+      "bounds": [
+        4,
+        8,
+        60,
+        56
+      ],
+      "file": "355.png"
+    },
+    {
+      "id": 356,
+      "sprite": 356,
+      "name": "Piston",
+      "category": "world-mesh",
+      "block": 348,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "356.png"
+    },
+    {
+      "id": 357,
+      "sprite": 357,
+      "name": "Sticky Piston",
+      "category": "world-mesh",
+      "block": 349,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "357.png"
+    },
+    {
+      "id": 358,
+      "sprite": 358,
+      "name": "Daylight Sensor",
+      "category": "world-mesh",
+      "block": 350,
+      "state": 0,
+      "vertices": 270,
+      "bounds": [
+        4,
+        16,
+        60,
+        48
+      ],
+      "file": "358.png"
+    },
+    {
+      "id": 359,
+      "sprite": 359,
+      "name": "Observer",
+      "category": "world-mesh",
+      "block": 351,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "359.png"
+    },
+    {
+      "id": 360,
+      "sprite": 360,
+      "name": "Crop Sensor",
+      "category": "world-mesh",
+      "block": 352,
+      "state": 0,
+      "vertices": 270,
+      "bounds": [
+        4,
+        16,
+        60,
+        48
+      ],
+      "file": "360.png"
+    },
+    {
+      "id": 361,
+      "sprite": 361,
+      "name": "Automatic Harvester",
+      "category": "world-mesh",
+      "block": 353,
+      "state": 0,
+      "vertices": 36,
+      "bounds": [
+        6,
+        4,
+        57,
+        60
+      ],
+      "file": "361.png"
     }
   ]
 }

@@ -4,9 +4,10 @@
 #include <glm/glm.hpp>
 class World;
 class Game;
-enum class BuildingShape {Cube, Stairs, Slab, Fence, FenceGate, Trapdoor, Door, StrippedLog, Button, PressurePlate, Table, Chair, Bench, Sign, Shelf, Wall, Pane, Lantern, Chain, Candle, Campfire, Bed, Barrel, Painting, Frame, Pot, Carpet, Path, Scaffold};
+enum class BuildingShape {Cube, Stairs, Slab, Fence, FenceGate, Trapdoor, Door, StrippedLog, Button, PressurePlate, Table, Chair, Bench, Sign, Shelf, Wall, Pane, Lantern, Chain, Candle, Campfire, Bed, Barrel, Painting, Frame, Pot, Carpet, Path, Scaffold, Wire, Lever, Circuit, Hopper, Piston, Machine, PistonHead};
 struct BuildingDefinition {Block block;Item item;BuildingShape shape;Block material;Item ingredient;const char* name;};
 const std::array<BuildingDefinition,142>& buildingContent();
+const std::array<BuildingDefinition,15>& automationContent();
 const BuildingDefinition* buildingDefinition(Block);
 const BuildingDefinition* buildingDefinition(Item);
 bool isBuilding(Block);

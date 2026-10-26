@@ -495,6 +495,20 @@ const std::vector<Recipe>& recipes() {
                 else r.push_back(recipe(1,2,{m,m},c.item,2,false));break;
             }
         }
+        r.push_back(recipe(2,1,{Item::CopperIngot,Item::Coal},Item::PowerWire,8,false));
+        r.push_back(recipe(1,2,{Item::Stick,Item::Cobblestone},Item::Lever,1,false));
+        r.push_back(recipe(3,2,{Item::Torch,Item::PowerWire,Item::Torch,Item::Stone,Item::Stone,Item::Stone},Item::Repeater,1,true));
+        r.push_back(recipe(2,2,{Item::Repeater,Item::PowerWire,Item::PowerWire,Item::Stone},Item::AndGate,1,false));
+        r.push_back(recipe(2,2,{Item::PowerWire,Item::Repeater,Item::PowerWire,Item::Stone},Item::OrGate,1,false));
+        r.push_back(recipe(1,3,{Item::Torch,Item::PowerWire,Item::Stone},Item::NotGate,1,true));
+        r.push_back(recipe(3,3,{Item::Glass,Item::Torch,Item::Glass,Item::PowerWire,Item::CopperIngot,Item::PowerWire,Item::Glass,Item::Torch,Item::Glass},Item::PowerLamp,1,true));
+        r.push_back(recipe(3,3,{Item::IronIngot,Item::None,Item::IronIngot,Item::IronIngot,Item::Chest,Item::IronIngot,Item::None,Item::IronIngot,Item::None},Item::Hopper,1,true));
+        r.push_back(recipe(3,3,{IngredientGroup::Planks,IngredientGroup::Planks,IngredientGroup::Planks,Item::Cobblestone,Item::IronIngot,Item::Cobblestone,Item::Cobblestone,Item::PowerWire,Item::Cobblestone},Item::Piston,1,true));
+        r.push_back(recipe(1,2,{Item::SweetBerries,Item::Piston},Item::StickyPiston,1,false));
+        r.push_back(recipe(3,2,{Item::Glass,Item::Glass,Item::Glass,Item::PowerWire,Item::CopperIngot,Item::WoodenSlab},Item::DaylightSensor,1,true));
+        r.push_back(recipe(3,2,{Item::Cobblestone,Item::Glass,Item::Cobblestone,Item::PowerWire,Item::IronIngot,Item::PowerWire},Item::Observer,1,true));
+        r.push_back(recipe(2,2,{Item::Wheat,Item::Carrot,Item::PowerWire,Item::Glass},Item::CropSensor,1,false));
+        r.push_back(recipe(3,3,{Item::IronIngot,Item::IronIngot,Item::IronIngot,Item::PowerWire,Item::Hopper,Item::PowerWire,Item::Cobblestone,Item::IronIngot,Item::Cobblestone},Item::AutoHarvester,1,true));
         return r;
     }();
     return all;

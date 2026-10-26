@@ -34,7 +34,13 @@ for name in ['include/Block.h','include/Survival.h','assets/crafting_blocks.png'
         enum='Block' if 'Block.h' in name else 'Item';prior=enums(before,enum);current=enums(after,enum)
         assert all(current.get(k)==v for k,v in prior.items()),name+' IDs changed'
     else:
-        assert before==after,name+' changed'
+        if 'crafting_blocks' in name:
+            import io
+            if name.endswith('.rgba'):
+                bw,bh=struct.unpack('<ii',before[:8]);aw,ah=struct.unpack('<ii',after[:8]);old=Image.frombytes('RGBA',(bw,bh),before[8:]);new=Image.frombytes('RGBA',(aw,ah),after[8:])
+            else:old=Image.open(io.BytesIO(before));new=Image.open(io.BytesIO(after))
+            assert new.crop((0,0,*old.size)).tobytes()==old.tobytes(),name+' historical texels changed'
+        else:assert before==after,name+' changed'
     historical[name]=True
 for file in (ROOT/'sprites').glob('*.png'):
     assert file.read_bytes()==subprocess.check_output(['git','show','v2.16.0:sprites/'+file.name],cwd=ROOT)

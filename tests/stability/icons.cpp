@@ -58,6 +58,7 @@ Preview IconTest::model(Item item){
  auto put=[&](int x,int y,int z,Block b){input.blocks[(y*22+z+3)*22+x+3]=b;};
  Block state=p.block;
  if(auto d=buildingDefinition(state)){
+  if(d->shape==BuildingShape::Wire)state=blockState(state,240);
   if(d->shape==BuildingShape::Fence || d->shape==BuildingShape::Wall || d->shape==BuildingShape::Pane)state=blockState(state,32|128);
   if(d->shape==BuildingShape::Door)put(8,2,8,blockState(state,16));
   if(d->shape==BuildingShape::Bed)put(8,1,7,blockState(state,16));

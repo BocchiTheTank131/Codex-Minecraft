@@ -3,6 +3,7 @@
 #include "Block.h"
 #include "CompactBlocks.h"
 #include "Building.h"
+#include "Automation.h"
 #include "Biome.h"
 #include "Noise.h"
 #include "Structure.h"
@@ -183,7 +184,7 @@ public:
     void ensureHeight(int y);
     CompactBlocks blocks;
     std::vector<std::uint8_t> packedLight;
-    std::vector<std::uint32_t> buildingCells,signCells,displayCells;
+    std::vector<std::uint32_t> buildingCells,signCells,displayCells,automationCells;
     // Sorted local indices, owned by the chunk. Bulk block replacement must
     // rebuild this index; ordinary mutations go through setLocal.
     mutable bool climateColorsReady = false;
@@ -231,6 +232,8 @@ public:
 };
 
 class World {
+    friend class Automation;
+    friend class AutomationTest;
     friend class IconTest;
     friend class BuildingTest;
 public:
@@ -260,6 +263,8 @@ public:
     std::size_t terrainMemoryTarget() const {return (terrainMemoryBudget_==1?512ULL:terrainMemoryBudget_==3?4096ULL:2048ULL)*1024ULL*1024ULL;}
     void setStreamingView(const glm::vec3& direction, float frameMilliseconds);
     ChunkStreamingDiagnostics streamingDiagnostics() const;
+    Automation automation;
+    bool automationBatch(const std::vector<std::pair<glm::ivec3,Block>>& expected,const std::vector<std::pair<glm::ivec3,Block>>& replacement);
     void updateFluids(float deltaTime, int updateBudget = 96);
     void updateBlockEntities(float deltaTime);
     std::vector<StructureMobMarker> takeActiveStructureMobMarkers(bool spawnAllowed = true);
@@ -387,6 +392,7 @@ public:
     int simulationDistance() const { return simulationDistance_; }
 
 private:
+    bool automationMoving_=false;
     glm::vec3 findCollisionSpawnNear(int worldX,int worldZ) const;
     mutable std::optional<glm::ivec2> survivalSpawnRegion_;
     bool nativeCavityAt(int x,int y,int z) const;

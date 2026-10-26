@@ -32,6 +32,7 @@
 #endif
 #include <Windows.h>
 #include <psapi.h>
+#include <dbghelp.h>
 #endif
 #include <filesystem>
 #include <stdexcept>
@@ -46,6 +47,10 @@ int runFarmingTests(int argc,char** argv);
 int runBuildingTests(int argc,char** argv);
 int runIconTests(int argc,char** argv);
 int runQolTests(int argc,char** argv);
+int runAutomationTests(int argc,char** argv);
+double fixtureWorkingSetMb();
+void setupAutomationTraversal(Game&,int);
+void driveAutomationTraversal(Game&,double);
 bool testFarmingControls(Game& g){return StabilityTest::farmingControls(g);}
 bool testFarmingMining(Game& g){return StabilityTest::farmingMining(g);}
 bool StabilityTest::farmingMining(Game& g) {
@@ -81,7 +86,26 @@ bool StabilityTest::farmingControls(Game& g) {
  g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);g.player_->setBlocking(false);
  return ok;
 }
+double fixtureWorkingSetMb(){
+#ifdef _WIN32
+ PROCESS_MEMORY_COUNTERS memory{};GetProcessMemoryInfo(GetCurrentProcess(),&memory,sizeof(memory));return memory.WorkingSetSize/1048576.;
+#else
+ return 0;
+#endif
+}
+#ifdef _WIN32
+LONG WINAPI fixtureCrash(EXCEPTION_POINTERS* exception){
+ auto process=GetCurrentProcess();SymInitialize(process,nullptr,TRUE);auto context=*exception->ContextRecord;STACKFRAME64 frame{};frame.AddrPC.Offset=context.Rip;frame.AddrPC.Mode=AddrModeFlat;frame.AddrFrame.Offset=context.Rbp;frame.AddrFrame.Mode=AddrModeFlat;frame.AddrStack.Offset=context.Rsp;frame.AddrStack.Mode=AddrModeFlat;
+ std::cerr<<"Native fixture crash 0x"<<std::hex<<exception->ExceptionRecord->ExceptionCode<<" address 0x"<<context.Rip<<" module 0x"<<reinterpret_cast<std::uintptr_t>(GetModuleHandleW(nullptr))<<std::endl;
+ for(int i=0;i<24;++i){char storage[sizeof(SYMBOL_INFO)+512]{};auto symbol=reinterpret_cast<SYMBOL_INFO*>(storage);symbol->SizeOfStruct=sizeof(SYMBOL_INFO);symbol->MaxNameLen=511;DWORD64 offset=0;std::cerr<<"  0x"<<std::hex<<frame.AddrPC.Offset;if(SymFromAddr(process,frame.AddrPC.Offset,&offset,symbol))std::cerr<<" "<<symbol->Name<<"+0x"<<offset;std::cerr<<std::endl;if(!StackWalk64(IMAGE_FILE_MACHINE_AMD64,process,GetCurrentThread(),&frame,&context,nullptr,SymFunctionTableAccess64,SymGetModuleBase64,nullptr))break;}
+ return EXCEPTION_EXECUTE_HANDLER;
+}
+#endif
 int main(int argc,char** argv){
+#ifdef _WIN32
+ SetUnhandledExceptionFilter(fixtureCrash);
+#endif
+
     // This harness cannot operate on the current profile. Every run gets a new
     // isolated fixture; evidence is kept for inspection, never auto-deleted.
     auto root=std::filesystem::temp_directory_path()/ ("VoxelFrontier-stability-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
@@ -90,6 +114,7 @@ int main(int argc,char** argv){
     try{return StabilityTest::run(argc,argv);}catch(const std::exception& e){std::cerr<<e.what()<<std::endl;return 1;}
 }
 int StabilityTest::run(int argc,char** argv){
+ if(argc>1 && std::string(argv[1]).find("--automation")==0)return runAutomationTests(argc,argv);
  if(argc>1 && std::string(argv[1])=="--qol")return runQolTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--icons")==0)return runIconTests(argc,argv);
  if(argc>1 && (std::string(argv[1])=="--building" || std::string(argv[1])=="--building-visual" || std::string(argv[1])=="--building-benchmark" || std::string(argv[1])=="--creative-ui"))return runBuildingTests(argc,argv);
@@ -331,6 +356,7 @@ int StabilityTest::traversal(int rd,const std::filesystem::path& output){
  for(int i=0;i<4;++i){g.inventory_->add(Item(int(Item::IronHelmet)+i));g.inventory_->equipFromSlot(0);}g.inventory_->add(Item::Shield);g.inventory_->equipFromSlot(0);
  g.inventory_->add(Item::IronSword);const auto mapId=g.transportation_->createMap(g.player_->position());g.inventory_->add(Item::FilledMap,1,0,mapId);g.inventory_->selectSlot(1);
  g.transportation_->addWaypoint("Starting camp",g.player_->position());g.weather_->set(WeatherType::Rain,300);
+ const int logicCount=std::getenv("VOXEL_AUTOMATION_FIXTURE")?std::atoi(std::getenv("VOXEL_AUTOMATION_FIXTURE")):0;if(logicCount)setupAutomationTraversal(g,logicCount);
  const auto warm=glfwGetTime();g.timing_.previousFrame=warm;while(glfwGetTime()-warm<5){const auto dt=g.beginFrame();g.updateSimulation(dt);g.renderFrame(dt);}
  for(int phase=0;phase<2;++phase){
   if(phase==1){bool placed=false;
@@ -353,6 +379,7 @@ int StabilityTest::traversal(int rd,const std::filesystem::path& output){
    g.input_.keys_[GLFW_KEY_W]=true;g.input_.keys_[GLFW_KEY_SPACE]=phase==0 && int(frameStart-start)%3==0;
    g.input_.keys_[GLFW_KEY_A]=phase==1 && int(frameStart-start)%6<2;
    if(phase==0)g.player_->addMouseMovement(30*dt,0);
+   if(logicCount)driveAutomationTraversal(g,frameStart);
    g.sounds_->update(dt);g.pollSave();g.updateSimulation(dt);
    if(!phase && currentBucket!=bucket){recordBucket(g.timing_.previousFrame);bucket=currentBucket;bucketFrames=0;bucketStart=g.timing_.previousFrame;bucketSim=g.timing_.worldTime;bucketDebt=g.simulationClock_.debt;}
    ++bucketFrames;

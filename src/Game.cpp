@@ -2462,6 +2462,10 @@ std::string Game::buildDebugText() const {
         static_cast<int>(std::floor(position.y)), showWorldgenDebug_);
     const SurvivalWorld::MobDiagnostics mobs = survival_->diagnostics(position);
     const auto streaming=world_->streamingDiagnostics();
+    const auto& logic=world_->automation.diagnostics();
+    text<<"LOGIC "<<logic.devices<<" DEVICES / "<<logic.dirty<<" QUEUED / "<<logic.processed<<" WORK / "<<logic.milliseconds<<" MS\n";
+    if(interaction_.hasBlockTarget){const auto p=interaction_.blockTarget.block;const auto b=world_->getBlock(p.x,p.y,p.z);if(automationDevice(b))text<<"TARGET SIGNAL "<<automationSignal(b)<<" / STATE "<<blockProperties(b)<<'\n';}
+
     const auto memory=world_->terrainMemory();const auto lod=world_->renderedLodCounts();
     text << "BIOME " << generation.biome << '\n'
          << "FACING " << facingDirection(direction) << '\n'

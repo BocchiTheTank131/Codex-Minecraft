@@ -29,6 +29,7 @@ struct RecipeBookView;
 inline constexpr float DayNightCycleSeconds = WorldTime::CycleSeconds;
 
 class Renderer {
+    friend class AutomationTest;
     friend class IconTest;
 public:
     Renderer();

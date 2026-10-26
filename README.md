@@ -4,6 +4,17 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.17.0 - Logic & Automation (prerelease)
+
+Build deterministic power circuits, timed repeaters and logic gates; control lamps,
+doors and machinery; transport container items with hoppers; and harvest crops into
+storage with paid replanting. Original pixel textures and cached 64px previews extend
+the existing building, crafting and quality-of-life systems.
+
+See [Logic & Automation validation](docs/LOGIC_AUTOMATION_VALIDATION.md) for signal
+rules, recipes, safety limits, test evidence and performance measurements. This update is available as a
+[v2.17.0 prerelease](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.17.0).
+
 ### v2.16.2 - Quality of Life
 
 Inventory and container sorting, Quick Stack, Deposit All, Take All, and protected

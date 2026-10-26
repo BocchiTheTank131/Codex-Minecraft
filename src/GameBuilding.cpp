@@ -4,6 +4,7 @@
 #include "Sound.h"
 #include "Transportation.h"
 #include "WorldTime.h"
+#include "Weather.h"
 #include <GLFW/glfw3.h>
 #include <algorithm>
 #include <cmath>
@@ -42,11 +43,8 @@ bool Game::buildingInput(){
 void Game::updateBuilding(float dt){
  if(!world_||!player_||!survival_)return;
  world_->flushBuildingDrops(*survival_);
- for(auto it=pressedButtons_.begin();it!=pressedButtons_.end();){it->second-=dt;if(it->second<=0){auto p=it->first;auto b=world_->getBlock(p.x,p.y,p.z);auto d=buildingDefinition(b);if(d && d->shape==BuildingShape::Button)world_->setBlock(p.x,p.y,p.z,blockState(b,blockProperties(b)&~8));it=pressedButtons_.erase(it);}else ++it;}
- std::optional<glm::ivec3> active;
- if(!spectatorMode_){auto feet=glm::ivec3(glm::floor(player_->position()));for(int z=-1;z<=1;++z)for(int x=-1;x<=1;++x){auto p=feet+glm::ivec3(x,0,z);auto b=world_->getBlock(p.x,p.y,p.z);auto d=buildingDefinition(b);if(d && d->shape==BuildingShape::PressurePlate){const auto mn=glm::vec3(p),mx=mn+glm::vec3(1,.2f,1);auto a=player_->aabbMinimum(),c=player_->aabbMaximum();if(a.x<mx.x&&c.x>mn.x&&a.z<mx.z&&c.z>mn.z&&a.y<mx.y&&c.y>mn.y)active=p;}}}
- if(pressedPlate_ && pressedPlate_!=active){auto p=*pressedPlate_;auto b=world_->getBlock(p.x,p.y,p.z);auto d=buildingDefinition(b);if(d&&d->shape==BuildingShape::PressurePlate)world_->setBlock(p.x,p.y,p.z,blockState(b,0));}
- if(active && active!=pressedPlate_){auto p=*active;world_->setBlock(p.x,p.y,p.z,blockState(world_->getBlock(p.x,p.y,p.z),8));sounds_->playDoor(true,glm::vec3(p));}pressedPlate_=active;
+ world_->automation.additionalCollision=[this](const glm::vec3& a,const glm::vec3& b){return transportation_&&transportation_->intersectsBox(a,b);};
+ world_->automation.update(dt,*world_,*survival_,player_.get(),glm::smoothstep(-.13f,.17f,std::sin(WorldTime::angle(timing_.worldTime)))*(weather_?weather_->daylightScale():1.f),sounds_.get());
 }
 
 std::optional<bool> Game::buildingToolHand() const {
@@ -111,6 +109,7 @@ PlacementPlan Game::placementPlan(Item item) const {
  auto fail=[&](const char* reason){plan.reason=reason;return plan;};
  for(auto part:plan.blocks){
   const auto p=part.position;const auto candidate=part.block;
+  if(!world_->automation.canRegister(p,candidate))return fail("AUTOMATION CAPACITY REACHED");
   if(p.y<world_->minimumY()||p.y>=world_->maximumY())return fail("WORLD HEIGHT LIMIT");
   if(!world_->collisionReady(glm::vec3(p),glm::vec3(p)+glm::vec3(1)))return fail("TERRAIN LOADING");
   if(!(merge&&p==target)&&get(p)!=Block::Air&&(d||!isWater(get(p))))return fail("SPACE OCCUPIED");
@@ -151,7 +150,9 @@ bool Game::buildingUse(Item held,bool offhand){
   auto p=blockProperties(old);
   if((d->shape==BuildingShape::Bed||d->shape==BuildingShape::Carpet||d->shape==BuildingShape::Candle) && (held==Item::RedFlower||held==Item::YellowFlower||held==Item::BoneMeal||(creativeMode_&&sneak&&held==Item::None))){
    unsigned color=held==Item::None?(((p>>8)+1)&3):held==Item::RedFlower?0:held==Item::YellowFlower?1:2;set(target,blockState(old,(p&~768)|(color<<8)));if(d->shape==BuildingShape::Bed){auto mate=target+((p&16)?-buildingFacing(p):buildingFacing(p));if(buildingIsBed(get(mate)))set(mate,blockState(get(mate),(blockProperties(get(mate))&~768)|(color<<8)));}consume();return true;}
+  if(automationBlock(old)&&blockType(old)!=Block::Hopper&&world_->automation.interact(*world_,target)){sounds_->playClick();return true;}
   switch(d->shape){
+  case BuildingShape::Hopper:ui_.openChest(target);synchronizeCursorCapture();return true;
   case BuildingShape::FenceGate:case BuildingShape::Trapdoor:case BuildingShape::Door:{const auto next=blockState(old,p^8);set(target,next);if(d->shape==BuildingShape::Door){auto mate=target+glm::ivec3(0,p&16?-1:1,0);if(blockType(get(mate))==blockType(old))set(mate,blockState(get(mate),blockProperties(get(mate))^8));}sounds_->playDoor(!(p&8),glm::vec3(target));return true;}
   case BuildingShape::Barrel:ui_.openChest(target);synchronizeCursorCapture();sounds_->playChest(true,glm::vec3(target));return true;
   case BuildingShape::Sign:signPosition_=target;signDraft_=world_->buildingText(target);signEditorOpen_=true;signEdit_.begin(signDraft_);input_.consumeTypedCharacters();synchronizeCursorCapture();return true;
@@ -162,7 +163,7 @@ bool Game::buildingUse(Item held,bool offhand){
    if(!owned.empty()){if(d->shape==BuildingShape::Frame)set(target,blockState(old,(p&~768)|((((p>>8)+1)&3)<<8)));return true;}
    const auto stack=heldStack();bool suitable=!stack.empty();if(d->shape==BuildingShape::Pot){Block plant=itemToBlock(held);suitable=isPlant(plant)||held==Item::Cactus||isLeaf(plant);}
    if(suitable){owned=stack;owned.count=1;if(offhand)inventory_->consumeOffhand();else inventory_->consumeSelected();sounds_->playBlockPlace(old,glm::vec3(target));}return true;}
-  case BuildingShape::Button:if(!(p&8) && pressedButtons_.size()<64){set(target,blockState(old,p|8));if(pressedButtons_.size()<64)pressedButtons_.push_back({target,.5f});sounds_->playDoor(true,glm::vec3(target));}return true;
+  case BuildingShape::Button:world_->automation.interact(*world_,target);sounds_->playClick();return true;
   case BuildingShape::Campfire:case BuildingShape::Candle:set(target,blockState(old,p^8));sounds_->playDoor(!(p&8),glm::vec3(target));return true;
   case BuildingShape::Painting:{auto next=std::uint16_t((p&~768)|((((p>>8)+1)&3)<<8));set(target,blockState(old,next));if(p&32){auto other=target+((p&16)?-buildingFacing((p+1)&3):buildingFacing((p+1)&3));if(blockType(get(other))==Block::Painting)set(other,blockState(get(other),(blockProperties(get(other))&~768)|(next&768)));}return true;}
   default:break;
@@ -186,6 +187,13 @@ std::string Game::interactionHint()const {
  const auto held=off?inventory_->equipment(4).item:inventory_->selectedItem();
  const auto sneak=controlKeyName(settings_.controls[int(ControlAction::Sneak)]);
  const bool sneaking=input_.actionDown(ControlAction::Sneak);
+ if(automationBlock(b)&&(!sneaking||held==Item::None||itemToBlock(held)==Block::Air)){
+  if(blockType(b)==Block::Hopper)return "RMB: OPEN HOPPER";
+  if(blockType(b)==Block::Lever)return "RMB: TOGGLE POWER";
+  if(blockType(b)==Block::Repeater)return "RMB: DELAY "+std::to_string(1+((blockProperties(b)>>4)&3))+" TICKS";
+  if(blockType(b)==Block::AutoHarvester)return std::string("RMB: REPLANT ")+(blockProperties(b)&64?"ON":"OFF");
+  return "SIGNAL "+std::to_string(automationSignal(b));
+ }
  if(auto d=buildingDefinition(b);d&&(!sneaking||held==Item::None||itemToBlock(held)==Block::Air)){
   if((d->shape==BuildingShape::Bed||d->shape==BuildingShape::Carpet||d->shape==BuildingShape::Candle)&&(held==Item::RedFlower||held==Item::YellowFlower||held==Item::BoneMeal))return "RMB: DYE";
   switch(d->shape){

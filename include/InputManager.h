@@ -45,6 +45,7 @@ public:
     }
 
 private:
+    friend class AutomationTest;
     friend class StabilityTest;
     friend class BuildingTest;
     friend class QolTest;

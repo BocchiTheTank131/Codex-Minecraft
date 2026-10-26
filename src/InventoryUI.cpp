@@ -157,11 +157,15 @@ void tooltip(std::vector<V>& vertices, UiMode mode, int W, int H,
     if(item==Item::FilledMap && stack && stack->identity) name+=" #"+std::to_string(stack->identity);
     if(armorDefense(item)>0) name+="  ARMOR "+std::to_string(armorDefense(item));
     if(isDurable(item)) name+="  "+std::to_string(stack?stack->durability:Inventory::maxDurability(item))+"/"+std::to_string(Inventory::maxDurability(item));
+    const auto placed=itemToBlock(item);
+    const std::string help=automationBlock(placed)?automationDescription(placed):"";
     const float scale = std::min(1.5f, (W-24.0f)/std::max(1.0f,name.size()*6.0f));
-    const UiRect b = InventoryTooltip::bounds(W,H,mouseX,mouseY,name.size()*6.0f*scale);
+    UiRect b = InventoryTooltip::bounds(W,H,mouseX,mouseY,std::max(name.size()*6.0f*scale,help.size()*6.f));
+    if(!help.empty()){b.height+=15;b.y=std::min(b.y,float(H)-b.height-4);}
     rect(vertices,b.x,b.y,b.width,b.height,{.29f,.23f,.35f,.98f},W,H);
     rect(vertices,b.x+2,b.y+2,b.width-4,b.height-4,{.055f,.045f,.07f,.97f},W,H);
     text(vertices,name,b.x+8,b.y+7,scale,{1,1,1,1},W,H);
+    if(!help.empty())text(vertices,help,b.x+8,b.y+22,1.f,{.75f,.85f,.9f,1},W,H);
 }
 void equipmentSlots(std::vector<V>& vertices,UiMode mode,int W,int H,const Inventory& inv) {
     constexpr const char* labels[]={"H","C","L","B","O"};

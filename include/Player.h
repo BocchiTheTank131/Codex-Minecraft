@@ -23,6 +23,7 @@ struct PlayerInput {
 };
 
 class Player {
+    friend class AutomationTest;
     friend class FarmingTest;
     friend class BuildingTest;
     friend class QolTest;

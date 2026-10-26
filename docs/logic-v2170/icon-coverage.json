@@ -1,0 +1,21 @@
+{
+  "items": 361,
+  "unique_assignments": 361,
+  "dimensions": [
+    640,
+    2368
+  ],
+  "gpu_bytes": 6062080,
+  "pixels_match_raw": true,
+  "all_centered": true,
+  "all_visible": true,
+  "world_textures_and_ids_unchanged": {
+    "include/Block.h": true,
+    "include/Survival.h": true,
+    "assets/crafting_blocks.png": true,
+    "assets/crafting_blocks.rgba": true,
+    "assets/inventory_atlas_16.png": true
+  },
+  "billboard_sprites_unchanged": 4,
+  "exact_duplicates": []
+}

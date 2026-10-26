@@ -1,0 +1,68 @@
+[
+  {
+    "components": 100,
+    "mode": "idle",
+    "repeats": 3,
+    "mean_ms": 0.000140333,
+    "p95_ms": 0.0009,
+    "p99_ms": 0.001,
+    "save_ms": 1.3688,
+    "world_bytes": 4089,
+    "peak_dirty": 0
+  },
+  {
+    "components": 100,
+    "mode": "toggling",
+    "repeats": 3,
+    "mean_ms": 0.0422817,
+    "p95_ms": 0.1105,
+    "p99_ms": 0.1537,
+    "save_ms": 2.7994,
+    "world_bytes": 4089,
+    "peak_dirty": 100
+  },
+  {
+    "components": 1000,
+    "mode": "idle",
+    "repeats": 3,
+    "mean_ms": 0.003147,
+    "p95_ms": 0.0302,
+    "p99_ms": 0.0363,
+    "save_ms": 7.971,
+    "world_bytes": 40089,
+    "peak_dirty": 0
+  },
+  {
+    "components": 1000,
+    "mode": "toggling",
+    "repeats": 3,
+    "mean_ms": 0.189907,
+    "p95_ms": 0.6084,
+    "p99_ms": 0.7632,
+    "save_ms": 7.6642,
+    "world_bytes": 40089,
+    "peak_dirty": 520
+  },
+  {
+    "components": 10000,
+    "mode": "idle",
+    "repeats": 3,
+    "mean_ms": 0.0510377,
+    "p95_ms": 0.4903,
+    "p99_ms": 0.589,
+    "save_ms": 12.3019,
+    "world_bytes": 400089,
+    "peak_dirty": 0
+  },
+  {
+    "components": 10000,
+    "mode": "toggling",
+    "repeats": 3,
+    "mean_ms": 1.22783,
+    "p95_ms": 2.0276,
+    "p99_ms": 2.4942,
+    "save_ms": 10.2153,
+    "world_bytes": 400089,
+    "peak_dirty": 10703
+  }
+]

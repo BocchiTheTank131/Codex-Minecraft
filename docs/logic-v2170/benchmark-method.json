@@ -1,0 +1,36 @@
+{
+  "baseline_ref": "v2.16.2",
+  "baseline_commit": "c29e74a91bbe89a1351be24c4049e2962cf5b1a4",
+  "baseline_driver_sha256": "dd6f2b8fe7189d0fd59de57a99f780bbcbcbfc495bfb91deb54b2251ebc7cea2",
+  "render_distances": [
+    8,
+    16,
+    32
+  ],
+  "component_counts": [
+    100,
+    1000,
+    10000
+  ],
+  "terrain_lod": 0,
+  "occlusion": 1,
+  "simulation_distance": 8,
+  "anti_aliasing_samples": 0,
+  "vsync": false,
+  "warmup_seconds": 5,
+  "walking_seconds": 20,
+  "boat_seconds": 15,
+  "injected_stall_ms": 500,
+  "frame_limiters_walking": [
+    10,
+    15,
+    20,
+    30,
+    60,
+    120
+  ],
+  "frame_limiter_boat": 60,
+  "note": "One native traversal per matrix cell; capped FPS and injected stalls are not uncapped rendering benchmarks. Circuit/CPU microbenchmarks have three repeats. Boat teleport suspends remote circuits.",
+  "final_1000_component_verification": "final-traversal.csv",
+  "size_sweep_note": "Size sweep preceded final piston support/head refinements; final 1,000-component RD8/16/32 traversal reran afterward."
+}

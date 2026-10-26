@@ -140,6 +140,8 @@ enum class Item : std::uint16_t {
     Carrot, Potato, BakedPotato, Beetroot, BeetrootSeeds, PumpkinSeeds, Pumpkin, MelonSeeds, Melon, MelonSlice, SweetBerries, WoodHoe, StoneHoe, IronHoe, GoldHoe, DiamondHoe, BoneMeal, Composter, Shears, Bucket, MilkBucket, Egg, RawChicken, CookedChicken, Feather, Bowl, Sugar, BeetrootSoup, MushroomStew, PumpkinPie, Cookie, VegetableStew,
     // v2.16.0: stable types; orientation and connections are properties.
     OakStairs, OakSlab, OakFence, OakFenceGate, OakTrapdoor, OakDoor, OakStrippedLog, OakButton, OakPressurePlate, OakTable, OakChair, OakBench, OakSign, OakShelf, BirchStairs, BirchSlab, BirchFence, BirchFenceGate, BirchTrapdoor, BirchDoor, BirchStrippedLog, BirchButton, BirchPressurePlate, BirchTable, BirchChair, BirchBench, BirchSign, BirchShelf, SpruceStairs, SpruceSlab, SpruceFence, SpruceFenceGate, SpruceTrapdoor, SpruceDoor, SpruceStrippedLog, SpruceButton, SprucePressurePlate, SpruceTable, SpruceChair, SpruceBench, SpruceSign, SpruceShelf, JungleStairs, JungleSlab, JungleFence, JungleFenceGate, JungleTrapdoor, JungleDoor, JungleStrippedLog, JungleButton, JunglePressurePlate, JungleTable, JungleChair, JungleBench, JungleSign, JungleShelf, AcaciaStairs, AcaciaSlab, AcaciaFence, AcaciaFenceGate, AcaciaTrapdoor, AcaciaDoor, AcaciaStrippedLog, AcaciaButton, AcaciaPressurePlate, AcaciaTable, AcaciaChair, AcaciaBench, AcaciaSign, AcaciaShelf, DarkOakStairs, DarkOakSlab, DarkOakFence, DarkOakFenceGate, DarkOakTrapdoor, DarkOakDoor, DarkOakStrippedLog, DarkOakButton, DarkOakPressurePlate, DarkOakTable, DarkOakChair, DarkOakBench, DarkOakSign, DarkOakShelf, CobblestoneStairs, CobblestoneSlab, CobblestoneWall, StoneStairs, StoneCutSlab, StoneWall, StoneBricksStairs, StoneBricksSlab, StoneBricksWall, MossyCobblestoneStairs, MossyCobblestoneSlab, MossyCobblestoneWall, MossyStoneBricksStairs, MossyStoneBricksSlab, MossyStoneBricksWall, BricksStairs, BricksSlab, BricksWall, SandstoneStairs, SandstoneSlab, SandstoneWall, DeepslateStairs, DeepslateSlab, DeepslateWall, PolishedGraniteStairs, PolishedGraniteSlab, PolishedGraniteWall, PolishedDioriteStairs, PolishedDioriteSlab, PolishedDioriteWall, PolishedAndesiteStairs, PolishedAndesiteSlab, PolishedAndesiteWall, ChiseledStoneBricks, SmoothStone, SmoothSandstone, CutSandstone, PolishedDeepslate, DeepslateBricks, CrackedDeepslateBricks, RoofShingles, GlassPane, RoseGlassPane, AmberGlassPane, SmokedGlassPane, Lantern, Chain, Candle, Campfire, Bed, Barrel, Painting, ItemFrame, FlowerPot, Carpet, DirtPath, StonePaving, Scaffold,
+    // v2.17.0: append only; all signal and facing values are state properties.
+    PowerWire, Lever, Repeater, AndGate, OrGate, NotGate, PowerLamp, Hopper, Piston, StickyPiston, DaylightSensor, Observer, CropSensor, AutoHarvester,
     Count
 };
 
@@ -269,6 +271,7 @@ public:
     static bool runCraftingSelfTest(std::string& report);
 
 private:
+    friend class AutomationTest;
     friend class QolTest;
     std::uint16_t hotbarLocks_=0;
     std::array<ItemStack, EquipmentSlots> equipment_{};
