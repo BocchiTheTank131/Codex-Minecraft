@@ -13,18 +13,18 @@
   },
   "inputs": {
     "src/World.cpp": "0a770a64cf7d21cc3d4c367469549c6d87a3d5c2a2c63f4e8a69d7a324e3ea0f",
-    "src/Renderer.cpp": "42afbdc1a2019579a99d892a72fd6576afdae5b0c9896b77448fc41a4aa2718d",
+    "src/Renderer.cpp": "d63f657ff54c658a38c88297df16d0171717929f5a5a112886ab6ae31cb7e43a",
     "src/Building.cpp": "b78d4a9d05e9309fe34b78e6378ef54c4b8f7b7e7e1d482b498bb5335a220002",
     "src/Definitions.cpp": "c1276e0bb48a22a6679bdbfad9a8852782b1ffb9c6328984c272a58d1abe5157",
     "src/Transportation.cpp": "b5966d365f1a31113b163c28e7022f3d06dd46020c8e43f81af957eeb89583fc",
     "include/Block.h": "d9dcb7cb51454140a9e20b7ed81571a46ab673aa257416df915b6213dc6e7e7d",
-    "include/Survival.h": "77b86d1eff9f48a9c47ae8d5fb89a50e7beea17bc41f19b7f4ad7cde4eccdb10",
+    "include/Survival.h": "620b1d72cb3b59f67967a9b35309cd8e3b09b315ae8d200820c5db6658bd2af6",
     "include/BuildingContent.inc": "6a741be6169f0336aed124f383e40a68f6908ae63f5ea3540e7ec45a7f285823",
     "include/Definitions.h": "e5d6824af5cbe2356969d2fa50e11e0cbb70972136d0233a6843767a451c64f5",
     "assets/crafting_blocks.rgba": "73a66c5ea245d0bfbeb26ad24fc856683544cd10bc716366d1c0ed97dde22531",
     "assets/inventory_atlas_16.png": "868325e5a82920076b7bdd034a20c9bb1bfa90cfbdf4ad1adee970779e3d2f26",
     "tests/stability/icons.cpp": "13eff078d217655646e207df7e32d999c4de6fb7fdecc4f1fa25042b557d94cf",
-    "tools/generate_item_thumbnails.py": "24b4b179299f6a7a04bfe84f5d6759891da6142ee1f9e38897ac4d652a6205e9"
+    "tools/generate_item_thumbnails.py": "162f45ae3990d142cd8170b25041e5337d033ea84b25650803412e79b671aa2e"
   },
   "outputs": {
     "assets/item_icons_expansion.png": "c35d0d2e6b5c22b672db7aba1fc788e46f9dd6ccc31ddecd41d3150bfea84975",

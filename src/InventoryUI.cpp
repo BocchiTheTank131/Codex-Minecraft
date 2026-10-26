@@ -4,6 +4,8 @@
 #include "UiLayout.h"
 #include "World.h"
 #include "UIManager.h"
+#include "QualityOfLife.h"
+#include "Settings.h"
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -171,6 +173,13 @@ void equipmentSlots(std::vector<V>& vertices,UiMode mode,int W,int H,const Inven
     const auto p=UiLayout::panel(mode,W,H);
     text(vertices,"ARMOR "+std::to_string(inv.armorPoints()),p.x+(mode==UiMode::Creative?360.f:22.f),p.y+(mode==UiMode::Creative?526.f:272.f),1.1f,{.9f,.95f,1,1},W,H);
 }
+void inventoryActions(std::vector<V>& vertices,UiMode mode,int W,int H,const Inventory& inv){
+    for(int i=0;i<9;++i)if(inv.hotbarLocked(i)){const auto b=UiLayout::playerSlot(mode,i,W,H);rect(vertices,b.x,b.y,b.width,3,{1,.75f,.2f,1},W,H);text(vertices,"L",b.x+3,b.y+4,.8f,{1,.8f,.3f,1},W,H);}
+    auto button=[&](UiSlotKind kind,const char* label){auto r=UiLayout::inventoryAction(mode,kind,W,H);rect(vertices,r.x,r.y,r.width,r.height,{.17f,.23f,.25f,1},W,H);text(vertices,label,r.x+7,r.y+8,1.05f,{1,1,1,1},W,H);};
+    button(UiSlotKind::SortPlayer,mode==UiMode::Creative?"SORT HOTBAR":"SORT PLAYER");
+    if(mode==UiMode::Chest){button(UiSlotKind::SortContainer,"SORT CONTENTS");button(UiSlotKind::QuickStack,"QUICK STACK");button(UiSlotKind::DepositAll,"DEPOSIT ALL");button(UiSlotKind::TakeAll,"TAKE ALL");}
+    if(mode!=UiMode::Creative){const auto p=UiLayout::panel(mode,W,H);text(vertices,"ALT+CLICK HOTBAR: LOCK",p.x+100,p.y+535,1,{.8f,.85f,.85f,1},W,H);}
+}
 void flush(std::vector<V>& vertices, GLuint vbo, GLuint vao, GLuint program, GLuint texture,
            GLint atlasUniform) {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -271,6 +280,7 @@ void Renderer::renderInventory(
     const UiRect output = UiLayout::craftingOutput(W, H);
     slot(v, inv.craftingOutput(table), output.x, output.y, output.width, W, H);
     number(v, table ? "3" : "2", px + 70, py + 48, 2, {.95f, .9f, .74f, 1}, W, H);
+    text(v,"HOVER ITEM + "+recipeBook.usesKey+": RECIPES USING IT",px+70,py+250,1,{.8f,.85f,.85f,1},W,H);
     rect(v, px + 382, py + 34, 245, 245, {.12f, .13f, .14f, .96f}, W, H);
     static constexpr std::array<const char*, 5> categoryNames{
         "ALL", "BLD", "TOOL", "FOOD", "MISC"};
@@ -287,7 +297,8 @@ void Renderer::renderInventory(
     rect(v, search.x, search.y, search.width, search.height,
          recipeBook.searchFocused ? glm::vec4(.33f, .39f, .27f, 1)
                                   : glm::vec4(.21f, .22f, .23f, 1), W, H);
-    text(v, recipeBook.search.empty() ? "SEARCH" : recipeBook.search,
+    const auto searchLabel=recipeBook.search.empty()?(recipeBook.ingredientItem==Item::None?std::string("SEARCH"):"USES: "+itemDefinition(recipeBook.ingredientItem).displayName):recipeBook.search;
+    text(v, searchLabel.substr(0,28),
          search.x + 7, search.y + 7, 1.25f,
          recipeBook.search.empty() ? glm::vec4(.7f, .7f, .7f, 1)
                                    : glm::vec4(1, 1, 1, 1), W, H);
@@ -328,12 +339,15 @@ void Renderer::renderInventory(
                 std::to_string(std::max(1, (static_cast<int>(recipeBook.entries.size()) + 7) / 8)),
          px + 475, py + 252, 1.0f, {1, 1, 1, 1}, W, H);
     icon(v, inv.cursorStack(), static_cast<float>(mx) - 22, static_cast<float>(my) - 22, 44, W, H);
-    tooltip(v,mode,W,H,inv,mx,my,&recipeBook);
+    inventoryActions(v,mode,W,H,inv);
+    const auto recipeHit=UiLayout::hit(mode,mx,my,W,H,0,recipeBook.entries.size(),recipeBook.page);
+    if(recipeHit.kind==UiSlotKind::RecipeItem){const int index=recipeBook.entries[recipeBook.page*8+recipeHit.index];const auto feedback=recipeFeedback(inv,index,table);auto box=InventoryTooltip::bounds(W,H,mx,my,310);const float bh=55+feedback.missing.size()*15;box.y=std::clamp(box.y,4.f,std::max(4.f,H-bh-4));rect(v,box.x,box.y,326,bh,{.05f,.05f,.06f,.98f},W,H);text(v,itemDefinition(craftingRecipes()[index].output).displayName,box.x+8,box.y+8,1.1f,{1,1,1,1},W,H);text(v,feedback.message,box.x+8,box.y+25,1.1f,{1,.8f,.5f,1},W,H);for(int i=0;i<int(feedback.missing.size());++i)text(v,feedback.missing[i],box.x+8,box.y+43+i*15,1.05f,{1,1,1,1},W,H);}
+    else tooltip(v,mode,W,H,inv,mx,my,&recipeBook);
     flush(v, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 void Renderer::renderCreativeInventory(
     int W, int H, const Inventory& inv, double mouseX, double mouseY,int page,
-    const std::vector<Item>* creativeItems,const std::string& search,bool searchFocused) const {
+    const std::vector<Item>* creativeItems,const std::string& search,bool searchFocused,int category,const std::vector<int>* favorites) const {
     std::vector<V> vertices;
     vertices.reserve(16000);
     const UiRect panel = UiLayout::panel(UiMode::Creative, W, H);
@@ -350,6 +364,8 @@ void Renderer::renderCreativeInventory(
     const float catalogWidth = UiLayout::CreativeColumns * 48.0f + 16.0f;
     rect(vertices, panelX + (panel.width - catalogWidth) * .5f, panelY + 25,
          catalogWidth, catalogHeight, {.16f, .16f, .18f, 1}, W, H);
+    const char* categories[]={"ALL","BUILD","DECOR","TOOLS","FOOD","NATURE","MISC","FAVS","RECENT"};
+    for(int i=0;i<9;++i){auto r=UiLayout::creativeCategory(i,W,H);rect(vertices,r.x,r.y,r.width,r.height,i==category?glm::vec4(.36f,.45f,.26f,1):glm::vec4(.16f,.19f,.20f,1),W,H);text(vertices,categories[i],r.x+5,r.y+6,.9f,{1,1,1,1},W,H);}
     rect(vertices,panelX+450,panelY+475,40,30,{.13f,.15f,.16f,1},W,H);rect(vertices,panelX+550,panelY+475,40,30,{.13f,.15f,.16f,1},W,H);
     text(vertices,"<",panelX+465,panelY+483,1.5f,{1,1,1,1},W,H);text(vertices,">",panelX+565,panelY+483,1.5f,{1,1,1,1},W,H);text(vertices,std::to_string(page+1)+"/"+std::to_string(std::max(1,int((catalog.size()+UiLayout::CreativePageSize-1)/UiLayout::CreativePageSize))),panelX+495,panelY+484,1.2f,{1,1,1,1},W,H);
     const auto searchBox=UiLayout::creativeSearch(W,H);
@@ -365,6 +381,7 @@ void Renderer::renderCreativeInventory(
             stack.count = 1;
         const UiRect bounds = UiLayout::creativeItem(index, W, H);
         slot(vertices, stack, bounds.x, bounds.y, bounds.width, W, H);
+        if(favorites&&std::find(favorites->begin(),favorites->end(),int(stack.item))!=favorites->end())text(vertices,"F",bounds.x+3,bounds.y+3,1.2f,{1,.8f,.2f,1},W,H);
     }
 
     for (int index = 0; index < Inventory::HotbarSlots; ++index) {
@@ -384,6 +401,8 @@ void Renderer::renderCreativeInventory(
          44.0f,
          W,
          H);
+    inventoryActions(vertices,UiMode::Creative,W,H,inv);
+    text(vertices,"ALT+CLICK HOTBAR: LOCK / ALT+RMB ITEM: FAVORITE",panelX+32,panelY+557,1,{.8f,.85f,.85f,1},W,H);
     tooltip(vertices,UiMode::Creative,W,H,inv,mouseX,mouseY,nullptr,nullptr,nullptr,page,&catalog);
     flush(vertices, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
@@ -447,6 +466,7 @@ void Renderer::renderFurnace(int W,
          44,
          W,
          H);
+    inventoryActions(vertices,UiMode::Furnace,W,H,inv);
     tooltip(vertices,UiMode::Furnace,W,H,inv,mouseX,mouseY,nullptr,&furnace);
     flush(vertices, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
@@ -488,6 +508,7 @@ void Renderer::renderChest(int W,
          44,
          W,
          H);
+    inventoryActions(vertices,UiMode::Chest,W,H,inv);
     tooltip(vertices,UiMode::Chest,W,H,inv,mouseX,mouseY,nullptr,nullptr,&chest);
     flush(vertices, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }

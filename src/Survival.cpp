@@ -26,7 +26,7 @@
 #include <thread>
 
 namespace {
-constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '7', '\0', '\0'};
+constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '8', '\0', '\0'};
 constexpr char MobMagic[8] = {'V', 'X', 'M', 'O', 'B', '1', '\0', '\0'};
 constexpr int PassiveMobCap = 26;
 constexpr int HostileMobCap = 18;
@@ -634,6 +634,7 @@ bool Inventory::damageSelectedTool(int n) {
 }
 
 void Inventory::clear() {
+    hotbarLocks_=0;
     cachedArmorPoints_=-1;equipmentBroke_=false;
     for (auto& stack : equipment_) stack.clear();
     for (ItemStack& stack : slots_)
@@ -992,8 +993,8 @@ bool Inventory::gatherMatchingToCursor() {
         normalize(stack);
         movedAny = movedAny || moved > 0;
     };
-    for (ItemStack& stack : slots_)
-        gather(stack);
+    for (int i=0;i<TotalSlots;++i)
+        if(!hotbarLocked(i))gather(slots_[i]);
     for (ItemStack& stack : crafting_)
         gather(stack);
     return movedAny;
@@ -1003,18 +1004,19 @@ bool Inventory::handleInventoryClick(
     const UiHit hit = UiLayout::hit(
         table ? UiMode::CraftingTable : UiMode::Inventory, mx, my, w, h);
     auto quick = [&](int source, int first, int last) {
+        if(hotbarLocked(source))return true;
         ItemStack moving = slots_[source];
         if (moving.empty())
             return true;
         if (!isDurable(moving.item))
             for (int i = first; i < last && moving.count; ++i)
-                if (canMerge(slots_[i], moving)) {
+                if (!hotbarLocked(i)&&canMerge(slots_[i], moving)) {
                     int n = std::min(moving.count, maxStack(moving.item) - slots_[i].count);
                     slots_[i].count += n;
                     moving.count -= n;
                 }
         for (int i = first; i < last && moving.count; ++i)
-            if (slots_[i].empty()) {
+            if (!hotbarLocked(i)&&slots_[i].empty()) {
                 int n = std::min(moving.count, maxStack(moving.item));
                 slots_[i] = moving;
                 slots_[i].count = n;
@@ -1085,7 +1087,12 @@ bool Inventory::moveExternalToInventory(ItemStack& stack) {
     if (stack.empty())
         return false;
     const int before = stack.count;
-    stack.count = add(stack.item, stack.count, stack.durability, stack.identity);
+    for(int pass=0;pass<2;++pass)for(int i=0;i<TotalSlots&&stack.count>0;++i){
+        if(hotbarLocked(i))continue;
+        auto& target=slots_[i];if(pass==0?!canMerge(stack,target):!target.empty())continue;
+        const int n=std::min(stack.count,maxStack(stack.item)-(target.empty()?0:target.count));
+        if(n<=0)continue;if(target.empty()){target=stack;target.count=0;}target.count+=n;stack.count-=n;
+    }
     normalize(stack);
     return stack.count != before;
 }
@@ -1093,6 +1100,7 @@ bool Inventory::moveExternalToInventory(ItemStack& stack) {
 bool Inventory::movePlayerToExternal(int index, ItemStack* stacks, int stackCount) {
     if (index < 0 || index >= TotalSlots || !stacks || stackCount <= 0)
         return false;
+    if(hotbarLocked(index))return false;
     ItemStack& source = slots_[static_cast<std::size_t>(index)];
     if (source.empty())
         return false;
@@ -1164,6 +1172,7 @@ void Inventory::returnCraftingItems() {
         }
 }
 bool Inventory::save(const std::string& p, std::uint32_t seed) const {
+    if(hotbarLocks_>511)return false;
     if(selectedSlot_<0 || selectedSlot_>=9)return false;
     for(const auto& s:slots_)if(!SaveValidation::stack(s))return false;
     for(const auto& s:crafting_)if(!SaveValidation::stack(s))return false;
@@ -1187,6 +1196,7 @@ bool Inventory::save(const std::string& p, std::uint32_t seed) const {
             return false;
     if(!ws(cursor_)) return false;
     for(const auto& stack:equipment_) if(!ws(stack)) return false;
+    if(!wr(f,hotbarLocks_))return false;
     return true;
     });
 }
@@ -1202,7 +1212,8 @@ bool Inventory::load(const std::string& p, std::uint32_t seed) {
     const bool old=std::memcmp(m,legacy,8)==0;
     const bool v5=std::memcmp(m,"VXINV5\0",8)==0;
     const bool v6=std::memcmp(m,"VXINV6\0",8)==0;
-    if ((!old && !v5 && !v6 && std::memcmp(m, InventoryMagic, 8)) || !rd(f, stored) || stored != seed ||
+    const bool v7=std::memcmp(m,"VXINV7\0",8)==0;
+    if ((!old && !v5 && !v6 && !v7 && std::memcmp(m, InventoryMagic, 8)) || !rd(f, stored) || stored != seed ||
         !rd(f, loaded.selectedSlot_))
         return false;
     auto rs = [&](ItemStack& s) {
@@ -1228,6 +1239,7 @@ bool Inventory::load(const std::string& p, std::uint32_t seed) {
         if(!old && (!rs(loaded.equipment_[i]) || (!loaded.equipment_[i].empty() &&
             (i<4 && armorSlot(loaded.equipment_[i].item)!=i)))) return false;
     }
+    if(!old&&!v5&&!v6&&!v7 && (!rd(f,loaded.hotbarLocks_) || loaded.hotbarLocks_>511))return false;
     if(loaded.selectedSlot_<0 || loaded.selectedSlot_>=9 || f.peek()!=std::char_traits<char>::eof())return false;
     loaded.selectSlot(loaded.selectedSlot_);
     *this=loaded;

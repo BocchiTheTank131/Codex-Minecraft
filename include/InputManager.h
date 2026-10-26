@@ -11,7 +11,7 @@ struct PlayerInput;
 enum class ControlAction : int {
     Forward, Backward, Left, Right, Jump, Sprint, Sneak,
     Inventory, Drop, PickBlock, Zoom, Fullbright, Debug, Screenshot,
-    SwapOffhand, Count
+    SwapOffhand, RecipeUses, Count
 };
 inline constexpr int ControlActionCount = static_cast<int>(ControlAction::Count);
 using ControlBindings = std::array<int, ControlActionCount>;
@@ -47,6 +47,7 @@ public:
 private:
     friend class StabilityTest;
     friend class BuildingTest;
+    friend class QolTest;
     friend class Game; // Opt-in native regression fixtures inject one input frame.
     static constexpr int KeyCount = 512;
     static constexpr int MouseButtonCount = 8;

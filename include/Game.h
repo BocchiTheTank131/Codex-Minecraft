@@ -1,4 +1,5 @@
 #pragma once
+#include "QualityOfLife.h"
 #include "WorldLibrary.h"
 #include "SimulationClock.h"
 
@@ -30,6 +31,7 @@ class Transportation;
 namespace SaveFile { class Session; struct CommitStatus; }
 
 class Game {
+    friend class QolTest;
     friend class IconTest;
     friend class FarmingTest;
     friend class BuildingTest;
@@ -55,13 +57,19 @@ private:
     std::shared_ptr<SaveFile::CommitStatus> pendingSaveStatus_;
     std::string saveBlockedReason_;
     bool saveQueued_=false;
+    SaveFeedback saveFeedback_;
     void pollSave(bool wait=false);
     void blockSaving(const std::string& reason);
     void reclaimMapsIfNeeded();
     bool buildingUse(Item held,bool offhand);
+    PlacementPlan placementPlan(Item) const;
+    std::string interactionHint()const;
     bool buildingInput();
     void updateBuilding(float deltaTime);
     bool signEditorOpen_=false;glm::ivec3 signPosition_{0};std::string signDraft_;
+    SignEditor signEdit_;
+    int signRepeatKey_=-1;
+    double signRepeatAt_=0;
     float buildingFeedbackTimer_=0;
     std::optional<glm::ivec3> pressedPlate_;
     std::vector<std::pair<glm::ivec3,float>> pressedButtons_;

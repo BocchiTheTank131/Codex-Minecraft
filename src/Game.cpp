@@ -156,6 +156,7 @@ bool Game::initialize(int argc, char** argv) {
         settings_.load(SettingsPath);
     }
     parseArguments(argc, argv);
+    ui_.setPreferences(&settings_);UIManager::scalePreference=settings_.uiScale;
 
     if (!glfwInit()) {
         return false;
@@ -667,6 +668,12 @@ void Game::createWorldAndSystems() {
     timing_.lastSave = now;
     smokeTest_.startTime = now;
     loadedStateValid_=true;
+    saveFeedback_={};
+    if(loadedWorld&&Persistence::enabled()){
+        std::error_code error;const auto stamp=std::filesystem::last_write_time(worldSavePath("checkpoint.manifest"),error);
+        if(!error){const auto system=std::chrono::time_point_cast<std::chrono::system_clock::duration>(stamp-std::filesystem::file_time_type::clock::now()+std::chrono::system_clock::now());const auto saved=std::chrono::system_clock::to_time_t(system);std::tm local{};localtime_s(&local,&saved);char text[32];std::strftime(text,sizeof(text),"%Y-%m-%d %H:%M:%S",&local);saveFeedback_.time=text;saveFeedback_.lastSuccess=0;}
+    }
+
 }
 
 void Game::synchronizeCursorCapture() {
@@ -693,6 +700,7 @@ void Game::applyFullscreenSetting() {
 }
 
 void Game::blockSaving(const std::string& reason) {
+    saveFeedback_.complete(false,glfwGetTime());
     saveRetryAt_=0;saveQueued_=false;
     if(!saveBlockedReason_.empty())return;
     saveBlockedReason_=reason.empty()?"Checkpoint requires verified recovery":reason;
@@ -706,6 +714,7 @@ void Game::pollSave(bool wait) {
     bool saved=false;try{saved=pendingSave_.get();}catch(const std::exception& e){std::cerr<<"Background checkpoint error: "<<e.what()<<'\n';}
     const auto status=std::move(pendingSaveStatus_);
     const bool queued=saveQueued_;saveQueued_=false;
+    saveFeedback_.complete(saved,glfwGetTime());
     if(!saved && status && status->permanentFailure){blockSaving(status->reason);return;}
     if(saved){saveRetryAt_=0;saveRetryCount_=0;if(queued && world_ && loadedStateValid_)saveAll(!wait);}
     else {chat_.addMessage("Autosave commit failed; previous checkpoint retained. See log.",ChatTone::Error,glfwGetTime());
@@ -715,7 +724,7 @@ void Game::pollSave(bool wait) {
 bool Game::saveAll(bool asynchronous) {
     if(world_ && survival_)world_->flushBuildingDrops(*survival_);
     if(pendingSave_.valid()){
-        if(asynchronous){saveQueued_=true;return true;} // Coalesce to one fresh capture after this commit.
+        if(asynchronous){saveQueued_=true;saveFeedback_.pending(glfwGetTime());return true;} // Coalesce to one fresh capture after this commit.
         pollSave(true);
     }
     if (!Persistence::enabled() || !world_) return true;
@@ -725,6 +734,7 @@ bool Game::saveAll(bool asynchronous) {
     const bool settingsSaved=settings_.save(SettingsPath);
     SaveFile::Checkpoint checkpoint(worldSavePath("save.checkpoint"));
     if(!checkpoint.ready()){
+        saveFeedback_.complete(false,glfwGetTime());
         if(checkpoint.permanentFailure())blockSaving(checkpoint.failureReason());
         else if(saveRetryCount_<3)saveRetryAt_=glfwGetTime()+(.05*(1<<(2*saveRetryCount_++)));
         return false;
@@ -741,11 +751,13 @@ bool Game::saveAll(bool asynchronous) {
     if(saved && asynchronous){
         pendingSaveStatus_=std::make_shared<SaveFile::CommitStatus>();
         pendingSave_=checkpoint.commitAsync(pendingSaveStatus_);
+        saveFeedback_.pending(glfwGetTime());
         if(!settingsSaved)chat_.addMessage("World checkpoint queued; settings save failed. See log.",ChatTone::Error,glfwGetTime());
         timing_.lastSave=glfwGetTime();
         return settingsSaved; // Queued only; success/failure reported by pollSave.
     }
     if (saved) saved = checkpoint.commit();
+    saveFeedback_.complete(saved,glfwGetTime());
     const bool complete=saved&&settingsSaved;
     if (complete) {saveRetryAt_=0;saveRetryCount_=0;}
     else {
@@ -1028,6 +1040,7 @@ float Game::beginFrame() {
 }
 
 void Game::handleGlobalInput() {
+    UIManager::scalePreference=settings_.uiScale;
     if (!world_) {
         if (ui_.state() != GameState::Controls && input_.actionPressed(ControlAction::Screenshot))
             screenshotRequested_ = true;
@@ -1182,7 +1195,7 @@ void Game::updatePauseInterface() {
     glfwGetFramebufferSize(window_, &framebufferWidth, &framebufferHeight);
     glm::dvec2 cursor = input_.framebufferCursorPosition();
     const int hit = ui_.hoveredMenuItem(cursor, framebufferWidth, framebufferHeight);
-    const float scale = ui_.state() == GameState::MainMenu ? 1.0f : UIManager::menuScale(framebufferWidth, framebufferHeight);
+    const float scale = UIManager::menuScale(framebufferWidth, framebufferHeight);
     cursor /= scale;
     framebufferWidth = static_cast<int>(framebufferWidth / scale);
     framebufferHeight = static_cast<int>(framebufferHeight / scale);
@@ -1525,6 +1538,9 @@ void Game::updatePauseInterface() {
         settings_.terrainMemoryBudget=(settings_.terrainMemoryBudget+1)%4;
         if(world_)world_->setTerrainMemoryBudget(settings_.terrainMemoryBudget);
         break;
+    case 39:settings_.uiScale=(settings_.uiScale+1)%4;UIManager::scalePreference=settings_.uiScale;break;
+    case 49:settings_.interactionHints=!settings_.interactionHints;break;
+    case 50:settings_.placementPreview=!settings_.placementPreview;break;
     case 35:
         settings_.chunkStreamingQuality=(settings_.chunkStreamingQuality+1)%4;
         if(world_) world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
@@ -2065,6 +2081,7 @@ void Game::handleUseAction() {
     }
 
     if (used && placed) {
+        if(creativeMode_)ui_.rememberItem(heldItem);
         interaction_.heldItemSwing = 1.0f;
         const glm::ivec3 position = interaction_.blockTarget.adjacent;
         const Block placedMaterial = world_->getBlock(position.x, position.y, position.z);
@@ -2127,6 +2144,7 @@ void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
 }
 
 void Game::renderFrame(float deltaTime) {
+    UIManager::scalePreference=settings_.uiScale;
     int width = 0;
     int height = 0;
     glfwGetFramebufferSize(window_, &width, &height);
@@ -2134,19 +2152,21 @@ void Game::renderFrame(float deltaTime) {
         return;
     }
 
+    const int screenWidth=width,screenHeight=height;
+    const float uiScale=UiLayout::interfaceScale(width,height,settings_.uiScale);
     if (!world_) {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0, 0, width, height);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         const auto cursor = input_.framebufferCursorPosition();
-        renderer_->renderMainMenu(width, height,
+        renderer_->renderMainMenu(int(width/uiScale), int(height/uiScale),
             ui_.hoveredMenuItem(cursor, width, height),
             input_.mouseDown(GLFW_MOUSE_BUTTON_LEFT),
             ui_.state() == GameState::MainMenu, !Persistence::enabled(), glfwGetTime());
         if (ui_.state() != GameState::MainMenu) renderMenuInterface(width, height);
-        renderer_->renderNowPlaying(width, height, sounds_->currentSongName());
+        renderer_->renderNowPlaying(int(screenWidth/uiScale), int(screenHeight/uiScale), sounds_->currentSongName());
         if (screenshotRequested_) {
-            Screenshot::saveBmp(width, height);
+            Screenshot::saveBmp(screenWidth, screenHeight);
             screenshotRequested_ = false;
         }
         // Streaming headroom excludes presentation/FPS-cap idle time. F3 and
@@ -2236,8 +2256,18 @@ void Game::renderFrame(float deltaTime) {
         }
 
     }
+    std::string qolHint;
+    if(ui_.state()==GameState::Playing&&!spectatorMode_&&!player_->isDead()&&!chat_.isOpen()&&!navigationOpen_&&!signEditorOpen_){
+        const auto action=interactionHint();if(settings_.interactionHints)qolHint=action;
+        if(settings_.placementPreview && action.empty()){
+            const bool off=buildingToolHand().value_or(inventory_->selectedStack().empty()||(!inventory_->equipment(4).empty()&&!hasMainHandUse(inventory_->selectedItem())));
+            const auto plan=placementPlan(off?inventory_->equipment(4).item:inventory_->selectedItem());
+            renderer_->renderPlacementPreview(plan,view,projection);if(!plan.valid&&!plan.blocks.empty())qolHint=plan.reason;
+        }
+    }
     // Resolve the 3D scene before any HUD, menus, maps, held sprites or text.
     resolveRenderTarget(width, height);
+    width=int(screenWidth/uiScale);height=int(screenHeight/uiScale);
     if (underwater) renderer_->renderUnderwaterOverlay(width, height);
 
     if (!zooming) {
@@ -2275,16 +2305,16 @@ void Game::renderFrame(float deltaTime) {
         }
         }
     }
-    if(ui_.state()==GameState::Playing && !chat_.isOpen()  )renderer_->renderBuildingOverlay(width,height,*world_,*player_,view,projection,signEditorOpen_,signDraft_,signEditorOpen_?signPosition_:interaction_.blockTarget.block);
+    if(ui_.state()==GameState::Playing && !chat_.isOpen()  )renderer_->renderBuildingOverlay(width,height,*world_,*player_,view,projection,signEditorOpen_,signDraft_,signEditorOpen_?signPosition_:interaction_.blockTarget.block,&signEdit_);
     if(ui_.state()==GameState::Playing && !chat_.isOpen()) renderer_->renderNavigation(width,height,*transportation_,*player_,*inventory_,navigationOpen_,mapView_,viewedMap_,waypointName_,waypointCoordinates_,waypointCoordinatesFocused_,navigationMessage_);
 
-    const glm::dvec2 cursor = input_.framebufferCursorPosition();
+    const glm::dvec2 cursor = input_.framebufferCursorPosition()/double(uiScale);
     if (ui_.gameplayInterfaceOpen()) {
         if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) ||
             input_.mousePressed(GLFW_MOUSE_BUTTON_RIGHT))
             sounds_->playClick();
         if (creativeMode_ && ui_.state() == GameState::Inventory) {
-            renderer_->renderCreativeInventory(width, height, *inventory_, cursor.x, cursor.y,ui_.creativePage(),&ui_.creativeItems(),ui_.creativeSearch(),ui_.creativeSearchFocused());
+            renderer_->renderCreativeInventory(width, height, *inventory_, cursor.x, cursor.y,ui_.creativePage(),&ui_.creativeItems(),ui_.creativeSearch(),ui_.creativeSearchFocused(),ui_.creativeCategory(),&settings_.creativeFavorites);
         } else if (ui_.state() == GameState::Furnace) {
             if (const FurnaceData* furnace = world_->furnaceAt(ui_.openedContainerPosition(), false)) {
                 renderer_->renderFurnace(width, height, *inventory_, *furnace, cursor.x, cursor.y);
@@ -2299,20 +2329,21 @@ void Game::renderFrame(float deltaTime) {
                 ui_.recipeBook(), cursor.x, cursor.y);
         }
     }
-    if (ui_.simulationPaused()) renderMenuInterface(width, height);
+    if (ui_.simulationPaused()) renderMenuInterface(screenWidth, screenHeight);
+    if(ui_.state()==GameState::Playing||ui_.state()==GameState::PauseMenu)renderer_->renderQolFeedback(width,height,qolHint,Persistence::enabled()?saveFeedback_.label(glfwGetTime(),ui_.state()==GameState::PauseMenu):(ui_.state()==GameState::PauseMenu?"DEMO: SESSION ONLY":""),ui_.state()==GameState::PauseMenu);
 
     renderer_->renderChat(width, height, chat_, glfwGetTime());
     if (!(smokeTest_.worldgenEnabled && smokeTest_.previewClean))
-        renderer_->renderNowPlaying(width, height, sounds_->currentSongName());
+        renderer_->renderNowPlaying(int(screenWidth/uiScale), int(screenHeight/uiScale), sounds_->currentSongName());
     if (screenshotRequested_) {
-        Screenshot::saveBmp(width, height);
+        Screenshot::saveBmp(screenWidth, screenHeight);
         screenshotRequested_ = false;
     }
     if (smokeTest_.worldgenEnabled) {
         const double elapsed = glfwGetTime() - smokeTest_.startTime;
         const bool settled = world_->pendingChunkCount()==0 && world_->pendingCpuMeshCount()==0 && world_->queuedMeshRebuildCount()==0;
         if (elapsed > 4.0 && (settled || elapsed > 30.0) && !smokeTest_.worldgenScreenshotTaken) {
-            Screenshot::saveBmp(width, height);
+            Screenshot::saveBmp(screenWidth, screenHeight);
             smokeTest_.worldgenScreenshotTaken = true;
         }
     }

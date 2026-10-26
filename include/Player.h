@@ -25,6 +25,7 @@ struct PlayerInput {
 class Player {
     friend class FarmingTest;
     friend class BuildingTest;
+    friend class QolTest;
 public:
     static constexpr float Width = 0.60f, Height = 1.80f, EyeHeight = 1.62f;
     explicit Player(const glm::vec3& spawnPosition);

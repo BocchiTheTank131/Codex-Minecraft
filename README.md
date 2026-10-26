@@ -4,6 +4,18 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.16.2 - Quality of Life
+
+Inventory and container sorting, Quick Stack, Deposit All, Take All, and protected
+hotbar slots. Contextual hints, adjustable UI scaling, textured placement previews,
+accurate checkpoint feedback, Creative categories/favorites/recent items, crafting
+requirements, and conventional multiline sign editing extend the existing systems.
+The v2.16.1 icons, all 22 generators, item/block IDs and billboard mobs are preserved.
+
+See [QOL validation](docs/QOL_VALIDATION_v2.16.2.md) for controls, screenshots,
+measurements, compatibility checks and limitations. Download both Windows variants from the
+[v2.16.2 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.16.2).
+
 ### v2.16.1 - Inventory Icon & Visual Clarity
 
 All 347 registered items now have cached 64×64 previews. Blocks use the actual

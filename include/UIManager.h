@@ -11,6 +11,7 @@ class Inventory;
 class Player;
 class SurvivalWorld;
 class World;
+struct GameSettings;
 
 enum class GameState {
     MainMenu,
@@ -31,6 +32,8 @@ enum class GameState {
 };
 
 struct RecipeBookView {
+    std::string usesKey="U";
+    Item ingredientItem=Item::None;
     RecipeCategory category = RecipeCategory::All;
     bool craftableOnly = false;
     bool searchFocused = false;
@@ -41,6 +44,7 @@ struct RecipeBookView {
 
 class UIManager {
     friend class IconTest;
+    friend class QolTest;
 public:
     GameState state() const {
         return state_;
@@ -78,6 +82,11 @@ public:
     void handleEscape(Inventory& inventory) { handleEscape(&inventory); }
     static UiRect mainMenuButton(int index, int width, int height);
     static float menuScale(int width, int height);
+    static inline int scalePreference=0;
+    void setPreferences(GameSettings* settings){preferences_=settings;}
+    const GameSettings* preferences()const{return preferences_;}
+    int creativeCategory()const{return creativeCategory_;}
+    void rememberItem(Item);
 
     bool validateOpenBlock(const World& world, const Player& player, Inventory& inventory);
     void updateInventoryInteraction(InputManager& input,
@@ -94,7 +103,7 @@ public:
         return worldContainerPosition_;
     }
     int creativePage() const {return creativePage_;}
-    const std::vector<Item>& creativeItems() const {return creativeSearch_.empty()?creativeCatalog():creativeFiltered_;}
+    const std::vector<Item>& creativeItems() const {return creativeSearch_.empty()&&creativeCategory_==0?creativeCatalog():creativeFiltered_;}
     const std::string& creativeSearch() const {return creativeSearch_;}
     bool creativeSearchFocused() const {return creativeSearchFocused_;}
     const RecipeBookView& recipeBook() const { return recipeBook_; }
@@ -110,6 +119,8 @@ private:
     RecipeBookView recipeBook_{};
     int selectedRecipe_ = -1;
     int creativePage_=0;
+    int creativeCategory_=0;
+    GameSettings* preferences_=nullptr;
     std::string creativeSearch_;
     std::vector<Item> creativeFiltered_;
     bool creativeSearchFocused_=false;

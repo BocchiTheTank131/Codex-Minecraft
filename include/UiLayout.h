@@ -17,7 +17,7 @@ enum class UiSlotKind {
     ChestSlot,
     CreativeItem, CreativePrevious, CreativeNext, CreativeSearch,
     RecipeItem, RecipeCategory, RecipeCraftable, RecipeSearch,
-    RecipePrevious, RecipeNext
+    RecipePrevious, RecipeNext, SortPlayer, SortContainer, QuickStack, DepositAll, TakeAll, CreativeCategory
 };
 
 struct UiRect {
@@ -42,6 +42,12 @@ struct UiHit {
 };
 
 namespace UiLayout {
+inline float interfaceScale(int w,int h,int preference){
+    const float fit=std::min(w/760.f,h/700.f);
+    const float wanted=preference==1?.85f:preference==2?1.f:preference==3?1.5f:std::max(1.f,float(h)/720.f);
+    return std::max(.1f,std::min(fit,wanted));
+}
+inline UiRect signButton(bool save,int w,int h){return {w*.5f+(save?15.f:-130.f),h*.5f+65,115,30};}
 inline constexpr int CreativeColumns = 12;
 inline constexpr int CreativeRows = 9;
 inline constexpr int CreativePageSize = CreativeColumns*CreativeRows;
@@ -86,6 +92,13 @@ inline UiRect creativeSearch(int width,int height) {
     const auto p=panel(UiMode::Creative,width,height);
     return {p.x+32,p.y+475,340,30};
 }
+inline UiRect inventoryAction(UiMode mode,UiSlotKind action,int w,int h){
+    const auto p=panel(mode,w,h);
+    if(action==UiSlotKind::SortPlayer)return {p.x+(mode==UiMode::Creative?460.f:100.f),p.y+(mode==UiMode::Creative?522.f:266.f),110,24};
+    const int n=action==UiSlotKind::SortContainer?0:action==UiSlotKind::QuickStack?1:action==UiSlotKind::DepositAll?2:3;
+    return {p.x+100+n*110.f,p.y+228,106,26};
+}
+inline UiRect creativeCategory(int i,int w,int h){const auto p=panel(UiMode::Creative,w,h);return {p.x+32+i*65.f,p.y+12,62,20};}
 inline UiRect furnaceSlot(UiSlotKind kind, int width, int height) {
     const UiRect p = panel(UiMode::Furnace, width, height);
     if (kind == UiSlotKind::FurnaceInput)
@@ -123,6 +136,9 @@ inline UiRect recipePageButton(bool next, int width, int height) {
 inline UiHit hit(UiMode mode, double mouseX, double mouseY,
                  int width, int height, std::size_t creativeCount = 0,
                  std::size_t recipeCount = 0, int recipePage = 0,int creativePage=0) {
+    if(inventoryAction(mode,UiSlotKind::SortPlayer,width,height).contains(mouseX,mouseY))return {UiSlotKind::SortPlayer,0};
+    if(mode==UiMode::Chest)for(auto action:{UiSlotKind::SortContainer,UiSlotKind::QuickStack,UiSlotKind::DepositAll,UiSlotKind::TakeAll})
+        if(inventoryAction(mode,action,width,height).contains(mouseX,mouseY))return {action,0};
     for(int index=0;index<5;++index)
         if(equipmentSlot(mode,index,width,height).contains(mouseX,mouseY))
             return {UiSlotKind::EquipmentSlot,index};
@@ -165,6 +181,7 @@ inline UiHit hit(UiMode mode, double mouseX, double mouseY,
                 return {UiSlotKind::ChestSlot, index};
     }
     if (mode == UiMode::Creative) {
+        for(int i=0;i<9;++i)if(creativeCategory(i,width,height).contains(mouseX,mouseY))return {UiSlotKind::CreativeCategory,i};
         if(creativeSearch(width,height).contains(mouseX,mouseY))return {UiSlotKind::CreativeSearch,0};
         const auto p=panel(mode,width,height);
         if(UiRect{p.x+450,p.y+475,40,30}.contains(mouseX,mouseY))return {UiSlotKind::CreativePrevious,0};

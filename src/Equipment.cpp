@@ -36,6 +36,7 @@ bool Inventory::clickEquipment(int index,bool right,bool shift) {
     return true;
 }
 bool Inventory::equipFromSlot(int index) {
+    if(hotbarLocked(index))return false;
     if(index<0 || index>=TotalSlots || slots_[index].empty()) return false;
     auto& source=slots_[index];
     const int target=source.item==Item::Shield ? OffhandSlot : armorSlot(source.item);

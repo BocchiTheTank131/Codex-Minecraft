@@ -5,11 +5,13 @@ The game does not run this tool or create thumbnails while opening inventory.
 Legacy 16px files remain source artwork for silhouette-shaped non-block items.
 """
 from pathlib import Path
-import argparse, csv, hashlib, json, struct, subprocess, time, os, uuid, io
+import argparse, csv, hashlib, json, struct, subprocess, time, os, uuid, io, re
 from PIL import Image, ImageDraw
 ROOT=Path(__file__).resolve().parents[1]
+version=re.search(r'project\(VoxelFrontier VERSION ([0-9.]+)',(ROOT/'CMakeLists.txt').read_text()).group(1)
+validation=ROOT/('build/v'+version.replace('.','')+'-validation')
 parser=argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--output',type=Path,default=ROOT/'build/v2161-validation/generated')
+parser.add_argument('--output',type=Path,default=validation/'generated')
 parser.add_argument('--skip-build',action='store_true')
 parser.add_argument('--check',action='store_true')
 args=parser.parse_args()
@@ -44,9 +46,9 @@ art=Image.open(assets/'inventory_atlas_16.png').convert('RGBA')
 source=assets/'inventory_art_source.rgba';atomic_bytes(source,struct.pack('<ii',*art.size)+art.tobytes())
 if not args.skip_build:
     subprocess.run(['cmake','--build',str(ROOT/'build/installed-release'),'--config','Release','--parallel','4','--','/nodeReuse:false'],check=True)
-    subprocess.run(['cmake','-S',str(ROOT/'tests/stability'),'-B',str(ROOT/'build/v2161-validation/driver'),'-G','Visual Studio 18 2026','-A','x64'],check=True)
-    subprocess.run(['cmake','--build',str(ROOT/'build/v2161-validation/driver'),'--config','Release','--parallel','2','--','/nodeReuse:false'],check=True)
-driver=ROOT/'build/v2161-validation/driver/Release/StabilityDriver.exe'
+    subprocess.run(['cmake','-S',str(ROOT/'tests/stability'),'-B',str(validation/'driver'),'-G','Visual Studio 18 2026','-A','x64'],check=True)
+    subprocess.run(['cmake','--build',str(validation/'driver'),'--config','Release','--parallel','2','--','/nodeReuse:false'],check=True)
+driver=validation/'driver/Release/StabilityDriver.exe'
 with (output/'native-export.log').open('w') as log:
     subprocess.run([str(driver),'--icons-export',str(output),str(source)],check=True,stdout=log,stderr=subprocess.STDOUT)
 blob=(output/'thumbnails-128.rgba').read_bytes();width,height=struct.unpack('<ii',blob[:8]);assert width==1280 and len(blob)==8+width*height*4

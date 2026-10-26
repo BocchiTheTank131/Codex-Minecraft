@@ -1,4 +1,5 @@
 #pragma once
+#include "QualityOfLife.h"
 
 #include "Block.h"
 #include "Settings.h"
@@ -64,7 +65,9 @@ public:
                    const std::string& debugText,
                    const std::string& statusText,
                    bool spectator = false) const;
-    void renderBuildingOverlay(int width,int height,const World&,const Player&,const glm::mat4& view,const glm::mat4& projection,bool editor,const std::string& draft,const glm::ivec3& target) const;
+    void renderBuildingOverlay(int width,int height,const World&,const Player&,const glm::mat4& view,const glm::mat4& projection,bool editor,const std::string& draft,const glm::ivec3& target,const SignEditor* editing=nullptr) const;
+    void renderPlacementPreview(const PlacementPlan&,const glm::mat4& view,const glm::mat4& projection)const;
+    void renderQolFeedback(int width,int height,const std::string& hint,const std::string& save,bool pause)const;
     void renderNavigation(int,int,const Transportation&,const Player&,const Inventory&,bool,bool,std::uint32_t,const std::string&,const std::string&,bool,const std::string&) const;
     void renderChat(int width, int height, const ChatUI& chat, double now) const;
     void renderNowPlaying(int width, int height, const std::string& songName) const;
@@ -87,7 +90,8 @@ public:
                                  const Inventory& inventory,
                                  double mouseX,
                                  double mouseY,int page=0,const std::vector<Item>* creativeItems=nullptr,
-                                 const std::string& search={},bool searchFocused=false) const;
+                                 const std::string& search={},bool searchFocused=false,int category=0,
+                                 const std::vector<int>* favorites=nullptr) const;
     void renderFurnace(int width,
                        int height,
                        const Inventory& inventory,
@@ -207,6 +211,11 @@ private:
     ProgramUniforms skyUniforms_;
     ProgramUniforms uiUniforms_;
     ProgramUniforms worldUniforms_;
+    GLuint previewProgram_=0;
+    ProgramUniforms previewUniforms_;
+    mutable GLuint previewVao_=0,previewVbo_=0;
+    mutable std::vector<PlacementBlock> previewBlocks_;
+    mutable int previewVertexCount_=0;
 
     struct Particle {
         glm::vec3 position, velocity, color;

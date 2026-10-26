@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include <GLFW/glfw3.h>
 #include "Building.h"
 #include "Transportation.h"
 #include "Player.h"
@@ -417,6 +418,14 @@ layout(location=3) in float aTextured;
 out vec4 vColor; out vec2 vUv; out float vTextured;
 void main(){ gl_Position=vec4(aPosition,0.0,1.0); vColor=aColor; vUv=aUv; vTextured=aTextured; }
 )GLSL";
+constexpr const char* PreviewFragmentShader=R"GLSL(
+#version 330 core
+in vec2 vUv;
+uniform sampler2D uItemAtlas;
+uniform vec3 uColor;
+out vec4 fragColor;
+void main(){vec4 pixel=texture(uItemAtlas,vUv);if(pixel.a<.02)discard;fragColor=vec4(pixel.rgb*uColor,.32*pixel.a);}
+)GLSL";
 constexpr const char* UiFragmentShader = R"GLSL(
 #version 330 core
 in vec4 vColor; in vec2 vUv; in float vTextured; uniform sampler2D uItemAtlas; out vec4 fragColor;
@@ -808,6 +817,8 @@ Renderer::Renderer() {
     particleProgram_ = makeProgram(ParticleVertexShader, ParticleFragmentShader);
     entityProgram_ = makeProgram(EntityVertexShader, EntityFragmentShader);
     itemProgram_ = makeProgram(ItemVertexShader, ItemFragmentShader);
+    previewProgram_=makeProgram(ItemVertexShader,PreviewFragmentShader);
+    previewUniforms_=cacheUniforms(previewProgram_);
     billboardProgram_ = makeProgram(ItemVertexShader, BillboardFragmentShader);
     billboardUniforms_ = cacheUniforms(billboardProgram_);
     entityUniforms_ = cacheUniforms(entityProgram_);
@@ -1012,6 +1023,9 @@ Renderer::~Renderer() {
         glDeleteTextures(1, &itemTexture_);
     if (atlasTexture_)
         glDeleteTextures(1, &atlasTexture_);
+    if(previewProgram_)glDeleteProgram(previewProgram_);
+    if(previewVbo_)glDeleteBuffers(1,&previewVbo_);
+    if(previewVao_)glDeleteVertexArrays(1,&previewVao_);
     if (itemProgram_)
         glDeleteProgram(itemProgram_);
     if (entityProgram_)
@@ -1859,6 +1873,7 @@ void Renderer::renderHud(int width,
         if (count > 0)
             addSprite(vertices, item, x + 4, y + 4, 36, 36, {1, 1, 1, 1}, width, height);
         drawText(std::to_string(i + 1), x + 4, y + 4, 1.0f, {0.78f, 0.80f, 0.84f, 1});
+        if(inventory.hotbarLocked(i))addRect(vertices,x,y,slot,3,{1,.75f,.2f,1},width,height);
         if (count > 0)
             drawText(std::to_string(count),
                      x + slot - 4 - static_cast<float>(std::to_string(count).size()) * 6.0f,
@@ -2616,9 +2631,9 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
     } else {
         for (int index=0; index<int(categories.size()); ++index)
             menuButton(vertices,MenuLayout::tab(index,width,height),categories[index],index==0 || hovered==30+index,width,height);
-        const std::array<std::string,16> labels{"RENDER DISTANCE","SIMULATION DISTANCE","FOV","BRIGHTNESS",
-            "ANTI ALIASING","FULLSCREEN","VSYNC","FPS LIMIT","GRAPHICS PRESET","ENTITY DISTANCE","SHOW FPS","SHOW COORDINATES","CHUNK STREAMING","TERRAIN LOD","OCCLUSION","TERRAIN MEMORY TARGET"};
-        const std::array<std::string,16> values{
+        const std::array<std::string,19> labels{"RENDER DISTANCE","SIMULATION DISTANCE","FOV","BRIGHTNESS",
+            "ANTI ALIASING","FULLSCREEN","VSYNC","FPS LIMIT","GRAPHICS PRESET","ENTITY DISTANCE","SHOW FPS","SHOW COORDINATES","CHUNK STREAMING","TERRAIN LOD","OCCLUSION","TERRAIN MEMORY TARGET","UI SCALE","INTERACTION HINTS","PLACEMENT PREVIEW"};
+        const std::array<std::string,19> values{
             std::to_string(settings.renderDistance),std::to_string(settings.simulationDistance),
             std::to_string(static_cast<int>(std::round(settings.fov))),
             std::to_string(static_cast<int>(std::round(settings.brightness*100)))+"%",
@@ -2630,8 +2645,9 @@ void Renderer::renderSettingsCategories(int width, int height, int hovered,
             std::array<const char*,4>{"AUTO","LOW","BALANCED","HIGH"}[settings.chunkStreamingQuality],
             std::array<const char*,4>{"OFF","LOW","MEDIUM","HIGH"}[settings.terrainLod],
             std::array<const char*,3>{"OFF","AUTO","ON"}[settings.occlusionCulling],
-            std::array<const char*,4>{"AUTO","LOW","BALANCED","HIGH"}[settings.terrainMemoryBudget]};
-        const std::array<float,16> positions{(settings.renderDistance-2)/62.0f,(settings.simulationDistance-2)/30.0f,
+            std::array<const char*,4>{"AUTO","LOW","BALANCED","HIGH"}[settings.terrainMemoryBudget],
+            std::array<const char*,4>{"AUTO","SMALL","NORMAL","LARGE"}[settings.uiScale],settings.interactionHints?"ON":"OFF",settings.placementPreview?"ON":"OFF"};
+        const std::array<float,19> positions{(settings.renderDistance-2)/62.0f,(settings.simulationDistance-2)/30.0f,
             (settings.fov-55)/50.0f,settings.brightness,0,0,0,0,0,(settings.entityDistance-2)/62.0f,0,0};
         for (int index=0; index<int(MenuLayout::VideoActions.size()); ++index) {
             const auto r=MenuLayout::videoRow(index,width,height);
@@ -2890,9 +2906,23 @@ void Renderer::renderNavigation(int width,int height,const Transportation& trave
     }drawMenuVertices(v.data(),v.size());
 }
 
-void Renderer::renderBuildingOverlay(int width,int height,const World& world,const Player& player,const glm::mat4& view,const glm::mat4& projection,bool editor,const std::string& draft,const glm::ivec3& target) const {
+void Renderer::renderBuildingOverlay(int width,int height,const World& world,const Player& player,const glm::mat4& view,const glm::mat4& projection,bool editor,const std::string& draft,const glm::ivec3& target,const SignEditor* editing) const {
  thread_local std::vector<UiVertex> data;data.clear();
- if(editor){const float x=width*.5f-230,y=height*.5f-100;addRect(data,x-12,y-10,460,215,{.12f,.075f,.04f,.93f},width,height);textGeometry_->append(data,"EDIT SIGN (4 lines, 24 characters)\n\n"+draft+"_\n\nTAB: NEW LINE   ENTER: SAVE\nESC: CANCEL   CTRL+A: CLEAR",x,y,1.7f,{.98f,.91f,.73f,1},width,height);}
+ if(editor){
+  const float x=width*.5f-230,y=height*.5f-125;addRect(data,x-24,y-16,508,250,{.12f,.075f,.04f,.96f},width,height);
+  textGeometry_->append(data,"EDIT SIGN - 4 LINES / 24 CHARACTERS",x,y,1.5f,{.98f,.91f,.73f,1},width,height);
+  const auto lo=editing?std::min(editing->caret,editing->anchor):draft.size(),hi=editing?std::max(editing->caret,editing->anchor):draft.size();
+  int row=0,column=0;float caretX=x,caretY=y+36;
+  for(std::size_t i=0;i<=draft.size();++i){if(editing&&i==editing->caret){caretX=x+column*12;caretY=y+36+row*24;}if(i==draft.size())break;
+   if(i>=lo&&i<hi)addRect(data,x+column*12,y+34+row*24,draft[i]=='\n'?5.f:12.f,20,{.3f,.4f,.65f,.8f},width,height);
+   if(draft[i]=='\n'){++row;column=0;continue;}
+   textGeometry_->appendRun(data,std::string(1,draft[i]),x+column*12,y+36+row*24,2,{.98f,.91f,.73f,1},width,height);++column;
+  }
+  if(std::fmod(glfwGetTime(),1.)<.5)addRect(data,caretX,caretY-2,2,20,{1,1,.8f,1},width,height);
+  textGeometry_->appendRun(data,"ENTER: NEW LINE / CTRL+ENTER: SAVE / ESC: CANCEL",x,y+141,1.2f,{.8f,.85f,.9f,1},width,height);
+  textGeometry_->appendRun(data,"ARROWS / HOME / END / SHIFT SELECT / CTRL+A,C,V",x,y+158,1.1f,{.8f,.85f,.9f,1},width,height);
+  for(bool save:{false,true}){auto r=UiLayout::signButton(save,width,height);addRect(data,r.x,r.y,r.width,r.height,{.28f,.34f,.24f,1},width,height);textGeometry_->appendRun(data,save?"SAVE":"CANCEL",r.x+24,r.y+10,1.4f,{1,1,1,1},width,height);}
+ }
  else {
   thread_local std::vector<glm::ivec3> signs;world.nearbyBuildingSigns(player.cameraPosition(),signs);
   const auto vp=projection*view;
@@ -2905,4 +2935,37 @@ void Renderer::renderBuildingOverlay(int width,int height,const World& world,con
  }
  if(data.empty())return;
  glUseProgram(uiProgram_);glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,itemTexture_);glUniform1i(uiItemAtlasUniform_,0);glBindVertexArray(uiVao_);glBindBuffer(GL_ARRAY_BUFFER,uiVbo_);glBufferData(GL_ARRAY_BUFFER,data.size()*sizeof(UiVertex),data.data(),GL_STREAM_DRAW);glDisable(GL_DEPTH_TEST);glDisable(GL_CULL_FACE);glDrawArrays(GL_TRIANGLES,0,GLsizei(data.size()));glBindVertexArray(0);glEnable(GL_CULL_FACE);glEnable(GL_DEPTH_TEST);
+}
+
+void Renderer::renderPlacementPreview(const PlacementPlan& plan,const glm::mat4& view,const glm::mat4& projection)const {
+ if(plan.blocks.empty())return;
+ bool changed=plan.blocks.size()!=previewBlocks_.size();if(!changed)for(std::size_t i=0;i<plan.blocks.size();++i)if(plan.blocks[i].position!=previewBlocks_[i].position||plan.blocks[i].block!=previewBlocks_[i].block)changed=true;
+ if(!previewVao_){glGenVertexArrays(1,&previewVao_);glGenBuffers(1,&previewVbo_);glBindVertexArray(previewVao_);glBindBuffer(GL_ARRAY_BUFFER,previewVbo_);glEnableVertexAttribArray(0);glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,5*sizeof(float),nullptr);glEnableVertexAttribArray(1);glVertexAttribPointer(1,2,GL_FLOAT,GL_FALSE,5*sizeof(float),reinterpret_cast<void*>(3*sizeof(float)));changed=true;}
+ if(changed){
+  std::vector<float> data;data.reserve(2*24*36*5);
+  auto vertex=[&](glm::vec3 p,glm::vec2 uv,int tile){uv=glm::clamp(uv,glm::vec2(.002f),glm::vec2(.998f));data.insert(data.end(),{p.x,p.y,p.z,(tile+uv.x)/BlockAtlasTiles,uv.y});};
+  for(auto part:plan.blocks){
+   if(isPlant(part.block)){
+    const float height=(isCrop(part.block)||isBerryBush(part.block))?blockGeometry(part.block).maxY:.9f;
+    const glm::vec3 origin(part.position);const glm::vec2 uvs[]={{0,1},{0,0},{1,0},{1,1}};
+    for(int diagonal=0;diagonal<2;++diagonal){const float x0=diagonal?.92f:.08f,x1=diagonal?.08f:.92f;const glm::vec3 points[]={{x0,0,.08f},{x0,height,.08f},{x1,height,.92f},{x1,0,.92f}};for(int i:{0,1,2,0,2,3})vertex(origin+points[i],uvs[i],blockTexture(part.block,0));}
+    continue;
+   }
+   auto boxes=buildingBoxes(part.block);const auto g=blockGeometry(part.block);if(!isBuilding(part.block))boxes.add(g.minX,g.minY,g.minZ,g.maxX,g.maxY,g.maxZ);
+   for(int box=0;box<boxes.count;++box){const auto a=boxes.boxes[box].minimum,b=boxes.boxes[box].maximum;
+    for(int face=0;face<6;++face){const int axis=face<2?0:face<4?1:2;const bool positive=face%2==0;const int A=(axis+1)%3,B=(axis+2)%3;
+     std::array<glm::vec3,4> points;for(auto& p:points)p[axis]=positive?b[axis]:a[axis];points[0][A]=points[3][A]=a[A];points[1][A]=points[2][A]=b[A];points[0][B]=points[1][B]=a[B];points[2][B]=points[3][B]=b[B];if(!positive)std::swap(points[1],points[3]);
+     for(int i:{0,1,2,0,2,3}){const auto p=points[i];glm::vec2 uv(axis==0?p.z:p.x,axis==1?p.z:1-p.y);if(blockType(part.block)==Block::Bed&&face==2)for(int r=0;r<int(blockProperties(part.block)&3);++r)uv={uv.y,1-uv.x};if(blockType(part.block)==Block::Painting&&(blockProperties(part.block)&32)){if((blockProperties(part.block)&3)>=2)uv.x=1-uv.x;uv.x=(uv.x+((blockProperties(part.block)&16)?1.f:0.f))*.5f;}vertex(glm::vec3(part.position)+p,uv,blockTexture(part.block,face));}
+    }
+   }
+  }
+  previewBlocks_=plan.blocks;previewVertexCount_=int(data.size()/5);glBindBuffer(GL_ARRAY_BUFFER,previewVbo_);glBufferData(GL_ARRAY_BUFFER,data.size()*sizeof(float),data.data(),GL_DYNAMIC_DRAW);
+ }
+ glUseProgram(previewProgram_);glUniformMatrix4fv(previewUniforms_.view,1,GL_FALSE,glm::value_ptr(view));glUniformMatrix4fv(previewUniforms_.projection,1,GL_FALSE,glm::value_ptr(projection));glUniform3f(previewUniforms_.color,plan.valid?.6f:1.f,plan.valid?1.f:.25f,plan.valid?.6f:.25f);glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,atlasTexture_);glUniform1i(previewUniforms_.itemAtlas,0);glBindVertexArray(previewVao_);glEnable(GL_DEPTH_TEST);glDepthMask(GL_FALSE);glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glDisable(GL_CULL_FACE);glEnable(GL_POLYGON_OFFSET_FILL);glPolygonOffset(-1,-1);glDrawArrays(GL_TRIANGLES,0,previewVertexCount_);glDisable(GL_POLYGON_OFFSET_FILL);glDisable(GL_BLEND);glDepthMask(GL_TRUE);glEnable(GL_CULL_FACE);glBindVertexArray(0);
+}
+void Renderer::renderQolFeedback(int width,int height,const std::string& hint,const std::string& save,bool pause)const {
+ thread_local std::vector<UiVertex> v;v.clear();
+ if(!hint.empty()){const float scale=1.25f,w=std::min(float(width)-16,float(hint.size())*6*scale+16),x=(width-w)*.5f,y=height*.5f+36;addRect(v,x,y,w,24,{0,0,0,.65f},width,height);textGeometry_->appendRun(v,hint,x+8,y+8,scale,{.93f,.95f,.85f,1},width,height);}
+ if(!save.empty()){const float w=std::min(float(width)-16,float(save.size())*6+16),x=pause?(width-w)*.5f:width-w-10,y=pause?height*.5f+244:height-18.f;addRect(v,x,y,w,18,{0,0,0,.72f},width,height);textGeometry_->appendRun(v,save,x+8,y+5,1,{.85f,.93f,.85f,1},width,height);}
+ if(!v.empty())drawMenuVertices(v.data(),v.size());
 }

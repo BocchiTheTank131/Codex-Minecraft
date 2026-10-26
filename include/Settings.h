@@ -2,10 +2,14 @@
 #include "InputManager.h"
 
 #include <string>
+#include <vector>
 
 enum class GraphicsPreset : int { Low = 0, Medium = 1, High = 2, Custom = 3 };
 
 struct GameSettings {
+    int uiScale=0; // Auto / Small / Normal / Large
+    bool interactionHints=true,placementPreview=true;
+    std::vector<int> creativeFavorites,creativeRecent;
     int terrainLod=1; // Off / Low / Medium / High (explicit far-detail strength)
     int occlusionCulling=1; // Off / Auto / On
     int terrainMemoryBudget=0; // Auto / Low / Balanced / High

@@ -1,5 +1,6 @@
 #include "Settings.h"
 #include "SaveFile.h"
+#include "Survival.h"
 
 #include <algorithm>
 #include <cmath>
@@ -33,6 +34,11 @@ bool GameSettings::bindControl(ControlAction action, int key) {
 }
 
 void GameSettings::clamp() {
+    uiScale=std::clamp(uiScale,0,3);
+    for(auto* list:{&creativeFavorites,&creativeRecent}){
+        std::vector<int> valid;for(auto id:*list)if(id>0&&id<int(Item::Count)&&std::find(valid.begin(),valid.end(),id)==valid.end())valid.push_back(id);
+        if(list==&creativeRecent&&valid.size()>24)valid.resize(24);*list=std::move(valid);
+    }
     terrainLod=std::clamp(terrainLod,0,3);
     occlusionCulling=std::clamp(occlusionCulling,0,2);
     terrainMemoryBudget=std::clamp(terrainMemoryBudget,0,3);
@@ -175,6 +181,13 @@ bool GameSettings::load(const std::string& path) {
                 fullscreen = std::stoi(value) != 0;
             else if (key == "vsync")
                 vsync = std::stoi(value) != 0;
+            else if(key=="ui_scale")uiScale=parseInt(value);
+            else if(key=="interaction_hints")interactionHints=parseInt(value)!=0;
+            else if(key=="placement_preview")placementPreview=parseInt(value)!=0;
+            else if(key=="creative_favorites"||key=="creative_recent"){
+                auto& list=key=="creative_favorites"?creativeFavorites:creativeRecent;list.clear();std::istringstream ids(value);std::string id;
+                while(std::getline(ids,id,',')&&list.size()<std::size_t(Item::Count))if(!id.empty())list.push_back(parseInt(id));
+            }
             else if (key == "show_fps")
                 showFps = std::stoi(value) != 0;
             else if (key == "show_coordinates")
@@ -223,10 +236,13 @@ bool GameSettings::save(const std::string& path) const {
            << "frame_limit=" << frameLimit << '\n'
            << "fullscreen=" << fullscreen << '\n'
            << "vsync=" << vsync << '\n'
+           << "ui_scale=" << uiScale << '\n' << "interaction_hints=" << interactionHints << '\n' << "placement_preview=" << placementPreview << '\n'
            << "show_fps=" << showFps << '\n'
            << "show_coordinates=" << showCoordinates << '\n';
     for (int index = 0; index < ControlActionCount; ++index)
         output << "key_" << index << '=' << controls[static_cast<std::size_t>(index)] << '\n';
+    output<<"creative_favorites=";for(auto id:creativeFavorites)output<<id<<',';output<<'\n';
+    output<<"creative_recent=";for(auto id:creativeRecent)output<<id<<',';output<<'\n';
     return !!output;
     });
 }

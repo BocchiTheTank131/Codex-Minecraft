@@ -1,0 +1,20 @@
+{
+  "v2.16.1": {
+    "open_inventory": 0.195351,
+    "creative_page_switch": 0.325547,
+    "creative_stationary": 0.511564,
+    "atlas_load": 4.9679
+  },
+  "v2.16.2": {
+    "open_inventory": 0.247119,
+    "creative_page_switch": 0.520483,
+    "creative_stationary": 0.657769,
+    "atlas_load": 5.4002
+  },
+  "preview_frame_median_of_means_ms": {
+    "off": 0.352787,
+    "on": 0.353367
+  },
+  "baseline_ui_driver_sha256": "ef15c3b5e8ac6614205f7a6f3e2345461c7c931f5ebbbf6ae38064c28eb34b2a",
+  "icon_atlas_sha256": "d541c2cf98ceb7e05945a603f6d432109fe865bae6009ec85e4a39880d304cd2"
+}

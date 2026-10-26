@@ -238,6 +238,11 @@ public:
     bool takeCraftingOutput(bool tableMode);
     int craftOutputToInventory(bool tableMode);
     bool recipeCraftable(int recipeIndex, bool tableMode) const;
+    void sortPlayer(int limit=TotalSlots);
+    static void sortStacks(ItemStack* stacks,int count);
+    int transferContainer(ItemStack* stacks,int count,int action); // 0 quick, 1 deposit, 2 take
+    bool hotbarLocked(int slot) const {return slot>=0 && slot<HotbarSlots && (hotbarLocks_&(1u<<slot));}
+    void toggleHotbarLock(int slot){if(slot>=0 && slot<HotbarSlots)hotbarLocks_^=std::uint16_t(1u<<slot);}
     bool fillRecipe(int recipeIndex, bool tableMode, bool maximize);
     bool shiftIngredientToCrafting(int playerSlot, int recipeIndex, bool tableMode);
     bool gatherMatchingToCursor();
@@ -264,6 +269,8 @@ public:
     static bool runCraftingSelfTest(std::string& report);
 
 private:
+    friend class QolTest;
+    std::uint16_t hotbarLocks_=0;
     std::array<ItemStack, EquipmentSlots> equipment_{};
     mutable int cachedArmorPoints_ = -1;
     bool equipmentBroke_ = false;

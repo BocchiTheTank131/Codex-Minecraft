@@ -7,6 +7,8 @@
 #include "World.h"
 #include "Definitions.h"
 #include "MenuLayout.h"
+#include "Settings.h"
+#include "QualityOfLife.h"
 
 #include <GLFW/glfw3.h>
 #include <algorithm>
@@ -75,6 +77,7 @@ void UIManager::closeGameplayInterface(Inventory& inventory) {
 }
 
 void UIManager::refreshRecipeBook(const Inventory& inventory, bool tableMode) {
+    recipeBook_.usesKey=controlKeyName(preferences_?preferences_->controls[int(ControlAction::RecipeUses)]:defaultControlBindings()[int(ControlAction::RecipeUses)]);
     recipeBook_.entries.clear();
     const auto& all = craftingRecipes();
     std::string search = recipeBook_.search;
@@ -82,9 +85,7 @@ void UIManager::refreshRecipeBook(const Inventory& inventory, bool tableMode) {
                    [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
     for (int index = 0; index < static_cast<int>(all.size()); ++index) {
         const RecipeInfo& recipe = all[static_cast<std::size_t>(index)];
-        if ((recipe.table && !tableMode) || recipe.w > (tableMode ? 3 : 2) ||
-            recipe.h > (tableMode ? 3 : 2))
-            continue;
+        if(recipeBook_.ingredientItem!=Item::None && std::none_of(recipe.cells.begin(),recipe.cells.end(),[&](auto ingredient){return !ingredient.empty()&&ingredient.accepts(recipeBook_.ingredientItem);}))continue;
         if (recipeBook_.category != RecipeCategory::All &&
             recipe.category != recipeBook_.category)
             continue;
@@ -109,7 +110,7 @@ bool UIManager::runRecipeBookSelfTest(std::string& report) {
     ui.openInventory();
     ui.recipeBook_.search = "furnace";
     ui.refreshRecipeBook(inventory, false);
-    bool passed = ui.recipeBook_.entries.empty();
+    bool passed = ui.recipeBook_.entries.size()==1 && !inventory.recipeCraftable(ui.recipeBook_.entries[0],false);
     ui.openCraftingTable({0, 0, 0});
     ui.recipeBook_.craftableOnly = true;
     ui.refreshRecipeBook(inventory, true);
@@ -246,7 +247,12 @@ bool UIManager::validateOpenBlock(const World& world,
 
 void UIManager::refreshCreativeSearch() {
     creativeFiltered_.clear();
-    if(!creativeSearch_.empty())for(auto item:creativeCatalog()){
+    const auto& source=creativeCatalog();
+    std::vector<Item> recent;
+    if(creativeCategory_==8&&preferences_)for(auto id:preferences_->creativeRecent)recent.push_back(Item(id));
+    for(auto item:creativeCategory_==8?recent:source){
+        if(creativeCategory_>=1&&creativeCategory_<=6&&itemCategory(item)!=creativeCategory_)continue;
+        if(creativeCategory_==7&&(!preferences_||std::find(preferences_->creativeFavorites.begin(),preferences_->creativeFavorites.end(),int(item))==preferences_->creativeFavorites.end()))continue;
         std::string name=itemDefinition(item).displayName;
         std::transform(name.begin(),name.end(),name.begin(),[](unsigned char c){return char(std::tolower(c));});
         if(name.find(creativeSearch_)!=std::string::npos)creativeFiltered_.push_back(item);
@@ -254,6 +260,7 @@ void UIManager::refreshCreativeSearch() {
     creativePage_=0;
     dragHit_={};
 }
+void UIManager::rememberItem(Item item){if(!preferences_||item==Item::None)return;auto& list=preferences_->creativeRecent;list.erase(std::remove(list.begin(),list.end(),int(item)),list.end());list.insert(list.begin(),int(item));if(list.size()>24)list.resize(24);if(creativeCategory_==8)refreshCreativeSearch();}
 
 void UIManager::updateInventoryInteraction(InputManager& input,
                                            int framebufferWidth,
@@ -263,9 +270,12 @@ void UIManager::updateInventoryInteraction(InputManager& input,
                                            World& world,
                                            const Player& player,
                                            bool creativeMode) {
-    const glm::dvec2 cursor = input.framebufferCursorPosition();
+    const float scale=UiLayout::interfaceScale(framebufferWidth,framebufferHeight,preferences_?preferences_->uiScale:scalePreference);
+    const glm::dvec2 cursor = input.framebufferCursorPosition()/double(scale);
+    framebufferWidth=int(framebufferWidth/scale);framebufferHeight=int(framebufferHeight/scale);
     const bool tableMode = craftingTableOpen();
     const bool creativeInventory = creativeMode && state_ == GameState::Inventory;
+    if(creativeInventory){const double scroll=input.consumeScrollDelta();if(scroll!=0 && dragHit_!=UiHit{UiSlotKind::CreativeCategory,-1}){creativePage_=std::clamp(creativePage_+(scroll>0?-1:1),0,std::max(0,(int(creativeItems().size())-1)/UiLayout::CreativePageSize));dragHit_={};}}
     if(creativeInventory && creativeSearchFocused_){
         const auto previous=creativeSearch_;
         // Character callbacks preserve typed text and keyboard layouts. Ignore
@@ -301,7 +311,27 @@ void UIManager::updateInventoryInteraction(InputManager& input,
                                    framebufferHeight, creativeItems().size(),
                                    recipeBook_.entries.size(), recipeBook_.page,creativePage_);
     const bool leftPressed = input.mousePressed(GLFW_MOUSE_BUTTON_LEFT);
+    // A favorite gesture owns RMB until release, even if filtering moves a
+    // different entry underneath the cursor or Alt is released first.
+    if(creativeInventory && dragHit_==UiHit{UiSlotKind::CreativeCategory,-1}){
+        if(input.mouseDown(GLFW_MOUSE_BUTTON_RIGHT))return;
+        dragHit_={};
+    }
+    if(!creativeInventory && (state_==GameState::Inventory||tableMode) && !recipeBook_.searchFocused && input.actionPressed(ControlAction::RecipeUses)){
+        const Item selected=hit.kind==UiSlotKind::PlayerInventorySlot?inventory.slot(hit.index).item:inventory.selectedItem();
+        recipeBook_.ingredientItem=recipeBook_.ingredientItem==selected?Item::None:selected;recipeBook_.page=0;refreshRecipeBook(inventory,tableMode);return;
+    }
+    const bool alt=input.keyDown(GLFW_KEY_LEFT_ALT)||input.keyDown(GLFW_KEY_RIGHT_ALT);
+    if(leftPressed&&alt&&hit.kind==UiSlotKind::PlayerInventorySlot&&hit.index<9){inventory.toggleHotbarLock(hit.index);return;}
+    if(leftPressed && hit.kind==UiSlotKind::SortPlayer){inventory.sortPlayer(creativeInventory?9:36);return;}
+    if(leftPressed && chestOpen() && (hit.kind==UiSlotKind::SortContainer||hit.kind==UiSlotKind::QuickStack||hit.kind==UiSlotKind::DepositAll||hit.kind==UiSlotKind::TakeAll)){
+        if(auto* chest=world.chestAt(worldContainerPosition_,true)){
+            if(hit.kind==UiSlotKind::SortContainer)Inventory::sortStacks(chest->slots.data(),27);
+            else inventory.transferContainer(chest->slots.data(),27,hit.kind==UiSlotKind::QuickStack?0:hit.kind==UiSlotKind::DepositAll?1:2);
+        }return;
+    }
     if(creativeInventory && leftPressed){
+        if(hit.kind==UiSlotKind::CreativeCategory){creativeCategory_=hit.index;refreshCreativeSearch();creativeSearchFocused_=false;return;}
         creativeSearchFocused_=hit.kind==UiSlotKind::CreativeSearch;
         if(creativeSearchFocused_){input.consumeTypedCharacters();inventoryLeftWasDown_=false;dragHit_={};return;}
         if(hit.kind==UiSlotKind::CreativePrevious || hit.kind==UiSlotKind::CreativeNext){
@@ -312,11 +342,14 @@ void UIManager::updateInventoryInteraction(InputManager& input,
     // continue to receive authoritative catalog indices, including right drag.
     if(creativeInventory && hit.kind==UiSlotKind::CreativeItem){
         const auto item=creativeItems()[hit.index];
+        if(alt && input.mousePressed(GLFW_MOUSE_BUTTON_RIGHT)&&preferences_){auto& favorites=preferences_->creativeFavorites;auto it=std::find(favorites.begin(),favorites.end(),int(item));if(it==favorites.end())favorites.push_back(int(item));else favorites.erase(it);refreshCreativeSearch();dragHit_={UiSlotKind::CreativeCategory,-1};return;}
         hit.index=int(std::find(creativeCatalog().begin(),creativeCatalog().end(),item)-creativeCatalog().begin());
+        if(leftPressed||input.mousePressed(GLFW_MOUSE_BUTTON_RIGHT))rememberItem(item);
     }
     const bool rightPressed = input.mousePressed(GLFW_MOUSE_BUTTON_RIGHT);
     const bool rightDown = input.mouseDown(GLFW_MOUSE_BUTTON_RIGHT);
     const bool shiftDown = input.actionDown(ControlAction::Sneak);
+    if(shiftDown&&hit.kind==UiSlotKind::PlayerInventorySlot&&inventory.hotbarLocked(hit.index))return;
     const bool leftDown = input.mouseDown(GLFW_MOUSE_BUTTON_LEFT);
     const bool outside = !UiLayout::panel(mode,framebufferWidth,framebufferHeight).contains(cursor.x,cursor.y);
     const bool dragReleasedOutside = inventoryLeftWasDown_ && !leftDown && outside;
@@ -344,6 +377,7 @@ void UIManager::updateInventoryInteraction(InputManager& input,
         bool bookClick = true;
         switch (hit.kind) {
         case UiSlotKind::RecipeCategory:
+            recipeBook_.ingredientItem=Item::None;
             recipeBook_.category = static_cast<RecipeCategory>(hit.index);
             recipeBook_.page = 0;
             recipeBook_.searchFocused = false;
@@ -505,7 +539,7 @@ void UIManager::updateInventoryInteraction(InputManager& input,
 }
 
 int UIManager::hoveredMenuItem(const glm::dvec2& cursor, int width, int height) const {
-    const float scale = state_ == GameState::MainMenu ? 1.0f : menuScale(width, height);
+    const float scale = menuScale(width, height);
     return menuHit(cursor.x / scale, cursor.y / scale,
                    static_cast<int>(width / scale), static_cast<int>(height / scale), state_);
 }
@@ -610,5 +644,5 @@ UiRect UIManager::mainMenuButton(int index, int width, int height) {
 }
 
 float UIManager::menuScale(int width, int height) {
-    return std::max(.1f, std::min({1.0f, width / 760.0f, height / 760.0f}));
+    return UiLayout::interfaceScale(width,height,scalePreference);
 }

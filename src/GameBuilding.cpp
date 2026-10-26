@@ -14,12 +14,28 @@ bool Game::buildingInput(){
  auto d=buildingDefinition(world_->getBlock(signPosition_.x,signPosition_.y,signPosition_.z));
  if(!d || d->shape!=BuildingShape::Sign || glm::length(glm::vec3(signPosition_)-player_->position())>7){close();return true;}
  if(input_.keyPressed(GLFW_KEY_ESCAPE)){close();return true;}
- auto typed=input_.consumeTypedCharacters();for(unsigned char c:typed)if(c>=32&&c<127&&signDraft_.size()<99){auto line=signDraft_.find_last_of('\n');if(signDraft_.size()-(line==std::string::npos?0:line+1)<24)signDraft_+=char(c);}
- if(input_.keyPressed(GLFW_KEY_BACKSPACE)&&!signDraft_.empty())signDraft_.pop_back();
+ if(signEdit_.text!=signDraft_)signEdit_.begin(signDraft_);
  const bool ctrl=input_.keyDown(GLFW_KEY_LEFT_CONTROL)||input_.keyDown(GLFW_KEY_RIGHT_CONTROL);
- if(ctrl && input_.keyPressed(GLFW_KEY_A))signDraft_.clear();
- if(input_.keyPressed(GLFW_KEY_TAB) && std::count(signDraft_.begin(),signDraft_.end(),'\n')<3)signDraft_+='\n';
- if(input_.keyPressed(GLFW_KEY_ENTER)){if(world_->setBuildingText(signPosition_,signDraft_))chat_.addMessage("Sign saved",ChatTone::Success,glfwGetTime());close();}
+ const bool shift=input_.keyDown(GLFW_KEY_LEFT_SHIFT)||input_.keyDown(GLFW_KEY_RIGHT_SHIFT);
+ auto repeated=[&](int key){const double now=glfwGetTime();if(input_.keyPressed(key)){signRepeatKey_=key;signRepeatAt_=now+.38;return true;}if(signRepeatKey_==key&&input_.keyDown(key)&&now>=signRepeatAt_){signRepeatAt_=now+.045;return true;}return false;};
+ if(ctrl&&input_.keyPressed(GLFW_KEY_A)){signEdit_.anchor=0;signEdit_.caret=signEdit_.text.size();}
+ if(ctrl&&input_.keyPressed(GLFW_KEY_C)){const auto selection=signEdit_.selected();if(!selection.empty())glfwSetClipboardString(window_,selection.c_str());}
+ if(ctrl&&input_.keyPressed(GLFW_KEY_V))if(const char* text=glfwGetClipboardString(window_)){
+  std::size_t length=0;while(length<4097&&text[length])++length;
+  if(length>4096||!signEdit_.insert(std::string(text,length)))chat_.addMessage("Paste must fit four lines of 24 supported characters",ChatTone::Error,glfwGetTime());
+ }
+ auto typed=input_.consumeTypedCharacters();if(!ctrl&&!typed.empty())signEdit_.insert(typed);
+ if(repeated(GLFW_KEY_BACKSPACE))signEdit_.erase(false);
+ if(repeated(GLFW_KEY_DELETE))signEdit_.erase(true);
+ for(auto key:{GLFW_KEY_LEFT,GLFW_KEY_RIGHT,GLFW_KEY_UP,GLFW_KEY_DOWN})if(repeated(key))signEdit_.move(key==GLFW_KEY_LEFT||key==GLFW_KEY_UP?-1:1,shift,key==GLFW_KEY_UP||key==GLFW_KEY_DOWN);
+ if(input_.keyPressed(GLFW_KEY_HOME))signEdit_.home(false,shift);
+ if(input_.keyPressed(GLFW_KEY_END))signEdit_.home(true,shift);
+ if(!ctrl&&input_.keyPressed(GLFW_KEY_ENTER))signEdit_.insert("\n");
+ int width,height;glfwGetFramebufferSize(window_,&width,&height);const float scale=UiLayout::interfaceScale(width,height,settings_.uiScale);const auto cursor=input_.framebufferCursorPosition()/double(scale);width=int(width/scale);height=int(height/scale);
+ const bool clicked=input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT);
+ if(clicked&&UiLayout::signButton(false,width,height).contains(cursor.x,cursor.y)){close();return true;}
+ signDraft_=signEdit_.text;
+ if((ctrl&&input_.keyPressed(GLFW_KEY_ENTER))||(clicked&&UiLayout::signButton(true,width,height).contains(cursor.x,cursor.y))){if(world_->setBuildingText(signPosition_,signDraft_)){chat_.addMessage("Sign saved",ChatTone::Success,glfwGetTime());close();}}
  return true;
 }
 
@@ -53,6 +69,74 @@ std::optional<bool> Game::buildingToolHand() const {
  return std::nullopt;
 }
 
+PlacementPlan Game::placementPlan(Item item) const {
+ PlacementPlan plan;Block b=itemToBlock(item);if(b==Block::Air||!interaction_.hasBlockTarget||interaction_.mobTarget.valid())return plan;
+ const auto target=interaction_.blockTarget.block,normal=interaction_.blockTarget.normal;
+ auto pos=interaction_.blockTarget.adjacent;const auto hit=player_->cameraPosition()+player_->lookDirection()*(interaction_.blockTarget.distance+(isBuilding(b)?0.f:.001f));
+ auto get=[&](glm::ivec3 p){return world_->getBlock(p.x,p.y,p.z);};const auto old=get(target);
+ b=buildingPlacement(b,player_->lookDirection(),normal,hit);auto d=buildingDefinition(b);
+ if(!d){
+  if(isTorch(b)&&normal.y==0)b=blockState(b,(normal.x>0?1:normal.x<0?3:normal.z>0?2:0)+1);
+  if(isLog(b))b=blockState(b,normal.x?1:normal.z?2:0);
+  if(item==Item::Ladder&&normal.y==0)b=normal.z>0?Block::LadderNorth:normal.z<0?Block::LadderSouth:normal.x>0?Block::LadderWest:Block::LadderEast;
+  if(item==Item::Vine&&normal.y==0)b=normal.z>0?Block::VineNorth:normal.z<0?Block::VineSouth:normal.x>0?Block::VineWest:Block::VineEast;
+ }
+ bool merge=false;
+ if(d&&d->shape==BuildingShape::Slab&&blockType(old)==blockType(b)&&!(blockProperties(old)&8)){
+  const bool top=blockProperties(old)&4;const float h=hit.y-std::floor(hit.y);
+  if((top&&(normal.y<0||(normal.y==0&&h<.5f)))||(!top&&(normal.y>0||(normal.y==0&&h>.5f)))){pos=target;b=blockState(b,8);merge=true;}
+ }
+ if(!d&&isSlab(b)){
+  const float h=hit.y-std::floor(hit.y);const bool halves=(isTopSlab(old)&&(normal.y<0||h<.5f))||(!isTopSlab(old)&&(normal.y>0||h>.5f));
+  if(((isWoodenSlab(old)&&item==Item::WoodenSlab)||(isStoneSlab(old)&&item==Item::StoneSlab))&&halves){pos=target;b=item==Item::WoodenSlab?Block::Planks:Block::Stone;merge=true;}
+  else if(normal.y<0||(normal.y==0&&h>.5f))b=isWoodenSlab(b)?Block::WoodenSlabTop:Block::StoneSlabTop;
+ }
+ if(d&&d->shape==BuildingShape::Door){const float side=std::abs(player_->lookDirection().x)>std::abs(player_->lookDirection().z)?hit.z-std::floor(hit.z):hit.x-std::floor(hit.x);if(side>.5f)b=blockState(b,blockProperties(b)|128);}
+ if(d)b=buildingConnectedState(*world_,pos,b);
+ if(!d&&b==Block::WoodenDoor){
+  const auto look=player_->lookDirection();const int facing=std::abs(look.x)>std::abs(look.z)?(look.x>0?2:3):(look.z>0?1:0);
+  constexpr int lx[]={-1,1,0,0},lz[]={0,0,-1,1};const glm::ivec3 left(lx[facing],0,lz[facing]),right=-left;
+  auto support=[&](glm::ivec3 side){int n=0;for(int y=0;y<2;++y){auto block=get(pos+side+glm::ivec3(0,y,0));n+=isSolid(block)&&!isDoor(block);}return n;};
+  auto neighbor=[&](glm::ivec3 side){auto block=get(pos+side);return isDoor(block)&&!isDoorUpper(block)&&doorFacing(block)==facing;};
+  const auto local=hit-(glm::vec3(target)+glm::vec3(.5));bool hinge=neighbor(left)!=neighbor(right)?neighbor(left):support(left)!=support(right)?support(right)>support(left):local.x*left.x+local.z*left.z<0;
+  b=doorBlock(facing,false,hinge,false);plan.blocks.push_back({pos+glm::ivec3(0,1,0),doorBlock(facing,true,hinge,false)});
+ }
+ plan.blocks.push_back({pos,b});
+ if(d&&(d->shape==BuildingShape::Bed||d->shape==BuildingShape::Door)){
+  const auto other=pos+(d->shape==BuildingShape::Door?glm::ivec3(0,1,0):buildingFacing(blockProperties(b)));plan.blocks.push_back({other,blockState(b,blockProperties(b)|16)});
+ }
+ if(d&&d->shape==BuildingShape::Painting&&input_.actionDown(ControlAction::Sneak)){
+  b=blockState(b,blockProperties(b)|32);plan.blocks[0].block=b;const auto other=pos+buildingFacing((blockProperties(b)+1)&3);plan.blocks.push_back({other,blockState(b,blockProperties(b)|16)});
+ }
+ auto fail=[&](const char* reason){plan.reason=reason;return plan;};
+ for(auto part:plan.blocks){
+  const auto p=part.position;const auto candidate=part.block;
+  if(p.y<world_->minimumY()||p.y>=world_->maximumY())return fail("WORLD HEIGHT LIMIT");
+  if(!world_->collisionReady(glm::vec3(p),glm::vec3(p)+glm::vec3(1)))return fail("TERRAIN LOADING");
+  if(!(merge&&p==target)&&get(p)!=Block::Air&&(d||!isWater(get(p))))return fail("SPACE OCCUPIED");
+  auto boxes=buildingBoxes(candidate,true);
+  if(!d){const auto g=blockGeometry(candidate);boxes.add(g.minX,g.minY,g.minZ,g.maxX,g.maxY,g.maxZ);}
+  for(int i=0;i<boxes.count&&isSolid(candidate);++i){auto a=glm::vec3(p)+boxes.boxes[i].minimum,c=glm::vec3(p)+boxes.boxes[i].maximum,mn=player_->aabbMinimum(),mx=player_->aabbMaximum();
+   if(a.x<mx.x&&c.x>mn.x&&a.y<mx.y&&c.y>mn.y&&a.z<mx.z&&c.z>mn.z)return fail("PLAYER IN THE WAY");
+   if(transportation_->intersectsBox(a,c)||(d&&survival_->anyMobIntersects(a,c)))return fail("ENTITY IN THE WAY");
+  }
+  if(!d&&((item==Item::Ladder||item==Item::Vine)&&normal.y!=0))return fail("NEEDS WALL SUPPORT");
+  if(!d&&(candidate==Block::SugarCane||isVine(candidate))&&!world_->canPlacePlant(p,candidate))return fail("NEEDS SUPPORT");
+  if(d&&(d->shape==BuildingShape::Painting||d->shape==BuildingShape::Frame)&&normal.y!=0)return fail("NEEDS WALL SUPPORT");
+  if(d&&buildingNeedsSupport(candidate)){
+   auto support=p-glm::ivec3(0,1,0);const auto props=blockProperties(candidate);
+   if(d->shape==BuildingShape::Chain||(d->shape==BuildingShape::Lantern&&(props&4)))support=p+glm::ivec3(0,1,0);
+   if(d->shape==BuildingShape::Frame||d->shape==BuildingShape::Painting||d->shape==BuildingShape::Button||(d->shape==BuildingShape::Sign&&(props&16)))support=p+(d->shape==BuildingShape::Button?buildingFacing(props):-buildingFacing(props));
+   bool pendingSupport=false;for(auto other:plan.blocks)if(other.position==support&&isSolid(other.block))pendingSupport=true;
+   if(!pendingSupport&&!isSolid(get(support))&&blockType(get(support))!=Block::Chain)return fail("NEEDS SUPPORT");
+  }
+  if(d&&(d->shape==BuildingShape::Bed||d->shape==BuildingShape::Door)&&!isSolid(get(p-glm::ivec3(0,1,0)))){
+   bool lower=false;for(auto other:plan.blocks)if(other.position==p-glm::ivec3(0,1,0))lower=true;if(!lower)return fail("NEEDS SUPPORT");
+  }
+ }
+ plan.valid=true;return plan;
+}
+
 bool Game::buildingUse(Item held,bool offhand){
  if(!interaction_.hasBlockTarget || interaction_.mobTarget.valid())return false;
  const auto target=interaction_.blockTarget.block,normal=interaction_.blockTarget.normal;
@@ -70,7 +154,7 @@ bool Game::buildingUse(Item held,bool offhand){
   switch(d->shape){
   case BuildingShape::FenceGate:case BuildingShape::Trapdoor:case BuildingShape::Door:{const auto next=blockState(old,p^8);set(target,next);if(d->shape==BuildingShape::Door){auto mate=target+glm::ivec3(0,p&16?-1:1,0);if(blockType(get(mate))==blockType(old))set(mate,blockState(get(mate),blockProperties(get(mate))^8));}sounds_->playDoor(!(p&8),glm::vec3(target));return true;}
   case BuildingShape::Barrel:ui_.openChest(target);synchronizeCursorCapture();sounds_->playChest(true,glm::vec3(target));return true;
-  case BuildingShape::Sign:signPosition_=target;signDraft_=world_->buildingText(target);signEditorOpen_=true;input_.consumeTypedCharacters();synchronizeCursorCapture();return true;
+  case BuildingShape::Sign:signPosition_=target;signDraft_=world_->buildingText(target);signEditorOpen_=true;signEdit_.begin(signDraft_);input_.consumeTypedCharacters();synchronizeCursorCapture();return true;
   case BuildingShape::Bed:{auto foot=target;if(p&16)foot-=buildingFacing(p);if(!world_->findBedSpawn(foot)){message("Bed has no safe exit; clear space beside it");return true;}player_->setPersonalBed(foot);
     if(std::sin(WorldTime::angle(timing_.worldTime))<-.05f){timing_.worldTime=WorldTime::DefaultSeconds;message("Slept until morning. Respawn point set.");}else message("Respawn point set. Sleep is available at night.");return true;}
   case BuildingShape::Frame:case BuildingShape::Pot:{auto* chest=world_->chestAt(target,true);if(!chest)return true;auto& owned=chest->slots[0];
@@ -87,19 +171,38 @@ bool Game::buildingUse(Item held,bool offhand){
  if(sneak && (old==Block::Grass||old==Block::Dirt) && itemDefinition(held).tool==ToolKind::Shovel && get(target+glm::ivec3(0,1,0))==Block::Air){set(target,Block::DirtPath);if(!creativeMode_)damageToolWithSound(offhand);return true;}
  if(isLog(old) && itemDefinition(held).tool==ToolKind::Axe){const Block logs[]={Block::Log,Block::BirchLog,Block::SpruceLog,Block::JungleLog,Block::AcaciaLog,Block::DarkOakLog};for(int i=0;i<6;++i)if(blockType(old)==logs[i]){set(target,blockState(Block(int(Block::OakStrippedLog)+i*14),blockProperties(old)));if(!creativeMode_)damageToolWithSound(offhand);return true;}}
  Block b=itemToBlock(held);if(!isBuilding(b))return false;
- const auto hit=player_->cameraPosition()+player_->lookDirection()*interaction_.blockTarget.distance;
- b=buildingPlacement(b,player_->lookDirection(),normal,hit);auto d=buildingDefinition(b);
- if(d->shape==BuildingShape::Slab && blockType(old)==blockType(b) && !(blockProperties(old)&8)){
-  const bool top=blockProperties(old)&4;const float h=hit.y-std::floor(hit.y);if((top&&(normal.y<0||normal.y==0&&h<.5f))||(!top&&(normal.y>0||normal.y==0&&h>.5f))){auto boxes=buildingBoxes(blockState(b,8),true);auto a=glm::vec3(target)+boxes.boxes[0].minimum,c=glm::vec3(target)+boxes.boxes[0].maximum,mn=player_->aabbMinimum(),mx=player_->aabbMaximum();if((a.x<mx.x&&c.x>mn.x&&a.y<mx.y&&c.y>mn.y&&a.z<mx.z&&c.z>mn.z)||transportation_->intersectsBox(a,c)||survival_->anyMobIntersects(a,c))return true;set(target,blockState(b,8));consume();return true;}}
- if(pos.y<world_->minimumY()||pos.y>=world_->maximumY() || !world_->collisionReady(glm::vec3(pos),glm::vec3(pos)+glm::vec3(1)) || get(pos)!=Block::Air)return true;
- auto clear=[&](glm::ivec3 where,Block candidate){if(!world_->collisionReady(glm::vec3(where),glm::vec3(where)+glm::vec3(1)) || get(where)!=Block::Air)return false;auto boxes=buildingBoxes(candidate,true);for(int i=0;i<boxes.count;++i){auto a=glm::vec3(where)+boxes.boxes[i].minimum,c=glm::vec3(where)+boxes.boxes[i].maximum;auto mn=player_->aabbMinimum(),mx=player_->aabbMaximum();if(isSolid(candidate)&&((a.x<mx.x&&c.x>mn.x&&a.y<mx.y&&c.y>mn.y&&a.z<mx.z&&c.z>mn.z)||transportation_->intersectsBox(a,c)||survival_->anyMobIntersects(a,c)))return false;}return true;};
- if((d->shape==BuildingShape::Painting||d->shape==BuildingShape::Frame) && normal.y!=0)return true;
- if(!clear(pos,b))return true;
- if(d->shape==BuildingShape::Painting && sneak){b=blockState(b,blockProperties(b)|32);auto other=pos+buildingFacing((blockProperties(b)+1)&3),support=other-buildingFacing(blockProperties(b));auto mate=blockState(b,blockProperties(b)|16);if(!clear(other,mate)||!isSolid(get(support))||!isSolid(get(pos-buildingFacing(blockProperties(b)))))return true;set(pos,b);set(other,mate);consume();sounds_->playBlockPlace(b,glm::vec3(pos));return true;}
- if(buildingNeedsSupport(b)){auto support=pos+glm::ivec3(0,-1,0);if(d->shape==BuildingShape::Chain || (d->shape==BuildingShape::Lantern && (blockProperties(b)&4)))support=pos+glm::ivec3(0,1,0);if(d->shape==BuildingShape::Frame||d->shape==BuildingShape::Painting||d->shape==BuildingShape::Button||(d->shape==BuildingShape::Sign && (blockProperties(b)&16)))support=pos+(d->shape==BuildingShape::Button?buildingFacing(blockProperties(b)):-buildingFacing(blockProperties(b)));if(!isSolid(get(support)) && blockType(get(support))!=Block::Chain)return true;}
- if(d->shape==BuildingShape::Door){const float side=std::abs(player_->lookDirection().x)>std::abs(player_->lookDirection().z)?hit.z-std::floor(hit.z):hit.x-std::floor(hit.x);if(side>.5f)b=blockState(b,blockProperties(b)|128);}
- if(d->shape==BuildingShape::Bed||d->shape==BuildingShape::Door){auto other=pos+(d->shape==BuildingShape::Door?glm::ivec3(0,1,0):buildingFacing(blockProperties(b)));auto mate=blockState(b,blockProperties(b)|16);if(other.y>=world_->maximumY() || !clear(other,mate) || !isSolid(get(pos-glm::ivec3(0,1,0))) || (d->shape==BuildingShape::Bed && !isSolid(get(other-glm::ivec3(0,1,0)))))return true;set(pos,b);set(other,mate);}else set(pos,b);
+ const auto plan=placementPlan(held);if(!plan.valid)return true;
+ for(const auto& part:plan.blocks)set(part.position,part.block);
  consume();sounds_->playBlockPlace(b,glm::vec3(pos));interaction_.heldItemSwing=1;
- if(d->shape==BuildingShape::Sign){signPosition_=pos;signDraft_.clear();signEditorOpen_=true;synchronizeCursorCapture();}
+ if(creativeMode_)ui_.rememberItem(held);
+ if(buildingDefinition(b)->shape==BuildingShape::Sign){signPosition_=plan.blocks.front().position;signDraft_.clear();signEdit_.begin(signDraft_);signEditorOpen_=true;synchronizeCursorCapture();}
  return true;
+}
+
+std::string Game::interactionHint()const {
+ if(!world_||!player_||player_->isDead()||spectatorMode_||!interaction_.hasBlockTarget||interaction_.mobTarget.valid()||signEditorOpen_)return "";
+ const auto p=interaction_.blockTarget.block;const auto b=world_->getBlock(p.x,p.y,p.z);
+ const bool off=buildingToolHand().value_or(inventory_->selectedStack().empty()||(!inventory_->equipment(4).empty()&&!hasMainHandUse(inventory_->selectedItem())));
+ const auto held=off?inventory_->equipment(4).item:inventory_->selectedItem();
+ const auto sneak=controlKeyName(settings_.controls[int(ControlAction::Sneak)]);
+ const bool sneaking=input_.actionDown(ControlAction::Sneak);
+ if(auto d=buildingDefinition(b);d&&(!sneaking||held==Item::None||itemToBlock(held)==Block::Air)){
+  if((d->shape==BuildingShape::Bed||d->shape==BuildingShape::Carpet||d->shape==BuildingShape::Candle)&&(held==Item::RedFlower||held==Item::YellowFlower||held==Item::BoneMeal))return "RMB: DYE";
+  switch(d->shape){
+   case BuildingShape::FenceGate:return "RMB: "+std::string(blockProperties(b)&8?"CLOSE GATE":"OPEN GATE");
+   case BuildingShape::Trapdoor:case BuildingShape::Door:return "RMB: "+std::string(blockProperties(b)&8?"CLOSE":"OPEN");
+   case BuildingShape::Bed:{auto foot=p;if(blockProperties(b)&16)foot-=buildingFacing(blockProperties(b));if(!world_->findBedSpawn(foot))return "";return std::sin(WorldTime::angle(timing_.worldTime))<-.05f?"RMB: SLEEP":"RMB: SET RESPAWN";}
+   case BuildingShape::Sign:return "RMB: EDIT SIGN";
+   case BuildingShape::Barrel:return "RMB: OPEN BARREL";
+   case BuildingShape::Frame:case BuildingShape::Pot:{const auto* storage=world_->chestAt(p,false);if(storage&&!storage->slots[0].empty())return sneak+" + RMB: REMOVE ITEM";if(held==Item::None)return "";if(d->shape==BuildingShape::Pot&&!isPlant(itemToBlock(held))&&held!=Item::Cactus&&!isLeaf(itemToBlock(held)))return "";return "RMB: DISPLAY ITEM";}
+   case BuildingShape::Candle:case BuildingShape::Campfire:return "RMB: TOGGLE FLAME";
+   case BuildingShape::Button:return blockProperties(b)&8?"":"RMB: PRESS BUTTON";
+   default:break;
+  }
+ }
+ if(!sneaking||itemToBlock(held)==Block::Air){if(b==Block::Chest)return "RMB: OPEN CHEST";if(b==Block::Furnace)return "RMB: OPEN FURNACE";if(b==Block::CraftingTable)return "RMB: CRAFT";}
+ if(buildingToolHand().has_value()&&itemDefinition(held).tool==ToolKind::Axe)return "RMB: STRIP LOG";
+ if((b==Block::Dirt||b==Block::Grass)&&world_->getBlock(p.x,p.y+1,p.z)==Block::Air)
+  for(auto item:{inventory_->selectedItem(),inventory_->equipment(4).item})if(itemDefinition(item).tool==ToolKind::Shovel)return sneak+" + RMB: CREATE PATH";
+ return "";
 }
