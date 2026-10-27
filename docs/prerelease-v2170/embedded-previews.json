@@ -1,0 +1,22 @@
+{
+  "build\\installed-release\\Release\\VoxelFrontier.exe": {
+    "atlas_sha256": "4b910fecaa9f4f6f5f99336da40d7be82bc5bbd231cd3dc0264efd50ad6ac03d",
+    "atlas_dimensions": [
+      640,
+      2368
+    ],
+    "resource_bytes": 6062088,
+    "matches_source": true,
+    "executable_bytes": 76942336
+  },
+  "dist\\VoxelFrontier-v2.17.0-Windows-Standalone.exe": {
+    "atlas_sha256": "4b910fecaa9f4f6f5f99336da40d7be82bc5bbd231cd3dc0264efd50ad6ac03d",
+    "atlas_dimensions": [
+      640,
+      2368
+    ],
+    "resource_bytes": 6062088,
+    "matches_source": true,
+    "executable_bytes": 76785152
+  }
+}

@@ -1,0 +1,7 @@
+components,mode,total_mean_ms,preparation_mean_ms,evaluation_mean_ms,commit_mean_ms,max_reconciled,max_due
+100,idle,4.73333e-05,1.3e-05,1.86667e-05,1.56667e-05,0,0
+100,toggling,0.0397007,0.002979,0.0151017,0.02162,0,50
+1000,idle,3.9e-05,1.16667e-05,1.4e-05,1.33333e-05,0,0
+1000,toggling,0.193843,0.0112477,0.066654,0.115941,0,252
+10000,idle,3.7e-05,1.03333e-05,1.56667e-05,1.1e-05,0,0
+10000,toggling,1.06437,0.06845,0.212062,0.783855,0,668

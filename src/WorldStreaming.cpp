@@ -75,7 +75,7 @@ void World::updateStreaming(const glm::vec3& playerPosition, int meshBudget) {
         std::clamp((16.667f-streamingFrameMilliseconds_)*.18f,.5f,2.f);
     const int centerX = floorDiv(static_cast<int>(std::floor(playerPosition.x)), CHUNK_SIZE);
     const int centerZ = floorDiv(static_cast<int>(std::floor(playerPosition.z)), CHUNK_SIZE);
-    if (!streamCenterValid_ || streamCenter_.x != centerX || streamCenter_.y != centerZ) {
+    if (!streamCenterValid_ || requestRadius_<0 || streamCenter_.x != centerX || streamCenter_.y != centerZ) {
         streamCenter_ = {centerX, centerZ};streamCenterValid_=true;
         generationLoadRadius_.store(
             std::max(renderDistance_, simulationDistance_), std::memory_order_relaxed);

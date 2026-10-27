@@ -1980,7 +1980,6 @@ void World::setRenderDistance(int value) {
         return;
     renderDistance_ = value;
     requestRadius_ = -1;
-    streamCenterValid_=false;
 }
 
 void World::setSimulationDistance(int value) {
@@ -1989,7 +1988,6 @@ void World::setSimulationDistance(int value) {
         return;
     simulationDistance_ = value;
     requestRadius_ = -1;
-    streamCenterValid_=false;
 }
 
 void World::rebuildRequestOffsets() {
@@ -3981,6 +3979,10 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
     if (previous == block)
         return false;
     if(!automation.canRegister({x,y,z},block))return false;
+    const bool removesEntity=(previous==Block::Furnace&&block!=Block::Furnace)||
+        ((previous==Block::Chest||buildingIsContainer(previous))&&block!=Block::Chest&&!buildingIsContainer(block))||
+        ((blockType(previous)==Block::ItemFrame||blockType(previous)==Block::FlowerPot)&&blockType(previous)!=blockType(block));
+    if(removesEntity&&!retainBuildingDrops(glm::vec3(x,y,z)+.5f,blockEntityContents({x,y,z})))return false;
     const auto skylightAttenuation = [](Block value) {
         return occludesLight(value) ? 15 :
                (isLeaf(value) || isWater(value) ? 1 : 0);
@@ -4034,13 +4036,14 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
     if (rebuildImmediately && dispatchImmediately && !synchronousMeshForSmokeTest_)
         dispatchMeshJobs(2);
     queueFluidNeighborhood(x, y, z);
-    if(rebuildImmediately && !automationMoving_)for(auto direction:FaceNormals){glm::ivec3 pos=glm::ivec3(x,y,z)+direction;Block b=getBlock(pos.x,pos.y,pos.z);if(isTorch(b) && blockProperties(b)){auto support=pos-buildingFacing(blockProperties(b)-1);if(support==glm::ivec3(x,y,z)&&!isSolid(getBlock(x,y,z))){buildingDrops_.push_back({glm::vec3(pos)+.5f,ItemStack{Item::Torch,1}});setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);}continue;}if(!buildingNeedsSupport(b))continue;
+    if(rebuildImmediately && !automationMoving_)for(auto direction:FaceNormals){glm::ivec3 pos=glm::ivec3(x,y,z)+direction;Block b=getBlock(pos.x,pos.y,pos.z);if(isTorch(b) && blockProperties(b)){auto support=pos-buildingFacing(blockProperties(b)-1);if(support==glm::ivec3(x,y,z)&&!isSolid(getBlock(x,y,z))){if(retainBuildingDrop(glm::vec3(pos)+.5f,{Item::Torch,1}))setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);}continue;}if(!buildingNeedsSupport(b))continue;
         auto d=buildingDefinition(b);auto p=blockProperties(b);glm::ivec3 support=pos+glm::ivec3(0,-1,0);
         if(d->shape==BuildingShape::Chain || ((d->shape==BuildingShape::Lantern)&&(p&4)))support=pos+glm::ivec3(0,1,0);
         if(d->shape==BuildingShape::Frame||d->shape==BuildingShape::Painting||d->shape==BuildingShape::Button||(d->shape==BuildingShape::Sign && (p&16)))support=pos+(d->shape==BuildingShape::Button?buildingFacing(p):-buildingFacing(p));
         if(support!=glm::ivec3(x,y,z)||isSolid(getBlock(support.x,support.y,support.z))||blockType(getBlock(support.x,support.y,support.z))==Block::Chain)continue;
-        for(auto stack:takeBlockEntityContents(pos))buildingDrops_.push_back({glm::vec3(pos)+.5f,stack});
-        buildingDrops_.push_back({glm::vec3(pos)+.5f,ItemStack{blockToItem(b),1}});setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);
+        auto output=blockEntityContents(pos);const auto item=blockToItem(b);if(item!=Item::None)output.push_back({item,1});
+        if(!retainBuildingDrops(glm::vec3(pos)+.5f,output))continue;
+        takeBlockEntityContents(pos);setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);
     }
     if (rebuildImmediately && isDoor(previous) && !isDoorUpper(previous) &&
         !isDoor(block) && y + 1 < maximumY()) {
@@ -4081,7 +4084,7 @@ ChestData* World::chestAt(const glm::ivec3& position, bool create) {
     return &chests_.try_emplace(key).first->second;
 }
 
-std::vector<ItemStack> World::takeBlockEntityContents(const glm::ivec3& position) {
+std::vector<ItemStack> World::blockEntityContents(const glm::ivec3& position) const {
     std::vector<ItemStack> contents;
     const BlockEntityPosition key{position.x, position.y, position.z};
     if (auto furnace = furnaces_.find(key); furnace != furnaces_.end()) {
@@ -4089,14 +4092,19 @@ std::vector<ItemStack> World::takeBlockEntityContents(const glm::ivec3& position
              {furnace->second.input, furnace->second.fuel, furnace->second.output})
             if (!stack.empty())
                 contents.push_back(stack);
-        furnaces_.erase(furnace);
     }
     if (auto chest = chests_.find(key); chest != chests_.end()) {
         for (const ItemStack& stack : chest->second.slots)
             if (!stack.empty())
                 contents.push_back(stack);
-        chests_.erase(chest);
     }
+    return contents;
+}
+
+std::vector<ItemStack> World::takeBlockEntityContents(const glm::ivec3& position) {
+    auto contents=blockEntityContents(position);
+    furnaces_.erase({position.x,position.y,position.z});
+    chests_.erase({position.x,position.y,position.z});
     return contents;
 }
 
@@ -5073,6 +5081,16 @@ void World::flushBuildingDrops(SurvivalWorld& survival){
     std::size_t delivered=0;
     for(const auto& d:buildingDrops_){if(!survival.spawnDrop(d.first,d.second.item,d.second.count,d.second.durability,glm::vec3(.1f,.3f,.1f),0,d.second.identity))break;++delivered;}
     if(delivered)buildingDrops_.erase(buildingDrops_.begin(),buildingDrops_.begin()+delivered);
+}
+bool World::retainBuildingDrop(const glm::vec3& position,const ItemStack& stack){return retainBuildingDrops(position,{stack});}
+bool World::retainBuildingDrops(const glm::vec3& position,const std::vector<ItemStack>& stacks){
+    // Reserve the complete output before callers relinquish ownership. This
+    // queue shares the world checkpoint and its loader's exact admission limit.
+    if(!SaveValidation::position(position)||buildingDrops_.size()>100000||stacks.size()>100000-buildingDrops_.size())return false;
+    for(const auto& s:stacks)if(s.empty()||!SaveValidation::stack(s))return false;
+    if(buildingDrops_.size()+stacks.size()>buildingDrops_.capacity())buildingDrops_.reserve(std::max(buildingDrops_.size()+stacks.size(),std::min<std::size_t>(100000,std::max<std::size_t>(16,buildingDrops_.capacity()*2))));
+    for(const auto& s:stacks)buildingDrops_.emplace_back(position,s);
+    return true;
 }
 void World::refreshBuildingConnections(int cx,int cz){for(int z=cz-1;z<=cz+1;++z)for(int x=cx-1;x<=cx+1;++x){auto* c=findChunk(x,z);if(!c)continue;for(auto index:c->buildingCells){glm::ivec3 p(x*16+int(index%16),c->minimumY+int(index/256),z*16+int((index/16)%16));auto b=getBlock(p.x,p.y,p.z),connected=buildingConnectedState(*this,p,b);auto definition=buildingDefinition(b);if(b!=connected)setBlockInternal(p.x,p.y,p.z,connected,true,false);}}}
 

@@ -346,6 +346,7 @@ struct AttackResult {
 
 class Weather;
 class SurvivalWorld {
+    friend class AutomationTest;
     friend class FarmingTest;
     friend class BuildingTest;
     friend class StabilityTest;
@@ -364,7 +365,7 @@ public:
     explicit SurvivalWorld(std::uint32_t seed);
     void setSoundSystem(SoundSystem* sounds) { sounds_ = sounds; }
     void setWeather(const Weather* weather) { weather_ = weather; }
-    void lightningDamage(const glm::vec3& center, const World& world);
+    void lightningDamage(const glm::vec3& center, World& world);
     void
     update(float deltaTime, World& world, Player& player, Inventory& inventory, float daylight);
     bool anyMobIntersects(const glm::vec3& minimum,const glm::vec3& maximum) const;
@@ -387,7 +388,7 @@ public:
                          const World& world,
                          float blockDistance) const;
     AttackResult
-    attackMob(int index, Item heldItem, bool critical, const glm::vec3& attackerPosition);
+    attackMob(int index, Item heldItem, bool critical, const glm::vec3& attackerPosition,World* recoveryWorld=nullptr);
     RenderCuboid mobOutline(int index) const;
     std::vector<RenderCuboid> renderCuboids() const;
     std::vector<RenderBillboard> renderBillboards() const;
@@ -485,6 +486,6 @@ private:
     void detonate(const glm::vec3& center, World& world, Player& player);
     void updateArrows(float deltaTime, World& world, Player& player);
     int targetedAnimal(const glm::vec3& origin, const glm::vec3& direction, float reach) const;
-    void releaseDrops(Animal& animal);
+    bool releaseDrops(Animal& animal,World* recoveryWorld=nullptr);
     static std::int64_t chunkKey(int x, int z);
 };

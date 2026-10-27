@@ -1,6 +1,9 @@
 # Voxel Frontier v2.17.0 — The Logic & Automation Update
 
-**Prerelease — available for testing. v2.16.2 remains the latest stable release.**
+**Stable release — includes the validated prerelease stabilization fixes.**
+
+**Known limitation:** large-coordinate movement and targeting lose precision near
+±8,388,608 blocks and beyond. The coordinated precision migration is deferred.
 
 - Build circuits with directional power wires, levers, timed buttons, pressure
   plates, repeaters and AND/OR/NOT gates.
@@ -29,3 +32,19 @@ was not available.
 Known limits: no comparator, loose-item suction, piston animation, or block-entity
 movement. Very large networks can respond more slowly under the bounded work budget.
 Hoppers reuse 27-slot storage. Full rules and measurements are in the validation report.
+
+## Prerelease stabilization fixes — 27 October 2026
+
+- Protect item ownership when live drops or checkpointed recovery storage are full.
+- Reserve complete multi-block placements before editing terrain or consuming items.
+- Harvest sugar cane from the top; retain unsupported crop outputs safely.
+- Correct powered door edge tracking, legacy paired doors and suspended device delays.
+- Reject dying breeding partners and preserve fast Recipe Book text input.
+- Bound registry reconciliation, signal-wave preparation and stale write disposal;
+  report total automation tick costs in F3.
+
+Large-coordinate precision remains **deferred and reproduced**. The release includes
+375 additional stabilization checks, the original 689 automation assertions, 20 full/demo
+Release suites and 1,326 unchanged historical generator hashes.
+See [stabilization validation](V2170_PRERELEASE_FIX_VALIDATION.md) for evidence,
+package checksums, before/after reproductions and remaining limitations.

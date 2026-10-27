@@ -20,4 +20,5 @@ float explosionExposure(const World& world, const glm::vec3& center,
                         const glm::vec3& target);
 float explosionDamage(const Explosion& blast, float distance, float exposure);
 void damageExplosionTerrain(World& world, const Explosion& blast,
-                            const std::function<void(const glm::ivec3&, Block)>& onBroken);
+                            const std::function<void(const glm::ivec3&, Block)>& onBroken,
+                            const std::function<bool(const glm::ivec3&, Block)>& accept = {});

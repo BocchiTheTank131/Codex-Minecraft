@@ -133,7 +133,10 @@ void FarmingSystem::update(float dt,World& w,const glm::vec3&,const Weather* wea
             else if(!wet && neighbors && b==Block::WetFarmland)w.setBlock(p.x,p.y,p.z,Block::Farmland);
         } else if((isCrop(b) && !isFarmland(below)) || (isBerryBush(b) && !ground(below)) ||
                   (b==Block::SugarCane && neighborsLoaded(w,p,1) && !w.canPlacePlant(p,b))) {
-            w.setBlock(p.x,p.y,p.z,Block::Air);states_.erase(it);continue;
+            // Support cleanup owns real crop resources too. Retain outputs
+            // before removal; a saturated recovery queue leaves the plant for
+            // the next bounded update instead of silently deleting it.
+            if(w.retainBuildingDrops(glm::vec3(p)+glm::vec3(.5f),harvest(b,p,w.seed()))){w.setBlock(p.x,p.y,p.z,Block::Air);states_.erase(it);continue;}
         } else {
             const bool lit=std::max(w.sunlightAt(p.x,p.y,p.z)*std::clamp(daylight,0.f,1.f),float(w.blockLightAt(p.x,p.y,p.z)))>=9;
             if(lit || b==Block::RedMushroom || b==Block::BrownMushroom)
@@ -171,16 +174,16 @@ bool FarmingSystem::interact(World& w,Inventory& inventory,SurvivalWorld& surviv
     feedback_=nullptr;
     const auto b=w.getBlock(p.x,p.y,p.z);const auto held=offhand?inventory.equipment(4):inventory.selectedStack();
     auto consume=[&]{return creative || (offhand?inventory.consumeOffhand():inventory.consumeSelected());};
-    auto drop=[&](Item i,int n){survival.spawnDrop(glm::vec3(p)+glm::vec3(.5f,1,.5f),i,n);};
+    auto drop=[&](Item i,int n){return survival.spawnDrop(glm::vec3(p)+glm::vec3(.5f,1,.5f),i,n);};
     if(isComposter(b)) {
-        if(b==Block::Composter4) {w.setBlock(p.x,p.y,p.z,Block::Composter0);drop(Item::BoneMeal,1);return true;}
+        if(b==Block::Composter4) {if(drop(Item::BoneMeal,1))w.setBlock(p.x,p.y,p.z,Block::Composter0);else feedback_="Too many dropped items; compost retained.";return true;}
         const bool organic=itemDefinition(item).foodContainer==Item::None && (plantedBlock(item)!=Block::Air || isFood(item) || item==Item::Wheat || item==Item::SugarCane || item==Item::RedMushroom || item==Item::BrownMushroom || isLeaf(itemToBlock(item)));
         if(organic && !held.empty() && consume())w.setBlock(p.x,p.y,p.z,Block(int(b)+1));
         else feedback_="Compost spare crops, seeds or leaves.";
         return true;
     }
     if(isBerryBush(b) && b>=Block::BerryBush2 && item!=Item::BoneMeal) {
-        w.setBlock(p.x,p.y,p.z,Block::BerryBush1);drop(Item::SweetBerries,b==Block::BerryBush3?3:2);return true;
+        if(drop(Item::SweetBerries,b==Block::BerryBush3?3:2))w.setBlock(p.x,p.y,p.z,Block::BerryBush1);else feedback_="Too many dropped items; berries retained.";return true;
     }
     if(item==Item::BoneMeal && (isCrop(b)||isBerryBush(b)||b==Block::SugarCane)) {
         if(!held.empty() && fertilize(w,p))consume();

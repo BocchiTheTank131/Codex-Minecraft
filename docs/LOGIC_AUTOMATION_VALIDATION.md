@@ -1,5 +1,9 @@
 # Logic & Automation validation — v2.17.0
 
+For the final v2.17.0 stabilization fixes and current package checksums, see
+[prerelease fix validation](V2170_PRERELEASE_FIX_VALIDATION.md). The original
+implementation and benchmark evidence below is retained for comparison.
+
 Implementation and validation, October 26, 2026. Prerelease publication approved by the user. No installed
 game, real saved world, or real profile was modified. Every native fixture creates
 a unique temporary working directory; packaged tests use explicitly isolated profiles.

@@ -11,6 +11,7 @@
 #include "Screenshot.h"
 #include "Persistence.h"
 #include "Farming.h"
+#include "SaveValidation.h"
 double fixtureWorkingSetMb();
 #include <filesystem>
 #include <fstream>
@@ -38,7 +39,9 @@ class AutomationTest {
  static void machinery();
  static void persistence();
  static void production(Game&);
+ static void stabilization(Game&,const std::filesystem::path&);
  static void benchmark(const std::filesystem::path&);
+ static void sparse(const std::filesystem::path&);
  static void systems(const std::filesystem::path&);
  static void visual(Game&,const std::filesystem::path&);
 public:static int run(int,char**);
@@ -50,6 +53,8 @@ public:static int run(int,char**);
 int runAutomationTests(int argc,char** argv){return AutomationTest::run(argc,argv);}
 int AutomationTest::run(int argc,char** argv){Game g;char app[]="automation-validation";char* args[]={app};check(g.initialize(1,args),"initialize");glfwHideWindow(g.window_);const auto out=std::filesystem::absolute(argc>2?argv[2]:"evidence");std::filesystem::create_directories(out);
  const std::string mode=argc>1?argv[1]:"--automation";
+ if(mode=="--automation-stabilization"){stabilization(g,out);return 0;}
+ if(mode=="--automation-sparse"){sparse(out);return 0;}
  if(mode=="--automation-systems"){systems(out);return 0;}
  if(mode=="--automation-demo"){check(!Persistence::enabled(),"demo_policy_disabled");circuits();transportation();machinery();g.shutdown();for(auto file:std::filesystem::recursive_directory_iterator(".")){auto name=file.path().filename().string();check(file.path().extension()!=".vxw"&&file.path().extension()!=".vxi"&&file.path().extension()!=".vxm"&&file.path().extension()!=".vps"&&file.path().extension()!=".vtn"&&name!="checkpoint.manifest"&&name!=".session.lock","demo_no_persistent_components");}std::cout<<"Demo automation assertions="<<assertions<<std::endl;return 0;}
  if(mode=="--automation-benchmark"){benchmark(out);return 0;}
@@ -125,9 +130,143 @@ void AutomationTest::production(Game& g){
  g.returnToMainMenu();g.playSavedWorld(selected);check(g.world_&&get(*g.world_,{5,300,5})==Block::Lever,"automation_lever_persistence");auto c=g.world_->chestAt({5,300,7});check(c&&c->slots[0].identity==77&&c->slots[1].durability==33,"hopper_checkpoint_metadata_coherent");g.returnToMainMenu();
 }
 
+// Deliberately accumulate failures so one candidate run reproduces independent
+// defects. The fixture runs only beneath StabilityDriver's fresh temp profile.
+void AutomationTest::stabilization(Game& g,const std::filesystem::path& out){
+ int failures=0;auto expect=[&](bool ok,const std::string& name){std::cout<<"stabilization "<<name<<" passed="<<ok<<std::endl;if(!ok)++failures;};
+ for(auto door:{Block::OakFenceGate,Block::OakTrapdoor,Block::OakDoor,Block::DoorClosedNorthLower}){
+  auto wWorldFixture=std::make_unique<World>(1,22);auto& w=*wWorldFixture;empty(w,1);SurvivalWorld s(1);auto p=glm::ivec3(5,300,5);put(w,p,door);bool legacy=isDoor(door),pair=legacy||buildingIsDoor(door);
+  if(pair)put(w,p+glm::ivec3(0,1,0),legacy?Block::DoorClosedNorthUpper:blockState(door,16));
+  auto source=p+glm::ivec3(-1,0,0);put(w,source,blockState(Block::Lever,8));ticks(w,s,5);
+  auto closed=[&](glm::ivec3 q){auto b=get(w,q);return legacy?doorBlock(doorFacing(b),isDoorUpper(b),doorHingeRight(b),false):blockState(b,blockProperties(b)&~8);};
+  auto open=[&](glm::ivec3 q){auto b=get(w,q);return legacy?isDoorOpen(b):bool(blockProperties(b)&8);};
+  put(w,p,closed(p));if(pair)put(w,p+glm::ivec3(0,1,0),closed(p+glm::ivec3(0,1,0)));ticks(w,s,3);
+  w.automation.interact(w,source);ticks(w,s,4);w.automation.interact(w,source);ticks(w,s,4);
+  expect(open(p)&&(!pair||open(p+glm::ivec3(0,1,0))),"manual_override_rearm_"+std::to_string(int(door)));
+  put(w,p,closed(p));if(pair)put(w,p+glm::ivec3(0,1,0),closed(p+glm::ivec3(0,1,0)));auto other=p+glm::ivec3(1,0,0);put(w,other,blockState(Block::Lever,8));ticks(w,s,3);w.automation.interact(w,source);ticks(w,s,3);expect(!open(p),"multiple_sources_preserve_manual_override");w.automation.interact(w,other);ticks(w,s,4);
+  std::ostringstream saved(std::ios::binary);expect(w.automation.write(saved),"closed_door_edge_serializes");Automation restored;std::istringstream bytes(saved.str(),std::ios::binary);expect(restored.read(bytes,-64,320),"closed_door_edge_loads");w.automation=std::move(restored);w.automation.activateChunk(w,0,0);ticks(w,s,2);w.automation.interact(w,source);ticks(w,s,4);expect(open(p)&&(!pair||open(p+glm::ivec3(0,1,0))),"door_rearms_after_saved_no_op_falling_edge");
+  for(int cycle=0;cycle<5;++cycle){w.automation.interact(w,source);ticks(w,s,2);w.automation.interact(w,source);ticks(w,s,2);}expect(open(p)&&(!pair||open(p+glm::ivec3(0,1,0))),"rapid_door_edges_converge");
+
+ }
+ for(int upper:{0,1}){auto wWorldFixture=std::make_unique<World>(2,22);auto& w=*wWorldFixture;empty(w,1);SurvivalWorld s(2);put(w,{5,300,5},Block::DoorClosedNorthLower);put(w,{5,301,5},Block::DoorClosedNorthUpper);put(w,{4,300+upper,5},blockState(Block::Lever,8));ticks(w,s,6);expect(isDoorOpen(get(w,{5,300,5}))&&isDoorOpen(get(w,{5,301,5})),"legacy_both_halves_power_"+std::to_string(upper));}
+ for(int height:{2,3}){auto wWorldFixture=std::make_unique<World>(3,22);auto& w=*wWorldFixture;empty(w,1);SurvivalWorld s(3);put(w,{5,300,5},Block::AutoHarvester);put(w,{5,299,5},Block::Chest);put(w,{4,300,5},blockState(Block::Lever,8));put(w,{5,298,4},Block::Sand);put(w,{4,298,4},Block::Water);for(int y=0;y<height;++y)put(w,{5,299+y,4},Block::SugarCane);ticks(w,s,60);FarmingSystem farm;farm.update(5,w,glm::vec3(5,300,5));expect(count(w.chestAt({5,299,5}),Item::SugarCane)==height-1&&get(w,{5,299,4})==Block::SugarCane,"cane_collects_all_"+std::to_string(height));}
+
+ {auto farmWorldFixture=std::make_unique<World>(66,22);auto& farm=*farmWorldFixture;empty(farm,1);SurvivalWorld mobs(66);put(farm,{5,298,4},Block::Sand);put(farm,{4,298,4},Block::Water);for(int y=299;y<=301;++y)put(farm,{5,y,4},Block::SugarCane);
+  put(farm,{5,300,5},Block::AutoHarvester);put(farm,{5,299,5},Block::Chest);put(farm,{4,300,5},blockState(Block::Lever,8));put(farm,{5,301,3},blockState(Block::AutoHarvester,2));put(farm,{5,300,3},Block::Chest);put(farm,{6,301,3},blockState(Block::Lever,8));
+  auto* a=farm.chestAt({5,299,5},true);auto* b=farm.chestAt({5,300,3},true);for(auto* chest:{a,b})for(auto& stack:chest->slots)stack={Item::Dirt,64};ticks(farm,mobs,30);
+  expect(get(farm,{5,300,4})==Block::SugarCane&&get(farm,{5,301,4})==Block::SugarCane,"full_cane_outputs_preserve_every_segment");a->slots[0]={};b->slots[0]={};ticks(farm,mobs,30);
+  expect(count(a,Item::SugarCane)+count(b,Item::SugarCane)==2&&get(farm,{5,299,4})==Block::SugarCane&&get(farm,{5,300,4})==Block::Air,"two_harvesters_different_heights_conserve_cane");
+  glm::vec3 location;expect(farm.saveWorld("cane.vxw",{5,300,5}),"cane_world_save");auto restoredWorldFixture=std::make_unique<World>(66,22);auto& restored=*restoredWorldFixture;expect(restored.loadWorld("cane.vxw",location)&&count(restored.chestAt({5,299,5}),Item::SugarCane)+count(restored.chestAt({5,300,3}),Item::SugarCane)==2,"cane_output_save_reload");
+ }
+ {auto wWorldFixture=std::make_unique<World>(4,22);auto& w=*wWorldFixture;empty(w,1);SurvivalWorld s(4);put(w,{5,300,5},blockState(Block::Repeater,48));ticks(w,s,2);put(w,{5,300,6},blockState(Block::Lever,8));ticks(w,s,1);const auto remaining=w.automation.nodes_.at(glm::ivec3(5,300,5)).due-w.automation.stats_.ticks;
+  w.setSimulationDistance(2);w.streamCenterValid_=true;w.streamCenter_={100,100};ticks(w,s,40);w.streamCenterValid_=false;ticks(w,s,1);auto n=w.automation.nodes_.at(glm::ivec3(5,300,5));expect(n.remaining==remaining||(n.due>=w.automation.stats_.ticks+remaining-1),"timer_keeps_remaining_outside_simulation");}
+ {auto wWorldFixture=std::make_unique<World>(5,22);auto& w=*wWorldFixture;empty(w,1);SurvivalWorld s(5);SurvivalWorld::Animal a;a.type=SurvivalWorld::AnimalType::Chicken;a.position={0,300,0};a.health=4;s.animals_.push_back(a);a.position={2,300,0};a.health=0;a.deathTimer=.5f;a.loveTimer=20;s.animals_.push_back(a);s.feedAnimal({0,300.5f,3},{0,0,-1},Item::Seeds,&w);expect(s.animals_.size()==2,"dying_partner_rejected");}
+ // Capacity is filled with inert saved nodes, avoiding generation of 100k chunks.
+ for(int capacity:{99998,99999,100000}){auto wWorldFixture=std::make_unique<World>(6,22);auto& w=*wWorldFixture;empty(w,1);for(int i=0;i<capacity;++i){LogicPosition p{glm::ivec3(1000+i,0,1000)};w.automation.nodes_[p]={};w.automation.nodes_[p].type=Block::Lever;}
+  auto a=glm::ivec3(5,300,5),b=a+glm::ivec3(0,1,0);bool success=w.automationBatch({{a,Block::Air},{b,Block::Air}},{{a,Block::OakDoor},{b,blockState(Block::OakDoor,16)}});
+  expect(success==(capacity==99998)&&((get(w,a)==Block::Air)==(capacity!=99998))&&((get(w,b)==Block::Air)==(capacity!=99998)),"atomic_capacity_"+std::to_string(capacity));}
+
+ for(auto device:{blockState(Block::Repeater,48),Block::OakButton,Block::Observer,Block::DaylightSensor}){
+  auto timingWorldFixture=std::make_unique<World>(19,22);auto& timing=*timingWorldFixture;empty(timing,1);SurvivalWorld mobs(19);const glm::ivec3 p(15,300,5);put(timing,p,device);ticks(timing,mobs,2);
+  timing.automation.nodes_.at(p).target=15;timing.automation.schedule(p,4);
+  for(int cycle=0;cycle<3;++cycle){
+   const auto before=timing.automation.remainingTicks(p,timing.automation.nodes_.at(p));timing.automation.suspendChunk(1,0);auto unload=std::move(timing.chunks_.at(timing.chunkKey(1,0)));timing.chunks_.erase(timing.chunkKey(1,0));ticks(timing,mobs,35);
+   auto& node=timing.automation.nodes_.at(p);expect(node.due==0&&node.remaining==before,"boundary_delay_frozen_"+std::to_string(int(blockType(device)))+"_"+std::to_string(cycle));
+   timing.automation.activateChunk(timing,0,0);ticks(timing,mobs,15);expect(node.due==0&&node.remaining==before,"incomplete_boundary_not_reactivated_"+std::to_string(int(blockType(device))));
+   std::ostringstream saved(std::ios::binary);expect(timing.automation.write(saved),"paused_timer_serializes");Automation restored;std::istringstream input(saved.str(),std::ios::binary);expect(restored.read(input,-64,320)&&restored.nodes_.at(p).remaining==before,"paused_timer_roundtrip");
+   timing.chunks_.emplace(timing.chunkKey(1,0),std::move(unload));timing.automation.activateChunk(timing,1,0);expect(timing.automation.remainingTicks(p,node)==before,"resume_keeps_delay");
+  }
+ }
+ {auto rangeWorldFixture=std::make_unique<World>(1,22);auto& range=*rangeWorldFixture;range.streamCenterValid_=true;range.streamCenter_={100,100};range.setSimulationDistance(2);expect(!range.simulationActiveAt(5,5),"distance_setting_never_reinitializes_simulation_center");}
+ {auto staleWorldFixture=std::make_unique<World>(1,22);auto& stale=*staleWorldFixture;empty(stale,1);SurvivalWorld m(1);for(int i=0;i<10000;++i)stale.automation.changes_.push_back({glm::ivec3(i,300,0),Block::Lever,blockState(Block::Lever,8),0});ticks(stale,m,1);expect(stale.automation.changes_.size()>=10000-512,"stale_commits_also_consume_bounded_queue_work");}
+ // Preparation is bounded even with 100k spatially sparse saved registrations.
+ {auto manyWorldFixture=std::make_unique<World>(20,22);auto& many=*manyWorldFixture;empty(many,1);SurvivalWorld mobs(20);for(int i=0;i<100000;++i){auto key=LogicPosition(glm::ivec3(i*16,0,1000));many.automation.nodes_[key].type=Block::Lever;many.automation.chunks_[{i,62}].insert(key);}
+  for(int i=0;i<220;++i){ticks(many,mobs,1);const auto& d=many.automation.diagnostics();expect(d.reconciled<=512&&d.dueProcessed<=2048&&d.processed<=2048&&d.changes<=512&&d.tickMilliseconds>=d.preparationMilliseconds&&d.tickMilliseconds>=d.evaluationMilliseconds,"all_tick_phases_accounted_and_bounded");}
+  expect(!many.automation.reconcilePending_,"sparse_registry_eventual_reconciliation");}
+ std::cout<<"fixture creating production world / sizeof World="<<sizeof(World)<<std::endl;auto selected=WorldLibrary::create("Prerelease stabilization isolated",233,GameMode::Survival,true);std::cout<<"fixture loading world"<<std::endl;g.playSavedWorld(selected);expect(bool(g.world_),"production_world");auto& w=*g.world_;auto& s=*g.survival_;auto& inv=*g.inventory_;w.prepareSpawnTerrain({8,300,8});w.fillBlocks({0,299,0},{15,299,15},Block::Stone);g.player_->teleport({8.5f,300,8.5f});
+
+ for(auto item:{Item::OakDoor,Item::WoodenDoor})for(int capacity:{99998,99999,100000}){
+  auto original=std::move(w.automation);w.automation=Automation{};for(int i=0;i<capacity;++i){auto key=LogicPosition(glm::ivec3(1000+i,0,1000));w.automation.nodes_[key].type=Block::Lever;}
+  inv.clear();inv.add(item);g.input_.keys_.fill(false);g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_RIGHT]=true;g.interaction_.hasBlockTarget=true;g.interaction_.mobTarget={};g.interaction_.blockTarget={{4,299,11},{4,300,11},{0,1,0},3};
+  const auto preview=g.placementPlan(item);g.handleUseAction();const bool accepted=capacity==99998;
+  expect(preview.valid==accepted&&inv.count(item)==(accepted?0:1)&&(get(w,{4,300,11})!=Block::Air)==accepted&&(get(w,{4,301,11})!=Block::Air)==accepted,"RMB_door_capacity_"+std::to_string(int(item))+"_"+std::to_string(capacity));
+  w.setBlockInternal(4,301,11,Block::Air,true,false);w.setBlockInternal(4,300,11,Block::Air,true,false);w.automation=std::move(original);g.input_.mouseButtons_.fill(false);
+ }
+ s.spawnDrop({8,300,8},Item::Stone);s.drops_.resize(SaveValidation::MaxDrops,s.drops_.front());
+ inv.clear();inv.add(Item::FilledMap,1,0,613);g.input_.keys_.fill(false);g.input_.previousKeys_.fill(false);g.input_.keys_[GLFW_KEY_Q]=true;g.handleDropAction();expect(inv.count(Item::FilledMap)==1||!w.buildingDrops_.empty(),"gameplay_Q_keeps_owner_at_drop_limit");g.input_.keys_.fill(false);
+ put(w,{3,300,3},Block::Composter4);FarmingSystem farm;farm.interact(w,inv,s,{3,300,3},{3,301,3},{0,1,0},Item::None,false,false);expect(get(w,{3,300,3})==Block::Composter4||!w.buildingDrops_.empty(),"composter_keeps_production_at_drop_limit");
+ put(w,{4,300,3},Block::BerryBush3);farm.interact(w,inv,s,{4,300,3},{4,301,3},{0,1,0},Item::None,false,false);expect(get(w,{4,300,3})==Block::BerryBush3||!w.buildingDrops_.empty(),"berries_keep_production_at_drop_limit");
+ {SurvivalWorld::Animal a;a.type=SurvivalWorld::AnimalType::Sheep;a.position={5,300,5};a.health=8;s.animals_.push_back(a);inv.clear();inv.add(Item::Shears,1,20);s.tendAnimal(int(s.animals_.size()-1),inv,false,false);expect(!s.animals_.back().sheared&&inv.selectedStack().durability==20,"shear_keeps_wool_and_tool_at_drop_limit");}
+ g.ui_.openInventory();g.ui_.recipeBook_.searchFocused=true;g.ui_.recipeBook_.search.clear();g.input_.typedCharacters_="stone bricks";int W,H;glfwGetFramebufferSize(g.window_,&W,&H);g.ui_.updateInventoryInteraction(g.input_,W,H,inv,s,w,*g.player_,false);expect(g.ui_.recipeBook_.search=="stone bricks","recipe_keeps_all_character_events");g.ui_.closeGameplayInterface(inv);
+
+ // Drive the GUI through actual framebuffer hit tests and existing input routes.
+ glfwShowWindow(g.window_);glfwFocusWindow(g.window_);glfwPollEvents();g.input_.setCursorCaptured(true);g.settings_.uiScale=2;
+ glfwGetFramebufferSize(g.window_,&W,&H);int ww,wh;glfwGetWindowSize(g.window_,&ww,&wh);
+ const float scale=UiLayout::interfaceScale(W,H,2);const int lw=int(W/scale),lh=int(H/scale);
+ auto cursor=[&](double x,double y){glfwSetCursorPos(g.window_,x*scale*ww/W,y*scale*wh/H);};
+ auto resetInput=[&]{g.input_.keys_.fill(false);g.input_.previousKeys_.fill(false);g.input_.mouseButtons_.fill(false);g.input_.previousMouseButtons_.fill(false);g.input_.typedCharacters_.clear();g.ui_.inventoryLeftWasDown_=false;g.ui_.dragHit_={};};
+ auto gui=[&](bool creative){g.ui_.updateInventoryInteraction(g.input_,W,H,inv,s,w,*g.player_,creative);};
+ for(bool creative:{false,true})for(bool entire:{false,true}){
+  resetInput();g.ui_.openInventory();g.ui_.recipeBook_.searchFocused=false;g.ui_.creativeSearchFocused_=false;inv.clear();inv.slots_[0]={Item::Stone,7};auto r=UiLayout::playerSlot(creative?UiMode::Creative:UiMode::Inventory,0,lw,lh);cursor(r.x+10,r.y+10);g.input_.keys_[GLFW_KEY_Q]=true;g.input_.keys_[GLFW_KEY_LEFT_CONTROL]=entire;gui(creative);
+  expect(inv.slot(0).count==7&&s.drops_.size()==SaveValidation::MaxDrops,"gui_Q_refusal_"+std::to_string(creative)+std::to_string(entire));
+  s.drops_.pop_back();g.input_.previousKeys_.fill(false);gui(creative);expect(inv.slot(0).count==(entire?0:6)&&s.drops_.size()==SaveValidation::MaxDrops&&s.drops_.back().stack.count==(entire?7:1),"gui_Q_one_acceptance_"+std::to_string(creative)+std::to_string(entire));
+ }
+ for(bool creative:{false,true})for(bool right:{false,true}){
+  resetInput();g.ui_.openInventory();inv.clear();inv.cursor_={Item::IronSword,1,17};cursor(2,2);g.input_.mouseButtons_[right?GLFW_MOUSE_BUTTON_RIGHT:GLFW_MOUSE_BUTTON_LEFT]=true;gui(creative);
+  expect(inv.cursorStack().item==Item::IronSword&&inv.cursorStack().durability==17,"outside_click_keeps_gear_"+std::to_string(creative)+std::to_string(right));
+ }
+ for(bool creative:{false,true}){resetInput();g.ui_.openInventory();inv.clear();inv.cursor_={Item::FilledMap,1,0,713};cursor(2,2);g.ui_.inventoryLeftWasDown_=true;gui(creative);expect(inv.cursorStack().identity==713,"drag_release_keeps_identity_"+std::to_string(creative));}
+ resetInput();g.ui_.closeGameplayInterface(inv);glfwHideWindow(g.window_);
+ // Both output limits exhausted: a whole batch must reject before ownership moves.
+ w.buildingDrops_.assign(100000,{{8,300,8},{Item::Stone,1}});const auto oldQueue=w.buildingDrops_.size();
+ expect(!w.retainBuildingDrops({8,300,8},{{Item::Diamond,1},{Item::FilledMap,1,0,99}})&&w.buildingDrops_.size()==oldQueue,"recovery_queue_batch_rejects_without_overflow");
+ put(w,{6,300,3},Block::Barrel);auto* fullBarrel=w.chestAt({6,300,3},true);fullBarrel->slots[0]={Item::FilledMap,1,0,918};
+ expect(!w.setBlockInternal(6,300,3,Block::Air,true,false)&&w.chestAt({6,300,3})->slots[0].identity==918,"direct_storage_removal_rejects_when_recovery_full");
+ g.player_->teleport({6.5f,300,5.5f});g.interaction_.hasBlockTarget=true;g.interaction_.mobTarget={};g.interaction_.blockTarget={{6,300,3},{6,300,4},{0,0,1},2};g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_LEFT]=true;g.updateMining(100);
+ expect(get(w,{6,300,3})==Block::Barrel&&w.chestAt({6,300,3})->slots[0].identity==918,"mining_refusal_retains_container_and_item");resetInput();
+ w.buildingDrops_.clear();
+ for(auto block:{Block::Barrel,Block::Hopper,Block::ItemFrame}){
+  put(w,{6,300,3},block);w.chestAt({6,300,3},true)->slots[0]={Item::FilledMap,1,0,918};w.chestAt({6,300,3},true)->slots[1]={Item::DiamondSword,1,23};
+  const auto queued=w.buildingDrops_.size();s.detonate({6.5f,300.5f,3.5f},w,*g.player_);int maps=0,gear=0;for(auto d:w.buildingDrops_){if(d.second.identity==918)maps+=d.second.count;if(d.second.item==Item::DiamondSword&&d.second.durability==23)gear+=d.second.count;}
+  expect(get(w,{6,300,3})==Block::Air&&maps==1&&gear==1&&w.buildingDrops_.size()>queued,"explosion_retains_all_contents_"+std::to_string(int(block)));
+  w.buildingDrops_.clear();
+ }
+ // A refused explosion leaves original storage in place, even at both limits.
+ put(w,{6,300,3},Block::Hopper);w.chestAt({6,300,3},true)->slots[0]={Item::FilledMap,1,0,921};w.buildingDrops_.assign(100000,{{8,300,8},{Item::Stone,1}});s.detonate({6.5f,300.5f,3.5f},w,*g.player_);
+ expect(blockType(get(w,{6,300,3}))==Block::Hopper&&w.chestAt({6,300,3})->slots[0].identity==921,"explosion_refusal_retains_source_at_both_limits");w.buildingDrops_.clear();
+ // Boat break must keep the entity if no drop can be admitted, and recover once.
+ {auto boatsWorldFixture=std::make_unique<World>(15,22);auto& boats=*boatsWorldFixture;empty(boats,1);for(int z=2;z<9;++z)for(int x=2;x<9;++x)put(boats,{x,299,z},Block::Water);Transportation travel({5,300,5});expect(travel.placeBoat(boats,Item::OakBoat,{5.5f,300,5.5f},0),"boat_drop_fixture");Player p({5.5f,300,8.5f});p.pitch_=-25;p.yaw_=-90;
+  expect(!travel.breakBoat(p,inv,s,boats,5)&&travel.boats().size()==1,"boat_break_refusal_keeps_boat");s.drops_.pop_back();expect(travel.breakBoat(p,inv,s,boats,5)&&travel.boats().empty()&&s.drops_.back().stack.item==Item::OakBoat,"boat_break_exactly_once");}
+ // Pending ownership survives a complete checkpoint, interruption and reload.
+ w.retainBuildingDrops({8,300,8},{{Item::FilledMap,1,0,719},{Item::DiamondSword,1,29},{Item::Stone,37}});
+ expect(g.saveAll(),"recovery_checkpoint_complete");expect(SaveFile::verifyCheckpoint(selected.directory.string()),"recovery_checkpoint_verified");
+ const auto savedWorldPath=selected.directory/"voxel_world.vxw";glm::vec3 restoredPosition;auto restoreWorldFixture=std::make_unique<World>(233,22);auto& restore=*restoreWorldFixture;expect(restore.loadWorld(savedWorldPath.string(),restoredPosition)&&restore.buildingDrops_.size()==3&&restore.buildingDrops_[0].second.identity==719&&restore.buildingDrops_[1].second.durability==29,"deferred_batch_roundtrip_metadata");
+ SurvivalWorld recovered(233);restore.flushBuildingDrops(recovered);const auto delivered=recovered.drops_.size();restore.flushBuildingDrops(recovered);expect(delivered==3&&recovered.drops_.size()==3&&restore.buildingDrops_.empty(),"recovery_delivers_exactly_once");
+
+ expect(g.saveAll(true),"pending_recovery_background_snapshot");s.drops_.resize(s.drops_.size()-3);w.flushBuildingDrops(s);expect(w.buildingDrops_.empty(),"deferred_output_transferred_to_live_owner");expect(g.saveAll(true),"coalesced_live_output_snapshot");g.pollSave(true);g.pollSave(true);expect(SaveFile::verifyCheckpoint(selected.directory.string()),"coalesced_recovery_manifest_verified");
+ {auto qWorldFixture=std::make_unique<World>(233,22);auto& q=*qWorldFixture;SurvivalWorld m(233);glm::vec3 location;expect(q.loadWorld(savedWorldPath.string(),location)&&m.load((selected.directory/"voxel_mobs.vxm").string(),233),"coalesced_recovery_world_mobs_load");int maps=0,gear=0;for(auto d:m.drops_){if(d.stack.identity==719)maps+=d.stack.count;if(d.stack.item==Item::DiamondSword&&d.stack.durability==29)gear+=d.stack.count;}expect(q.buildingDrops_.empty()&&maps==1&&gear==1,"coalesced_checkpoint_has_exactly_one_owner");}
+
+ const auto recoveryCopy=std::filesystem::absolute("previous-ownership-copy");expect(SaveFile::copyPrevious(selected.directory.string(),recoveryCopy.string()),"explicit_previous_checkpoint_recovery_copy");
+ {auto qWorldFixture=std::make_unique<World>(233,22);auto& q=*qWorldFixture;SurvivalWorld m(233);glm::vec3 location;expect(q.loadWorld((recoveryCopy/"voxel_world.vxw").string(),location)&&m.load((recoveryCopy/"voxel_mobs.vxm").string(),233),"verified_backup_components_load");int maps=0,gear=0;for(auto d:m.drops_){if(d.stack.identity==719)maps+=d.stack.count;if(d.stack.item==Item::DiamondSword&&d.stack.durability==29)gear+=d.stack.count;}for(auto d:q.buildingDrops_){if(d.second.identity==719)maps+=d.second.count;if(d.second.item==Item::DiamondSword&&d.second.durability==29)gear+=d.second.count;}expect(maps==1&&gear==1&&SaveFile::verifyCheckpoint(selected.directory.string()),"backup_ownership_conserved_source_unchanged");
+  {SaveFile::Checkpoint interrupted((recoveryCopy/"save.checkpoint").string());expect(interrupted.ready()&&SaveFile::write((recoveryCopy/"world_seed.txt").string(),std::ios::out,[](std::ofstream& f){f<<"incomplete candidate";return bool(f);}),"incomplete_snapshot_staged");}
+  expect(SaveFile::verifyCheckpoint(recoveryCopy.string()),"aborted_snapshot_keeps_verified_previous_checkpoint");
+ }
+ // Fast text input, paste restrictions, focus switches and key repeat.
+ resetInput();g.ui_.openInventory();g.ui_.recipeBook_.searchFocused=true;g.ui_.recipeBook_.search.clear();g.input_.typedCharacters_="STONE bricks!! 123";gui(false);expect(g.ui_.recipeBook_.search=="stone bricks ","recipe_validates_order_and_characters");
+ g.input_.keys_[GLFW_KEY_BACKSPACE]=true;gui(false);auto first=g.ui_.recipeBook_.search;g.input_.previousKeys_=g.input_.keys_;g.ui_.recipeRepeatAt_=glfwGetTime()-.001;gui(false);expect(g.ui_.recipeBook_.search.size()+1==first.size(),"recipe_backspace_repeat");
+ resetInput();glfwSetClipboardString(g.window_,"COBBLESTONE123\nSTONE");g.input_.keys_[GLFW_KEY_LEFT_CONTROL]=true;g.input_.keys_[GLFW_KEY_A]=true;gui(false);g.input_.keys_[GLFW_KEY_A]=false;g.input_.keys_[GLFW_KEY_V]=true;gui(false);expect(g.ui_.recipeBook_.search=="cobblestonestone","recipe_clipboard_sanitized");
+ resetInput();g.ui_.recipeBook_.searchFocused=false;g.ui_.closeGameplayInterface(inv);g.ui_.openInventory();g.ui_.creativeSearchFocused_=true;g.input_.typedCharacters_="fence";gui(true);expect(g.ui_.creativeSearch_=="fence"&&g.ui_.recipeBook_.search=="cobblestonestone"&&g.input_.consumeTypedCharacters().empty(),"search_focus_single_consumer");g.ui_.creativeSearchFocused_=false;resetInput();g.ui_.closeGameplayInterface(inv);
+ // Precision evidence is reported separately: no partial coordinate migration.
+ std::ofstream precision(out/"precision.csv");precision<<"coordinate,dx_after_120_steps\n";
+ for(float x:{1000000.f,8388608.f,29999999.f,-1000000.f,-8388608.f,-29999999.f}){Player p({x,300,x});p.setSpectatorMode(true);p.yaw_=0;p.pitch_=0;PlayerInput input;input.enabled=true;input.moveForward=true;for(int i=0;i<120;++i)p.update(1.f/120.f,input,w);precision<<x<<','<<p.position().x-x<<'\n';}
+ g.input_.keys_.fill(false);g.input_.previousKeys_.fill(false);g.returnToMainMenu();
+ std::cout<<"Stabilization failures="<<failures<<std::endl;if(failures)throw std::runtime_error("Prerelease stabilization failures="+std::to_string(failures));
+}
+
 void AutomationTest::benchmark(const std::filesystem::path& out){
+ std::ofstream phases(out/"automation-phases.csv");phases<<"components,mode,total_mean_ms,preparation_mean_ms,evaluation_mean_ms,commit_mean_ms,max_reconciled,max_due\n";
  std::ofstream csv(out/"automation-cpu.csv");csv<<"components,mode,mean_ms,p95_ms,p99_ms,peak_dirty,world_bytes,save_ms\n";
- for(int n:{100,1000,10000})for(int mode=0;mode<2;++mode){World w(81,22);empty(w,7);SurvivalWorld s(81);int width=int(std::ceil(std::sqrt(float(n))));std::vector<glm::ivec3> sources;for(int i=0;i<n;++i){glm::ivec3 p(i%width,300,i/width);if(i%64==0){sources.push_back(p);w.setBlockInternal(p.x,p.y,p.z,blockState(Block::Lever,8),true,false);}else w.setBlockInternal(p.x,p.y,p.z,Block::PowerWire,true,false);}ticks(w,s,400);std::vector<double> samples;std::size_t dirty=0;for(int i=0;i<300;++i){if(mode&&i%20==0)for(auto p:sources)w.automation.interact(w,p);auto t=std::chrono::steady_clock::now();ticks(w,s,1);samples.push_back(std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count());dirty=std::max(dirty,w.automation.diagnostics().dirty);if(w.automation.diagnostics().changes>512)throw std::runtime_error("Unbounded network commit");}auto t=std::chrono::steady_clock::now();w.saveWorld("bench.vxw",{1,300,1});double save=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count();double mean=std::accumulate(samples.begin(),samples.end(),0.)/samples.size();std::sort(samples.begin(),samples.end());csv<<n<<','<<(mode?"toggling":"idle")<<','<<mean<<','<<samples[285]<<','<<samples[297]<<','<<dirty<<','<<std::filesystem::file_size("bench.vxw")<<','<<save<<'\n';}
+ for(int n:{100,1000,10000})for(int mode=0;mode<2;++mode){World w(81,22);empty(w,7);SurvivalWorld s(81);int width=int(std::ceil(std::sqrt(float(n))));std::vector<glm::ivec3> sources;for(int i=0;i<n;++i){glm::ivec3 p(i%width,300,i/width);if(i%64==0){sources.push_back(p);w.setBlockInternal(p.x,p.y,p.z,blockState(Block::Lever,8),true,false);}else w.setBlockInternal(p.x,p.y,p.z,Block::PowerWire,true,false);}ticks(w,s,400);std::vector<double> samples;double total=0,preparation=0,evaluation=0,commit=0;unsigned maxReconciled=0,maxDue=0;std::size_t dirty=0;for(int i=0;i<300;++i){if(mode&&i%20==0)for(auto p:sources)w.automation.interact(w,p);auto t=std::chrono::steady_clock::now();ticks(w,s,1);samples.push_back(std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count());const auto& diag=w.automation.diagnostics();total+=diag.tickMilliseconds;preparation+=diag.preparationMilliseconds;evaluation+=diag.evaluationMilliseconds;commit+=diag.commitMilliseconds;maxReconciled=std::max(maxReconciled,diag.reconciled);maxDue=std::max(maxDue,diag.dueProcessed);dirty=std::max(dirty,diag.dirty);if(diag.changes>512)throw std::runtime_error("Unbounded network commit");}auto t=std::chrono::steady_clock::now();phases<<n<<','<<(mode?"toggling":"idle")<<','<<total/300<<','<<preparation/300<<','<<evaluation/300<<','<<commit/300<<','<<maxReconciled<<','<<maxDue<<'\n';w.saveWorld("bench.vxw",{1,300,1});double save=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count();double mean=std::accumulate(samples.begin(),samples.end(),0.)/samples.size();std::sort(samples.begin(),samples.end());csv<<n<<','<<(mode?"toggling":"idle")<<','<<mean<<','<<samples[285]<<','<<samples[297]<<','<<dirty<<','<<std::filesystem::file_size("bench.vxw")<<','<<save<<'\n';}
 }
 void AutomationTest::visual(Game& g,const std::filesystem::path& out){
  auto world=WorldLibrary::create("Automation visual fixture",817,GameMode::Creative,true);std::cout<<"visual creating world "<<world.directory<<std::endl;g.playSavedWorld(world);check(bool(g.world_),"visual_world_open");auto& w=*g.world_;for(int x=-16;x<=32;x+=16)for(int z=-16;z<=32;z+=16)w.prepareSpawnTerrain({float(x),300,float(z)});std::cout<<"visual terrain ready"<<std::endl;g.player_->teleport({8.5f,303,17.5f});g.player_->yaw_=-90;g.player_->pitch_=-30;g.player_->setFlying(true);w.fillBlocks({-4,299,-4},{23,299,23},Block::StoneBricks);g.settings_.renderDistance=8;g.settings_.interactionHints=true;g.ui_.resumeGame();g.synchronizeCursorCapture();
@@ -159,4 +298,11 @@ void AutomationTest::systems(const std::filesystem::path& out){
  for(int n:{100,1000,10000}){World w(12,22);empty(w,7);SurvivalWorld s(12);int width=int(std::ceil(std::sqrt(float(n))));if(width%2)++width;for(int i=0;i<n;++i){glm::ivec3 p(i%width,300,i/width);w.setBlockInternal(p.x,p.y,p.z,blockState(Block::Hopper,i%2?3:1),true,false);if(i%2==0)w.chestAt(p,true)->slots[0]={Item::Stone,32};}measure("hopper_cycles",n,w,s,[](int){});int total=0;for(const auto& c:w.chests_)for(auto stack:c.second.slots)total+=stack.count;check(total==n/2*32,"large_hopper_network_conserves_items");}
  for(int n:{100,1000}){World w(13,22);empty(w,7);SurvivalWorld s(13);int machines=n/2,width=int(std::ceil(std::sqrt(float(machines))));std::vector<glm::ivec3> sources;for(int i=0;i<machines;++i){glm::ivec3 p(i%width*4,300,i/width*4);w.setBlockInternal(p.x,p.y,p.z,blockState(Block::StickyPiston,1),true,false);w.setBlockInternal(p.x+1,p.y,p.z,Block::Stone,true,false);auto source=p+glm::ivec3(0,0,1);w.setBlockInternal(source.x,source.y,source.z,blockState(Block::Lever,8),true,false);sources.push_back(source);}measure("piston_machines",n,w,s,[&](int i){if(i%20==0)for(auto p:sources)w.automation.interact(w,p);});}
  {World w(14,22);empty(w,5);SurvivalWorld s(14);for(int i=0;i<100;++i){glm::ivec3 p(i%10*6,300,i/10*6);w.setBlockInternal(p.x,p.y,p.z,Block::AutoHarvester,true,false);w.setBlockInternal(p.x,p.y-1,p.z,blockState(Block::Hopper,1),true,false);w.setBlockInternal(p.x+1,p.y-1,p.z,Block::Barrel,true,false);w.setBlockInternal(p.x-1,p.y,p.z,blockState(Block::Lever,8),true,false);for(int z=1;z<=3;++z)for(int x=-1;x<=1;++x){auto q=p+glm::ivec3(x,0,-z);w.setBlockInternal(q.x,q.y-1,q.z,Block::WetFarmland,true,false);w.setBlockInternal(q.x,q.y,q.z,Block::Crop3,true,false);}}measure("100_farms_900_crops",300,w,s,[](int){});int wheat=0;for(auto& c:w.chests_)wheat+=count(&c.second,Item::Wheat);check(wheat>=900,"large_farm_production_in_storage");}
+}
+
+void AutomationTest::sparse(const std::filesystem::path& out){
+ World w(20,22);empty(w,1);SurvivalWorld s(20);
+ for(int i=0;i<100000;++i){auto key=LogicPosition(glm::ivec3(i*16,0,1000));w.automation.nodes_[key].type=Block::Lever;w.automation.chunks_[{i,62}].insert(key);}
+ std::ofstream csv(out/"sparse-preparation.csv");csv<<"tick,total_ms\n";
+ for(int i=0;i<220;++i){auto start=std::chrono::steady_clock::now();ticks(w,s,1);csv<<i<<','<<std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count()<<'\n';}
 }

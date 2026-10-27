@@ -108,7 +108,8 @@ bool Transportation::breakBoat(Player& p,Inventory&,SurvivalWorld& s,const World
     for(auto it=boats_.begin();it!=boats_.end();++it){float along=0;if(boatHit(*it,p.cameraPosition(),p.lookDirection(),reach,&along)&&along<distance){nearest=it;distance=along;}}
     if(nearest==boats_.end())return false;
     RayHit hit;if(w.raycast(p.cameraPosition(),p.lookDirection(),distance,hit)&&hit.distance+.01f<distance)return false;
-    s.spawnDrop(nearest->position+glm::vec3(0,.4f,0),nearest->item);boats_.erase(nearest);return true;
+    if(!s.spawnDrop(nearest->position+glm::vec3(0,.4f,0),nearest->item))return false;
+    boats_.erase(nearest);return true;
 }
 void Transportation::update(float dt,const PlayerInput& input,World& w,Player& p,const SurvivalWorld& mobs){
     const auto started=std::chrono::steady_clock::now();

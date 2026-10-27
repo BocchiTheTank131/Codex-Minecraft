@@ -290,17 +290,22 @@ void UIManager::updateInventoryInteraction(InputManager& input,
     }
     if (!creativeInventory && (state_ == GameState::Inventory || tableMode)) {
         if (recipeBook_.searchFocused) {
-            const int key = input.firstPressedKey();
-            if (key == GLFW_KEY_BACKSPACE && !recipeBook_.search.empty())
-                recipeBook_.search.pop_back();
-            else if (key == GLFW_KEY_ENTER)
-                recipeBook_.searchFocused = false;
-            else if (key >= GLFW_KEY_A && key <= GLFW_KEY_Z &&
-                     recipeBook_.search.size() < 18)
-                recipeBook_.search.push_back(static_cast<char>('a' + key - GLFW_KEY_A));
-            else if (key == GLFW_KEY_SPACE && recipeBook_.search.size() < 18)
-                recipeBook_.search.push_back(' ');
-        }
+            const bool ctrl=input.keyDown(GLFW_KEY_LEFT_CONTROL)||input.keyDown(GLFW_KEY_RIGHT_CONTROL);
+            auto append=[&](const std::string& text){for(unsigned char c:text){c=static_cast<unsigned char>(std::tolower(c));if(((c>='a'&&c<='z')||c==' ')&&recipeBook_.search.size()<18)recipeBook_.search+=char(c);}};
+            if(ctrl&&input.keyPressed(GLFW_KEY_A))recipeBook_.search.clear();
+            if(ctrl&&input.keyPressed(GLFW_KEY_V))if(auto* window=glfwGetCurrentContext())if(const char* text=glfwGetClipboardString(window)){
+                std::size_t n=0;while(n<4096&&text[n])++n;append(std::string(text,n));
+            }
+            const auto typed=input.consumeTypedCharacters();if(!ctrl)append(typed);
+            for(int key:{GLFW_KEY_BACKSPACE,GLFW_KEY_DELETE}){
+                const auto now=glfwGetTime();bool erase=input.keyPressed(key);
+                if(erase){recipeRepeatKey_=key;recipeRepeatAt_=now+.38;}
+                int count=erase?1:0;
+                if(!erase&&recipeRepeatKey_==key&&input.keyDown(key)&&now>=recipeRepeatAt_){count=std::min(18,1+int((now-recipeRepeatAt_)/.045));recipeRepeatAt_+=count*.045;}
+                while(count--&&!recipeBook_.search.empty())recipeBook_.search.pop_back();
+            }
+            if(input.keyPressed(GLFW_KEY_ENTER))recipeBook_.searchFocused=false;
+        }else recipeRepeatKey_=-1;
         refreshRecipeBook(inventory, tableMode);
     }
     const UiMode mode = furnaceOpen() ? UiMode::Furnace
@@ -361,14 +366,15 @@ void UIManager::updateInventoryInteraction(InputManager& input,
     if(input.actionPressed(ControlAction::Drop) && !recipeBook_.searchFocused && !creativeSearchFocused_) {
         const bool entire = input.actionDown(ControlAction::Sprint) ||
             input.keyDown(GLFW_KEY_LEFT_CONTROL) || input.keyDown(GLFW_KEY_RIGHT_CONTROL);
-        const ItemStack stack = inventory.takeGuiDrop(hit,entire);
-        if(!stack.empty()) survival.spawnDrop(player.cameraPosition()+player.lookDirection()*1.1f,
-            stack.item,stack.count,stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity);
+        Inventory candidate=inventory;
+        const ItemStack stack = candidate.takeGuiDrop(hit,entire);
+        if(!stack.empty() && survival.spawnDrop(player.cameraPosition()+player.lookDirection()*1.1f,
+            stack.item,stack.count,stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity))inventory=std::move(candidate);
         return;
     }
     if(dragReleasedOutside && !inventory.cursorStack().empty()) {
-        const auto stack=inventory.takeCursor(false);
-        survival.spawnDrop(player.cameraPosition()+player.lookDirection()*1.1f,stack.item,stack.count,stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity);
+        Inventory candidate=inventory;const auto stack=candidate.takeCursor(false);
+        if(survival.spawnDrop(player.cameraPosition()+player.lookDirection()*1.1f,stack.item,stack.count,stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity))inventory=std::move(candidate);
         return;
     }
 
@@ -389,6 +395,7 @@ void UIManager::updateInventoryInteraction(InputManager& input,
             break;
         case UiSlotKind::RecipeSearch:
             recipeBook_.searchFocused = true;
+            input.consumeTypedCharacters();recipeRepeatKey_=-1;
             break;
         case UiSlotKind::RecipePrevious:
             recipeBook_.page = std::max(0, recipeBook_.page - 1);
@@ -518,9 +525,9 @@ void UIManager::updateInventoryInteraction(InputManager& input,
         if (!handled && !inventory.cursorStack().empty() &&
             !UiLayout::panel(mode, framebufferWidth, framebufferHeight)
                  .contains(cursor.x, cursor.y)) {
-            const ItemStack dropped = inventory.takeCursor(rightPressed);
-            survival.spawnDrop(player.cameraPosition() + player.lookDirection() * 1.1f,
-                               dropped.item, dropped.count, dropped.durability,glm::vec3(.4f,.8f,.2f),0,dropped.identity);
+            Inventory candidate=inventory;const ItemStack dropped = candidate.takeCursor(rightPressed);
+            if(survival.spawnDrop(player.cameraPosition() + player.lookDirection() * 1.1f,
+                               dropped.item, dropped.count, dropped.durability,glm::vec3(.4f,.8f,.2f),0,dropped.identity))inventory=std::move(candidate);
         }
     } else if (rightDown && hit.valid() && hit != dragHit_) {
         if (furnaceOpen() || chestOpen()) {

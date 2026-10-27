@@ -1,0 +1,87 @@
+{
+  "baseline_commit": "396edb629a947097ed372d6b49e0d6ef28fa8a22",
+  "assertions": {
+    "automation": 689,
+    "building": 4774,
+    "creative-ui": 3474,
+    "qol": 1389,
+    "farming": 261,
+    "stabilization": 375,
+    "demo-automation": 660
+  },
+  "release_suites": 20,
+  "historical_hashes": [
+    {
+      "variant": "full",
+      "matching": true,
+      "rows": 663,
+      "versions": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22
+      ]
+    },
+    {
+      "variant": "demo",
+      "matching": true,
+      "rows": 663,
+      "versions": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "filename": "VoxelFrontier-v2.17.0-Windows-Standalone.exe",
+      "bytes": 76785152,
+      "sha256": "683fea61db9e9f610964eb814bc057636b1ff2ee22ee3513a1c07fec178eb877"
+    },
+    {
+      "filename": "VoxelFrontier-v2.17.0-Windows-Setup.exe",
+      "bytes": 71548671,
+      "sha256": "cb45cfc40cd2dc4f7d84a42aa0fc1df16668b93ef74f25bbd24716d255c62355"
+    }
+  ],
+  "published": false,
+  "precision_migration": "Deferred"
+}

@@ -63,8 +63,27 @@ const char* automationDescription(Block b){switch(blockType(b)){
  case Block::Piston:case Block::StickyPiston:return "PUSH UP TO 12 / BLOCK ENTITIES IMMOVABLE";
  default:return "POWERED BY ADJACENT SIGNAL";
 }}
-void Automation::reset(){nodes_.clear();chunks_.clear();active_.clear();dirty_.clear();scheduled_.clear();wave_.clear();changes_.clear();cursor_=0;accumulator_=0;observerCount_=0;stats_={};}
-void Automation::schedule(LogicPosition p,unsigned ticks){auto it=nodes_.find(p);if(it==nodes_.end())return;auto& n=it->second;if(n.due)scheduled_.erase({n.due,p});n.remaining=std::uint16_t(std::min(ticks,65535U));n.due=stats_.ticks+std::max(1U,ticks);scheduled_[{n.due,p}]=true;}
+void Automation::reset(){*this=Automation{};}
+unsigned Automation::remainingTicks(LogicPosition p,const Node& n)const{
+ if(!n.due)return n.remaining;
+ // At most 100k timers and 2048 due entries per tick => < 60 ticks of
+ // scheduling backlog. Keep 128 range samples; fail frozen if ever exceeded.
+ if(stats_.ticks-n.timerAt>=ranges_.size())return n.remaining;
+ unsigned remaining=n.remaining;
+ for(auto t=n.timerAt+1;t<=stats_.ticks&&remaining;++t){const auto& r=ranges_[t%ranges_.size()];if(r.tick!=t)continue;auto dx=std::int64_t(chunk(p.x))-r.x,dz=std::int64_t(chunk(p.z))-r.z;if(!r.valid||dx*dx+dz*dz<=std::int64_t(r.radius)*r.radius)--remaining;}
+ return remaining;
+}
+void Automation::schedule(LogicPosition p,unsigned ticks){auto it=nodes_.find(p);if(it==nodes_.end())return;auto& n=it->second;if(n.due)scheduled_.erase({n.due,p});n.remaining=std::uint16_t(std::min(ticks,65535U));n.timerAt=stats_.ticks;n.due=stats_.ticks+std::max(1U,ticks);scheduled_[{n.due,p}]=true;}
+void Automation::pause(LogicPosition p){
+ active_.erase(p);dirty_.erase(p);wave_.erase(p);auto it=nodes_.find(p);if(it==nodes_.end())return;auto& n=it->second;
+ if(n.due){n.remaining=std::uint16_t(remainingTicks(p,n));scheduled_.erase({n.due,p});n.due=0;}
+}
+bool Automation::canRegisterPlan(const std::vector<std::pair<glm::ivec3,Block>>& plan)const{
+ std::int64_t count=std::int64_t(nodes_.size());
+ for(std::size_t i=0;i<plan.size();++i){const auto& e=plan[i];for(std::size_t j=0;j<i;++j)if(plan[j].first==e.first)return false;
+  count+=int(automationDevice(e.second))-int(nodes_.count(e.first)!=0);
+ }return count>=0&&count<=MaxNodes;
+}
 void Automation::wake(glm::ivec3 p){if(active_.count(p))dirty_.insert(p);for(auto d:neighbors){auto q=p+d;if(active_.count(q))dirty_.insert(q);if(d.y==0)for(int y:{-1,1})if(active_.count(q+glm::ivec3(0,y,0)))dirty_.insert(q+glm::ivec3(0,y,0));}}
 void Automation::changed(World& w,glm::ivec3 p,Block previous,Block next){
  auto it=nodes_.find(p);
@@ -72,22 +91,31 @@ void Automation::changed(World& w,glm::ivec3 p,Block previous,Block next){
  if(automationDevice(next)){
   it=nodes_.find(p);if(it==nodes_.end()&&nodes_.size()<MaxNodes){Node n;n.revision=++revision_;n.type=deviceType(next);n.observed=at(w,p-buildingFacing(blockProperties(next)));it=nodes_.emplace(p,n).first;if(n.type==Block::Observer)++observerCount_;chunks_[{chunk(p.x),chunk(p.z)}].insert(p);}
   if(it!=nodes_.end()&&!applying_)it->second.revision=++revision_;
-  if(it!=nodes_.end()&&w.hasLoadedChunkAt(p.x,p.z)){active_.insert(p);if(!it->second.due)schedule(p,std::max(1,int(it->second.remaining)));}
+  if(it!=nodes_.end()&&ready(w,p)){active_.insert(p);if(!it->second.due)schedule(p,std::max(1,int(it->second.remaining)));}
  }
  if(observerCount_&&previous!=next)for(auto d:neighbors){auto q=p+d;if(!w.hasLoadedChunkAt(q.x,q.z))continue;auto ob=nodes_.find(q);if(ob==nodes_.end()||ob->second.type!=Block::Observer)continue;auto state=at(w,q);if(q-buildingFacing(blockProperties(state))!=p)continue;ob->second.observed=next;ob->second.target=15;if(automationSignal(state)>0)schedule(q,2);if(active_.count(q))dirty_.insert(q);}
  wake(p);
 }
 void Automation::activateChunk(World& w,int x,int z){
+ if(reconcilePending_&&reconcileStarted_)reconcileAgain_=true;reconcilePending_=true;
  auto c=w.findChunk(x,z);if(!c)return;
  for(auto i:c->automationCells){glm::ivec3 p(x*16+int(i%16),c->minimumY+int(i/256),z*16+int(i/16%16));auto b=at(w,p);if(automationDevice(b))changed(w,p,b,b);}
- for(int dz=-1;dz<=1;++dz)for(int dx=-1;dx<=1;++dx){auto it=chunks_.find({x+dx,z+dz});if(it==chunks_.end())continue;for(auto p:it->second)if(w.hasLoadedChunkAt(p.x,p.z)&&w.simulationActiveAt(float(p.x),float(p.z))){active_.insert(p);dirty_.insert(p);auto& n=nodes_.at(p);if(!n.due)schedule(p,std::max(1,int(n.remaining)));}}
+ for(int dz=-1;dz<=1;++dz)for(int dx=-1;dx<=1;++dx){auto it=chunks_.find({x+dx,z+dz});if(it==chunks_.end())continue;for(auto p:it->second)if(ready(w,p)){active_.insert(p);dirty_.insert(p);auto& n=nodes_.at(p);if(!n.due)schedule(p,std::max(1,int(n.remaining)));}}
 }
 void Automation::suspendChunk(int x,int z){
- auto pause=[&](LogicPosition p){active_.erase(p);dirty_.erase(p);auto& n=nodes_.at(p);if(n.due){n.remaining=std::uint16_t(std::min<std::uint64_t>(65535,n.due>stats_.ticks?n.due-stats_.ticks:1));scheduled_.erase({n.due,p});n.due=0;}wake(glm::ivec3(p));};
- for(int dz=-1;dz<=1;++dz)for(int dx=-1;dx<=1;++dx){if(dx&&dz)continue;auto group=chunks_.find({x+dx,z+dz});if(group==chunks_.end())continue;for(auto p:group->second){bool touches=dx==0&&dz==0;for(auto d:neighbors)touches|=chunk(p.x+d.x)==x&&chunk(p.z+d.z)==z;if(touches)pause(p);}}
+ if(reconcilePending_&&reconcileStarted_)reconcileAgain_=true;reconcilePending_=true;
+ auto pause=[&](LogicPosition p){this->pause(p);wake(glm::ivec3(p));};
+ for(int dz=-1;dz<=1;++dz)for(int dx=-1;dx<=1;++dx){auto group=chunks_.find({x+dx,z+dz});if(group==chunks_.end())continue;for(auto p:group->second){auto type=nodes_.at(p).type;const int radius=(type==Block::Piston||type==Block::StickyPiston)?13:(type==Block::CropSensor||type==Block::AutoHarvester)?3:1;bool touches=chunk(p.x-radius)<=x&&chunk(p.x+radius)>=x&&chunk(p.z-radius)<=z&&chunk(p.z+radius)>=z;if(touches)pause(p);}}
 }
 
-bool Automation::ready(const World& w,glm::ivec3 p)const{if(!w.hasLoadedChunkAt(p.x,p.z)||!w.simulationActiveAt(float(p.x),float(p.z)))return false;for(auto d:neighbors)if(!w.hasLoadedChunkAt(p.x+d.x,p.z+d.z))return false;return true;}
+bool Automation::ready(const World& w,glm::ivec3 p)const{
+ if(!w.hasLoadedChunkAt(p.x,p.z)||!w.simulationActiveAt(float(p.x),float(p.z)))return false;
+ for(auto d:neighbors)if(!w.hasLoadedChunkAt(p.x+d.x,p.z+d.z))return false;
+ auto b=at(w,p);auto t=blockType(b);
+ if(t==Block::AutoHarvester||t==Block::CropSensor){auto f=buildingFacing(blockProperties(b)),side=buildingFacing(blockProperties(b)+1);for(int z=1;z<=3;++z)for(int x:{-1,1}){auto q=p+f*z+side*x;if(!w.hasLoadedChunkAt(q.x,q.z))return false;}}
+ if(t==Block::Piston||t==Block::StickyPiston){auto f=automationFacing(b);for(int n=1;n<=13;++n){auto q=p+f*n;if(!w.hasLoadedChunkAt(q.x,q.z))return false;}}
+ return true;
+}
 int Automation::input(const World& w,glm::ivec3 p,int dir)const{
  int power=0;for(int i=0;i<6;++i){if(dir>=0&&dir!=i)continue;auto q=p+neighbors[i];auto b=at(w,q);int value=automationSignal(b);if(directional(b)&&q+automationFacing(b)!=p)value=0;power=std::max(power,value);
   if(i<4&&dir<0){if(isSolid(b)&&at(w,p+glm::ivec3(0,1,0))==Block::Air){auto above=at(w,q+glm::ivec3(0,1,0));if(blockType(above)==Block::PowerWire)power=std::max(power,automationSignal(above));}else if(!isSolid(b)){auto below=at(w,q-glm::ivec3(0,1,0));if(blockType(below)==Block::PowerWire)power=std::max(power,automationSignal(below));}}
@@ -98,21 +126,38 @@ void Automation::update(float dt,World& w,SurvivalWorld& mobs,const Player* play
  if(!std::isfinite(dt)||dt<=0)return;const auto started=std::chrono::steady_clock::now();
  // SimulationClock already bounds catch-up. Preserve fractional elapsed time.
  accumulator_+=dt;unsigned steps=0;while(accumulator_>=.1&&steps++<4){accumulator_-=.1;tick(w,mobs,player,std::clamp(std::isfinite(light)?light:0.f,0.f,1.f),sounds);}
- stats_.devices=nodes_.size();stats_.dirty=dirty_.size()+wave_.size()-cursor_+changes_.size();stats_.milliseconds=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-started).count();
+ stats_.devices=nodes_.size();stats_.dirty=dirty_.size()+wave_.size()+changes_.size();stats_.milliseconds=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-started).count();
 }
 void Automation::tick(World& w,SurvivalWorld& mobs,const Player* player,float light,SoundSystem* sounds){
- ++stats_.ticks;stats_.processed=stats_.changes=0;
+ const auto tickStart=std::chrono::steady_clock::now();
+ stats_.processed=stats_.changes=0;stats_.reconciled=stats_.dueProcessed=0;
  unsigned soundBudget=2;auto audible=[&](glm::ivec3 p,float radius){if(!sounds||!player||soundBudget==0||glm::length(glm::vec3(p)-player->position())>=radius)return false;--soundBudget;return true;};
- // A chunk-local reconciliation once a second handles simulation-distance changes.
- if(stats_.ticks%10==0){for(const auto& c:chunks_)if(w.hasLoadedChunkAt(c.first.first*16,c.first.second*16))for(auto p:c.second){const bool simulate=w.simulationActiveAt(float(p.x),float(p.z));if(simulate&&!active_.count(p)){active_.insert(p);dirty_.insert(p);schedule(p,std::max(1,int(nodes_.at(p).remaining)));}else if(!simulate)active_.erase(p);}}
+ RangeSample range{stats_.ticks+1,w.streamCenter_.x,w.streamCenter_.y,w.simulationDistance_,w.streamCenterValid_};
+ const bool moved=range.x!=lastRange_.x||range.z!=lastRange_.z||range.radius!=lastRange_.radius||range.valid!=lastRange_.valid;
+ if(moved){if(reconcilePending_&&reconcileStarted_)reconcileAgain_=true;reconcilePending_=true;lastRange_=range;}
+ // Eligibility discovery is incremental and fair, including remote saved
+ // registrations. Timer clocks below stop at the actual range transition,
+ // independently of when this bounded bookkeeping reaches a given device.
+ while(reconcilePending_&&stats_.reconciled<512){auto it=reconcileStarted_?nodes_.upper_bound(reconcileCursor_):nodes_.begin();
+  if(it==nodes_.end()){reconcilePending_=reconcileAgain_;reconcileAgain_=false;reconcileStarted_=false;break;}
+  auto p=it->first;reconcileCursor_=p;reconcileStarted_=true;++stats_.reconciled;
+  if(!ready(w,p))pause(p);else if(!active_.count(p)){active_.insert(p);dirty_.insert(p);if(!it->second.due)schedule(p,std::max(1,int(it->second.remaining)));}
+ }
+ ++stats_.ticks;
+ ranges_[stats_.ticks%ranges_.size()]=range;
  unsigned dueWork=0;
- while(!scheduled_.empty()&&scheduled_.begin()->first.first<=stats_.ticks&&dueWork++<Budget){auto key=scheduled_.begin()->first;scheduled_.erase(scheduled_.begin());auto it=nodes_.find(key.second);if(it==nodes_.end()||it->second.due!=key.first)continue;auto& n=it->second;n.due=0;n.remaining=0;auto p=glm::ivec3(key.second);if(!ready(w,p)){active_.erase(p);n.remaining=1;continue;}dirty_.insert(p);}
- if(wave_.empty()){wave_.assign(dirty_.begin(),dirty_.end());dirty_.clear();cursor_=0;changes_.clear();}
+ while(!scheduled_.empty()&&scheduled_.begin()->first.first<=stats_.ticks&&dueWork<Budget){++dueWork;auto key=scheduled_.begin()->first;scheduled_.erase(scheduled_.begin());auto it=nodes_.find(key.second);if(it==nodes_.end()||it->second.due!=key.first)continue;auto& n=it->second;const auto remaining=remainingTicks(key.second,n);n.due=0;n.remaining=std::uint16_t(remaining);auto p=glm::ivec3(key.second);
+  if(!ready(w,p)){active_.erase(p);dirty_.erase(p);wave_.erase(p);continue;}
+  if(remaining){schedule(p,remaining);continue;}dirty_.insert(p);
+ }
+ stats_.dueProcessed=dueWork;
+ if(wave_.empty()&&changes_.empty())wave_.swap(dirty_);
+ const auto prepared=std::chrono::steady_clock::now();stats_.preparationMilliseconds=std::chrono::duration<float,std::milli>(prepared-tickStart).count();
  // All signal reads in a wave precede its writes, including when budget-sliced.
  unsigned processed=0;
- while(cursor_<wave_.size()&&processed++<Budget){auto pos=wave_[cursor_++];auto it=nodes_.find(pos);if(it==nodes_.end())continue;auto p=glm::ivec3(pos);auto& n=it->second;auto b=at(w,p);if(!ready(w,p)||deviceType(b)!=n.type)continue;auto t=blockType(b);
+ while(!wave_.empty()&&processed++<Budget){auto pos=*wave_.begin();auto it=nodes_.find(pos);if(it==nodes_.end()){wave_.erase(wave_.begin());continue;}auto p=glm::ivec3(pos);auto& n=it->second;auto b=at(w,p);if(!ready(w,p)||deviceType(b)!=n.type){wave_.erase(wave_.begin());continue;}auto t=blockType(b);
   const unsigned cost=(t==Block::Piston||t==Block::StickyPiston)?15:t==Block::AutoHarvester?18:t==Block::Hopper?4:1;
-  if(processed+cost-1>Budget){--cursor_;--processed;break;}processed+=cost-1;
+  if(processed+cost-1>Budget){--processed;break;}processed+=cost-1;wave_.erase(wave_.begin());
   auto d=buildingDefinition(b);unsigned props=blockProperties(b);int signal=input(w,p),out=automationSignal(b),next=out;
   if(t==Block::PowerWire){props=blockProperties(buildingConnectedState(w,p,b));next=0;for(int k=0;k<6;++k){auto q=p+neighbors[k];auto v=at(w,q);int s=automationSignal(v);if(directional(v)&&q+automationFacing(v)!=p)s=0;next=std::max(next,s-(blockType(v)==Block::PowerWire?1:0));if(k<4){auto wireAt=[&](int y){auto wire=at(w,q+glm::ivec3(0,y,0));if(blockType(wire)==Block::PowerWire)next=std::max(next,automationSignal(wire)-1);};if(isSolid(v)&&at(w,p+glm::ivec3(0,1,0))==Block::Air)wireAt(1);else if(!isSolid(v))wireAt(-1);}}next=std::clamp(next,0,15);}
   else if(t==Block::Repeater){int target=input(w,p,((props&3)+2)&3)?15:0;if(n.target!=target){n.target=std::uint8_t(target);schedule(pos,1+((props>>4)&3));}else if(!n.due)next=n.target;}
@@ -128,8 +173,18 @@ void Automation::tick(World& w,SurvivalWorld& mobs,const Player* player,float li
   else if(t==Block::Piston||t==Block::StickyPiston){if((signal>0)!=bool(props&8)||((props&8)&&blockType(at(w,p+automationFacing(b)))!=Block::PistonHead)){if(piston(w,mobs,player,p,b,signal>0)){++stats_.moves;if(audible(p,24))sounds->playBlockPlace(Block::IronBlock,glm::vec3(p));}else if(!n.due)schedule(pos,5);}n.input=std::uint8_t(signal);continue;}
   else if(t==Block::AutoHarvester){if(signal&&!n.due){harvest(w,p,b);schedule(pos,4);}else if(!n.due)schedule(pos,4);}
   else if((d&&(d->shape==BuildingShape::Door||d->shape==BuildingShape::Trapdoor||d->shape==BuildingShape::FenceGate))||isDoor(b)){
-   if(d&&d->shape==BuildingShape::Door){auto base=p-glm::ivec3(0,props&16?1:0,0);signal=std::max(input(w,base),input(w,base+glm::ivec3(0,1,0)));}
-   if(bool(signal)!=bool(n.input)){bool open=signal>0;if(d)props=open?props|8:props&~8;else{auto desired=doorBlock(doorFacing(b),isDoorUpper(b),doorHingeRight(b),open);changes_.push_back({pos,b,desired,n.revision});}if((!d||d->shape!=BuildingShape::Door||!(props&16))&&!isDoorUpper(b)&&audible(p,24))sounds->playDoor(open,glm::vec3(p));}
+   const bool pair=(d&&d->shape==BuildingShape::Door)||isDoor(b);
+   const bool upper=isDoor(b)?isDoorUpper(b):bool(props&16);
+   if(pair&&upper){dirty_.insert(p-glm::ivec3(0,1,0));continue;}
+   if(pair){auto q=p+glm::ivec3(0,1,0);auto mate=at(w,q);if(!ready(w,q)||!nodes_.count(q)||(isDoor(b)?!isDoor(mate)||!isDoorUpper(mate)||doorFacing(mate)!=doorFacing(b)||doorHingeRight(mate)!=doorHingeRight(b):blockType(mate)!=t||!(blockProperties(mate)&16)))continue;signal=std::max(input(w,p),input(w,q));}
+   if(bool(signal)!=bool(n.input)){
+    const bool open=signal>0;auto desired=isDoor(b)?doorBlock(doorFacing(b),false,doorHingeRight(b),open):blockState(b,open?props|8:props&~8);
+    // Even an already-closed manual override must acknowledge the falling
+    // electrical edge. Commit the input together with both physical halves.
+    changes_.push_back({pos,b,desired,n.revision,signal});
+    if(desired!=b&&audible(p,24))sounds->playDoor(open,glm::vec3(p));
+   }
+   continue;
   }
   const bool door=(d&&(d->shape==BuildingShape::Door||d->shape==BuildingShape::Trapdoor||d->shape==BuildingShape::FenceGate))||isDoor(b);
   if(!door)n.input=std::uint8_t(signal);
@@ -137,10 +192,21 @@ void Automation::tick(World& w,SurvivalWorld& mobs,const Player* player,float li
   auto after=blockState(b,std::uint16_t(props));if(after!=b)changes_.push_back({pos,b,after,n.revision});
  }
  stats_.processed=std::min(processed,Budget);
- if(cursor_==wave_.size()){
-  unsigned writes=0;while(!changes_.empty()&&writes++<CommitBudget){auto c=changes_.back();changes_.pop_back();auto p=glm::ivec3(c.position);auto current=nodes_.find(c.position);if(current!=nodes_.end()&&current->second.revision==c.revision&&at(w,p)==c.before&&ready(w,p)){applying_=true;w.setBlockInternal(p.x,p.y,p.z,c.after,true,false);applying_=false;if(blockType(c.after)==Block::Observer&&automationSignal(c.after)>0&&automationSignal(c.before)==0)schedule(c.position,2);auto it=nodes_.find(c.position);auto d=buildingDefinition(c.after);if(it!=nodes_.end()&&((d&&(d->shape==BuildingShape::Door||d->shape==BuildingShape::Trapdoor||d->shape==BuildingShape::FenceGate))||isDoor(c.after)))it->second.input=std::uint8_t((d?(blockProperties(c.after)&8)!=0:isDoorOpen(c.after))?15:0);++stats_.changes;}}
-  if(changes_.empty()){wave_.clear();cursor_=0;}else ++stats_.overloadTicks;
+ const auto evaluated=std::chrono::steady_clock::now();stats_.evaluationMilliseconds=std::chrono::duration<float,std::milli>(evaluated-prepared).count();
+ if(wave_.empty()){
+  unsigned writes=0,attempts=0;while(!changes_.empty()&&attempts<CommitBudget&&writes+2<=CommitBudget){++attempts;auto c=changes_.back();changes_.pop_back();auto p=glm::ivec3(c.position);auto current=nodes_.find(c.position);
+   if(current==nodes_.end()||current->second.revision!=c.revision||at(w,p)!=c.before||!ready(w,p))continue;
+   if(c.electricalInput<0){applying_=true;const bool committed=w.setBlockInternal(p.x,p.y,p.z,c.after,true,false);applying_=false;if(committed){++writes;++stats_.changes;if(blockType(c.after)==Block::Observer&&automationSignal(c.after)>0&&automationSignal(c.before)==0)schedule(c.position,2);}continue;}
+   auto d=buildingDefinition(c.before);const bool pair=isDoor(c.before)||(d&&d->shape==BuildingShape::Door);
+   std::vector<std::pair<glm::ivec3,Block>> before{{p,c.before}},after{{p,c.after}};
+   if(c.electricalInput>=0&&pair){auto q=p+glm::ivec3(0,1,0);auto mate=at(w,q);if(!ready(w,q)||!nodes_.count(q)||(isDoor(c.before)?!isDoor(mate)||!isDoorUpper(mate)||doorFacing(mate)!=doorFacing(c.before)||doorHingeRight(mate)!=doorHingeRight(c.before):blockType(mate)!=blockType(c.before)||!(blockProperties(mate)&16))){dirty_.insert(p);continue;}
+    auto desired=isDoor(mate)?doorBlock(doorFacing(mate),true,doorHingeRight(mate),c.electricalInput>0):blockState(mate,c.electricalInput?blockProperties(mate)|8:blockProperties(mate)&~8);before.push_back({q,mate});after.push_back({q,desired});}
+   applying_=true;const bool committed=w.automationBatch(before,after);applying_=false;
+   if(committed){if(c.electricalInput>=0)for(auto e:after)nodes_.at(e.first).input=std::uint8_t(c.electricalInput);if(blockType(c.after)==Block::Observer&&automationSignal(c.after)>0&&automationSignal(c.before)==0)schedule(c.position,2);writes+=unsigned(after.size());stats_.changes+=after.size();}
+  }
+  if(!changes_.empty())++stats_.overloadTicks;
  }else ++stats_.overloadTicks;
+ const auto ended=std::chrono::steady_clock::now();stats_.commitMilliseconds=std::chrono::duration<float,std::milli>(ended-evaluated).count();stats_.tickMilliseconds=std::chrono::duration<float,std::milli>(ended-tickStart).count();
 }
 
 bool Automation::transfer(World& w,glm::ivec3 p,Block b){
@@ -184,6 +250,11 @@ bool Automation::harvest(World& w,glm::ivec3 p,Block b){
  auto output=p-glm::ivec3(0,1,0);if(!ready(w,output))return false;auto container=at(w,output);if(container!=Block::Chest&&!buildingIsContainer(container))return false;auto* chest=w.chestAt(output,true);if(!chest)return false;
  auto f=buildingFacing(blockProperties(b)),side=buildingFacing(blockProperties(b)+1);
  for(int z=1;z<=3;++z)for(int x=-1;x<=1;++x){auto q=p+f*z+side*x;if(!ready(w,q)||!mature(w,q))continue;auto crop=at(w,q);auto slots=chest->slots;auto drops=FarmingSystem::harvest(crop,q,w.seed());Block replacement=Block::Air;
+  if(crop==Block::SugarCane){
+   // Harvest the uppermost segment first. Never detach an uncollected segment.
+   while(q.y+1<w.maximumY()&&at(w,q+glm::ivec3(0,1,0))==Block::SugarCane){if(!ready(w,q+glm::ivec3(0,1,0)))return false;++q.y;}
+   drops=FarmingSystem::harvest(crop,q,w.seed());
+  }
   if(crop==Block::BerryBush3)replacement=Block::BerryBush1;
   else if(isCrop(crop)&&!(blockProperties(b)&64)){auto base=cropBase(crop);Item seed=base==Block::Crop0?Item::Seeds:base==Block::Carrot0?Item::Carrot:base==Block::Potato0?Item::Potato:Item::BeetrootSeeds;bool paid=false;for(auto& drop:drops)if(drop.item==seed&&drop.count){--drop.count;paid=true;break;}if(!paid)for(auto& s:slots)if(s.item==seed&&s.count){if(--s.count==0)s={};paid=true;break;}if(paid&&w.canPlacePlant(q,base))replacement=base;else return false;}
   for(auto stack:drops)if(!stack.empty()&&!insert(slots.data(),int(slots.size()),stack))return false;
@@ -194,15 +265,21 @@ bool Automation::harvest(World& w,glm::ivec3 p,Block b){
 
 bool World::automationBatch(const std::vector<std::pair<glm::ivec3,Block>>& before,const std::vector<std::pair<glm::ivec3,Block>>& after){
  if(before.size()!=after.size()||before.empty()||before.size()>15)return false;
- for(std::size_t i=0;i<before.size();++i){auto p=before[i].first;if(p!=after[i].first||p.y<minimumY()||p.y>=maximumY()||!hasLoadedChunkAt(p.x,p.z)||getBlock(p.x,p.y,p.z)!=before[i].second||!validBlockState(after[i].second)||!automation.canRegister(p,after[i].second))return false;for(std::size_t j=0;j<i;++j)if(before[j].first==p)return false;}
+ if(!automation.canRegisterPlan(after))return false;
+ for(std::size_t i=0;i<before.size();++i){auto p=before[i].first;if(p!=after[i].first||p.y<minimumY()||p.y>=maximumY()||!hasLoadedChunkAt(p.x,p.z)||getBlock(p.x,p.y,p.z)!=before[i].second||!validBlockState(after[i].second))return false;if(blockType(before[i].second)!=blockType(after[i].second)&&!blockEntityContents(p).empty())return false;for(std::size_t j=0;j<i;++j)if(before[j].first==p)return false;}
  // No input, save capture or worker can observe the middle of this main-thread operation.
- automationMoving_=true;for(auto edit:after)setBlockInternal(edit.first.x,edit.first.y,edit.first.z,edit.second,true,false);automationMoving_=false;
+ automationMoving_=true;
+ // Release registrations before additions, so replacement batches also work
+ // when the registry is completely full. Validation above has reserved net use.
+ for(auto edit:after)if(automationDevice(getBlock(edit.first.x,edit.first.y,edit.first.z))&&!automationDevice(edit.second))setBlockInternal(edit.first.x,edit.first.y,edit.first.z,edit.second,true,false);
+ for(auto edit:after)if(getBlock(edit.first.x,edit.first.y,edit.first.z)!=edit.second)setBlockInternal(edit.first.x,edit.first.y,edit.first.z,edit.second,true,false);
+ automationMoving_=false;
  for(auto edit:after){auto p=edit.first;for(int y=-1;y<=1;++y)for(auto d:neighbors){auto q=p+d+glm::ivec3(0,y,0);auto value=getBlock(q.x,q.y,q.z);if(isBuilding(value)){auto connected=buildingConnectedState(*this,q,value);if(value!=connected)setBlockInternal(q.x,q.y,q.z,connected,true,false);}}}
  return true;
 }
 
 bool Automation::valid()const{if(nodes_.size()>MaxNodes)return false;for(auto e:nodes_){auto p=e.first;auto n=e.second;if(!SaveValidation::position(glm::vec3(p.x,p.y,p.z))||!automationDevice(n.type)||n.type!=blockType(n.type)||n.remaining>10||(n.due>stats_.ticks+10)||n.target>15||n.input>15||!validBlockState(n.observed))return false;}return true;}
-bool Automation::write(std::ostream& out)const{if(!valid())return false;out.write("AUT1",4);writeValue(out,std::uint32_t(nodes_.size()));for(auto e:nodes_){writeValue(out,e.first.x);writeValue(out,e.first.y);writeValue(out,e.first.z);writeValue(out,std::uint32_t(e.second.type));auto remaining=e.second.due?std::uint16_t(std::min<std::uint64_t>(65535,e.second.due>stats_.ticks?e.second.due-stats_.ticks:1)):e.second.remaining;writeValue(out,remaining);writeValue(out,e.second.target);writeValue(out,e.second.input);writeValue(out,std::uint32_t(e.second.observed));}return bool(out);}
+bool Automation::write(std::ostream& out)const{if(!valid())return false;out.write("AUT1",4);writeValue(out,std::uint32_t(nodes_.size()));for(auto e:nodes_){writeValue(out,e.first.x);writeValue(out,e.first.y);writeValue(out,e.first.z);writeValue(out,std::uint32_t(e.second.type));auto remaining=std::uint16_t(remainingTicks(e.first,e.second));writeValue(out,remaining);writeValue(out,e.second.target);writeValue(out,e.second.input);writeValue(out,std::uint32_t(e.second.observed));}return bool(out);}
 bool Automation::read(std::istream& in,int low,int high){Automation candidate;char tag[4]{};std::uint32_t count=0;in.read(tag,4);if(!in||std::memcmp(tag,"AUT1",4)||!readValue(in,count)||count>MaxNodes)return false;for(unsigned i=0;i<count;++i){LogicPosition p;Node n;std::uint32_t t=0,observed=0;if(!readValue(in,p.x)||!readValue(in,p.y)||!readValue(in,p.z)||!readValue(in,t)||!readValue(in,n.remaining)||!readValue(in,n.target)||!readValue(in,n.input)||!readValue(in,observed)||p.y<low||p.y>=high)return false;n.type=Block(t);n.observed=Block(observed);if(!candidate.nodes_.emplace(p,n).second)return false;if(n.type==Block::Observer)++candidate.observerCount_;candidate.chunks_[{chunk(p.x),chunk(p.z)}].insert(p);}if(!candidate.valid())return false;*this=std::move(candidate);return true;}
 
 bool Automation::placementsValid(const std::function<Block(glm::ivec3)>& savedBlock)const{

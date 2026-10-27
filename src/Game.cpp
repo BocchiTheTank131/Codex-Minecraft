@@ -1662,7 +1662,8 @@ void Game::handleDropAction() {
     const bool entireStack = input_.actionDown(ControlAction::Sprint) ||
                              input_.keyDown(GLFW_KEY_LEFT_CONTROL) ||
                              input_.keyDown(GLFW_KEY_RIGHT_CONTROL);
-    ItemStack dropped = inventory_->takeSelected(entireStack);
+    Inventory candidate=*inventory_;
+    ItemStack dropped = candidate.takeSelected(entireStack);
     if (dropped.empty()) {
         return;
     }
@@ -1671,12 +1672,13 @@ void Game::handleDropAction() {
     const glm::vec3 dropPosition =
         player_->cameraPosition() + lookDirection * 0.75f - glm::vec3(0.0f, 0.2f, 0.0f);
     const glm::vec3 dropVelocity = lookDirection * 4.0f + glm::vec3(0.0f, 2.2f, 0.0f);
-    survival_->spawnDrop(dropPosition,
+    if(!survival_->spawnDrop(dropPosition,
                          dropped.item,
                          dropped.count,
                          dropped.durability,
                          dropVelocity,
-                         1.0f, dropped.identity);
+                         1.0f, dropped.identity))return;
+    *inventory_=std::move(candidate);
     interaction_.heldItemSwing = 0.55f;
 }
 
@@ -1706,7 +1708,7 @@ void Game::updateMobAttack() {
     const Item weapon = inventory_->selectedItem();
     const bool critical = player_->isFalling();
     const AttackResult hit =
-        survival_->attackMob(interaction_.mobTarget.index, weapon, critical, player_->position());
+        survival_->attackMob(interaction_.mobTarget.index, weapon, critical, player_->position(),world_.get());
     interaction_.attackCooldown = attackCooldown(weapon);
     if(hit.hit) player_->exhaust(.1f);
     if (!hit.hit) {
@@ -1761,7 +1763,18 @@ void Game::updateMining(float deltaTime) {
         brokenPosition.x, brokenPosition.y + 1, brokenPosition.z);
     const bool removingDoorSupport = !isDoor(block) && isDoor(supportedDoor) &&
                                      !isDoorUpper(supportedDoor);
-    const std::vector<ItemStack> storedItems = world_->takeBlockEntityContents(brokenPosition);
+    // Admission happens before terrain/container ownership changes. The entire
+    // output is checkpointed together; live-drop capacity cannot lose contents.
+    auto pendingItems=world_->blockEntityContents(brokenPosition);
+    if(!creativeMode_){
+        if(removingDoorSupport)pendingItems.push_back({Item::WoodenDoor,1});
+        const bool valuable=isOre(block)||blockDefinition(block).requiredHarvestTier>0;
+        if(!valuable||canHarvestBlock(inventory_->selectedItem(),block))for(auto stack:FarmingSystem::harvest(block,brokenPosition,seed_))pendingItems.push_back(stack);
+        const auto hash=std::uint32_t(brokenPosition.x)*73856093U^std::uint32_t(brokenPosition.y)*19349663U^std::uint32_t(brokenPosition.z)*83492791U^seed_;
+        if(block==Block::Leaves&&(hash&15U)==0)pendingItems.push_back({Item::Apple,1});
+    }
+    if(!world_->retainBuildingDrops(glm::vec3(brokenPosition)+glm::vec3(.5f),pendingItems))return;
+    world_->takeBlockEntityContents(brokenPosition);
     glm::ivec3 dropBlockPosition = brokenPosition;
     if (isDoor(block) && block != Block::WoodenDoor) {
         const glm::ivec3 lowerPosition =
@@ -1776,27 +1789,7 @@ void Game::updateMining(float deltaTime) {
     const glm::vec3 dropPosition = glm::vec3(dropBlockPosition) + glm::vec3(0.5f);
 
     if (!creativeMode_) {
-        if (removingDoorSupport) {
-            survival_->spawnDrop(glm::vec3(brokenPosition) + glm::vec3(.5f, 1.5f, .5f),
-                                 Item::WoodenDoor);
-        }
-        const bool valuableOre = isOre(block) || blockDefinition(block).requiredHarvestTier > 0;
-        if(!valuableOre || canHarvestBlock(inventory_->selectedItem(),block))
-            for(const auto& drop:FarmingSystem::harvest(block,brokenPosition,seed_))
-                survival_->spawnDrop(dropPosition,drop.item,drop.count);
         player_->exhaust(.025f);
-        {
-            if (block == Block::Leaves) {
-                const std::uint32_t appleHash =
-                    static_cast<std::uint32_t>(interaction_.blockTarget.block.x) * 73856093U ^
-                    static_cast<std::uint32_t>(interaction_.blockTarget.block.y) * 19349663U ^
-                    static_cast<std::uint32_t>(interaction_.blockTarget.block.z) * 83492791U ^
-                    seed_;
-                if ((appleHash & 15U) == 0U) {
-                    survival_->spawnDrop(dropPosition, Item::Apple);
-                }
-            }
-        }
 
         if (block == Block::Crop3) {
             survival_->spawnExperience(dropPosition, 2);
@@ -1810,8 +1803,7 @@ void Game::updateMining(float deltaTime) {
 
     // Container/display contents are owned stacks even in Creative. Keep them in
     // the checkpoint if the bounded live drop population cannot accept them.
-    for(const auto& stack:storedItems)
-        if(!survival_->spawnDrop(dropPosition,stack.item,stack.count,stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity))world_->retainBuildingDrop(dropPosition,stack);
+    world_->flushBuildingDrops(*survival_);
     sounds_->playBlockBreak(block, glm::vec3(brokenPosition) + glm::vec3(.5f));
     interaction_.breakProgress = 0.0f;
     interaction_.hasMiningTarget = false;
@@ -2050,14 +2042,9 @@ void Game::handleUseAction() {
                 if (!placementIntersectsPlayer(adjacentPosition, lowerDoor) &&
                     !placementIntersectsPlayer(adjacentPosition + glm::ivec3(0, 1, 0),
                                                upperDoor)) {
-                    world_->setBlock(adjacentPosition.x,
-                                     adjacentPosition.y,
-                                     adjacentPosition.z,
-                                     lowerDoor);
-                    world_->setBlock(adjacentPosition.x,
-                                     adjacentPosition.y + 1,
-                                     adjacentPosition.z,
-                                     upperDoor);
+                    const auto plan=placementPlan(heldItem);if(!plan.valid)return;
+                    std::vector<std::pair<glm::ivec3,Block>> before,after;for(auto part:plan.blocks){before.push_back({part.position,world_->getBlock(part.position.x,part.position.y,part.position.z)});after.push_back({part.position,part.block});}
+                    if(!world_->automationBatch(before,after))return;
                     if (!creativeMode_)
                         consume();
                     renderer_->spawnBreakParticles(adjacentPosition, lowerDoor);
@@ -2068,8 +2055,7 @@ void Game::handleUseAction() {
             }
             if (placedBlock != Block::Air &&
                 (destination == Block::Air || isWater(destination)) && !obstructsPlayer) {
-                world_->setBlock(
-                    adjacentPosition.x, adjacentPosition.y, adjacentPosition.z, placedBlock);
+                if(!world_->automationBatch({{adjacentPosition,destination}},{{adjacentPosition,placedBlock}}))return;
                 if (!creativeMode_) {
                     consume();
                 }
@@ -2464,6 +2450,7 @@ std::string Game::buildDebugText() const {
     const auto streaming=world_->streamingDiagnostics();
     const auto& logic=world_->automation.diagnostics();
     text<<"LOGIC "<<logic.devices<<" DEVICES / "<<logic.dirty<<" QUEUED / "<<logic.processed<<" WORK / "<<logic.milliseconds<<" MS\n";
+    text<<"LOGIC TICK "<<logic.tickMilliseconds<<" MS / PREP "<<logic.preparationMilliseconds<<" / EVAL "<<logic.evaluationMilliseconds<<" / COMMIT "<<logic.commitMilliseconds<<" / RECON "<<logic.reconciled<<" / DUE "<<logic.dueProcessed<<'\n';
     if(interaction_.hasBlockTarget){const auto p=interaction_.blockTarget.block;const auto b=world_->getBlock(p.x,p.y,p.z);if(automationDevice(b))text<<"TARGET SIGNAL "<<automationSignal(b)<<" / STATE "<<blockProperties(b)<<'\n';}
 
     const auto memory=world_->terrainMemory();const auto lod=world_->renderedLodCounts();

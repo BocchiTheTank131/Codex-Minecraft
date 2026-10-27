@@ -1,0 +1,11 @@
+{
+  "baseline_sha256": "6837D74964F13026CF2391C3271BBEC3E80330F613DA1659F05625D07F36AEE9",
+  "sparse_samples": 220,
+  "current_driver": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2170-validation\\driver\\Release\\StabilityDriver.exe",
+  "current_sha256": "A82AECA1EA8D463396D8F98126D1D89C02CC4626B447ED9375709BF5B9C61340",
+  "note": "Use an archived original-candidate driver with the same test-only sparse fixture.",
+  "baseline_driver": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2170-stabilization\\original-driver\\Release\\StabilityDriver.exe",
+  "cpu_samples": 300,
+  "runs": 3,
+  "baseline_commit": "396edb629a947097ed372d6b49e0d6ef28fa8a22"
+}

@@ -107,6 +107,8 @@ PlacementPlan Game::placementPlan(Item item) const {
   b=blockState(b,blockProperties(b)|32);plan.blocks[0].block=b;const auto other=pos+buildingFacing((blockProperties(b)+1)&3);plan.blocks.push_back({other,blockState(b,blockProperties(b)|16)});
  }
  auto fail=[&](const char* reason){plan.reason=reason;return plan;};
+ std::vector<std::pair<glm::ivec3,Block>> registrations;for(auto part:plan.blocks)registrations.push_back({part.position,part.block});
+ if(!world_->automation.canRegisterPlan(registrations))return fail("AUTOMATION CAPACITY REACHED");
  for(auto part:plan.blocks){
   const auto p=part.position;const auto candidate=part.block;
   if(!world_->automation.canRegister(p,candidate))return fail("AUTOMATION CAPACITY REACHED");
@@ -173,7 +175,9 @@ bool Game::buildingUse(Item held,bool offhand){
  if(isLog(old) && itemDefinition(held).tool==ToolKind::Axe){const Block logs[]={Block::Log,Block::BirchLog,Block::SpruceLog,Block::JungleLog,Block::AcaciaLog,Block::DarkOakLog};for(int i=0;i<6;++i)if(blockType(old)==logs[i]){set(target,blockState(Block(int(Block::OakStrippedLog)+i*14),blockProperties(old)));if(!creativeMode_)damageToolWithSound(offhand);return true;}}
  Block b=itemToBlock(held);if(!isBuilding(b))return false;
  const auto plan=placementPlan(held);if(!plan.valid)return true;
- for(const auto& part:plan.blocks)set(part.position,part.block);
+ std::vector<std::pair<glm::ivec3,Block>> before,after;
+ for(const auto& part:plan.blocks){before.push_back({part.position,get(part.position)});after.push_back({part.position,part.block});}
+ if(!world_->automationBatch(before,after))return true;
  consume();sounds_->playBlockPlace(b,glm::vec3(pos));interaction_.heldItemSwing=1;
  if(creativeMode_)ui_.rememberItem(held);
  if(buildingDefinition(b)->shape==BuildingShape::Sign){signPosition_=plan.blocks.front().position;signDraft_.clear();signEdit_.begin(signDraft_);signEditorOpen_=true;synchronizeCursorCapture();}

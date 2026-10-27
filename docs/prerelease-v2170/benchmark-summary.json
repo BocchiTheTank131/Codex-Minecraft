@@ -1,0 +1,120 @@
+{
+  "original": {
+    "cpu": [
+      {
+        "components": 100,
+        "mode": "idle",
+        "median_run_mean_ms": 0.000136,
+        "median_run_p99_ms": 0.001
+      },
+      {
+        "components": 100,
+        "mode": "toggling",
+        "median_run_mean_ms": 0.0407443,
+        "median_run_p99_ms": 0.1637
+      },
+      {
+        "components": 1000,
+        "mode": "idle",
+        "median_run_mean_ms": 0.003112,
+        "median_run_p99_ms": 0.0331
+      },
+      {
+        "components": 1000,
+        "mode": "toggling",
+        "median_run_mean_ms": 0.184253,
+        "median_run_p99_ms": 0.6922
+      },
+      {
+        "components": 10000,
+        "mode": "idle",
+        "median_run_mean_ms": 0.04803,
+        "median_run_p99_ms": 0.5154
+      },
+      {
+        "components": 10000,
+        "mode": "toggling",
+        "median_run_mean_ms": 1.11766,
+        "median_run_p99_ms": 2.5278
+      }
+    ],
+    "sparse_runs": [
+      {
+        "mean_ms": 0.07934772727272728,
+        "p99_ms": 0.782,
+        "worst_ms": 1.2858
+      },
+      {
+        "mean_ms": 0.0803209090909091,
+        "p99_ms": 0.8464,
+        "worst_ms": 1.6093
+      },
+      {
+        "mean_ms": 0.09145818181818181,
+        "p99_ms": 0.9168,
+        "worst_ms": 1.5321
+      }
+    ],
+    "sparse_median_p99_ms": 0.8464,
+    "sparse_median_worst_ms": 1.5321
+  },
+  "current": {
+    "cpu": [
+      {
+        "components": 100,
+        "mode": "idle",
+        "median_run_mean_ms": 9.46667e-05,
+        "median_run_p99_ms": 0.0001
+      },
+      {
+        "components": 100,
+        "mode": "toggling",
+        "median_run_mean_ms": 0.0409637,
+        "median_run_p99_ms": 0.1302
+      },
+      {
+        "components": 1000,
+        "mode": "idle",
+        "median_run_mean_ms": 9.5e-05,
+        "median_run_p99_ms": 0.0001
+      },
+      {
+        "components": 1000,
+        "mode": "toggling",
+        "median_run_mean_ms": 0.171077,
+        "median_run_p99_ms": 0.6129
+      },
+      {
+        "components": 10000,
+        "mode": "idle",
+        "median_run_mean_ms": 8.93333e-05,
+        "median_run_p99_ms": 0.0001
+      },
+      {
+        "components": 10000,
+        "mode": "toggling",
+        "median_run_mean_ms": 1.06447,
+        "median_run_p99_ms": 2.213
+      }
+    ],
+    "sparse_runs": [
+      {
+        "mean_ms": 0.05301636363636364,
+        "p99_ms": 0.088,
+        "worst_ms": 0.0919
+      },
+      {
+        "mean_ms": 0.05373590909090909,
+        "p99_ms": 0.0844,
+        "worst_ms": 0.0967
+      },
+      {
+        "mean_ms": 0.05210181818181818,
+        "p99_ms": 0.0755,
+        "worst_ms": 0.0854
+      }
+    ],
+    "sparse_median_p99_ms": 0.0844,
+    "sparse_median_worst_ms": 0.0919
+  }
+}

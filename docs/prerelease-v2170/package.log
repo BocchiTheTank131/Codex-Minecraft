@@ -1,0 +1,214 @@
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26300.
+-- Including Win32 support
+CMake Warning (deprecated) at build/installed-release/_deps/glad-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+CMake Warning (deprecated) at build/installed-release/_deps/glm-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+CMake Warning (deprecated) at build/installed-release/_deps/glm-src/CMakeLists.txt:2 (cmake_policy):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+-- GLM: Version 1.0.1
+-- GLM: Build with C++ features auto detection
+-- Configuring done (3.4s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/Win/Documents/Codex/Voxel/Codex-Minecraft/build/installed-release
+MSBuild version 18.10.1-1.26427.6+3cd27c13e for .NET Framework
+
+  Checking File Globs
+  glm.vcxproj -> C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\_deps\glm-build\glm\Release\glm.lib
+  glfw.vcxproj -> C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\_deps\glfw-build\src\Release\glfw3.lib
+  glad.vcxproj -> C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\_deps\glad-build\Release\glad.lib
+  Renderer.cpp
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2860,51): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2860,131): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,27): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,79): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,104): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,166): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,242): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2909,204): warning C4100: 'target': unreferenced parameter [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+  Sound.cpp
+  Survival.cpp
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(1933,50): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(2219,76): warning C4100: 'block': unreferenced parameter [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(3324,17): warning C4457: declaration of 'i' hides function parameter [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+      C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(3090,81):
+      see declaration of 'i'
+
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(3753,16): warning C4456: declaration of 'pickupPlayer' hides previous local declaration [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\VoxelFrontier.vcxproj]
+      C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(3681,12):
+      see declaration of 'pickupPlayer'
+
+  Generating Code...
+  VoxelFrontier.vcxproj -> C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\Release\VoxelFrontier.exe
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26300.
+-- Including Win32 support
+CMake Warning (deprecated) at build/standalone-demo-release/_deps/glad-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+CMake Warning (deprecated) at build/standalone-demo-release/_deps/glm-src/CMakeLists.txt:1 (cmake_minimum_required):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+CMake Warning (deprecated) at build/standalone-demo-release/_deps/glm-src/CMakeLists.txt:2 (cmake_policy):
+  Compatibility with CMake < 3.10 will be removed from a future version of
+  CMake.
+
+  Update the VERSION argument <min> value.  Or, use the <min>...<max> syntax
+  to tell CMake that the project requires at least <min> but has been updated
+  to work with policies introduced by <max> or earlier.
+This warning is for project developers.  Use -Wno-author or -Wno-deprecated
+to suppress it.
+
+-- GLM: Version 1.0.1
+-- GLM: Build with C++ features auto detection
+-- Configuring done (3.4s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/Win/Documents/Codex/Voxel/Codex-Minecraft/build/standalone-demo-release
+MSBuild version 18.10.1-1.26427.6+3cd27c13e for .NET Framework
+
+  Checking File Globs
+  glm.vcxproj -> C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\_deps\glm-build\glm\Release\glm.lib
+  glfw.vcxproj -> C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\_deps\glfw-build\src\Release\glfw3.lib
+  glad.vcxproj -> C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\_deps\glad-build\Release\glad.lib
+  Automation.cpp
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Automation.cpp(181,124): warning C4244: 'argument': conversion from 'unsigned int' to 'uint16_t', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+  Renderer.cpp
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2860,51): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2860,131): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,27): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,79): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,104): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,166): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2861,242): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Renderer.cpp(2909,204): warning C4100: 'target': unreferenced parameter [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+  Sound.cpp
+  Survival.cpp
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(1933,50): warning C4244: 'argument': conversion from 'int' to 'float', possible loss of data [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(2219,76): warning C4100: 'block': unreferenced parameter [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(3324,17): warning C4457: declaration of 'i' hides function parameter [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+      C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(3090,81):
+      see declaration of 'i'
+
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(3753,16): warning C4456: declaration of 'pickupPlayer' hides previous local declaration [C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\VoxelFrontier.vcxproj]
+      C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\src\Survival.cpp(3681,12):
+      see declaration of 'pickupPlayer'
+
+  Generating Code...
+  VoxelFrontier.vcxproj -> C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\standalone-demo-release\Release\VoxelFrontier.exe
+Inno Setup 7 Command-Line Compiler
+Copyright (C) 1997-2026 Jordan Russell. All rights reserved.
+Portions Copyright (C) 2000-2026 Martijn Laan. All rights reserved.
+Portions Copyright (C) 2001-2004 Alex Yackimoff. All rights reserved.
+https://www.innosetup.com
+
+Compiler engine version: Inno Setup 7.1.0
+Non-commercial use only
+
+Preprocessing
+   Reading file: C:\Users\Win\AppData\Local\Programs\Inno Setup 7\ISPPBuiltins.iss
+Parsing [Setup] section, line 30
+Parsing [Setup] section, line 31
+Parsing [Setup] section, line 32
+Parsing [Setup] section, line 33
+Parsing [Setup] section, line 34
+Parsing [Setup] section, line 35
+Parsing [Setup] section, line 36
+Parsing [Setup] section, line 37
+Parsing [Setup] section, line 38
+Parsing [Setup] section, line 39
+Parsing [Setup] section, line 40
+Parsing [Setup] section, line 41
+Parsing [Setup] section, line 42
+Parsing [Setup] section, line 43
+Parsing [Setup] section, line 44
+Parsing [Setup] section, line 45
+Parsing [Setup] section, line 46
+Parsing [Setup] section, line 47
+Parsing [Setup] section, line 48
+Parsing [Setup] section, line 49
+Parsing [Setup] section, line 50
+Parsing [Setup] section, line 51
+Parsing [Setup] section, line 52
+Parsing [Setup] section, line 53
+Parsing [Setup] section, line 54
+Parsing [Setup] section, line 55
+Parsing [Setup] section, line 56
+Parsing [Setup] section, line 57
+Parsing [Setup] section, line 58
+Parsing [Setup] section, line 59
+Parsing [Setup] section, line 60
+Parsing [Setup] section, line 61
+Parsing [Setup] section, line 62
+Parsing [Setup] section, line 63
+Reading file (WizardImageFile)
+Reading file (WizardSmallImageFile)
+Preparing Setup program executable
+   Verification successful
+   Updating icons (Setup.e64)
+   Updating version info (Setup.e64)
+Determining language code pages
+   Reading file: C:\Users\Win\AppData\Local\Programs\Inno Setup 7\Default.isl
+   Messages in script file
+Reading default messages from Default.isl
+Parsing [LangOptions], [Messages], and [CustomMessages] sections
+   Reading file: C:\Users\Win\AppData\Local\Programs\Inno Setup 7\Default.isl
+   Messages in script file
+Reading [Code] section
+Parsing [Tasks] section, line 66
+Parsing [Icons] section, line 72
+Parsing [Icons] section, line 73
+Parsing [Run] section, line 76
+Parsing [Files] section, line 69
+Compiling [Code] section
+Deleting VoxelFrontier-v2.17.0-Windows-Setup.exe from output directory
+Creating setup files
+   Verification successful
+   Updating icons (Setup.exe)
+   Compressing: \\?\C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\build\installed-release\Release\VoxelFrontier.exe
+   Compressing Setup program executable
+   Updating version info (Setup.exe)
+   Updating manifest (Setup.exe)
+
+
+Successful compile (4.969 sec). Resulting Setup program filename is:
+C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\dist\VoxelFrontier-v2.17.0-Windows-Setup.exe
+Standalone: C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\dist\VoxelFrontier-v2.17.0-Windows-Standalone.exe
+Installer: C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\dist\VoxelFrontier-v2.17.0-Windows-Setup.exe
+Checksums: C:\Users\Win\Documents\Codex\Voxel\Codex-Minecraft\dist\SHA256SUMS.txt

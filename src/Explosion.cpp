@@ -28,7 +28,8 @@ float explosionDamage(const Explosion& blast, float distance, float exposure) {
 }
 
 void damageExplosionTerrain(World& world, const Explosion& blast,
-                            const std::function<void(const glm::ivec3&, Block)>& onBroken) {
+                            const std::function<void(const glm::ivec3&, Block)>& onBroken,
+                            const std::function<bool(const glm::ivec3&, Block)>& accept) {
     if (!blast.blockDamage) return;
     const int radius = static_cast<int>(std::ceil(blast.radius));
     const glm::ivec3 origin(glm::floor(blast.position));
@@ -55,6 +56,7 @@ void damageExplosionTerrain(World& world, const Explosion& blast,
                 const float variation = .82f + static_cast<float>(hash & 255u) / 255.0f * .36f;
                 const float force = blast.power * (1.0f - distance / blast.radius) * variation;
                 if (force <= resistance * .62f) continue;
+                if(accept&&!accept(cell,block))continue;
                 onBroken(cell, block);
                 world.setBlock(x, y, z, Block::Air);
             }

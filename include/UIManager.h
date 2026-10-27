@@ -43,6 +43,7 @@ struct RecipeBookView {
 };
 
 class UIManager {
+    friend class AutomationTest;
     friend class IconTest;
     friend class QolTest;
 public:
@@ -117,6 +118,8 @@ private:
     bool inventoryLeftWasDown_ = false;
     UiHit inventoryLeftDragStart_{};
     RecipeBookView recipeBook_{};
+    int recipeRepeatKey_=-1;
+    double recipeRepeatAt_=0;
     int selectedRecipe_ = -1;
     int creativePage_=0;
     int creativeCategory_=0;

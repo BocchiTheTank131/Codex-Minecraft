@@ -53,6 +53,10 @@ int FarmingTest::run(int argc,char** argv) {
     w.fillBlocks({-12,299,-12},{24,299,18},Block::Dirt);
     w.fillBlocks({-12,300,-12},{24,304,18},Block::Air);
     g.player_->teleport({.5f,300,6.5f});
+    // Teleports become the streaming/simulation center in the real frame loop.
+    // Do not rely on changing distance to disable simulation-range checks.
+    w.updateStreaming(g.player_->position(),0);
+    check(w.simulationActiveAt(-8,-4),"fixture_stream_center_at_farm");
     FarmingSystem farm;
     const Item seeds[]={Item::Seeds,Item::Carrot,Item::Potato,Item::BeetrootSeeds,Item::PumpkinSeeds,Item::MelonSeeds};
     for(int i=0;i<6;++i) {
@@ -308,6 +312,7 @@ int FarmingTest::stress(Game& g,const std::filesystem::path& output) {
     std::ofstream csv(output/"crop-cpu.csv");csv<<"variant,crops,state,repeat,steps,mean_ms,p95_ms,p99_ms,worst_ms\n";
     auto& w=*g.world_;w.setSimulationDistance(7);w.setSimulationDistance(8);
     for(int x=0;x<=112;x+=16)for(int z=0;z<=112;z+=16)w.prepareSpawnTerrain({float(x),300,float(z)});
+    w.updateStreaming({50,300,50},0);
     w.fillBlocks({0,299,0},{100,299,100},Block::Dirt);
     w.fillBlocks({0,300,0},{100,301,100},Block::Air);
     auto stats=[&](const char* variant,int count,const char* state,int repeat,std::vector<double>& times) {

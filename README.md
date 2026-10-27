@@ -4,7 +4,7 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
-### v2.17.0 - Logic & Automation (prerelease)
+### v2.17.0 - Logic & Automation
 
 Build deterministic power circuits, timed repeaters and logic gates; control lamps,
 doors and machinery; transport container items with hoppers; and harvest crops into
@@ -13,7 +13,11 @@ the existing building, crafting and quality-of-life systems.
 
 See [Logic & Automation validation](docs/LOGIC_AUTOMATION_VALIDATION.md) for signal
 rules, recipes, safety limits, test evidence and performance measurements. This update is available as a
-[v2.17.0 prerelease](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.17.0).
+[v2.17.0 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.17.0).
+
+Stabilization changes are documented in
+[the prerelease fix report](docs/V2170_PRERELEASE_FIX_VALIDATION.md).
+Large-coordinate precision remains deferred; the report lists tested fixes and limitations.
 
 ### v2.16.2 - Quality of Life
 
@@ -29,15 +33,15 @@ measurements, compatibility checks and limitations. Download both Windows varian
 
 ### v2.16.1 - Inventory Icon & Visual Clarity
 
-All 347 registered items now have cached 64×64 previews. Blocks use the actual
+All 347 registered items now have cached 64Ã—64 previews. Blocks use the actual
 terrain mesh and material tiles in a consistent three-quarter view; stairs,
 slabs, fences, furniture, beds and panes retain their real shapes. Boats use the
 existing hull models. Tools, armor, food and other non-block items use shaded,
-extruded pixel-art silhouettes. Four Creative pages and 44×44 slots are unchanged.
+extruded pixel-art silhouettes. Four Creative pages and 44Ã—44 slots are unchanged.
 
 The atlas is generated offline, embedded in both Windows variants, and uses the
 same 5.47 MiB of GPU texture storage as v2.16.0. There is no per-frame thumbnail
-rendering. World textures, item/block IDs, saves and Generators V1–V22 are unchanged.
+rendering. World textures, item/block IDs, saves and Generators V1â€“V22 are unchanged.
 Gate rails/posts receive a matching visual model correction; collision is unchanged.
 Bed pillow and blanket textures now follow all four placement directions.
 Creative inventory now includes item-name search. Axe/shovel actions wear the

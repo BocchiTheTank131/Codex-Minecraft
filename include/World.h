@@ -294,7 +294,9 @@ public:
     std::string buildingText(const glm::ivec3&) const;
     void refreshBuildingConnections(int chunkX,int chunkZ);
     void flushBuildingDrops(SurvivalWorld&);
-    void retainBuildingDrop(const glm::vec3& position,const ItemStack& stack) {buildingDrops_.emplace_back(position,stack);}
+    bool retainBuildingDrop(const glm::vec3& position,const ItemStack& stack);
+    bool retainBuildingDrops(const glm::vec3& position,const std::vector<ItemStack>& stacks);
+    std::vector<ItemStack> blockEntityContents(const glm::ivec3& position) const;
     void nearbyBuildingSigns(const glm::vec3&,std::vector<glm::ivec3>&) const;
     void renderBuildingItems(std::vector<RenderItemSprite>&,const glm::vec3&) const;
     ChestData* chestAt(const glm::ivec3& position, bool create = false);

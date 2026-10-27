@@ -2021,7 +2021,7 @@ MobTarget SurvivalWorld::raycastMob(const glm::vec3& o,
     return result;
 }
 AttackResult
-SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& attacker) {
+SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& attacker,World* recoveryWorld) {
     AttackResult r;
     if (index < 0 || index >= static_cast<int>(animals_.size()))
         return r;
@@ -2059,28 +2059,28 @@ SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& a
         else sounds_->playMobHurt(type, a.position);
     }
     if (a.health <= 0) {
+        if(!releaseDrops(a,recoveryWorld)){a.health=1;return r;}
         a.deathTimer = .65f;
         r.killed = true;
-        releaseDrops(a);
         spawnExperience(a.position, 4);
     }
     return r;
 }
-void SurvivalWorld::releaseDrops(Animal& a) {
-    if (a.dropsReleased)
-        return;
-    a.dropsReleased = true;
-    if (a.type == AnimalType::Cow) {
-        spawnDrop(a.position, Item::RawBeef, 1 + static_cast<int>(std::abs(a.position.x)) % 2);
-        spawnDrop(a.position, Item::Leather, 1);
-    } else if (a.type == AnimalType::Pig) {
-        spawnDrop(a.position, Item::RawPork, 1 + static_cast<int>(std::abs(a.position.z)) % 2);
-    } else if(a.type==AnimalType::Chicken) {
-        if(a.age>=0){spawnDrop(a.position,a.burning.remaining>0?Item::CookedChicken:Item::RawChicken);spawnDrop(a.position,Item::Feather,1);}
-    } else if (a.type == AnimalType::Sheep) {
-        if(!a.sheared) spawnDrop(a.position, Item::Wool, 1);
-        spawnDrop(a.position, Item::RawMutton, 1 + static_cast<int>(std::abs(a.position.x)) % 2);
-    }
+bool SurvivalWorld::releaseDrops(Animal& a,World* world) {
+    if(a.dropsReleased)return true;
+    std::vector<ItemStack> output;
+    auto add=[&](Item i,int n=1){output.push_back({i,n});};
+    if(a.type==AnimalType::Cow){add(Item::RawBeef,1+int(std::abs(a.position.x))%2);add(Item::Leather);}
+    else if(a.type==AnimalType::Pig)add(Item::RawPork,1+int(std::abs(a.position.z))%2);
+    else if(a.type==AnimalType::Chicken&&a.age>=0){add(a.burning.remaining>0?Item::CookedChicken:Item::RawChicken);add(Item::Feather);}
+    else if(a.type==AnimalType::Sheep){if(!a.sheared)add(Item::Wool);add(Item::RawMutton,1+int(std::abs(a.position.x))%2);}
+    if(drops_.size()+output.size()<=SaveValidation::MaxDrops){
+        for(auto stack:output)if(!SaveValidation::stack(stack)||!SaveValidation::position(a.position))return false;
+        const auto original=drops_.size();
+        if(original+output.size()>drops_.capacity())drops_.reserve(std::max(original+output.size(),std::min<std::size_t>(SaveValidation::MaxDrops,std::max<std::size_t>(16,drops_.capacity()*2))));
+        for(auto stack:output)if(!spawnDrop(a.position,stack.item,stack.count,stack.durability)){drops_.resize(original);return false;}
+    }else if(!world||!world->retainBuildingDrops(a.position,output))return false;
+    a.dropsReleased=true;return true;
 }
 RenderCuboid SurvivalWorld::mobOutline(int i) const {
     if (i < 0 || i >= static_cast<int>(animals_.size()))
@@ -2102,14 +2102,14 @@ bool SurvivalWorld::feedAnimal(const glm::vec3& o, const glm::vec3& d, Item food
     const bool ok=(a.type==AnimalType::Cow || a.type==AnimalType::Sheep)?food==Item::Wheat:
         a.type==AnimalType::Pig?(food==Item::Carrot || food==Item::Potato || food==Item::Beetroot):
         a.type==AnimalType::Chicken?(food==Item::Seeds || food==Item::BeetrootSeeds || food==Item::PumpkinSeeds || food==Item::MelonSeeds):false;
-    if(!ok || a.breedingCooldown>0 || a.age<0 || a.loveTimer>0 || a.deathTimer!=0)return false;
+    if(!ok || a.health<=0 || a.breedingCooldown>0 || a.age<0 || a.loveTimer>0 || a.deathTimer!=0)return false;
     int nearby=0;for(const auto& other:animals_)if(other.deathTimer==0 && !isBillboard(other.type) && glm::distance(other.position,a.position)<16)++nearby;
     if(nearby>=64 || animals_.size()>=SaveValidation::MaxMobs)return false;
     a.loveTimer=30;a.persistent=true;
     if(a.type==AnimalType::Sheep && a.sheared){a.woolTimer=std::min(a.woolTimer,30.f);}
     for (int j = 0; j < static_cast<int>(animals_.size()); ++j)
         if (j != i && animals_[j].type == a.type && animals_[j].loveTimer > 0 &&
-            animals_[j].breedingCooldown <= 0 && animals_[j].age >= 0 &&
+            animals_[j].health>0 && animals_[j].deathTimer==0 && animals_[j].breedingCooldown <= 0 && animals_[j].age >= 0 &&
             glm::distance(animals_[j].position, a.position) < 5) {
             Animal baby = a;
             baby.position = a.position;
@@ -2135,9 +2135,11 @@ bool SurvivalWorld::tendAnimal(int index,Inventory& inventory,bool offhand,bool 
     auto& a=animals_[index];if(a.age<0 || a.deathTimer!=0)return false;
     const auto held=offhand?inventory.equipment(4):inventory.selectedStack();
     if(a.type==AnimalType::Sheep && held.item==Item::Shears && !a.sheared) {
-        if(!creative && !(offhand?inventory.damageOffhandTool():inventory.damageSelectedTool()))return false;
+        Inventory candidate=inventory;
+        if(!creative && !(offhand?candidate.damageOffhandTool():candidate.damageSelectedTool()))return false;
+        if(!spawnDrop(a.position+glm::vec3(0,.6f,0),Item::Wool,2))return false;
+        inventory=std::move(candidate);
         a.sheared=true;a.woolTimer=180;a.persistent=true;
-        spawnDrop(a.position+glm::vec3(0,.6f,0),Item::Wool,2);
         if(sounds_)sounds_->playBlockBreak(Block::Leaves,a.position);
         return true;
     }
@@ -2206,8 +2208,8 @@ void SurvivalWorld::detonate(const glm::vec3& center, World& world, Player& play
         other.velocity += glm::normalize(target - center) * std::min(6.0f, damage);
         other.hurtFlash = .22f;
         if (other.health <= 0.0f) {
+            if(!releaseDrops(other,&world)){other.health=1;continue;}
             other.deathTimer = .65f;
-            releaseDrops(other);
             if (sounds_)
                 sounds_->playMobDeath(mobSoundType(static_cast<std::uint8_t>(other.type)),
                                       other.position);
@@ -2215,16 +2217,17 @@ void SurvivalWorld::detonate(const glm::vec3& center, World& world, Player& play
     }
     int releasedDrops = 0;
     damageExplosionTerrain(world, blast, [&](const glm::ivec3& cell, Block block) {
+        world.takeBlockEntityContents(cell);
+    },[&](const glm::ivec3& cell,Block block){
         const glm::vec3 dropPosition = glm::vec3(cell) + glm::vec3(.5f);
-        for (const ItemStack& stack : world.takeBlockEntityContents(cell))
-            if (stack.item != Item::None && stack.count > 0)
-                spawnDrop(dropPosition, stack.item, stack.count, stack.durability,glm::vec3(.4f,.8f,.2f),0,stack.identity);
+        auto output=world.blockEntityContents(cell);
         const Item item = blockDefinition(block).drop;
-        if (item != Item::None && (!isDoorUpper(block)) && releasedDrops < 64) {
-            spawnDrop(dropPosition, item);
-            ++releasedDrops;
-        }
+        const bool resource=item!=Item::None&&!isDoorUpper(block)&&releasedDrops<64;
+        if(resource)output.push_back({item,1,isDurable(item)?Inventory::maxDurability(item):0});
+        if(!world.retainBuildingDrops(dropPosition,output))return false;
+        if(resource)++releasedDrops;return true;
     });
+    world.flushBuildingDrops(*this);
     explosionEffects_.push_back(center);
 }
 
@@ -2357,8 +2360,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
             if(a.woolTimer<=0 && w.getBlock(int(std::floor(a.position.x)),int(std::floor(a.position.y-.1f)),int(std::floor(a.position.z)))==Block::Grass)a.sheared=false;
         }
         if(a.type==AnimalType::Chicken && a.age>=0 && a.resourceTimer<=0) {
-            spawnDrop(a.position+glm::vec3(0,.2f,0),Item::Egg);
-            a.resourceTimer=300.f+float((std::uint32_t(std::abs(a.position.x)*13)^std::uint32_t(std::abs(a.position.z)*31))%300);
+            if(spawnDrop(a.position+glm::vec3(0,.2f,0),Item::Egg))a.resourceTimer=300.f+float((std::uint32_t(std::abs(a.position.x)*13)^std::uint32_t(std::abs(a.position.z)*31))%300);
         }
         if(a.type==AnimalType::Chicken)a.gait=std::fmod(a.gait+dt*12.f,6.2831853f);
     }
@@ -2661,8 +2663,8 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
             else sounds_->playMobHurt(type, a.position);
         }
         if (a.health <= 0.0f) {
+            if(!releaseDrops(a,&w)){a.health=1;return;}
             a.deathTimer = 0.65f;
-            releaseDrops(a);
             spawnExperience(a.position, 2);
         }
     }
@@ -3853,7 +3855,7 @@ bool SurvivalWorld::runCombatSelfTest(World& sourceWorld, Player& p, Inventory& 
     return ok;
 }
 
-void SurvivalWorld::lightningDamage(const glm::vec3& center,const World& world) {
+void SurvivalWorld::lightningDamage(const glm::vec3& center,World& world) {
     for(auto& animal:animals_) {
         if(animal.deathTimer>0 || animal.health<=0 || glm::distance(animal.position+glm::vec3(0,.8f,0),center)>3) continue;
         const glm::vec3 delta=animal.position+glm::vec3(0,.8f,0)-center;
@@ -3861,7 +3863,8 @@ void SurvivalWorld::lightningDamage(const glm::vec3& center,const World& world) 
         if(glm::length(delta)>.01f && world.raycast(center+glm::vec3(0,.15f,0),glm::normalize(delta),glm::length(delta),hit)) continue;
         animal.health-=5; animal.hurtFlash=.25f;
         if(animal.health<=0) {
-            animal.deathTimer=.65f; releaseDrops(animal); spawnExperience(animal.position,4);
+            if(!releaseDrops(animal,&world)){animal.health=1;continue;}
+            animal.deathTimer=.65f; spawnExperience(animal.position,4);
             if(sounds_) sounds_->playMobDeath(mobSoundType(static_cast<std::uint8_t>(animal.type)),animal.position);
         }
     }

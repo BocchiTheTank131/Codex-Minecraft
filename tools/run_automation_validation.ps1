@@ -14,7 +14,7 @@ if($LASTEXITCODE){throw 'Driver configuration failed'}
 & cmake --build $driverDir --config Release --parallel 2 -- /nodeReuse:false
 if($LASTEXITCODE){throw 'Driver build failed'}
 $driver=Join-Path $driverDir 'Release/StabilityDriver.exe'
-foreach($suite in @('automation','building','creative-ui','qol','farming')){
+foreach($suite in @('automation','automation-stabilization','building','creative-ui','qol','farming')){
  & $driver "--$suite" $out *> (Join-Path $out ($suite+'.log'))
  if($LASTEXITCODE){throw "$suite regression failed; inspect $out"}
 }
