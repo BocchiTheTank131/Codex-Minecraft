@@ -73,7 +73,7 @@ std::vector<CaveEntrance> caveEntrances(int chunkX,int chunkZ,std::uint32_t seed
     const std::function<SurfaceColumn(int,int)>& terrain,
     const std::function<bool(int,int,int)>& cavity,
     const std::function<bool(int,int)>& reserved,unsigned generationVersion) {
-    if(generationVersion>=22) return diverseCaveEntrances(chunkX,chunkZ,seed,terrain,cavity,reserved);
+    if(generationVersion>=22) return diverseCaveEntrances(chunkX,chunkZ,seed,terrain,cavity,reserved,generationVersion);
     struct Cached { bool valid=false; CaveEntrance cave{}; };
     // Each generation worker owns its cache. Bounds keep long flights from
     // retaining an ever-growing exploration map. Plans depend only on seed.

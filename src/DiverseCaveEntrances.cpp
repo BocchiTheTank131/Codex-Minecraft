@@ -12,13 +12,14 @@ struct Plan {bool valid=false; CaveEntrance cave{};};
 std::vector<CaveEntrance> diverseCaveEntrances(int cx,int cz,std::uint32_t seed,
     const std::function<SurfaceColumn(int,int)>& terrain,
     const std::function<bool(int,int,int)>& cavity,
-    const std::function<bool(int,int)>& reserved) {
+    const std::function<bool(int,int)>& reserved,unsigned generationVersion) {
     // Per-worker, bounded cache. Failed plans are cached as well, so dense
     // column sampling does not repeat cavity/reservation searches.
-    thread_local std::uint32_t cacheSeed=0;
+    thread_local std::uint32_t cacheSeed=0,cacheVersion=0;
     thread_local std::unordered_map<std::uint64_t,Plan> cache;
-    if(cacheSeed!=seed || cache.size()>512) {cache.clear();cacheSeed=seed;}
-    constexpr int span=80,reach=88;
+    if(cacheSeed!=seed || cacheVersion!=generationVersion || cache.size()>512) {cache.clear();cacheSeed=seed;cacheVersion=generationVersion;}
+    const int span=generationVersion>=23?52:80;
+    constexpr int reach=88;
     const int ox=cx*16,oz=cz*16;
     std::vector<CaveEntrance> result;
     for(int rz=floorCell(oz-reach,span);rz<=floorCell(oz+15+reach,span);++rz)
@@ -31,7 +32,8 @@ std::vector<CaveEntrance> diverseCaveEntrances(int cx,int cz,std::uint32_t seed,
             Plan plan;
             for(int candidate=0;candidate<3 && !plan.valid;++candidate) {
                 const auto roll=TerrainDensity::hash(rx,candidate,rz,seed^0x22caU);
-                const int x=rx*span+10+int((roll>>5)%60U),z=rz*span+10+int((roll>>12)%60U);
+                const unsigned jitter=generationVersion>=23?32U:60U;
+                const int x=rx*span+10+int((roll>>5)%jitter),z=rz*span+10+int((roll>>12)%jitter);
                 const auto surface=terrain(x,z);
                 if(surface.height<70 || surface.height>240 || surface.river>.01f ||
                    surface.ravine>.02f || reserved(x,z)) continue;
@@ -64,6 +66,23 @@ std::vector<CaveEntrance> diverseCaveEntrances(int cx,int cz,std::uint32_t seed,
                         }
                         if(protectedRoute) break;
                         if(unsupported)continue;
+                        if(generationVersion>=23) {
+                            // Coarse checks can miss a one-column native pit:
+                            // the player falls below the sloping bore and meets
+                            // a two/three-block lip on its far side. Check the
+                            // actual walking ribbon at block intervals, only
+                            // after the inexpensive historical route rejection.
+                            for(int step=0;step<=length && !unsupported;++step) {
+                                const float t=float(step)/float(length);
+                                const int px=int(std::floor(float(x)+.5f+float(tx-x)*t));
+                                const int pz=int(std::floor(float(z)+.5f+float(tz-z)*t));
+                                const float centre=surface.height+1.5f+(y-surface.height-.5f)*t;
+                                const int floorY=int(std::floor(centre-radius-1.f));
+                                for(int side=-1;side<=1;++side)
+                                    unsupported|=cavity(px+d[1]*side,floorY,pz-d[0]*side);
+                            }
+                            if(unsupported)continue;
+                        }
                         plan.cave={{float(x)+.5f,float(surface.height)+1.5f,float(z)+.5f},
                             {float(x+tx)*.5f+.5f,(float(surface.height)+float(y))*.5f+1.f,float(z+tz)*.5f+.5f},
                             {float(tx)+.5f,float(y)+1.f,float(tz)+.5f},

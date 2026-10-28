@@ -1,0 +1,18 @@
+{
+  "build/v23-validation/baseline/VoxelFrontier-v2.17.0-full.exe": {
+    "sha256": "e0683137a6c62632a9472d9f5e882b94731342212dbd0f6ff209b4d0dacf7f3a",
+    "bytes": 76942336
+  },
+  "build/v23-validation/baseline/VoxelFrontier-v2.17.0-demo.exe": {
+    "sha256": "683fea61db9e9f610964eb814bc057636b1ff2ee22ee3513a1c07fec178eb877",
+    "bytes": 76785152
+  },
+  "build/installed-release/Release/VoxelFrontier.exe": {
+    "sha256": "d18ed5c07a769ade587e8513ee21b06e37a7b80e0f78c7a4c2f35bd7ed746847",
+    "bytes": 77120000
+  },
+  "dist/VoxelFrontier-v2.18.0-Windows-Standalone.exe": {
+    "sha256": "17366780e18af4686eb2b5fba6ae8d67ba210c163ebc897b4c9aad882dd391ae",
+    "bytes": 76962304
+  }
+}

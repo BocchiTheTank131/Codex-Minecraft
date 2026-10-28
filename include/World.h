@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Block.h"
+#include "GeneratorVersion.h"
 #include "CompactBlocks.h"
 #include "Building.h"
 #include "Automation.h"
@@ -244,7 +245,7 @@ public:
         std::size_t distanceAccepted = 0;
         std::size_t legacyVisible = 0;
     };
-    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = 22);
+    explicit World(std::uint32_t seed = 2026, std::uint32_t generationVersion = LatestGeneratorVersion);
     ~World();
 
     std::array<glm::vec3,6> optimizationScenes() const;
@@ -306,6 +307,8 @@ public:
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
     glm::vec3 findSurvivalSpawnNear(int worldX, int worldZ) const;
     bool runDiversityAudit(const std::string& directory, std::string& report, bool spawnOnly=false) const;
+    bool runExpansionAudit(const std::string& directory, std::string& report,
+                           const std::string& mode="validate") const;
     void prepareSpawnTerrain(const glm::vec3& position);
     bool runUndergroundAudit(const std::string& directory,std::string& report) const;
     bool runBiomeAudit(const std::string& directory, std::string& report) const;
@@ -490,8 +493,9 @@ private:
     UndergroundStructures underground_;
     UndergroundStructures underground20_;
     UndergroundStructures underground21_;
+    UndergroundStructures underground23_;
     std::uint32_t seed_ = 0;
-    std::uint32_t generationVersion_ = 22;
+    std::uint32_t generationVersion_ = LatestGeneratorVersion;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
     std::unordered_map<std::int64_t, std::unordered_map<std::size_t, Block>> edits_;
     std::unordered_map<BlockEntityPosition, FurnaceData, BlockEntityPositionHash> furnaces_;

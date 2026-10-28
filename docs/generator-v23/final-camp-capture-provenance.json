@@ -1,0 +1,32 @@
+[
+  {
+    "site": {
+      "name": "camp-overhead",
+      "seed": "20260917",
+      "version": "23",
+      "x": "2609",
+      "y": "115",
+      "z": "-3882",
+      "yaw": "-90",
+      "pitch": "-69",
+      "brightness": "0.5",
+      "fullbright": "0",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe",
+    "binary_sha256": "D18ED5C07A769ADE587E8513EE21B06E37A7B80E0F78C7A4C2F35BD7ED746847",
+    "image_sha256": "FF17B61FB5D886D1F451A5D2A09752A6194111295E94AAC6709F5216C446958F",
+    "arguments": [
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=20260917",
+      "--preview-x=2609",
+      "--preview-y=115",
+      "--preview-z=-3882",
+      "--preview-yaw=-90",
+      "--preview-pitch=-69",
+      "--preview-brightness=0.5"
+    ]
+  }
+]

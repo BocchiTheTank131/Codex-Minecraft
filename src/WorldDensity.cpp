@@ -4,6 +4,7 @@
 #include "TerrainExploration.h"
 #include "TerrainAesthetics.h"
 #include "TerrainChaos.h"
+#include "TerrainExpansion.h"
 #include <bitset>
 #include <algorithm>
 #include <array>
@@ -61,7 +62,8 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
         auto& t=terrain[i]; t=sampleTerrainDensity(ox+x,oz+z);
         const float aquifer=aquiferNoise_.fractal2D((ox+x)*.0018f+113.7f,(oz+z)*.0018f-67.3f,2,2.f,.3f);
         columns[i]={t.height,smooth(95.f,180.f,float(t.height))*(1.f-smooth(.40f,.83f,t.erosion)),
-            aquifer,-24.f+aquifer*30.f,t.ravine};
+            aquifer,generationVersion_>=23?TerrainExpansion::aquiferLevel(aquifer):-24.f+aquifer*30.f,t.ravine,
+            generationVersion_>=23?TerrainExpansion::shaftAt(ox+x,oz+z,noodleNoise_,ridgeNoise_):-1.f};
     }
     std::array<TerrainSample,32*32> neighborColumns;
     std::bitset<32*32> cachedColumns;
@@ -132,7 +134,8 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
     for(int y=MinimumY;y<scanTop;++y) for(int z=-1;z<=16;++z) for(int x=-1;x<=16;++x) {
         const auto& c=columns[(z+1)*Span+x+1];
         const auto f=grid.at(ox+x,y,oz+z);
-        const float field=generationVersion_>=13?TerrainAesthetics::density(f,c,y,slopes[(z+1)*Span+x+1]):density(f,c,y);
+        const float field=generationVersion_>=23?TerrainExpansion::density(f,c,y,slopes[(z+1)*Span+x+1]):
+            generationVersion_>=13?TerrainAesthetics::density(f,c,y,slopes[(z+1)*Span+x+1]):density(f,c,y);
         solid[occupancyIndex(x,y,z)]=static_cast<std::uint8_t>(y<=c.height+51 && field>0 && !entranceMask[(z+1)*Span+x+1].test(y-MinimumY));
     }
     // Ore probabilities are constant per depth and random rolls per 3^3 cell.
@@ -181,6 +184,12 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
             const bool foothill=generationVersion_>=13 && t.biome==Biome::Mountains && slope<1.2f;
             if(y==t.height) b=rock?Block::Stone:foothill?Block::Grass:biome.surface;
             else if(y>t.height-(generationVersion_>=13? (slope>.85f?2:4):4)) b=rock?Block::Stone:foothill?Block::Dirt:biome.soil;
+            if(generationVersion_>=23 && y==t.height && b==Block::Grass &&
+               (t.biome==Biome::OldGrowthTaiga||t.biome==Biome::DarkForest)) {
+                const auto patch=hash(floorDiv(ox+x,5),0,floorDiv(oz+z,5),seed_^0x23d1U);
+                if(patch%4U==0)b=Block::Podzol;
+                else if(patch%7U==0)b=Block::CoarseDirt;
+            }
             if(b==Block::Stone || b==Block::Deepslate) {
                 const auto f=grid.at(ox+x,y,oz+z);
                 const bool deep=b==Block::Deepslate;
@@ -228,6 +237,13 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
         if(t.ravine>=.02f) return false;
         if(generationVersion_>=12) for(const auto& cave:entrances)
             if(TerrainExploration::carves(cave,x,t.height,z)) return false;
+        if(generationVersion_>=23) for(const auto& cave:entrances) {
+            // A root just outside the ground opening can still put its trunk
+            // through the upper lip. Reject it before the final bore cleanup
+            // could sever the trunk and leave a floating crown.
+            for(int y=t.height+1;y<=std::min(t.height+24,featureTop-1);++y)
+                if(TerrainExploration::carves(cave,x,y,z))return false;
+        }
         if(generationVersion_>=13) {
             // V13 density guarantees an uncarved three-block surface skin.
             // Entrance masks are the only exception at these depths; evaluate

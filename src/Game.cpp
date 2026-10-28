@@ -388,7 +388,7 @@ void Game::parseArguments(int argc, char** argv) {
             } else if (argument == "--ui-smoke") {
                 smokeTest_.uiEnabled = true;
             } else if (argument.rfind("--generator=",0)==0) {
-                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,22));
+                fixtureGenerator_ = static_cast<unsigned>(std::clamp(std::stoi(argument.substr(12)),1,int(LatestGeneratorVersion)));
             } else if(argument=="--equipment-preview") {equipmentPreview_=true;smokeTest_.craftingPreview=true;saveOnExit_=false;
             } else if(argument=="--hazard-preview") {hazardPreview_=true;smokeTest_.worldgenEnabled=true;saveOnExit_=false;
             } else if(argument=="--fluid-smoke") {fluidSmoke_=true;saveOnExit_=false;

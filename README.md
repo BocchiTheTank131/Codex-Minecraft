@@ -4,6 +4,23 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.18.0 - World Generation & Biome Expansion
+
+Generator V23 adds connected mountain ranges and eroded uplands, broader compatible
+habitats, expanded cave networks and underground lakes, supported cave approaches,
+clustered mixed woodland, and five wilderness landmark designs. New worlds use V23;
+saved worlds retain their original generator, including their unexplored chunks.
+
+All 35 biomes, generators V1–V22, stable block/item IDs, automation, checkpoint
+integrity, and the four hostile billboard mobs are preserved. No coordinate-precision
+migration or new save format is included.
+
+See [V23 validation](docs/GENERATOR_V23_VALIDATION.md) for native screenshots,
+comparison maps, reproducible tests, generation costs, and remaining limitations.
+[Release notes](docs/RELEASE_v2.18.0.md) describe the Windows installer and stateless
+demo. Download both variants from the
+[v2.18.0 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.18.0).
+
 ### v2.17.0 - Logic & Automation
 
 Build deterministic power circuits, timed repeaters and logic gates; control lamps,

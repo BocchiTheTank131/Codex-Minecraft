@@ -12,6 +12,11 @@ struct Fields { float surface, chamber, tunnelA, tunnelB, pillar, vein; };
 // generation continues using the cached Grid rather than per-block noise.
 Fields sampleAt(int x,int y,int z,const PerlinNoise& surface,const PerlinNoise& chamber,
     const PerlinNoise& tunnels,const PerlinNoise& pillars,const PerlinNoise& veins);
+// V23 sparse probes share the exact lattice/mix, with a fixed per-thread node
+// cache. Chunk generation still uses Grid; historical sparse sampling is intact.
+Fields sampleAtCached(int x,int y,int z,std::uint32_t seed,unsigned version,
+    const PerlinNoise& surface,const PerlinNoise& chamber,const PerlinNoise& tunnels,
+    const PerlinNoise& pillars,const PerlinNoise& veins);
 class Grid {
 public:
     Grid(int chunkX, int chunkZ, const PerlinNoise& surface, const PerlinNoise& chamber,
@@ -25,6 +30,7 @@ private:
 struct Column {
     int height;
     float mountain, aquifer, aquiferLevel, ravine;
+    float shaft = -1.f; // V23 only; historical initializers/curves ignore it.
 };
 float density(const Fields& fields, const Column& column, int y);
 enum class OreCurve { Triangle, Uniform, Depth };

@@ -1,0 +1,138 @@
+{
+  "baseline_commit": "4a030c07de64013673fe5918b9bdc1b497d9afb5",
+  "local_v2171_found": false,
+  "published": false,
+  "installed": false,
+  "historical": {
+    "full": 663,
+    "demo": 663
+  },
+  "release_suites": 20,
+  "functional": {
+    "automation": 689,
+    "building": 4774,
+    "creative-ui": 3474,
+    "qol": 1389,
+    "farming": 261,
+    "stabilization": 375
+  },
+  "generation": {
+    "22": {
+      "cold": {
+        "mean_ms": 5.249344791666667,
+        "median_ms": 5.0053,
+        "samples": 96
+      },
+      "warm": {
+        "mean_ms": 3.4043755208333333,
+        "median_ms": 2.9848,
+        "samples": 192
+      }
+    },
+    "23": {
+      "cold": {
+        "mean_ms": 8.226992708333333,
+        "median_ms": 6.3147,
+        "samples": 96
+      },
+      "warm": {
+        "mean_ms": 3.681115625,
+        "median_ms": 3.3112500000000002,
+        "samples": 192
+      }
+    }
+  },
+  "spawns": {
+    "22": {
+      "safe_seeds": 50,
+      "cave_within_600": 50,
+      "median_spawn_ms": 70.24340000000001,
+      "maximum_spawn_ms": 163.096,
+      "median_cave_distance": 174.708,
+      "mean_sampled_biomes": 15.2,
+      "median_longest_ray": 240.0
+    },
+    "23": {
+      "safe_seeds": 50,
+      "cave_within_600": 50,
+      "median_spawn_ms": 201.7675,
+      "maximum_spawn_ms": 249.576,
+      "median_cave_distance": 126.1945,
+      "mean_sampled_biomes": 15.04,
+      "median_longest_ray": 256.0
+    }
+  },
+  "maps": {
+    "22": {
+      "land_percent": 54.83309427897135,
+      "biomes": 35.0,
+      "weighted_biome_region_blocks": 632148.2025959475,
+      "tiny_biome_area_percent": 20.884449350996903,
+      "mountain_percent": 2.5667826334635415,
+      "mushroom_percent": 0.3663380940755208,
+      "ice_spikes_percent": 0.2591451009114583
+    },
+    "23": {
+      "land_percent": 54.83309427897135,
+      "biomes": 35.0,
+      "weighted_biome_region_blocks": 658555.6707774423,
+      "tiny_biome_area_percent": 14.8060387187137,
+      "mountain_percent": 3.0558268229166665,
+      "mushroom_percent": 0.3665924072265625,
+      "ice_spikes_percent": 0.2623240152994792
+    }
+  },
+  "vegetation": {
+    "22": {
+      "log_voxels": 1247,
+      "leaf_voxels": 7542,
+      "plant_voxels": 1766,
+      "forest_columns": 6044,
+      "covered_forest_columns": 1728,
+      "roots": 111
+    },
+    "23": {
+      "log_voxels": 1140,
+      "leaf_voxels": 6938,
+      "plant_voxels": 2327,
+      "forest_columns": 5727,
+      "covered_forest_columns": 1559,
+      "roots": 91
+    }
+  },
+  "routes": {
+    "22": {
+      "mean_biomes": 8.84,
+      "minimum_biomes": 1,
+      "isolated_seeds": 4,
+      "median_transition": 64.0
+    },
+    "23": {
+      "mean_biomes": 13.56,
+      "minimum_biomes": 2,
+      "isolated_seeds": 0,
+      "median_transition": 64.0
+    }
+  },
+  "packages": [
+    {
+      "name": "VoxelFrontier-v2.18.0-Windows-Standalone.exe",
+      "sha256": "17366780e18af4686eb2b5fba6ae8d67ba210c163ebc897b4c9aad882dd391ae",
+      "bytes": 76962304
+    },
+    {
+      "name": "VoxelFrontier-v2.18.0-Windows-Setup.exe",
+      "sha256": "8b0b6ba95b1355bdf5c02bdadffb5de78f728ee85e844f046484aca1c3900d89",
+      "bytes": 71553841
+    }
+  ],
+  "native_images": 26,
+  "rd64_fully_settled": false,
+  "limitations": [
+    "exposed-overhang expansion unverified",
+    "single development PC",
+    "coarse route/region statistics",
+    "higher cold generation and geometry costs",
+    "pre-existing coordinate precision limit"
+  ]
+}

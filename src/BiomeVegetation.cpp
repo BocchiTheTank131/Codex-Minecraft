@@ -12,9 +12,9 @@ std::uint32_t hash(int x,int z,std::uint32_t seed) {
 }
 // Smooth, world-coordinate density field. The same roots are accepted in
 // adjoining chunks; this creates small openings rather than thinning all trees.
-float woodlandDensity(int x,int z,std::uint32_t seed) {
-    const int gx=int(std::floor(float(x)/96.f)),gz=int(std::floor(float(z)/96.f));
-    const float fx=float(x-gx*96)/96.f,fz=float(z-gz*96)/96.f;
+float woodlandDensity(int x,int z,std::uint32_t seed,int span=96) {
+    const int gx=int(std::floor(float(x)/float(span))),gz=int(std::floor(float(z)/float(span)));
+    const float fx=float(x-gx*span)/float(span),fz=float(z-gz*span)/float(span);
     const float u=fx*fx*(3-2*fx),v=fz*fz*(3-2*fz);
     const auto sample=[&](int a,int b){return float(hash(a,b,seed^0xc1eaU)&65535U)/65535.f;};
     return (sample(gx,gz)*(1-u)+sample(gx+1,gz)*u)*(1-v)+
@@ -45,6 +45,7 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
         if(x<ox||x>=ox+size||z<oz||z>=oz+size||y<minimumY+1||y>=height||reserved(x,z)) return;
         Block& current=at(x-ox,y,z-oz);
         if(current==Block::Air || current==Block::Snow || isPlant(current) ||
+           (generatorVersion>=23 && isLog(value) && isLeaf(current)) ||
            (isWater(current) && (value==Block::PackedIce||value==Block::BlueIce))) current=value;
     };
     auto crown=[&](int x,int y,int z,int radius,Block leaf) {
@@ -79,7 +80,14 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
         }
         if(!biome.treeSpacing || h%unsigned(biome.treeSpacing) || ground.height<=sea ||
            ground.river>.10f || biome.trees==TreeStyle::None) continue;
-        if(generatorVersion>=14 && woodlandDensity(x,z,seed)>.73f) continue;
+        const float woodland=generatorVersion>=23?woodlandDensity(x,z,seed,144):0.f;
+        if(generatorVersion>=23) {
+            if(woodland>.68f || (woodland>.55f && hash(x,z,seed^0x23eeU)%3U))continue;
+            // Compatible species share a habitat. Acceptance still uses original
+            // spacing, so species cannot change root-priority decisions.
+            if((biome.trees==TreeStyle::Oak||biome.trees==TreeStyle::Birch) && h%7U==0)
+                biome.trees=biome.trees==TreeStyle::Oak?TreeStyle::Birch:TreeStyle::Oak;
+        } else if(generatorVersion>=14 && woodlandDensity(x,z,seed)>.73f) continue;
         if(generatorVersion>=12) {
             bool crowded=false;
             for(int dz=-2;dz<=2 && !crowded;++dz)for(int dx=-2;dx<=2;++dx) {
@@ -102,17 +110,20 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
                        biome.trees==TreeStyle::Mushroom?5+int((h>>8)%3U):5+int((h>>8)%3U);
         if(generatorVersion>=13 && !giant && biome.trees!=TreeStyle::Mushroom && biome.trees!=TreeStyle::Acacia)
             tall+=int((h>>17)%3U);
+        if(generatorVersion>=23 && biome.trees!=TreeStyle::Mushroom && h%19U==0)
+            tall+=giant?3:2;
         // Keep thick roots grounded on every occupied column. This predicate
         // also rejects an entrance/ravine under any trunk, across chunk edges.
         if(generatorVersion>=13 && thick) {
             bool safe=true;
             for(int dz=0;dz<2;++dz)for(int dx=0;dx<2;++dx)
-                safe &= supported(x+dx,z+dz) && std::abs(terrain(x+dx,z+dz).height-ground.height)<=1;
+                safe &= supported(x+dx,z+dz) && std::abs(terrain(x+dx,z+dz).height-ground.height)<=1 &&
+                    (generatorVersion<23 || !reserved(x+dx,z+dz));
             if(!safe) continue;
         }
         // Thin the already valid roots independently of species and spacing.
         // Neighbor priority is unchanged: rejecting a root cannot admit replacements.
-        if(generatorVersion>=17 && biome.trees!=TreeStyle::Mushroom &&
+        if(generatorVersion>=17 && (generatorVersion<23 || woodland>.38f) && biome.trees!=TreeStyle::Mushroom &&
            hash(x,z,seed^0x17eeU)%5U==0) {
             for(int dz=0;dz<(thick?2:1);++dz)for(int dx=0;dx<(thick?2:1);++dx)
                 if(x+dx>=ox&&x+dx<ox+size&&z+dz>=oz&&z+dz<oz+size)
@@ -141,7 +152,8 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
                 for(int dz=-3;dz<=3;++dz) for(int dx=-3;dx<=3;++dx)
                     if(std::max(std::abs(dx),std::abs(dz))==3) place(x+dx,top+dy,z+dz,cap);
         } else {
-            const int radius=giant?4:biome.trees==TreeStyle::DarkOak?3:2;
+            const int radius=giant?4:biome.trees==TreeStyle::DarkOak?3:
+                generatorVersion>=23 && (h>>21U)%5U==0?3:2;
             for(int dy=-2;dy<=1;++dy) crown(x,top+dy,z,dy==1?radius-1:radius,w.leaves);
             if(giant) {
                 for(int b=1;b<=3;++b) place(x+b,top-4,z,w.log);
@@ -160,11 +172,23 @@ void decorateBiomeChunk(int cx,int cz,std::uint32_t seed,std::vector<Block>& blo
            at(x,sea+1,z)==Block::Air) place(wx,sea+1,wz,Block::LilyPad);
         const int y=ground.height+1;
         if(y<=sea||y>=height-8||at(x,y,z)!=Block::Air||!isSolid(at(x,y-1,z))) continue;
+        if(generatorVersion>=23) {
+            const auto base=blockType(at(x,y-1,z));
+            if(base==Block::Stone||base==Block::Deepslate||base==Block::Granite||
+               base==Block::Diorite||base==Block::Andesite)continue;
+        }
+        if(generatorVersion>=23 && biome.trees!=TreeStyle::None && biome.trees!=TreeStyle::Mushroom && !biome.dry &&
+           h%733U==0 && ground.river<.01f && supported(wx,wz)) {
+            // An occasional rooted stump; no floating horizontal log segments.
+            place(wx,y,wz,wood(biome.trees).log);continue;
+        }
         if(biome.dry) {
             if(h%73U==0) place(wx,y,wz,Block::DeadBush);
             else if((ground.biome==Biome::Desert||ground.biome==Biome::DesertHills)&&h%151U==0)
                 for(int dy=0;dy<2+int((h>>8)%2);++dy) place(wx,y+dy,wz,Block::Cactus);
-        } else if(h%100U<unsigned(biome.decorationPercent)) {
+        } else if(h%100U<unsigned(generatorVersion>=23?
+            biome.decorationPercent*(.55f+woodlandDensity(wx,wz,seed^0x23deU,48)):
+            float(biome.decorationPercent))) {
             Block plant=Block::TallGrass;
             if(biome.trees==TreeStyle::Spruce||biome.trees==TreeStyle::GiantSpruce) plant=Block::Fern;
             else if(ground.biome==Biome::MushroomFields||ground.biome==Biome::DarkForest||ground.biome==Biome::Swamp) {

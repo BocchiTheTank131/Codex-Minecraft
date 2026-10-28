@@ -2688,6 +2688,7 @@ void Renderer::renderWorldMenu(int width, int height, int hovered, bool creating
             if (index==field && std::fmod(now,1.0)<.5) value+="_";
             menuText(vertices,value,r.x+14,r.y+18,2,{1,1,1,1},width,height);
         }
+        menuText(vertices,"GENERATOR V"+std::to_string(LatestGeneratorVersion)+" - NATURAL NEW WORLDS",p.x+40,p.y+448,1.2f,{.72f,.82f,.68f,1},width,height);
         menuText(vertices,"TAB SWITCH FIELD   CTRL+A CLEAR",p.x+40,p.y+470,1.3f,{.65f,.72f,.75f,1},width,height);
         menuButton(vertices,MenuLayout::creationButton(0,width,height),"CREATE WORLD",hovered==4,width,height);
         menuButton(vertices,MenuLayout::creationButton(1,width,height),"BACK",hovered==5,width,height);

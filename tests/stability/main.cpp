@@ -23,6 +23,7 @@
 #include "Sound.h"
 #include "SimulationClock.h"
 #include "Renderer.h"
+#include "Screenshot.h"
 #include <thread>
 #include <algorithm>
 #include <map>
@@ -48,6 +49,7 @@ int runBuildingTests(int argc,char** argv);
 int runIconTests(int argc,char** argv);
 int runQolTests(int argc,char** argv);
 int runAutomationTests(int argc,char** argv);
+int runExpansionTests(int argc,char** argv);
 double fixtureWorkingSetMb();
 void setupAutomationTraversal(Game&,int);
 void driveAutomationTraversal(Game&,double);
@@ -114,6 +116,19 @@ int main(int argc,char** argv){
     try{return StabilityTest::run(argc,argv);}catch(const std::exception& e){std::cerr<<e.what()<<std::endl;return 1;}
 }
 int StabilityTest::run(int argc,char** argv){
+ if(argc>2 && std::string(argv[1])=="--generation-lit-capture") {
+  const auto output=std::filesystem::absolute(argv[2]);std::filesystem::create_directories(output);
+  std::vector<char*> args{argv[0]};for(int i=3;i<argc;++i)args.push_back(argv[i]);
+  Game g;if(!g.initialize(int(args.size()),args.data()))return 5;
+  // Existing diagnostic fullbright, only in the isolated test driver. This
+  // exposes natural cave geometry without placing torches or changing terrain.
+  g.fullbright_=true;
+  const int result=g.run();
+  for(const auto& e:std::filesystem::directory_iterator("screenshots"))
+   if(e.path().extension()==".bmp")std::filesystem::copy_file(e.path(),output/e.path().filename());
+  return result;
+ }
+ if(argc>1 && std::string(argv[1]).find("--generation-")==0)return runExpansionTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--automation")==0)return runAutomationTests(argc,argv);
  if(argc>1 && std::string(argv[1])=="--qol")return runQolTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--icons")==0)return runIconTests(argc,argv);

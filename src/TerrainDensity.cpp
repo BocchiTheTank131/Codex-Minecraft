@@ -33,6 +33,29 @@ Fields sampleAt(int x,int y,int z,const PerlinNoise& surface,const PerlinNoise& 
     return mix(mix(mix(n(0,0,0),n(1,0,0),fx),mix(n(0,0,1),n(1,0,1),fx),fz),
                mix(mix(n(0,1,0),n(1,1,0),fx),mix(n(0,1,1),n(1,1,1),fx),fz),fy);
 }
+Fields sampleAtCached(int x,int y,int z,std::uint32_t seed,unsigned version,
+    const PerlinNoise& surface,const PerlinNoise& chamber,const PerlinNoise& tunnels,
+    const PerlinNoise& pillars,const PerlinNoise& veins) {
+    struct Entry {int x=0,y=0,z=0;bool valid=false;Fields fields{};};
+    struct Cache {std::uint32_t seed=0;unsigned version=0;bool initialized=false;std::array<Entry,4096> nodes;};
+    thread_local Cache cache;
+    if(!cache.initialized||cache.seed!=seed||cache.version!=version) {
+        for(auto& entry:cache.nodes)entry.valid=false;
+        cache.seed=seed;cache.version=version;cache.initialized=true;
+    }
+    const int bx=x-(x%4+4)%4,bz=z-(z%4+4)%4,by=MinimumY+(y-MinimumY)/8*8;
+    const float fx=float(x-bx)*.25f,fz=float(z-bz)*.25f,fy=float(y-by)*.125f;
+    const auto n=[&](int dx,int dy,int dz) {
+        const int nx=bx+dx*4,ny=by+dy*8,nz=bz+dz*4;
+        auto& entry=cache.nodes[hash(nx,ny,nz,seed)&4095U];
+        if(!entry.valid||entry.x!=nx||entry.y!=ny||entry.z!=nz) {
+            entry={nx,ny,nz,true,sampleNode(float(nx),float(ny),float(nz),surface,chamber,tunnels,pillars,veins)};
+        }
+        return entry.fields;
+    };
+    return mix(mix(mix(n(0,0,0),n(1,0,0),fx),mix(n(0,0,1),n(1,0,1),fx),fz),
+               mix(mix(n(0,1,0),n(1,1,0),fx),mix(n(0,1,1),n(1,1,1),fx),fz),fy);
+}
 Grid::Grid(int cx, int cz, const PerlinNoise& surface, const PerlinNoise& chamber,
            const PerlinNoise& tunnels, const PerlinNoise& pillars, const PerlinNoise& veins, int maximumY)
     : originX_(cx*16-4), originZ_(cz*16-4) {

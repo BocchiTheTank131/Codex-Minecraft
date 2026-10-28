@@ -1,0 +1,224 @@
+[
+  {
+    "site": {
+      "name": "20260917-lake",
+      "seed": "20260917",
+      "version": "23",
+      "x": "-768",
+      "y": "-11",
+      "z": "-4032",
+      "yaw": "35",
+      "pitch": "-5",
+      "brightness": "1",
+      "fullbright": "1",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\driver\\Release\\StabilityDriver.exe",
+    "binary_sha256": "F2B4C792D0EBB09DB7CC6178DDC7386737EC9BD42C21F7D382DF4658740A67B0",
+    "image_sha256": "5D34210F84A8FB251DD89525F5923DDE970D523CB97D9D5D40AB2173DA40EE7E",
+    "arguments": [
+      "--generation-lit-capture",
+      "\"C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\final-cave-captures\\20260917-lake\\screenshots\"",
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=20260917",
+      "--preview-x=-768",
+      "--preview-y=-11",
+      "--preview-z=-4032",
+      "--preview-yaw=35",
+      "--preview-pitch=-5",
+      "--preview-brightness=1"
+    ]
+  },
+  {
+    "site": {
+      "name": "20260917-cavern",
+      "seed": "20260917",
+      "version": "23",
+      "x": "6937",
+      "y": "-42",
+      "z": "-1580",
+      "yaw": "30",
+      "pitch": "8",
+      "brightness": "1",
+      "fullbright": "1",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\driver\\Release\\StabilityDriver.exe",
+    "binary_sha256": "F2B4C792D0EBB09DB7CC6178DDC7386737EC9BD42C21F7D382DF4658740A67B0",
+    "image_sha256": "15C3A4C3B4E4A267B0767B53161239149AF684036F357D94F0B69A2A0E2A0274",
+    "arguments": [
+      "--generation-lit-capture",
+      "\"C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\final-cave-captures\\20260917-cavern\\screenshots\"",
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=20260917",
+      "--preview-x=6937",
+      "--preview-y=-42",
+      "--preview-z=-1580",
+      "--preview-yaw=30",
+      "--preview-pitch=8",
+      "--preview-brightness=1"
+    ]
+  },
+  {
+    "site": {
+      "name": "123456789-lake",
+      "seed": "123456789",
+      "version": "23",
+      "x": "-4032",
+      "y": "-3",
+      "z": "-4032",
+      "yaw": "35",
+      "pitch": "-5",
+      "brightness": "1",
+      "fullbright": "1",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\driver\\Release\\StabilityDriver.exe",
+    "binary_sha256": "F2B4C792D0EBB09DB7CC6178DDC7386737EC9BD42C21F7D382DF4658740A67B0",
+    "image_sha256": "BE32039D32ECD3E99027A8D413C93838A899680410AE3ACE6C997B34461CCC7E",
+    "arguments": [
+      "--generation-lit-capture",
+      "\"C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\final-cave-captures\\123456789-lake\\screenshots\"",
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=123456789",
+      "--preview-x=-4032",
+      "--preview-y=-3",
+      "--preview-z=-4032",
+      "--preview-yaw=35",
+      "--preview-pitch=-5",
+      "--preview-brightness=1"
+    ]
+  },
+  {
+    "site": {
+      "name": "123456789-cavern",
+      "seed": "123456789",
+      "version": "23",
+      "x": "4156",
+      "y": "14",
+      "z": "-1575",
+      "yaw": "30",
+      "pitch": "8",
+      "brightness": "1",
+      "fullbright": "1",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\driver\\Release\\StabilityDriver.exe",
+    "binary_sha256": "F2B4C792D0EBB09DB7CC6178DDC7386737EC9BD42C21F7D382DF4658740A67B0",
+    "image_sha256": "21FC1FA788CA1EB08B73843400A6FF3D820463BCDF383D5A73028C3852670CFA",
+    "arguments": [
+      "--generation-lit-capture",
+      "\"C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\final-cave-captures\\123456789-cavern\\screenshots\"",
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=123456789",
+      "--preview-x=4156",
+      "--preview-y=14",
+      "--preview-z=-1575",
+      "--preview-yaw=30",
+      "--preview-pitch=8",
+      "--preview-brightness=1"
+    ]
+  },
+  {
+    "site": {
+      "name": "42-lake",
+      "seed": "42",
+      "version": "23",
+      "x": "3264",
+      "y": "-7",
+      "z": "-3648",
+      "yaw": "35",
+      "pitch": "-5",
+      "brightness": "1",
+      "fullbright": "1",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\driver\\Release\\StabilityDriver.exe",
+    "binary_sha256": "F2B4C792D0EBB09DB7CC6178DDC7386737EC9BD42C21F7D382DF4658740A67B0",
+    "image_sha256": "A582353078964C1DFB1683EC348893870077178A602ADCB8654975BCBBEDDC13",
+    "arguments": [
+      "--generation-lit-capture",
+      "\"C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\final-cave-captures\\42-lake\\screenshots\"",
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=42",
+      "--preview-x=3264",
+      "--preview-y=-7",
+      "--preview-z=-3648",
+      "--preview-yaw=35",
+      "--preview-pitch=-5",
+      "--preview-brightness=1"
+    ]
+  },
+  {
+    "site": {
+      "name": "42-cavern",
+      "seed": "42",
+      "version": "23",
+      "x": "-1384",
+      "y": "-25",
+      "z": "1601",
+      "yaw": "30",
+      "pitch": "8",
+      "brightness": "1",
+      "fullbright": "1",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\driver\\Release\\StabilityDriver.exe",
+    "binary_sha256": "F2B4C792D0EBB09DB7CC6178DDC7386737EC9BD42C21F7D382DF4658740A67B0",
+    "image_sha256": "57A81043771AD08084E410FF554604031FE08B68BBAE181B2309B2543B669F48",
+    "arguments": [
+      "--generation-lit-capture",
+      "\"C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v23-validation\\final-cave-captures\\42-cavern\\screenshots\"",
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=42",
+      "--preview-x=-1384",
+      "--preview-y=-25",
+      "--preview-z=1601",
+      "--preview-yaw=30",
+      "--preview-pitch=8",
+      "--preview-brightness=1"
+    ]
+  },
+  {
+    "site": {
+      "name": "cave-mouth",
+      "seed": "20260917",
+      "version": "23",
+      "x": "-701.5",
+      "y": "81.5",
+      "z": "-1220.5",
+      "yaw": "56",
+      "pitch": "-18",
+      "brightness": "0.5",
+      "fullbright": "0",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe",
+    "binary_sha256": "D18ED5C07A769ADE587E8513EE21B06E37A7B80E0F78C7A4C2F35BD7ED746847",
+    "image_sha256": "75944FD5B9DD80397D75A9954DFC9CFB43638FA4203CB659073390561CC3D910",
+    "arguments": [
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=20260917",
+      "--preview-x=-701.5",
+      "--preview-y=81.5",
+      "--preview-z=-1220.5",
+      "--preview-yaw=56",
+      "--preview-pitch=-18",
+      "--preview-brightness=0.5"
+    ]
+  }
+]

@@ -283,7 +283,7 @@ private:
     std::string diversityAudit_;
     bool diversitySpawnsOnly_=false;
     std::string densityAudit_;
-    unsigned fixtureGenerator_ = 22;
+    unsigned fixtureGenerator_ = LatestGeneratorVersion;
     bool weatherSmoke_ = false;
     std::string weatherBenchmark_;
     void runSurvivalSmokeTest();

@@ -80,7 +80,8 @@ struct StructureTemplate {
 enum class StructurePieceKind : std::uint8_t {
     Well, House, LargeHouse, Farmhouse, Smith, Storage, Tower,
     Farm, Pen, Lamp, OutpostTower, Tent, LogPile,
-    Pyramid, Ruin, DesertWell, Campsite
+    Pyramid, Ruin, DesertWell, Campsite,
+    WildernessCamp, Lookout, StandingStones, MountainShelter, ForestSanctum
 };
 
 struct StructurePiece {
@@ -118,6 +119,7 @@ bool canPlaceStructure(const StructureBox& footprint, int maximumSlope,
 class StructureGenerator {
 public:
     explicit StructureGenerator(std::uint32_t seed) : seed_(seed) {}
+    void setGenerationVersion(unsigned version);
 
     // Pure regional planning: no loaded chunks, world edits, OpenGL or shared RNG.
     std::vector<StructurePlan> plansForChunk(
@@ -126,6 +128,8 @@ public:
     StructurePlan majorPlanForRegion(
         int regionX, int regionZ,
         const std::function<StructureTerrain(int, int)>& terrain) const;
+    StructurePlan smallPlanForRegion(int regionX,int regionZ,
+        const std::function<StructureTerrain(int,int)>& terrain) const;
     void placeTemplate(const StructurePiece& piece, int chunkX, int chunkZ,
                        std::vector<Block>& blocks,
                        std::vector<StructureLootMarker>& loot,
@@ -141,6 +145,7 @@ public:
 
 private:
     std::uint32_t seed_;
+    unsigned version_ = 1;
     mutable std::mutex cacheMutex_;
     mutable std::unordered_map<std::int64_t, std::shared_ptr<const StructurePlan>> majorCache_;
     mutable std::deque<std::int64_t> majorCacheOrder_;

@@ -1,4 +1,5 @@
 #include "World.h"
+#include "GeneratorVersion.h"
 #include "ExplorationLoot.h"
 #include "Persistence.h"
 #include "TerrainDensity.h"
@@ -414,9 +415,10 @@ World::World(std::uint32_t seed, std::uint32_t generationVersion)
       weirdnessNoise_(seed ^ 0xe37219adU), ridgeNoise_(seed ^ 0x2f6b8053U),
       riverNoise_(seed ^ 0x7a316c5dU), aquiferNoise_(seed ^ 0xc45e1f09U),
       cheeseNoise_(seed ^ 0x91b37d65U), spaghettiNoise_(seed ^ 0x326fa1cbU),
-      noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed), underground_(seed), underground20_(seed,20), underground21_(seed,21),
+      noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed), underground_(seed), underground20_(seed,20), underground21_(seed,21), underground23_(seed,21),
       seed_(seed) {
-    generationVersion_ = std::clamp(generationVersion, 1U, 22U);
+    generationVersion_ = std::clamp(generationVersion, 1U, LatestGeneratorVersion);
+    structures_.setGenerationVersion(generationVersion_);
     const auto maximum=streamingWorkerPlan(std::thread::hardware_concurrency(),ChunkStreamingQuality::High);
     workerPlan_=streamingWorkerPlan(std::thread::hardware_concurrency(),streamingQuality_);
     generationWorkerLimit_=workerPlan_.generation;
@@ -2536,12 +2538,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     if (version >= 2U) {
         input.read(reinterpret_cast<char*>(&loadedGenerationVersion),
                    sizeof(loadedGenerationVersion));
-        if (!input || (loadedGenerationVersion != 1U && loadedGenerationVersion != 2U &&
-                       loadedGenerationVersion != 3U && loadedGenerationVersion != 4U &&
-                       loadedGenerationVersion != 5U &&
-                       loadedGenerationVersion != 6U && loadedGenerationVersion != 7U &&
-                       loadedGenerationVersion != 8U && loadedGenerationVersion != 9U &&
-                       loadedGenerationVersion != 10U && loadedGenerationVersion != 11U && loadedGenerationVersion != 12U && loadedGenerationVersion != 13U && loadedGenerationVersion != 14U && loadedGenerationVersion != 15U && loadedGenerationVersion != 16U && loadedGenerationVersion != 17U && loadedGenerationVersion != 18U && loadedGenerationVersion != 19U && loadedGenerationVersion != 20U && loadedGenerationVersion != 21U && loadedGenerationVersion != 22U))
+        if (!input || !validGeneratorVersion(loadedGenerationVersion))
             return false;
     }
 
@@ -2563,6 +2560,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         fluidQueued_.clear(); fluidLavaDue_.clear();
         fluidUpdateAccumulator_ = 0.0f;
         generationVersion_ = loadedGenerationVersion;
+        structures_.setGenerationVersion(generationVersion_);
         survivalSpawnRegion_.reset();
         playerPosition = loadedPlayerPosition;
     };

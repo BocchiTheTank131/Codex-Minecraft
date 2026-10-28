@@ -1,0 +1,92 @@
+[
+  {
+    "site": {
+      "name": "20260917-panorama-v22",
+      "seed": "20260917",
+      "version": "22",
+      "x": "1290",
+      "y": "250",
+      "z": "-690",
+      "yaw": "53.94538183353896",
+      "pitch": "-6.387950625709427",
+      "brightness": "0.5",
+      "fullbright": "0",
+      "rd": "24"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe",
+    "binary_sha256": "31FD3A6B39938315992F9FBC1B0DCDF959B5B1E62F52FCC1AEFD8CB033C90A16",
+    "image_sha256": "5164B08120BF84B221C88E4BD150D190C7475AE9993FE735F4F04986954EF3C3",
+    "arguments": [
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=22",
+      "--seed=20260917",
+      "--preview-x=1290",
+      "--preview-y=250",
+      "--preview-z=-690",
+      "--preview-yaw=53.94538183353896",
+      "--preview-pitch=-6.387950625709427",
+      "--preview-brightness=0.5"
+    ]
+  },
+  {
+    "site": {
+      "name": "123456789-panorama-v22",
+      "seed": "123456789",
+      "version": "22",
+      "x": "1760",
+      "y": "250",
+      "z": "-400",
+      "yaw": "41.877869537884294",
+      "pitch": "-0.8494738372129651",
+      "brightness": "0.5",
+      "fullbright": "0",
+      "rd": "24"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe",
+    "binary_sha256": "31FD3A6B39938315992F9FBC1B0DCDF959B5B1E62F52FCC1AEFD8CB033C90A16",
+    "image_sha256": "B0AEA5B5FD39E240F0E81ACAA49CF77CDAE29E93966324EA9FD7DD7C2C79A79D",
+    "arguments": [
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=22",
+      "--seed=123456789",
+      "--preview-x=1760",
+      "--preview-y=250",
+      "--preview-z=-400",
+      "--preview-yaw=41.877869537884294",
+      "--preview-pitch=-0.8494738372129651",
+      "--preview-brightness=0.5"
+    ]
+  },
+  {
+    "site": {
+      "name": "42-panorama-v22",
+      "seed": "42",
+      "version": "22",
+      "x": "1650",
+      "y": "250",
+      "z": "-1600",
+      "yaw": "44.24283113494146",
+      "pitch": "-2.2510216916521584",
+      "brightness": "0.5",
+      "fullbright": "0",
+      "rd": "24"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe",
+    "binary_sha256": "31FD3A6B39938315992F9FBC1B0DCDF959B5B1E62F52FCC1AEFD8CB033C90A16",
+    "image_sha256": "5DF66501042456CD7018C10BE0D1DB811312F5111E941E04B3636FC21B00CD8E",
+    "arguments": [
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=22",
+      "--seed=42",
+      "--preview-x=1650",
+      "--preview-y=250",
+      "--preview-z=-1600",
+      "--preview-yaw=44.24283113494146",
+      "--preview-pitch=-2.2510216916521584",
+      "--preview-brightness=0.5"
+    ]
+  }
+]

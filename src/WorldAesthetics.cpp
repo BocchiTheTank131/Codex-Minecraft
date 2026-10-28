@@ -6,6 +6,7 @@
 #include "BiomeBalance.h"
 #include "GeographicDiversity.h"
 #include "RiverNetworkV22.h"
+#include "TerrainExpansion.h"
 #include <algorithm>
 #include <cmath>
 
@@ -16,7 +17,7 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
     auto s=sampleTerrainGeography(x,z);
     const bool refined=generationVersion_>=14;
     const bool chaos=generationVersion_>=15;
-    const float habitatScale=chaos?.0060f:.0045f;
+    const float habitatScale=generationVersion_>=23?.0024f:chaos?.0060f:.0045f;
     const float local=biomeNoise_.fractal2D(x*habitatScale+71.3f,z*habitatScale-19.7f,2,2.f,.28f);
     const float wet=humidityNoise_.noise(x*.0029f-31.7f,0,z*.0029f+73.9f);
     s.humidity=std::clamp(s.macroHumidity+wet*.27f+local*.10f,0.f,1.f);
@@ -26,7 +27,7 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
     const float rugged=1-s.erosion;
     const float belt=1-smooth(.08f,.34f,std::abs(s.weirdness));
     const float mountain=smooth(.015f,.16f,s.naturalContinentalness)*belt*(1-smooth(.40f,.80f,s.erosion));
-    const float ridgeScale=chaos?.0040f:refined?.0024f:.0016f;
+    const float ridgeScale=generationVersion_>=23?.0018f:chaos?.0040f:refined?.0024f:.0016f;
     const float broad=ridgeNoise_.fractal2D(x*ridgeScale-137.613f,z*ridgeScale+39.347f,2,2.f,.30f);
     const float rolling=terrainNoise_.fractal2D(x*.0030f+43.449f,z*.0030f-119.273f,2,2.f,.32f);
     const float ridge=1-std::abs(broad);
@@ -48,7 +49,10 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
     }
     if(chaos) {
         const float detail=terrainNoise_.noise(x*.018f+137.9f,.671f,z*.018f-83.1f);
-        height=TerrainChaos::height(s.continentalness,s.erosion,mountain,broad,rolling,crag,detail);
+        if(generationVersion_>=23) {
+            const float regional=terrainNoise_.noise(x*.00075f+91.7f,.371f,z*.00075f-37.9f);
+            height=TerrainExpansion::height(s.continentalness,s.erosion,mountain,broad,rolling,crag,detail,regional);
+        } else height=TerrainChaos::height(s.continentalness,s.erosion,mountain,broad,rolling,crag,detail);
     }
     // Reuse sampled medium relief to break up eroded inland lowlands.
     // Coastal and river datums below still take precedence.
@@ -121,8 +125,11 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
     if(generationVersion_>=22) {
         // Reuse the habitat noise at an exploration-scale wavelength. Temperature
         // and humidity remain V16/V21 values; only compatible habitats vary.
-        const float regional=biomeNoise_.noise(x*.0018f+37.19f,.631f,z*.0018f-83.71f);
-        s.biome=GeographicDiversity::habitat(s.biome,s.temperature,s.humidity,regional,s.height);
+        const float scale=generationVersion_>=23?.00115f:.0018f;
+        const float regional=biomeNoise_.noise(x*scale+37.19f,.631f,z*scale-83.71f);
+        s.biome=generationVersion_>=23?
+            TerrainExpansion::habitat(s.biome,s.temperature,s.humidity,regional,local,s.height,s.erosion):
+            GeographicDiversity::habitat(s.biome,s.temperature,s.humidity,regional,s.height);
     }
     // The legacy selector labels low beds as ocean before testing rivers.
     // A channel carved into dry terrain remains a river even near sea level;

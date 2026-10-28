@@ -1,6 +1,7 @@
 #include "World.h"
 #include "TerrainDensity.h"
 #include "TerrainAesthetics.h"
+#include "TerrainExpansion.h"
 #include <algorithm>
 #include <cmath>
 #include <set>
@@ -33,7 +34,8 @@ bool World::nativeCavityAt(int x,int y,int z) const {
         const auto t=sampleTerrain(x,z);
         const float aquifer=aquiferNoise_.fractal2D(x*.0018f+113.7f,z*.0018f-67.3f,2,2.f,.3f);
         value.column={t.height,smooth(95,180,float(t.height))*(1-smooth(.40f,.83f,t.erosion)),
-            aquifer,-24.f+aquifer*30.f,t.ravine};
+            aquifer,generationVersion_>=23?TerrainExpansion::aquiferLevel(aquifer):-24.f+aquifer*30.f,t.ravine,
+            generationVersion_>=23?TerrainExpansion::shaftAt(x,z,noodleNoise_,ridgeNoise_):-1.f};
         value.slope=float(std::max({std::abs(terrainHeight(x-4,z)-t.height),std::abs(terrainHeight(x+4,z)-t.height),
             std::abs(terrainHeight(x,z-4)-t.height),std::abs(terrainHeight(x,z+4)-t.height),
             std::abs(terrainHeight(x-1,z)-t.height),std::abs(terrainHeight(x+1,z)-t.height),
@@ -42,8 +44,11 @@ bool World::nativeCavityAt(int x,int y,int z) const {
     }
     auto& value=found->second;auto& cell=value.cells[y-minimumY()];
     if(cell>=0)return cell!=0;
-    const auto f=TerrainDensity::sampleAt(x,y,z,ridgeNoise_,cheeseNoise_,spaghettiNoise_,noodleNoise_,caveNoise_);
-    cell=TerrainAesthetics::density(f,value.column,y,value.slope)<=0?1:0;
+    const auto f=generationVersion_>=23?
+        TerrainDensity::sampleAtCached(x,y,z,seed_,generationVersion_,ridgeNoise_,cheeseNoise_,spaghettiNoise_,noodleNoise_,caveNoise_):
+        TerrainDensity::sampleAt(x,y,z,ridgeNoise_,cheeseNoise_,spaghettiNoise_,noodleNoise_,caveNoise_);
+    cell=(generationVersion_>=23?TerrainExpansion::density(f,value.column,y,value.slope):
+        TerrainAesthetics::density(f,value.column,y,value.slope))<=0?1:0;
     return cell!=0;
 }
 std::vector<TerrainExploration::CaveEntrance> World::diversityEntrances(int cx,int cz) const {

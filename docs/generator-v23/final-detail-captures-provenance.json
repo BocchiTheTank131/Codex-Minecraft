@@ -1,0 +1,92 @@
+[
+  {
+    "site": {
+      "name": "coast-detail",
+      "seed": "42",
+      "version": "23",
+      "x": "592",
+      "y": "88",
+      "z": "-504",
+      "yaw": "0",
+      "pitch": "-18",
+      "brightness": "0.5",
+      "fullbright": "0",
+      "rd": "16"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe",
+    "binary_sha256": "D18ED5C07A769ADE587E8513EE21B06E37A7B80E0F78C7A4C2F35BD7ED746847",
+    "image_sha256": "7E2D9FA136C9ABC81EEBDF539F8B0C3C530B2A389E64499652243A8B559E184E",
+    "arguments": [
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=42",
+      "--preview-x=592",
+      "--preview-y=88",
+      "--preview-z=-504",
+      "--preview-yaw=0",
+      "--preview-pitch=-18",
+      "--preview-brightness=0.5"
+    ]
+  },
+  {
+    "site": {
+      "name": "camp-overview",
+      "seed": "20260917",
+      "version": "23",
+      "x": "2624",
+      "y": "104",
+      "z": "-3896",
+      "yaw": "156.04",
+      "pitch": "-25",
+      "brightness": "0.5",
+      "fullbright": "0",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe",
+    "binary_sha256": "D18ED5C07A769ADE587E8513EE21B06E37A7B80E0F78C7A4C2F35BD7ED746847",
+    "image_sha256": "AF8A230285666044F10C8A459928D9118FE2B1FA8310555F68C781F4219671B8",
+    "arguments": [
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=20260917",
+      "--preview-x=2624",
+      "--preview-y=104",
+      "--preview-z=-3896",
+      "--preview-yaw=156.04",
+      "--preview-pitch=-25",
+      "--preview-brightness=0.5"
+    ]
+  },
+  {
+    "site": {
+      "name": "river-overview",
+      "seed": "20260917",
+      "version": "23",
+      "x": "-1976",
+      "y": "102",
+      "z": "-2048",
+      "yaw": "120",
+      "pitch": "-40",
+      "brightness": "0.5",
+      "fullbright": "0",
+      "rd": "12"
+    },
+    "executable": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe",
+    "binary_sha256": "D18ED5C07A769ADE587E8513EE21B06E37A7B80E0F78C7A4C2F35BD7ED746847",
+    "image_sha256": "E1125EFFF034C1B7EFF0DDCE13E3273FEB4718AB633F24FB080E876ACA7EE920",
+    "arguments": [
+      "--worldgen-test",
+      "--preview-clean",
+      "--generator=23",
+      "--seed=20260917",
+      "--preview-x=-1976",
+      "--preview-y=102",
+      "--preview-z=-2048",
+      "--preview-yaw=120",
+      "--preview-pitch=-40",
+      "--preview-brightness=0.5"
+    ]
+  }
+]

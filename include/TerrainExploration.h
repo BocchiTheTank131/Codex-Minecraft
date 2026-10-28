@@ -16,6 +16,6 @@ bool carves(const CaveEntrance& cave,int x,int y,int z);
 std::vector<CaveEntrance> diverseCaveEntrances(int chunkX,int chunkZ,std::uint32_t seed,
     const std::function<SurfaceColumn(int,int)>& terrain,
     const std::function<bool(int,int,int)>& cavity,
-    const std::function<bool(int,int)>& reserved);
+    const std::function<bool(int,int)>& reserved,unsigned generationVersion=22);
 bool mushroomCluster(int x,int z,std::uint32_t seed,Biome biome);
 }

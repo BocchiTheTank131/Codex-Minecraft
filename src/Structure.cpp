@@ -282,6 +282,71 @@ StructureTemplate buildTemplate(StructurePieceKind kind) {
                     add(result, x, 4, z, Block::Planks);
         add(result, 0, 1, 0, Block::Torch);
         break;
+    case StructurePieceKind::WildernessCamp:
+        floor(result,4,3,0,Block::CoarseDirt);
+        for(int z=-2;z<=2;++z)for(int x=-3;x<=0;++x) {
+            if(x==-3||x==0)for(int y=1;y<=3;++y)add(result,x,y,z,Block::Log);
+            add(result,x,4,z,Block::Planks);
+        }
+        add(result,2,1,0,Block::Campfire);
+        for(int z=1;z<=2;++z)add(result,3,1,z,Block::Log);
+        add(result,-2,1,1,Block::Chest);
+        result.loot.push_back({-2,1,1,StructureLoot::Ruin,0x23c1U});
+        result.connectors.push_back({-2,0,-4});
+        break;
+    case StructurePieceKind::Lookout:
+        floor(result,2,2,0,Block::Cobblestone);
+        for(int x:{-2,2})for(int z:{-2,2})for(int y=1;y<=8;++y)
+            add(result,x,y,z,Block::SpruceLog);
+        floor(result,2,2,5,Block::SprucePlanks);
+        for(int z=-2;z<=2;++z)for(int x=-2;x<=2;++x) {
+            add(result,x,9,z,Block::SprucePlanks);
+            if(std::abs(x)==2||std::abs(z)==2)add(result,x,6,z,Block::OakFence);
+        }
+        // A solid, two-wide staircase needs no attachment-state assumptions.
+        for(int step=0;step<5;++step)for(int x=-1;x<=0;++x) {
+            for(int y=1;y<=step+1;++y)add(result,x,y,-5+step,Block::Cobblestone);
+            for(int y=step+2;y<=step+4;++y)clear(result,x,y,-5+step);
+        }
+        clear(result,-1,5,-1);clear(result,0,5,-1);
+        add(result,1,6,1,Block::Chest);
+        add(result,1,6,-1,Block::Torch);
+        result.loot.push_back({1,6,1,StructureLoot::Ruin,0x23c2U});
+        result.connectors.push_back({-1,1,-6});
+        break;
+    case StructurePieceKind::StandingStones:
+        // Separate irregular monoliths with low stone footings and open routes.
+        for(const auto p:{std::array<int,3>{-3,0,4},{2,2,3},{1,-3,5}})
+            for(int y=0;y<=p[2];++y)add(result,p[0],y,p[1],
+                y%3==0?Block::CrackedStoneBricks:Block::MossyStoneBricks);
+        add(result,-2,4,0,Block::StoneBricks);add(result,-1,4,0,Block::StoneBricks);
+        add(result,0,0,1,Block::MossyCobblestone);add(result,0,1,1,Block::Chest);
+        result.loot.push_back({0,1,1,StructureLoot::Ruin,0x23c3U});
+        break;
+    case StructurePieceKind::MountainShelter:
+        floor(result,3,3,0,Block::Cobblestone);
+        for(int z=-3;z<=3;++z)for(int x=-3;x<=3;++x) {
+            for(int y=1;y<=3;++y) {
+                if(std::abs(x)==3||z==3)add(result,x,y,z,y==1?Block::Cobblestone:Block::SpruceLog);
+                else clear(result,x,y,z);
+            }
+            add(result,x,4+int(std::abs(x)<2),z,Block::SprucePlanks);
+        }
+        add(result,-2,1,2,Block::Chest);add(result,2,1,2,Block::CraftingTable);
+        add(result,0,1,2,Block::Torch);
+        result.loot.push_back({-2,1,2,StructureLoot::Ruin,0x23c4U});
+        result.connectors.push_back({0,0,-4});
+        break;
+    case StructurePieceKind::ForestSanctum:
+        floor(result,4,3,0,Block::MossyCobblestone);
+        for(int z=-3;z<=3;++z)for(int x=-4;x<=4;++x)
+            if(std::abs(x)==4||std::abs(z)==3)for(int y=1;y<=1+(x*x+z*z)%4;++y)
+                add(result,x,y,z,(x+z)%3?Block::MossyStoneBricks:Block::CrackedStoneBricks);
+        for(int y=1;y<=3;++y){clear(result,0,y,-3);clear(result,1,y,-3);}
+        add(result,-2,1,1,Block::Chest);add(result,3,1,2,Block::Cobweb);
+        result.loot.push_back({-2,1,1,StructureLoot::Ruin,0x23c5U});
+        result.connectors.push_back({0,0,-4});
+        break;
     default:
         break;
     }
@@ -356,8 +421,8 @@ bool StructureBox::overlapsXZ(const StructureBox& other, int padding) const {
 }
 
 const StructureTemplate& structureTemplate(StructurePieceKind kind) {
-    static const std::array<StructureTemplate, 17> templates = [] {
-        std::array<StructureTemplate, 17> result;
+    static const std::array<StructureTemplate, 22> templates = [] {
+        std::array<StructureTemplate, 22> result;
         for (int index = 0; index < static_cast<int>(result.size()); ++index)
             result[static_cast<std::size_t>(index)] =
                 buildTemplate(static_cast<StructurePieceKind>(index));
@@ -594,17 +659,53 @@ StructurePlan StructureGenerator::planSmall(
         }
     const bool desert = ground.biome == StructureBiome::Desert;
     const int choice = static_cast<int>((candidate.hash >> 9U) % 3U);
-    const StructurePieceKind kind = desert && choice == 1
+    StructurePieceKind kind = desert && choice == 1
         ? StructurePieceKind::DesertWell
         : choice == 0 ? StructurePieceKind::Ruin
         : StructurePieceKind::Campsite;
+    if(version_>=23 && !desert) {
+        const auto variation=(candidate.hash>>22U)%6U;
+        if(ground.biome==StructureBiome::Mountains || ground.height>145)
+            kind=variation<4?StructurePieceKind::MountainShelter:StructurePieceKind::StandingStones;
+        else if(ground.biome==StructureBiome::Forest)
+            kind=variation<2?StructurePieceKind::ForestSanctum:variation<4?
+                StructurePieceKind::WildernessCamp:StructurePieceKind::Lookout;
+        else kind=variation<2?StructurePieceKind::StandingStones:variation<4?
+                StructurePieceKind::Lookout:StructurePieceKind::WildernessCamp;
+    }
     plan.kind = kind == StructurePieceKind::DesertWell ? StructureKind::Well
               : kind == StructurePieceKind::Ruin ? StructureKind::RuinedHouse
               : StructureKind::Campsite;
-    addPiece(plan, makePiece(kind, candidate.x, ground.height, candidate.z,
+    auto piece=makePiece(kind, candidate.x, ground.height, candidate.z,
              static_cast<int>((candidate.hash >> 13U) & 3U),
-             (candidate.hash & 0x10000U) != 0U, desert), 3, terrain);
+             (candidate.hash & 0x10000U) != 0U, desert);
+    if(version_>=23) {
+        const auto heights=terrainHeightForFootprint(piece.bounds,terrain);
+        // Floor at the highest accepted support; no buried doorways. The
+        // existing placement pass supplies the short foundation underneath.
+        piece.y=heights[1];piece.bounds=structureBoundingBox(piece);
+        if(kind>=StructurePieceKind::WildernessCamp)for(const auto& entry:structureTemplate(kind).connectors) {
+            const auto p=rotateLocalPosition(entry.x,entry.z,piece.rotation,piece.mirror);
+            const auto approach=terrain(piece.x+p[0],piece.z+p[1]);
+            // Highest-footprint floors must not turn a downhill entrance into
+            // an unclimbable retaining wall. Reject; never flatten the region.
+            if(!approach.supported||approach.river>.01f||
+               approach.height<piece.y+entry.y-1||approach.height>piece.y+1)return plan;
+        }
+    }
+    addPiece(plan,piece,3,terrain);
     return plan;
+}
+
+void StructureGenerator::setGenerationVersion(unsigned version) {
+    std::lock_guard<std::mutex> lock(cacheMutex_);
+    if(version_==version)return;
+    version_=version;majorCache_.clear();majorCacheOrder_.clear();
+}
+
+StructurePlan StructureGenerator::smallPlanForRegion(int x,int z,
+    const std::function<StructureTerrain(int,int)>& terrain) const {
+    return planSmall(x,z,terrain);
 }
 
 std::shared_ptr<const StructurePlan> StructureGenerator::cachedMajorPlan(
@@ -675,8 +776,9 @@ std::vector<StructurePlan> StructureGenerator::plansForChunk(
                 candidate.z + 12 < minimumZ || candidate.z - 12 > maximumZ)
                 continue;
             StructurePlan plan = planSmall(regionX, regionZ, terrain);
+            const int halo=version_>=23?2:0;
             if (!plan.pieces.empty() &&
-                plan.bounds.intersectsXZ(minimumX, minimumZ, maximumX, maximumZ))
+                plan.bounds.intersectsXZ(minimumX-halo, minimumZ-halo, maximumX+halo, maximumZ+halo))
                 plans.push_back(std::move(plan));
         }
     }
