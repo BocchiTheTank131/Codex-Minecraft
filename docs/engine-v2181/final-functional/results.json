@@ -1,0 +1,62 @@
+[
+  {
+    "name": "subsystems",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "game",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "checkpoint",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "engine-tests",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "engine-stream-stress",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "automation",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "automation-stabilization",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "building",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "creative-ui",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "qol",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "farming",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "legacy-building",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  }
+]

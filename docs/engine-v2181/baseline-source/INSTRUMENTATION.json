@@ -1,0 +1,21 @@
+{
+  "archive_sha256": "124d77c7de2b59a1aa2a680d30224593f9b99e46c140d3c067c6286ac60dc3a4",
+  "source_commit": "507fefdec29f5b2848d1344b520d94a34fe8df95",
+  "changed_files": {
+    "include/Automation.h": "3c9baa305880f2d80269ce93b9e6663837dd9b52130a0da872f91c85aadbbf8b",
+    "include/ChunkStreaming.h": "d636e3194d69d6df0b48b34d8695d905794e551b191ff98cad8c71fa9e2aabd8",
+    "include/Game.h": "e8a5b93e0fb4310aa40c347c25fcbb7d7df774329ad368af44cb3c2a94604788",
+    "include/Player.h": "0ddb8e23b30b2fd2e473196a2226b4a419df882dccc244c862249bf0ceff01ee",
+    "include/Survival.h": "598aa3e10ac6a8fd3771e77182f16b39ec361977cb543ce19e64232bed686be5",
+    "include/Transportation.h": "679cc0e2b339cec1da6f9b5b5c8dd50e3d60161a2ed7b48388e7f5a1dc04157d",
+    "include/World.h": "bab1ed8758b1f798cbcfd0f0018a268a78b45c8b5526c512ca23f4214dfea129",
+    "src/StreamingValidation.cpp": "5693e69c770bdc57b0d924b0f594330834080cf2b8fcfaf32b6c69e7f3cfd8b7",
+    "src/World.cpp": "3ab4d6abe8c8b45ad242482e1051eeb967f6459beaab321fbe3589899d5cf040",
+    "src/WorldStreaming.cpp": "9d6f32541a7720379582c37d59989c10daa5836bb7711a3513dcc5170e348880",
+    "tests/stability/CMakeLists.txt": "3c75f44deefacaccea2ebbb5872f7148ad904cee897d6ddb71089b6f2a7df7db",
+    "tests/stability/engine.cpp": "2d8dc29e609bb73aa00d2d5805ad0ddd6c8ae7ffe79cda3bc01c941a13b3122b",
+    "tests/stability/main.cpp": "69320d6fd0b7dfe8e5688ba4087fbda302aca5861b70e2f0928064122d6dead9",
+    "src/OptimizationBenchmark.cpp": "d902be10573fff1e94b848672fdbf0684bb6fc991482b7f6c9aafaed6b338e5d"
+  },
+  "purpose": "Common timing and private test access only; original generation, saving, allocator and worker algorithms retained."
+}

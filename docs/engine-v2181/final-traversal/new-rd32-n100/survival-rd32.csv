@@ -1,0 +1,3 @@
+phase,rd,frames,fps,mean_ms,p95_ms,p99_ms,worst_ms,mean_work_ms,ram_mb,terrain_bytes,distance,occlusion_chunks,save_capture_ms,save_total_ms
+walking,32,965,48.2463,20.727,67.0346,100.316,527.307,3.75547,649.039,1291845632,95.3026,0,3.2668,24.3501
+boat,32,856,57.043,17.5306,17.1781,17.4092,512.124,5.58999,546.016,763363328,15.2882,0,2.9585,23.155

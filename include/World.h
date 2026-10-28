@@ -233,6 +233,7 @@ public:
 };
 
 class World {
+    friend class EngineOptimizationTest;
     friend class Automation;
     friend class AutomationTest;
     friend class IconTest;
@@ -254,6 +255,7 @@ public:
     void generate(int renderDistance, const glm::vec3& initialPosition = glm::vec3(0.0f));
     bool loadWorld(const std::string& path, glm::vec3& playerPosition);
     bool saveWorld(const std::string& path, const glm::vec3& playerPosition) const;
+    std::function<bool()> captureSaveWorld(const std::string& path,const glm::vec3& playerPosition) const;
     std::uint32_t seed() const {
         return seed_;
     }
@@ -593,6 +595,13 @@ private:
     void updateTerrainLod(const glm::vec3& camera);
     std::vector<std::shared_ptr<TerrainBufferPage>> terrainPages_;
     bool terrainPageTrimmedThisFrame_ = false;
+    struct TerrainPageDeletion {
+        GLuint vbo=0,ebo=0,vao=0;
+        std::size_t vertexBytes=0,indexBytes=0;
+    };
+    std::deque<TerrainPageDeletion> terrainPageDeletions_;
+    std::chrono::steady_clock::time_point terrainReuseUntil_{},nextTerrainDeletion_{};
+    void releaseTerrainPageDeletions(bool drain=false);
     struct RetirementFence {
         GLsync handle=nullptr;
         bool complete=false;
@@ -641,6 +650,7 @@ private:
     TerrainSample sampleTerrainLegacy(int worldX, int worldZ) const;
     TerrainSample sampleTerrainModern(int worldX, int worldZ) const;
     TerrainSample sampleTerrainAesthetics(int x,int z,bool evaluateShore=true,bool drainage=true) const;
+    TerrainSample sampleTerrainAestheticsUncached(int x,int z,bool evaluateShore,bool drainage) const;
     TerrainSample sampleTerrainDensity(int worldX, int worldZ) const;
     GeneratedChunk generateChunkDataDensity(int chunkX, int chunkZ) const;
     TerrainSample sampleTerrainGeography(int worldX, int worldZ) const;

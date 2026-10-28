@@ -5,11 +5,35 @@
 #include <future>
 #include <memory>
 #include <string>
+#include <vector>
+#include <cstddef>
 namespace SaveFile {
 struct CommitStatus {
     bool permanentFailure = false;
     std::string reason;
+    double captureMilliseconds=0,verificationMilliseconds=0,encodingMilliseconds=0,commitMilliseconds=0;
+    double hashingMilliseconds=0,stagingMilliseconds=0;
+    std::size_t snapshotBytes=0;
 };
+// Admission applies on the capturing thread, before copying any component.
+// A single outstanding job plus coalescing bounds total retained snapshots.
+class SnapshotBudget {
+public:
+    explicit SnapshotBudget(std::size_t limit=256U*1024U*1024U);
+    ~SnapshotBudget();
+    void reserve(std::size_t bytes);
+    std::size_t bytes() const{return used_;}
+    SnapshotBudget(const SnapshotBudget&)=delete;
+private:
+    std::size_t limit_,used_=0;
+    SnapshotBudget* previous_;
+};
+void reserveSnapshotBytes(std::size_t bytes);
+using SnapshotComponent=std::function<bool()>;
+// Components own immutable typed values. The worker creates/owns its own TLS
+// transaction; callers must never capture a live World, Game or inventory here.
+std::future<bool> commitSnapshotAsync(std::string journal,std::vector<SnapshotComponent> components,
+                                      std::shared_ptr<CommitStatus> status);
 // Lifetime reservation, acquired before recovery/loading and held until unload.
 class Session {
 public:

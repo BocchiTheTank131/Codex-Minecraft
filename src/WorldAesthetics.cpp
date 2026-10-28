@@ -7,6 +7,8 @@
 #include "GeographicDiversity.h"
 #include "RiverNetworkV22.h"
 #include "TerrainExpansion.h"
+#include "TerrainDensity.h"
+#include "GenerationMetrics.h"
 #include <algorithm>
 #include <cmath>
 
@@ -14,6 +16,24 @@ namespace {
 float smooth(float a,float b,float v) {const float t=std::clamp((v-a)/(b-a),0.f,1.f);return t*t*(3-2*t);}
 }
 World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateShore,bool drainage) const {
+    if(generationVersion_<23 || !evaluateShore || !drainage)
+        return sampleTerrainAestheticsUncached(x,z,evaluateShore,drainage);
+    // Full procedural columns are immutable. Reuse their exact float values;
+    // edits, loaded chunks and simulation state never enter this calculation.
+    // Fixed direct mapping: collisions recompute, with no eviction allocation.
+    struct Entry {int x=0,z=0;std::uint32_t seed=0;unsigned version=0;TerrainSample value{};};
+    thread_local std::array<Entry,4096> cache;
+    if(GenerationMetrics::active)++GenerationMetrics::active->heightQueries;
+    auto& entry=cache[TerrainDensity::hash(x,0,z,seed_)&4095U];
+    if(entry.version==generationVersion_&&entry.seed==seed_&&entry.x==x&&entry.z==z) {
+        if(GenerationMetrics::active)++GenerationMetrics::active->heightHits;
+        return entry.value;
+    }
+    const auto value=sampleTerrainAestheticsUncached(x,z,evaluateShore,drainage);
+    entry={x,z,seed_,generationVersion_,value};
+    return value;
+}
+World::TerrainSample World::sampleTerrainAestheticsUncached(int x,int z,bool evaluateShore,bool drainage) const {
     auto s=sampleTerrainGeography(x,z);
     const bool refined=generationVersion_>=14;
     const bool chaos=generationVersion_>=15;
@@ -144,9 +164,14 @@ World::TerrainSample World::sampleTerrainAesthetics(int x,int z,bool evaluateSho
 }
 
 World::TerrainMemory World::terrainMemory() const {
-    TerrainMemory result;result.pages=terrainPages_.size();
+    TerrainMemory result;result.pages=terrainPages_.size()+terrainPageDeletions_.size();
     // Soft residency targets: visible meshes are never evicted to meet a budget.
     result.budgetBytes=terrainMemoryTarget();
+    for(const auto& page:terrainPageDeletions_) {
+        result.capacityBytes+=page.vertexBytes+page.indexBytes;
+        result.vertexCapacityBytes+=page.vertexBytes;result.indexCapacityBytes+=page.indexBytes;
+        result.retiredBytes+=page.vertexBytes+page.indexBytes;
+    }
     for(const auto& page:terrainPages_) {
         result.capacityBytes+=page->capacity*page->byteStride();
         result.vertexCapacityBytes+=page->capacity*sizeof(PackedTerrainVertex);

@@ -50,6 +50,7 @@ int runIconTests(int argc,char** argv);
 int runQolTests(int argc,char** argv);
 int runAutomationTests(int argc,char** argv);
 int runExpansionTests(int argc,char** argv);
+int runEngineTests(int argc,char** argv);
 double fixtureWorkingSetMb();
 void setupAutomationTraversal(Game&,int);
 void driveAutomationTraversal(Game&,double);
@@ -128,6 +129,7 @@ int StabilityTest::run(int argc,char** argv){
    if(e.path().extension()==".bmp")std::filesystem::copy_file(e.path(),output/e.path().filename());
   return result;
  }
+ if(argc>1 && std::string(argv[1]).find("--engine-")==0)return runEngineTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--generation-")==0)return runExpansionTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--automation")==0)return runAutomationTests(argc,argv);
  if(argc>1 && std::string(argv[1])=="--qol")return runQolTests(argc,argv);
@@ -375,7 +377,11 @@ int StabilityTest::traversal(int rd,const std::filesystem::path& output){
  const auto warm=glfwGetTime();g.timing_.previousFrame=warm;while(glfwGetTime()-warm<5){const auto dt=g.beginFrame();g.updateSimulation(dt);g.renderFrame(dt);}
  for(int phase=0;phase<2;++phase){
   if(phase==1){bool placed=false;
-   for(const auto& p:std::array<glm::vec3,6>{{{402.5f,69.5f,-2815.5f},{202.5f,68.5f,-2892.5f},{92.5f,67.5f,-2909.5f},{-1967.5f,64.5f,-2059.5f},{-1148.5f,64.5f,-1997.5f},{-584.5f,65.5f,-2263.5f}}}){
+   std::vector<glm::vec3> boatSites{{402.5f,69.5f,-2815.5f},{202.5f,68.5f,-2892.5f},{92.5f,67.5f,-2909.5f},{-1967.5f,64.5f,-2059.5f},{-1148.5f,64.5f,-1997.5f},{-584.5f,65.5f,-2263.5f}};
+   // Historical river fixtures stay intact. New geography uses its deterministic
+   // natural ocean scene when those V22 river coordinates no longer contain water.
+   if(g.world_->generationVersion()>=23)boatSites.insert(boatSites.begin(),g.world_->optimizationScenes()[4]);
+   for(const auto& p:boatSites){
     g.world_->prepareSpawnTerrain(p);if(g.transportation_->placeBoat(*g.world_,Item::OakBoat,p,0)){const auto& b=g.transportation_->boats().back();g.player_->teleport(b.position+glm::vec3(-1.8f,1,0));placed=g.transportation_->useBoat(*g.player_,*g.world_,b.position+glm::vec3(0,1,0),{0,-1,0},4);if(placed)break;}}
    if(!placed)throw std::runtime_error("No validated V22 river boat fixture");
   }

@@ -1,0 +1,15 @@
+{
+  "phase": "automation",
+  "seed": 20260917,
+  "generator": 23,
+  "repeats": 2,
+  "distances": null,
+  "recovery_seconds": 15,
+  "binaries": {
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2181-validation\\baseline-instrumented\\Release\\VoxelFrontier.exe": "f92b44df292cde42bd3b666f302fac5980a5972e4d10e3d80f6d8d0b9a3ca853",
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe": "803431c91b0bccd4024cfd8d39b14e5125c83d5bbf1334017315d5820ce27b86",
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2181-validation\\baseline-driver\\Release\\StabilityDriver.exe": "1c8a4481a7b80c5d04dcbd0cffb36edce7a530b5362b6a50781f9417ec0d0cfb",
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2181-validation\\driver\\Release\\StabilityDriver.exe": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  "note": "Common instrumented original source, no concurrent workloads. Affinity is a logical-CPU proxy, not physical low-end certification."
+}

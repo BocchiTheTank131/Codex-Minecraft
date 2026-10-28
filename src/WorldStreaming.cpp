@@ -69,6 +69,9 @@ void World::updateStreaming(const glm::vec3& playerPosition, int meshBudget) {
     terrainPageTrimmedThisFrame_=false;
     streamingStats_.unloadMilliseconds=0;
     streamingStats_.fencePollMilliseconds=streamingStats_.rangeReleaseMilliseconds=streamingStats_.bufferDeleteMilliseconds=streamingStats_.pageTrimMilliseconds=streamingStats_.payloadReleaseMilliseconds=0;
+    streamingStats_.pageVboDeleteMilliseconds=streamingStats_.pageEboDeleteMilliseconds=streamingStats_.pageVaoDeleteMilliseconds=0;
+    streamingStats_.pageDeleteCalls=streamingStats_.pageAllocations=0;
+    streamingStats_.bufferAllocationMilliseconds=streamingStats_.bufferUploadMilliseconds=0;
     // A soft budget: individual sunlight/GL operations remain indivisible.
     // Always make progress even after a slow frame; never cut load distance.
     streamingBudgetMilliseconds_=streamingQuality_==ChunkStreamingQuality::Low ? .5f :
@@ -76,6 +79,7 @@ void World::updateStreaming(const glm::vec3& playerPosition, int meshBudget) {
     const int centerX = floorDiv(static_cast<int>(std::floor(playerPosition.x)), CHUNK_SIZE);
     const int centerZ = floorDiv(static_cast<int>(std::floor(playerPosition.z)), CHUNK_SIZE);
     if (!streamCenterValid_ || requestRadius_<0 || streamCenter_.x != centerX || streamCenter_.y != centerZ) {
+        terrainReuseUntil_=start+std::chrono::seconds(2);
         streamCenter_ = {centerX, centerZ};streamCenterValid_=true;
         generationLoadRadius_.store(
             std::max(renderDistance_, simulationDistance_), std::memory_order_relaxed);
@@ -172,7 +176,7 @@ void World::releaseRetiredTerrain(bool drain) {
 
 void World::setStreamingQuality(ChunkStreamingQuality quality) {
     streamingQuality_=quality;
-    workerPlan_=streamingWorkerPlan(std::thread::hardware_concurrency(),quality);
+    workerPlan_=streamingWorkerPlan(availableStreamingProcessors(),quality);
     workerPlan_.generation=std::min(workerPlan_.generation,unsigned(workers_.size()));
     workerPlan_.mesh=std::min(workerPlan_.mesh,unsigned(meshWorkers_.size()));
     generationWorkerLimit_=workerPlan_.generation; meshWorkerLimit_=workerPlan_.mesh;
@@ -194,7 +198,7 @@ ChunkStreamingDiagnostics World::streamingDiagnostics() const {
       stats.meshQueued=int(meshQueue_.size());stats.meshReady=int(completedMeshes_.size());stats.meshActive=int(meshWorkersBusy_); }
     stats.generationActive=int(activeGenerationWorkers_.load()+activePayloadReleases_.load());
     stats.generationLimit=generationWorkerLimit_; stats.meshLimit=meshWorkerLimit_;
-    stats.retiredChunks+=int(retiredTerrain_.size());stats.lightingQueued=int(lightingQueue_.size());
+    stats.retiredChunks+=int(retiredTerrain_.size()+terrainPageDeletions_.size());stats.lightingQueued=int(lightingQueue_.size());
     stats.generated=generationCompleted_;stats.meshed=meshCompleted_;stats.staleMeshes=staleMeshCount_;
     stats.generationMilliseconds=stats.generated?float(generationMicroseconds_.load())/float(stats.generated)/1000.f:0;
     return stats;

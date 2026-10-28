@@ -419,8 +419,8 @@ World::World(std::uint32_t seed, std::uint32_t generationVersion)
       seed_(seed) {
     generationVersion_ = std::clamp(generationVersion, 1U, LatestGeneratorVersion);
     structures_.setGenerationVersion(generationVersion_);
-    const auto maximum=streamingWorkerPlan(std::thread::hardware_concurrency(),ChunkStreamingQuality::High);
-    workerPlan_=streamingWorkerPlan(std::thread::hardware_concurrency(),streamingQuality_);
+    const auto maximum=streamingWorkerPlan(availableStreamingProcessors(),ChunkStreamingQuality::High);
+    workerPlan_=streamingWorkerPlan(availableStreamingProcessors(),streamingQuality_);
     generationWorkerLimit_=workerPlan_.generation;
     meshWorkerLimit_=workerPlan_.mesh;
     for(unsigned i=0;i<maximum.generation;++i) workers_.emplace_back(&World::workerLoop,this,i);
@@ -436,6 +436,7 @@ World::~World() {
             worker.join();
     for(auto& worker:meshWorkers_) if(worker.joinable()) worker.join();
     releaseRetiredTerrain(true);
+    releaseTerrainPageDeletions(true);
 }
 
 std::int64_t World::chunkKey(int chunkX, int chunkZ) {
@@ -2355,24 +2356,78 @@ void World::releaseEmptyTerrainPages() {
     // allocation as destination chunks arrive. Keep a small idle reserve and
     // trim at most one excess page per frame, after its retirement owners leave.
     if(terrainPageTrimmedThisFrame_) return;
+    terrainPageTrimmedThisFrame_=true;
+    // Splitting GL deletion increased VAO stalls in matched RD32 runs. Keep
+    // the proven small/medium-distance policy; use the bounded retirement pool
+    // only for the large-distance stress case it was designed to address.
+    if(renderDistance_<=32 && terrainPageDeletions_.empty()) {
+        std::size_t emptyBytes=0,totalBytes=0;
+        for(const auto& page:terrainPages_) {
+            totalBytes+=page->capacity*page->byteStride();
+            if(!page->allocated && page.use_count()==1)emptyBytes+=page->capacity*page->byteStride();
+        }
+        const std::size_t reserve=totalBytes>terrainMemoryTarget() || terrainMemoryBudget_==1?0:terrainMemoryBudget_==3?64U*1024U*1024U:16U*1024U*1024U;
+        if(emptyBytes<=reserve)return;
+        if(terrainMemoryBudget_!=1 && emptyBytes<=reserve*2 &&
+           (!retiredTerrain_.empty() || pendingChunkCount() || !dirtySet_.empty()))return;
+        const auto empty=std::find_if(terrainPages_.begin(),terrainPages_.end(),[](const auto& page){return !page->allocated && page.use_count()==1;});
+        if(empty!=terrainPages_.end()) {
+            const auto start=std::chrono::steady_clock::now();
+            streamingStats_.pageDeleteCalls+=unsigned(bool((*empty)->vbo))+unsigned(bool((*empty)->ebo))+unsigned(bool((*empty)->vao));
+            terrainPages_.erase(empty);
+            streamingStats_.pageTrimMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-start).count();
+        }
+        return;
+    }
+    releaseTerrainPageDeletions();
     std::size_t emptyBytes=0,totalBytes=0;
     for(const auto& page:terrainPages_) {
         totalBytes+=page->capacity*page->byteStride();
         if(!page->allocated && page.use_count()==1)emptyBytes+=page->capacity*page->byteStride();
     }
-    const std::size_t reserve=totalBytes>terrainMemoryTarget() || terrainMemoryBudget_==1?0:terrainMemoryBudget_==3?64U*1024U*1024U:16U*1024U*1024U;
+    const auto now=std::chrono::steady_clock::now();
+    const bool rebuilding=now<terrainReuseUntil_ || pendingChunkCount()!=0 || !dirtySet_.empty();
+    // Reuse retired pages while destination meshes arrive. This temporary pool
+    // is bounded independently of occupied/visible meshes, even during flight.
+    const std::size_t reserve=terrainMemoryBudget_==1?0:rebuilding?terrainMemoryTarget()/2:
+        totalBytes>terrainMemoryTarget()?0:terrainMemoryBudget_==3?64U*1024U*1024U:16U*1024U*1024U;
     if(emptyBytes<=reserve) return;
-    // Streaming can reuse pages immediately; cap that temporary reserve at
-    // twice the preset reserve during flight; settled pages use the lower limit.
-    if(terrainMemoryBudget_!=1 && emptyBytes<=reserve*2 &&
-       (!retiredTerrain_.empty() || pendingChunkCount() || !dirtySet_.empty())) return;
+    // Bound both pending driver work and temporarily unreusable bytes.
+    if(terrainPageDeletions_.size()>=8) return;
     const auto empty=std::find_if(terrainPages_.begin(),terrainPages_.end(),
         [](const auto& page){return !page->allocated && page.use_count()==1;});
     if(empty!=terrainPages_.end()) {
-        terrainPageTrimmedThisFrame_=true;
         const auto trimStart=std::chrono::steady_clock::now();
+        auto& page=**empty;
+        terrainPageDeletions_.push_back({page.vbo,page.ebo,page.vao,
+            page.capacity*sizeof(PackedTerrainVertex),page.capacity*2*page.indexBytes});
+        page.vbo=page.ebo=page.vao=0;
         terrainPages_.erase(empty);
         streamingStats_.pageTrimMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-trimStart).count();
+    }
+}
+
+void World::releaseTerrainPageDeletions(bool drain) {
+    using Clock=std::chrono::steady_clock;
+    if(!drain && Clock::now()<nextTerrainDeletion_)return;
+    while(!terrainPageDeletions_.empty()) {
+        auto& page=terrainPageDeletions_.front();
+        const auto start=Clock::now();
+        // Drop the VAO's buffer references first. Deleting buffer names while
+        // the VAO still owns them only postpones the real release and would
+        // under-report pending storage until that final VAO deletion.
+        if(page.vao) {glDeleteVertexArrays(1,&page.vao);page.vao=0;
+            streamingStats_.pageVaoDeleteMilliseconds+=std::chrono::duration<float,std::milli>(Clock::now()-start).count();}
+        else if(page.ebo) {glDeleteBuffers(1,&page.ebo);page.ebo=0;page.indexBytes=0;
+            streamingStats_.pageEboDeleteMilliseconds+=std::chrono::duration<float,std::milli>(Clock::now()-start).count();}
+        else if(page.vbo) {glDeleteBuffers(1,&page.vbo);page.vbo=0;page.vertexBytes=0;
+            streamingStats_.pageVboDeleteMilliseconds+=std::chrono::duration<float,std::milli>(Clock::now()-start).count();}
+        ++streamingStats_.pageDeleteCalls;
+        streamingStats_.pageTrimMilliseconds+=std::chrono::duration<float,std::milli>(Clock::now()-start).count();
+        if(!page.vbo&&!page.ebo&&!page.vao)terrainPageDeletions_.pop_front();
+        // A driver deletion is indivisible. Submit one GL object at a time,
+        // rate-limit normal cleanup, and drain only while the context survives.
+        if(!drain){nextTerrainDeletion_=Clock::now()+std::chrono::milliseconds(10);break;}
     }
 }
 
@@ -2406,22 +2461,33 @@ void World::uploadSharedMesh(Chunk& chunk,const std::vector<PackedTerrainVertex>
         for(const auto& candidate:terrainPages_)if(candidate->indexBytes==indexBytes && candidate->allocate(needed,offset)){destination=candidate;break;}
         if(!destination){
             const auto capacity=(8U*1024U*1024U/(sizeof(PackedTerrainVertex)+2*indexBytes))/alignment*alignment;
+            const auto allocationStart=std::chrono::steady_clock::now();
             destination=std::make_shared<TerrainBufferPage>(std::max(capacity,needed),indexBytes);
+            streamingStats_.bufferAllocationMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-allocationStart).count();
+            ++streamingStats_.pageAllocations;
             terrainPages_.push_back(destination);if(!destination->allocate(needed,offset))throw std::logic_error("Terrain page allocation failed");
         }
         if(page)page->release(first,reserved/sizeof(PackedTerrainVertex));
         page=std::move(destination);first=offset;reserved=needed*sizeof(PackedTerrainVertex);
     }
     glBindBuffer(GL_ARRAY_BUFFER,page->vbo);
+    const auto vertexUploadStart=std::chrono::steady_clock::now();
     glBufferSubData(GL_ARRAY_BUFFER,first*sizeof(PackedTerrainVertex),bytes,vertices->data());
+    streamingStats_.bufferUploadMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-vertexUploadStart).count();
     if(indexed) {
         glBindVertexArray(page->vao);glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,page->ebo);
         if(indexBytes==2) {
             thread_local std::vector<std::uint16_t> shortIndices;shortIndices.clear();shortIndices.reserve(indices.size());
             for(auto i:indices){if(i>65535)throw std::logic_error("16-bit terrain index overflow");shortIndices.push_back(std::uint16_t(i));}
+            const auto indexUploadStart=std::chrono::steady_clock::now();
             glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,first*2*indexBytes,indices.size()*indexBytes,shortIndices.data());
+            streamingStats_.bufferUploadMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-indexUploadStart).count();
             if(shortIndices.capacity()>512U*1024U/2)std::vector<std::uint16_t>().swap(shortIndices);
-        } else glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,first*2*indexBytes,indices.size()*indexBytes,indices.data());
+        } else {
+            const auto indexUploadStart=std::chrono::steady_clock::now();
+            glBufferSubData(GL_ELEMENT_ARRAY_BUFFER,first*2*indexBytes,indices.size()*indexBytes,indices.data());
+            streamingStats_.bufferUploadMilliseconds+=std::chrono::duration<float,std::milli>(std::chrono::steady_clock::now()-indexUploadStart).count();
+        }
         glBindVertexArray(0);
     }
     count=GLsizei(indices.size());unique=GLsizei(vertices->size());
@@ -2686,100 +2752,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     return true;
 }
 
-bool World::saveWorld(const std::string& path, const glm::vec3& playerPosition) const {
-    if(!automation.valid() || !SaveValidation::position(playerPosition) || buildingTexts_.size()>100000 || buildingDrops_.size()>100000)return false;
-    for(const auto& drop:buildingDrops_)if(!SaveValidation::position(drop.first)||!SaveValidation::stack(drop.second)||drop.second.empty())return false;
-    for(const auto& e:buildingTexts_){if(e.second.text.size()>99 || !SaveValidation::position(glm::vec3(e.first.x,e.first.y,e.first.z)) || e.first.y<minimumY() || e.first.y>=maximumY())return false;int lines=1,width=0;for(unsigned char c:e.second.text){if(c=='\n'){++lines;width=0;}else if(c<32||c>126||++width>24)return false;}if(lines>4)return false;}
-    std::uint64_t totalEdits=0;for(const auto& c:edits_)totalEdits+=c.second.size();
-    for(const auto& chunk:edits_)for(const auto& edit:chunk.second)if(!validBlockState(edit.second))return false;
-    if(totalEdits>10000000 || furnaces_.size()>1000000 || chests_.size()>1000000)return false;
-    for(const auto& entry:furnaces_){const auto& f=entry.second;
-        if(!SaveValidation::stack(f.input)||!SaveValidation::stack(f.output)||!SaveValidation::stack(f.fuel)||!std::isfinite(f.fuelRemaining)||f.fuelRemaining<0||!std::isfinite(f.fuelCapacity)||f.fuelCapacity<0||!std::isfinite(f.progress)||f.progress<0||f.progress>1)return false;}
-    for(const auto& c:chests_)for(const auto& stack:c.second.slots)if(!SaveValidation::stack(stack))return false;
-    return SaveFile::write(path, std::ios::binary, [&](std::ofstream& output) {
-    const char magic[8] = {'V', 'X', 'W', 'O', 'R', 'L', 'D', '3'};
-    const std::uint32_t version = 3U;
-    const std::uint32_t savedGenerationVersion = generationVersion_;
-    std::uint64_t editCount = 0;
-    for (const auto& chunkEdits : edits_)
-        editCount += chunkEdits.second.size();
-    output.write(magic, sizeof(magic));
-    output.write(reinterpret_cast<const char*>(&version), sizeof(version));
-    output.write(reinterpret_cast<const char*>(&seed_), sizeof(seed_));
-    output.write(reinterpret_cast<const char*>(&playerPosition.x), sizeof(float));
-    output.write(reinterpret_cast<const char*>(&playerPosition.y), sizeof(float));
-    output.write(reinterpret_cast<const char*>(&playerPosition.z), sizeof(float));
-    output.write(reinterpret_cast<const char*>(&editCount), sizeof(editCount));
-    output.write(reinterpret_cast<const char*>(&savedGenerationVersion),
-                 sizeof(savedGenerationVersion));
-    constexpr std::size_t EditRecordBytes = sizeof(std::int32_t) * 2 +
-                                            sizeof(std::uint32_t) + sizeof(std::uint32_t);
-    thread_local std::array<char, 64 * 1024> editBuffer{};
-    std::size_t buffered = 0;
-    const auto flushEdits = [&] {
-        if (buffered) output.write(editBuffer.data(), static_cast<std::streamsize>(buffered));
-        buffered = 0;
-    };
-    const auto appendField = [&](const auto& value) {
-        std::memcpy(editBuffer.data() + buffered, &value, sizeof(value));
-        buffered += sizeof(value);
-    };
-    for (const auto& chunkEdits : edits_) {
-        const std::uint64_t packed = static_cast<std::uint64_t>(chunkEdits.first);
-        const std::int32_t chunkX = static_cast<std::int32_t>(packed >> 32U);
-        const std::int32_t chunkZ = static_cast<std::int32_t>(packed & 0xffffffffU);
-        for (const auto& edit : chunkEdits.second) {
-            if (buffered + EditRecordBytes > editBuffer.size()) flushEdits();
-            const std::uint32_t index = static_cast<std::uint32_t>(edit.first);
-            const std::uint32_t value = std::uint32_t(edit.second);
-            appendField(chunkX); appendField(chunkZ); appendField(index); appendField(value);
-        }
-    }
-    flushEdits();
-    const char entityMagic[8] = {'V', 'X', 'E', 'N', 'T', 'S', '3', '\0'};
-    output.write(entityMagic, sizeof(entityMagic));
-    auto writeStack = [&](const ItemStack& stack) {
-        const std::uint16_t item = itemDefinition(stack.item).saveId;
-        const std::int16_t count = static_cast<std::int16_t>(stack.count);
-        const std::int16_t durability = static_cast<std::int16_t>(stack.durability);
-        output.write(reinterpret_cast<const char*>(&item), sizeof(item));
-        output.write(reinterpret_cast<const char*>(&count), sizeof(count));
-        output.write(reinterpret_cast<const char*>(&durability), sizeof(durability));
-        output.write(reinterpret_cast<const char*>(&stack.identity), sizeof(stack.identity));
-    };
-    const std::uint32_t furnaceCount = static_cast<std::uint32_t>(furnaces_.size());
-    output.write(reinterpret_cast<const char*>(&furnaceCount), sizeof(furnaceCount));
-    for (const auto& entry : furnaces_) {
-        output.write(reinterpret_cast<const char*>(&entry.first.x), sizeof(entry.first.x));
-        output.write(reinterpret_cast<const char*>(&entry.first.y), sizeof(entry.first.y));
-        output.write(reinterpret_cast<const char*>(&entry.first.z), sizeof(entry.first.z));
-        writeStack(entry.second.input);
-        writeStack(entry.second.fuel);
-        writeStack(entry.second.output);
-        output.write(reinterpret_cast<const char*>(&entry.second.fuelRemaining), sizeof(float));
-        output.write(reinterpret_cast<const char*>(&entry.second.fuelCapacity), sizeof(float));
-        output.write(reinterpret_cast<const char*>(&entry.second.progress), sizeof(float));
-    }
-    const std::uint32_t chestCount = static_cast<std::uint32_t>(chests_.size());
-    output.write(reinterpret_cast<const char*>(&chestCount), sizeof(chestCount));
-    for (const auto& entry : chests_) {
-        output.write(reinterpret_cast<const char*>(&entry.first.x), sizeof(entry.first.x));
-        output.write(reinterpret_cast<const char*>(&entry.first.y), sizeof(entry.first.y));
-        output.write(reinterpret_cast<const char*>(&entry.first.z), sizeof(entry.first.z));
-        for (const ItemStack& stack : entry.second.slots)
-            writeStack(stack);
-    }
-    output.write("VXGEAR1",8);
-    const std::uint8_t equipmentLoot=equipmentLoot_?1:0;
-    output.write(reinterpret_cast<const char*>(&equipmentLoot),1);
-    output.write("BLD1",4);const auto count=std::uint32_t(buildingTexts_.size());output.write(reinterpret_cast<const char*>(&count),4);
-    for(const auto& e:buildingTexts_){output.write(reinterpret_cast<const char*>(&e.first.x),4);output.write(reinterpret_cast<const char*>(&e.first.y),4);output.write(reinterpret_cast<const char*>(&e.first.z),4);auto len=std::uint16_t(e.second.text.size());output.write(reinterpret_cast<const char*>(&len),2);output.write(e.second.text.data(),len);}
-    output.write("BDP1",4);const auto pendingCount=std::uint32_t(buildingDrops_.size());output.write(reinterpret_cast<const char*>(&pendingCount),4);
-    for(const auto& drop:buildingDrops_){output.write(reinterpret_cast<const char*>(&drop.first.x),4);output.write(reinterpret_cast<const char*>(&drop.first.y),4);output.write(reinterpret_cast<const char*>(&drop.first.z),4);writeStack(drop.second);}
-    if(!automation.write(output))return false;
-    return output.good();
-    });
-}
+
 int World::pendingChunkCount() const {
     std::lock_guard<std::mutex> lock(generationMutex_);
     return static_cast<int>(pendingKeys_.size());
@@ -4171,8 +4144,7 @@ void World::markDirty(int chunkX, int chunkZ, bool highPriority) {
     ++chunk->meshRevision;
     chunk->meshRevisionToken->store(chunk->meshRevision,std::memory_order_release);
     const std::int64_t key = chunkKey(chunkX, chunkZ);
-    if (highPriority)
-        priorityDirtyKeys_.insert(key);
+    const bool promoted=highPriority && priorityDirtyKeys_.insert(key).second;
     const bool newlyDirty = dirtySet_.insert(key).second;
     if (newlyDirty) {
         if (highPriority) {
@@ -4183,7 +4155,7 @@ void World::markDirty(int chunkX, int chunkZ, bool highPriority) {
         return;
     }
 
-    if (!highPriority) {
+    if (!promoted) {
         return;
     }
 

@@ -1,0 +1,9 @@
+Isolated fixture: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-6782052598100"
+Audio: loaded 104 OGG effects from embedded resources
+Audio: indexed 24 background tracks
+Audio: playing background track background/hitoribocchi tokyo.ogg
+WASD move, Ctrl sprint, Shift sneak/swim down, Space jump/swim, E inventory, Q drop, RMB use/place, LMB attack/mine, G fullbright, hold C zoom, / commands, F3 debug, 1-9 hotbar
+engine isolated_world passed=1
+engine all_edit_revisions_retained passed=1
+engine all_edit_revisions_retained passed=1
+engine all_edit_revisions_retained passed=1

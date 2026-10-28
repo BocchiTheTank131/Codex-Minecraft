@@ -48,7 +48,7 @@ std::array<glm::vec3,6> World::optimizationScenes() const {
 void Game::runOptimizationBenchmark() {
     namespace fs=std::filesystem;fs::create_directories(optimizationBenchmark_);
     std::ofstream csv(fs::path(optimizationBenchmark_)/"frames.csv"),locations(fs::path(optimizationBenchmark_)/"scenes.csv");
-    csv<<"rd,scene,phase,lod,occlusion,fps,mean_ms,p95_ms,p99_ms,worst_ms,cpu_percent,gpu_ms,gpu_samples,focused_percent,visible_percent,ram_mb,private_mb,loaded,rendered,vertices,triangles,opaque_draws,water_draws,terrain_used,terrain_capacity,generation_per_s,mesh_per_s,mesh_ms,upload_ms,render_call_wall_ms,simulation_ms,terrain_vbo_used,terrain_ebo_used,terrain_vbo_capacity,terrain_ebo_capacity,lod0,lod1,lod2,lod3,occlusion_culled,occlusion_queries,frustum_culled,travel_boats,map_main_average_ms,map_main_worst_ms,map_batches,boat_average_ms,boat_worst_ms,boat_steps_max,boat_candidates_max\n";
+    csv<<"rd,scene,phase,lod,occlusion,fps,mean_ms,p95_ms,p99_ms,worst_ms,cpu_percent,gpu_ms,gpu_samples,focused_percent,visible_percent,ram_mb,private_mb,loaded,rendered,vertices,triangles,opaque_draws,water_draws,terrain_used,terrain_capacity,generation_per_s,mesh_per_s,mesh_ms,upload_ms,render_call_wall_ms,simulation_ms,terrain_vbo_used,terrain_ebo_used,terrain_vbo_capacity,terrain_ebo_capacity,lod0,lod1,lod2,lod3,occlusion_culled,occlusion_queries,frustum_culled,travel_boats,map_main_average_ms,map_main_worst_ms,map_batches,boat_average_ms,boat_worst_ms,boat_steps_max,boat_candidates_max,p999_ms\n";
     locations<<"scene,x,y,z,biome\n";
     settings_.vsync=false;settings_.frameLimit=0;settings_.antiAliasingSamples=0;settings_.simulationDistance=8;
     settings_.renderDistance=optimizationDistance_;settings_.showFps=false;settings_.showCoordinates=false;settings_.mouseSensitivity=.1f;
@@ -164,7 +164,7 @@ void Game::runOptimizationBenchmark() {
 #else
             csv<<','<<memory.usedBytes<<",0,"<<memory.capacityBytes<<",0,"<<world_->renderedChunkCount()<<",0,0,0,0,0,-1";
 #endif
-            csv<<','<<transportation_->boats().size()<<','<<(transportation_->mapBatches?transportation_->mapTotalMilliseconds/transportation_->mapBatches:0)<<','<<transportation_->mapWorstMilliseconds<<','<<transportation_->mapBatches<<','<<boatTotal/n<<','<<boatWorst<<','<<boatSteps<<','<<boatCandidates<<'\n';csv.flush();
+            csv<<','<<transportation_->boats().size()<<','<<(transportation_->mapBatches?transportation_->mapTotalMilliseconds/transportation_->mapBatches:0)<<','<<transportation_->mapWorstMilliseconds<<','<<transportation_->mapBatches<<','<<boatTotal/n<<','<<boatWorst<<','<<boatSteps<<','<<boatCandidates<<','<<frames[(n-1)*999/1000]<<'\n';csv.flush();
             if(phase==2)world_->setBlock(target.x,target.y,target.z,original);
             if(phase==0){screenshotRequested_=true;renderFrame(0);}
         }

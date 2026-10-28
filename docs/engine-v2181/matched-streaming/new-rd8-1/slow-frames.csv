@@ -1,0 +1,3 @@
+rd,phase,frame,frame_ms,stream_ms,render_ms,retire_ms,unload_ms,allocation_ms,subdata_ms,snapshot_ms,lighting_ms
+8,0,1595,19.3658,0.0111,19.3545,0.0002,0,0,0,0.0001,0
+8,2,749,18.8507,0.0137,18.8369,0.0002,0,0,0,0,0

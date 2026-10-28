@@ -1,0 +1,37 @@
+Isolated fixture: "C:\\Users\\Win\\AppData\\Local\\Temp\\VoxelFrontier-stability-4026328131900"
+legacy_checkpoint_valid passed=1
+legacy_world_load passed=1
+legacy_inventory_load passed=1
+legacy_player_load passed=1
+legacy_mobs_load passed=1
+legacy_items passed=1
+unknown_legacy_item_stays_invalid passed=1
+unknown_legacy_block_stays_invalid passed=1
+unknown_legacy_container_stays_invalid passed=1
+unknown_legacy_drop_stays_invalid passed=1
+legacy_chest_identity passed=1
+legacy_drop_identity passed=1
+wide_save passed=1
+wide_roundtrip passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+legacy_untouched passed=1
+compact_ordinary passed=1
+compact_fallback passed=1
+compact_tail passed=1
+invalid_state_rejected passed=1
+ordinary bytes=98304; decorated fallback=393216

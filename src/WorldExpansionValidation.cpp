@@ -4,11 +4,14 @@
 #include "Weather.h"
 #include "Player.h"
 #include "BiomeVegetation.h"
+#include "GenerationMetrics.h"
+#include "ExplorationLoot.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <sstream>
 #include <future>
 #include <iostream>
 #include <map>
@@ -34,7 +37,50 @@ bool World::runExpansionAudit(const std::string& directory,std::string& report,c
         namespace fs=std::filesystem;fs::create_directories(directory);
         unsigned checks=0;
         const auto check=[&](bool ok,const char* label){++checks;if(!ok)throw std::runtime_error(label);};
-        if(mode=="maps") {
+        if(mode=="freeze") {
+            std::ofstream index(directory+"/chunks.csv"),stages(directory+"/stages.csv");
+            index<<"seed,version,x,z,repeat,ms,hash,block_bytes\n";
+            stages<<"seed,x,z,repeat,columns,plans,entrances,lattice,density,materials,vegetation,structures,shore,height_queries,height_hits\n";
+            for(unsigned seed:{20260917U,123456789U,42U}) {
+                auto w=std::make_unique<World>(seed,23);
+                std::vector<glm::ivec2> coords;
+                for(int i=0;i<32;++i)coords.push_back({(i%8)*173-606,(i/8)*197-295});
+                for(int z=-2;z<=2;++z)for(int x=-2;x<=2;++x)coords.push_back({x,z});
+                // Native landmark, mountain, lake and entrance districts from V23 validation.
+                for(auto p:{glm::ivec2(981,-4054),glm::ivec2(2609,-3889),glm::ivec2(2888,-3907),
+                    glm::ivec2(2615,-3775),glm::ivec2(2511,-2650),glm::ivec2(-3008,-3776),
+                    glm::ivec2(-3788,-3641),glm::ivec2(-768,-4032),glm::ivec2(-4032,-4032),
+                    glm::ivec2(3264,-3648),glm::ivec2(1290,-690),glm::ivec2(-701,-1220)})
+                    for(int z=-1;z<=1;++z)for(int x=-1;x<=1;++x)coords.push_back({floorDiv(p.x,16)+x,floorDiv(p.y,16)+z});
+                std::map<std::pair<int,int>,std::vector<Block>> expected;
+                for(int repeat=0;repeat<2;++repeat)for(auto c:coords) {
+                    GenerationMetrics::Sample sample;GenerationMetrics::Capture capture(sample);
+                    const auto start=Clock::now();auto data=w->generateChunkData(c.x,c.y);const auto elapsed=ms(start);
+                    index<<seed<<",23,"<<c.x<<','<<c.y<<','<<repeat<<','<<elapsed<<','<<blockHash(data.blocks)<<','<<data.blocks.size()*sizeof(Block)<<'\n';
+                    stages<<seed<<','<<c.x<<','<<c.y<<','<<repeat;
+                    for(auto t:sample.milliseconds)stages<<','<<t;
+                    stages<<','<<sample.heightQueries<<','<<sample.heightHits<<'\n';
+                    if(repeat)check(data.blocks==expected.at({c.x,c.y}),"Warm freeze bytes changed");
+                    else expected[{c.x,c.y}]=data.blocks;
+                    const auto path=directory+"/"+std::to_string(seed)+"-"+std::to_string(c.x)+"-"+std::to_string(c.y)+".bin";
+                    std::ostringstream out(std::ios::binary);
+                    const auto put=[&](const auto& value){out.write(reinterpret_cast<const char*>(&value),sizeof(value));};
+                    put(seed);put(c.x);put(c.y);put(std::uint32_t(data.blocks.size()));put(std::uint8_t(data.hasStructure));
+                    out.write(reinterpret_cast<const char*>(data.blocks.data()),data.blocks.size()*sizeof(Block));
+                    put(std::uint32_t(data.loot.size()));
+                    for(const auto& m:data.loot){put(m.x);put(m.y);put(m.z);put(std::uint8_t(m.table));put(m.salt);
+                        auto loot=rollExplorationLoot(seed,m);addEquipmentLoot(loot,seed,m);
+                        for(const auto& s:loot){put(std::uint16_t(s.item));put(s.count);put(s.durability);put(s.identity);}}
+                    put(std::uint32_t(data.mobs.size()));
+                    for(const auto& m:data.mobs){put(m.x);put(m.y);put(m.z);put(std::uint8_t(m.hostile));}
+                    check(bool(out),"Frozen chunk encoding failed");
+                    const auto bytes=out.str();
+                    if(repeat){std::ifstream file(path,std::ios::binary);const std::string cold{std::istreambuf_iterator<char>(file),{}};
+                        check(bytes==cold,"Warm chunk/loot/encounter bytes changed");}
+                    else {std::ofstream file(path,std::ios::binary);file.write(bytes.data(),std::streamsize(bytes.size()));check(bool(file),"Frozen chunk export failed");}
+                }
+            }
+        } else if(mode=="maps") {
             std::ofstream counts(directory+"/biomes.csv"),sites(directory+"/sites.csv"),structures(directory+"/structures.csv"),caves(directory+"/entrances.csv");
             counts<<"seed,version,extent,biome,samples\n";
             sites<<"seed,version,kind,x,y,z\n";
@@ -381,7 +427,7 @@ bool World::runExpansionAudit(const std::string& directory,std::string& report,c
                     check(data.blocks==expected[i],"Chunk order/cache changed generated bytes");
                     generation<<seed<<','<<version<<','<<c.x<<','<<c.y<<','<<repeat<<','<<ms(start)<<','<<blockHash(data.blocks)<<','<<data.blocks.size()*sizeof(Block)<<'\n';
                 }
-                for(int workers:{1,2,4}) {
+                for(int workers:{1,2,4,8}) {
                     std::vector<std::future<void>> jobs;
                     for(int worker=0;worker<workers;++worker)jobs.push_back(std::async(std::launch::async,[&,worker,workers] {
                         for(int i=worker;i<32;i+=workers)

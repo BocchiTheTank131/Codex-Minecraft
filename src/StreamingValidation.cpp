@@ -27,8 +27,10 @@ void Game::runStreamingBenchmark() {
     std::ofstream samples(fs::path(streamingBenchmark_)/"streaming-samples.csv");
     samples<<"generator,rd,phase,seconds,ram_mb,private_mb,loaded,rendered,dirty,generation,mesh,uploads,retired,lighting\n";
     std::ofstream retirement(fs::path(streamingBenchmark_)/"retirement.csv");
-    retirement<<"phase,frame,retire_ms,unload_ms,fence_ms,ranges_ms,delete_ms,trim_ms,payload_ms\n";
-    csv<<"generator,rd,phase,fps,mean_ms,p99_ms,worst_ms,cpu_percent,ram_mb,loaded,rendered,dirty,generation,mesh,upload_queue,stream_ms,render_ms,mesh_ms,upload_ms,gen_active,mesh_active,gen_limit,mesh_limit,gen_per_s,mesh_per_s,integrate_ms,light_ms,snapshot_ms,upload_batch_ms,stale,peak_unload_ms,peak_retire_ms,retired,lighting_queue,recovery_seconds,terrain_vertices,terrain_used_bytes,terrain_capacity_bytes,opaque_draws\n";
+    std::ofstream slow(fs::path(streamingBenchmark_)/"slow-frames.csv");
+    slow<<"rd,phase,frame,frame_ms,stream_ms,render_ms,retire_ms,unload_ms,allocation_ms,subdata_ms,snapshot_ms,lighting_ms\n";
+    retirement<<"phase,frame,retire_ms,unload_ms,fence_ms,ranges_ms,delete_ms,trim_ms,payload_ms,vbo_delete_ms,ebo_delete_ms,vao_delete_ms,delete_calls,page_allocations\n";
+    csv<<"generator,rd,phase,fps,mean_ms,p99_ms,worst_ms,cpu_percent,ram_mb,loaded,rendered,dirty,generation,mesh,upload_queue,stream_ms,render_ms,mesh_ms,upload_ms,gen_active,mesh_active,gen_limit,mesh_limit,gen_per_s,mesh_per_s,integrate_ms,light_ms,snapshot_ms,upload_batch_ms,stale,peak_unload_ms,peak_retire_ms,retired,lighting_queue,recovery_seconds,terrain_vertices,terrain_used_bytes,terrain_capacity_bytes,opaque_draws,p95_ms,p999_ms,page_delete_calls,page_allocations\n";
     settings_.vsync=false; settings_.frameLimit=0; settings_.antiAliasingSamples=0;
     settings_.weatherQuality=0; settings_.simulationDistance=8; glfwSwapInterval(0);
     showDebug_=false; weather_->set(WeatherType::Clear,3600);
@@ -45,7 +47,7 @@ void Game::runStreamingBenchmark() {
             if(phase==3) player_->teleport({-4096.5f,150.f,4096.5f});
             double streamMs=0,renderMs=0,integrateMs=0,lightMs=0,snapshotMs=0,uploadMs=0;
             double genActive=0,meshActive=0,genRate=0,meshRate=0;
-            float peakUnload=0,peakRetire=0;double recovery=-1;
+            float peakUnload=0,peakRetire=0;double recovery=-1;std::uint64_t pageDeletes=0,pageAllocations=0;
 #ifdef _WIN32
             FILETIME create,exit,kernel0,user0,kernel1,user1;
             GetProcessTimes(GetCurrentProcess(),&create,&exit,&kernel0,&user0);
@@ -62,7 +64,8 @@ void Game::runStreamingBenchmark() {
                 world_->updateStreaming(player_->cameraPosition(),2);
                 const auto stages=world_->streamingDiagnostics();
                 if(stages.retireMilliseconds>.5f || stages.unloadMilliseconds>.5f)
-                    retirement<<phase<<','<<frames.size()<<','<<stages.retireMilliseconds<<','<<stages.unloadMilliseconds<<','<<stages.fencePollMilliseconds<<','<<stages.rangeReleaseMilliseconds<<','<<stages.bufferDeleteMilliseconds<<','<<stages.pageTrimMilliseconds<<','<<stages.payloadReleaseMilliseconds<<'\n';
+                    retirement<<phase<<','<<frames.size()<<','<<stages.retireMilliseconds<<','<<stages.unloadMilliseconds<<','<<stages.fencePollMilliseconds<<','<<stages.rangeReleaseMilliseconds<<','<<stages.bufferDeleteMilliseconds<<','<<stages.pageTrimMilliseconds<<','<<stages.payloadReleaseMilliseconds<<','<<stages.pageVboDeleteMilliseconds<<','<<stages.pageEboDeleteMilliseconds<<','<<stages.pageVaoDeleteMilliseconds<<','<<stages.pageDeleteCalls<<','<<stages.pageAllocations<<'\n';
+                pageDeletes+=stages.pageDeleteCalls;pageAllocations+=stages.pageAllocations;
                 peakUnload=std::max(peakUnload,stages.unloadMilliseconds);peakRetire=std::max(peakRetire,stages.retireMilliseconds);
                 if(phase==2 && recovery<0 && !world_->pendingChunkCount() && !world_->queuedMeshRebuildCount() &&
                     !world_->pendingCpuMeshCount() && !world_->completedMeshCount() && !stages.lightingQueued && !stages.retiredChunks) recovery=glfwGetTime()-start;
@@ -71,8 +74,10 @@ void Game::runStreamingBenchmark() {
                 genActive+=stages.generationActive;meshActive+=stages.meshActive;
                 genRate+=stages.generatedPerSecond;meshRate+=stages.meshedPerSecond;
                 const double after=glfwGetTime(); streamMs+=(after-t)*1000;
-                renderFrame(std::min(dt,.05f)); renderMs+=(glfwGetTime()-after)*1000;
-                frames.push_back((glfwGetTime()-t)*1000);
+                renderFrame(std::min(dt,.05f));const auto render=(glfwGetTime()-after)*1000;renderMs+=render;
+                const auto frame=(glfwGetTime()-t)*1000;
+                if(frame>8)slow<<rd<<','<<phase<<','<<frames.size()<<','<<frame<<','<<(after-t)*1000<<','<<render<<','<<stages.retireMilliseconds<<','<<stages.unloadMilliseconds<<','<<stages.bufferAllocationMilliseconds<<','<<stages.bufferUploadMilliseconds<<','<<stages.snapshotMilliseconds<<','<<stages.lightingMilliseconds<<'\n';
+                frames.push_back(frame);
                 // A sparse trace distinguishes growing cleanup debt from a
                 // denser destination that legitimately needs larger meshes.
                 if(t-start>=nextMemorySample) {
@@ -110,7 +115,7 @@ void Game::runStreamingBenchmark() {
                 <<streamMs/n<<','<<renderMs/n<<','<<world_->lastChunkRebuildMilliseconds()<<','<<world_->lastMeshUploadMilliseconds()<<','
                 <<genActive/n<<','<<meshActive/n<<','<<world_->streamingDiagnostics().generationLimit<<','
                 <<world_->streamingDiagnostics().meshLimit<<','<<genRate/n<<','<<meshRate/n<<','
-                <<integrateMs/n<<','<<lightMs/n<<','<<snapshotMs/n<<','<<uploadMs/n<<','<<world_->streamingDiagnostics().staleMeshes<<','<<peakUnload<<','<<peakRetire<<','<<world_->streamingDiagnostics().retiredChunks<<','<<world_->streamingDiagnostics().lightingQueued<<','<<recovery<<','<<memory.vertices<<','<<memory.usedBytes<<','<<memory.capacityBytes<<','<<world_->opaqueSubmissionCount()<<'\n';
+                <<integrateMs/n<<','<<lightMs/n<<','<<snapshotMs/n<<','<<uploadMs/n<<','<<world_->streamingDiagnostics().staleMeshes<<','<<peakUnload<<','<<peakRetire<<','<<world_->streamingDiagnostics().retiredChunks<<','<<world_->streamingDiagnostics().lightingQueued<<','<<recovery<<','<<memory.vertices<<','<<memory.usedBytes<<','<<memory.capacityBytes<<','<<world_->opaqueSubmissionCount()<<','<<frames[(n-1)*95/100]<<','<<frames[(n-1)*999/1000]<<','<<pageDeletes<<','<<pageAllocations<<'\n';
             csv.flush();
         }
     }

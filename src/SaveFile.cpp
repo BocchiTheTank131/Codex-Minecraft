@@ -9,6 +9,8 @@
 #include <cstdlib>
 #include <cwctype>
 #include <algorithm>
+#include <chrono>
+#include <stdexcept>
 #ifndef _WIN32
 #include <sys/file.h>
 #include <fcntl.h>
@@ -20,6 +22,22 @@
 #include <winternl.h>
 #endif
 namespace SaveFile {
+namespace {
+thread_local SnapshotBudget* snapshotBudget=nullptr;
+thread_local CommitStatus* snapshotMetrics=nullptr;
+struct ProfileTime {
+    double* result;std::chrono::steady_clock::time_point start;
+    explicit ProfileTime(double* p):result(p){if(result)start=std::chrono::steady_clock::now();}
+    ~ProfileTime(){if(result)*result+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();}
+};
+}
+SnapshotBudget::SnapshotBudget(std::size_t limit):limit_(limit),previous_(snapshotBudget){snapshotBudget=this;}
+SnapshotBudget::~SnapshotBudget(){snapshotBudget=previous_;}
+void SnapshotBudget::reserve(std::size_t bytes){
+    if(bytes>limit_-used_)throw std::length_error("Background checkpoint snapshot exceeds 256 MiB admission budget; use a manual save");
+    used_+=bytes;
+}
+void reserveSnapshotBytes(std::size_t bytes){if(snapshotBudget)snapshotBudget->reserve(bytes);}
 struct Session::Impl {
 #ifdef _WIN32
     HANDLE file=INVALID_HANDLE_VALUE;
@@ -148,6 +166,7 @@ bool replaceFile(const std::string& path,const std::string& temporary) {
 #endif
 }
 bool serialize(const std::string& path,std::ios::openmode mode,const std::function<bool(std::ofstream&)>& writer) {
+    ProfileTime timing(snapshotMetrics?&snapshotMetrics->stagingMilliseconds:nullptr);
     errno=0;std::ofstream output(path+".tmp",mode|std::ios::trunc);
     if(!output){error(path,"open",errno,false);return false;}
     bool written=false;
@@ -157,6 +176,7 @@ bool serialize(const std::string& path,std::ios::openmode mode,const std::functi
     return complete;
 }
 bool signature(const std::string& path,std::uint64_t& bytes,std::uint64_t& hash) {
+    ProfileTime timing(snapshotMetrics?&snapshotMetrics->hashingMilliseconds:nullptr);
     std::ifstream input(path,std::ios::binary);if(!input)return false;
     bytes=0;hash=14695981039346656037ULL;char buffer[65536];
     while(input){input.read(buffer,sizeof(buffer));auto size=input.gcount();bytes+=size;
@@ -284,6 +304,32 @@ std::future<bool> Checkpoint::commitAsync(std::shared_ptr<CommitStatus> status){
     return std::async(std::launch::async,[journal=impl_->journal,entries=std::move(impl_->entries),status]()mutable{
         Checkpoint checkpoint(journal);checkpoint.impl_->entries=std::move(entries);
         if(status){status->permanentFailure=checkpoint.permanentFailure();status->reason=checkpoint.failureReason();}
+        return checkpoint.commit();
+    });
+}
+std::future<bool> commitSnapshotAsync(std::string journal,std::vector<SnapshotComponent> components,
+                                      std::shared_ptr<CommitStatus> status) {
+    if(components.empty()||components.size()>15)throw std::invalid_argument("Invalid checkpoint snapshot component count");
+    return std::async(std::launch::async,[journal=std::move(journal),components=std::move(components),status]{
+        struct MetricsOwner {
+            CommitStatus* previous=snapshotMetrics;
+            explicit MetricsOwner(CommitStatus* p){snapshotMetrics=p;}
+            ~MetricsOwner(){snapshotMetrics=previous;}
+        } metrics(status.get());
+        const auto start=std::chrono::steady_clock::now();
+        // This worker owns the writer lock and TLS staging for the entire job.
+        // No live game references are used while verifying, encoding or committing.
+        Checkpoint checkpoint(journal);
+        if(status){status->verificationMilliseconds=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
+            status->permanentFailure=checkpoint.permanentFailure();status->reason=checkpoint.failureReason();}
+        if(!checkpoint.ready())return false;
+        {ProfileTime encode(status?&status->encodingMilliseconds:nullptr);
+            for(std::size_t i=0;i<components.size();++i)if(!components[i]()) {
+                if(status)status->reason="Snapshot component "+std::to_string(i+1)+" failed validation or staging";
+                std::cerr<<"Background checkpoint component "<<i+1<<" failed; previous complete generation retained\n";
+                return false;
+            }}
+        ProfileTime commit(status?&status->commitMilliseconds:nullptr);
         return checkpoint.commit();
     });
 }

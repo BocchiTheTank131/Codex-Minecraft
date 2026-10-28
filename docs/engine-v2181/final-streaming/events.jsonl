@@ -1,0 +1,4 @@
+{"name": "old-rd32-0", "seconds": 63.961716651916504, "exit": 0, "logical_cpus": null}
+{"name": "new-rd32-0", "seconds": 63.87715125083923, "exit": 0, "logical_cpus": null}
+{"name": "new-rd32-1", "seconds": 63.874093532562256, "exit": 0, "logical_cpus": null}
+{"name": "old-rd32-1", "seconds": 63.944149017333984, "exit": 0, "logical_cpus": null}

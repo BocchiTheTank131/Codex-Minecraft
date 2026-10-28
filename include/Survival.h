@@ -8,6 +8,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <functional>
 
 class Player;
 struct UiHit;
@@ -196,6 +197,7 @@ struct RecipeInfo {
 const std::vector<RecipeInfo>& craftingRecipes();
 
 class Inventory {
+    friend class EngineOptimizationTest;
 public:
     static constexpr int HotbarSlots = 9, TotalSlots = 36, CraftSlots = 9;
     static constexpr int EquipmentSlots = 5, OffhandSlot = 4;
@@ -266,6 +268,7 @@ public:
     void returnCraftingItems();
     bool load(const std::string& path, std::uint32_t seed);
     bool save(const std::string& path, std::uint32_t seed) const;
+    std::function<bool()> captureSave(const std::string& path,std::uint32_t seed) const;
     static int maxStack(Item item);
     static int maxDurability(Item item);
     static bool runCraftingSelfTest(std::string& report);
@@ -346,6 +349,7 @@ struct AttackResult {
 
 class Weather;
 class SurvivalWorld {
+    friend class EngineOptimizationTest;
     friend class AutomationTest;
     friend class FarmingTest;
     friend class BuildingTest;
@@ -403,6 +407,7 @@ public:
     std::vector<glm::vec3> takeExplosionEffects();
     void burningPositions(std::vector<glm::vec3>& positions) const;
     bool save(const std::string& path, std::uint32_t seed) const;
+    std::function<bool()> captureSave(const std::string& path,std::uint32_t seed) const;
     bool load(const std::string& path, std::uint32_t seed);
     bool runCombatSelfTest(World& world, Player& player, Inventory& inventory, std::string& report);
     MobDiagnostics diagnostics(const glm::vec3& playerPosition) const;

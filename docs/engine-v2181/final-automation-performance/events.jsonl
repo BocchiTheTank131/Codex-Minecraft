@@ -1,0 +1,8 @@
+{"name": "old-benchmark-0", "seconds": 2.2009267807006836, "exit": 0, "logical_cpus": null}
+{"name": "old-sparse-0", "seconds": 0.6346096992492676, "exit": 0, "logical_cpus": null}
+{"name": "new-benchmark-0", "seconds": 2.1294078826904297, "exit": 0, "logical_cpus": null}
+{"name": "new-sparse-0", "seconds": 0.6349341869354248, "exit": 0, "logical_cpus": null}
+{"name": "new-benchmark-1", "seconds": 2.1050949096679688, "exit": 0, "logical_cpus": null}
+{"name": "new-sparse-1", "seconds": 0.647188663482666, "exit": 0, "logical_cpus": null}
+{"name": "old-benchmark-1", "seconds": 2.141254425048828, "exit": 0, "logical_cpus": null}
+{"name": "old-sparse-1", "seconds": 0.6343152523040771, "exit": 0, "logical_cpus": null}

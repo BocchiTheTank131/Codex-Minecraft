@@ -1,0 +1,13 @@
+{
+  "occlusion": "Auto",
+  "baseline_commit": "507fefdec29f5b2848d1344b520d94a34fe8df95",
+  "resolution": "1280x720",
+  "frame_limit": "Uncapped",
+  "simulation_distance": 8,
+  "real_saves_accessed": false,
+  "vsync": "Off",
+  "generator": 23,
+  "lod": "Low",
+  "seed": 20260917,
+  "antialiasing": "Off"
+}

@@ -1,0 +1,8 @@
+{"name": "old-cpu2-0", "seconds": 64.36318492889404, "exit": 0, "logical_cpus": 2}
+{"name": "new-cpu2-0", "seconds": 63.946324586868286, "exit": 0, "logical_cpus": 2}
+{"name": "new-cpu2-1", "seconds": 63.97781252861023, "exit": 0, "logical_cpus": 2}
+{"name": "old-cpu2-1", "seconds": 64.54127717018127, "exit": 0, "logical_cpus": 2}
+{"name": "old-cpu4-0", "seconds": 64.22986721992493, "exit": 0, "logical_cpus": 4}
+{"name": "new-cpu4-0", "seconds": 63.90425705909729, "exit": 0, "logical_cpus": 4}
+{"name": "new-cpu4-1", "seconds": 63.88599443435669, "exit": 0, "logical_cpus": 4}
+{"name": "old-cpu4-1", "seconds": 64.1814432144165, "exit": 0, "logical_cpus": 4}

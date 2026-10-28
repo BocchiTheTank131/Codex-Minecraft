@@ -4,6 +4,16 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.18.1 - Engine Optimization
+
+Exact V23 column reuse, bounded shared-buffer retirement, immutable background
+checkpoint encoding, coalesced mesh requests, and affinity-aware streaming workers.
+Terrain, visual settings, saves, automation and gameplay remain compatible.
+
+See [measured validation](docs/ENGINE_OPTIMIZATION_VALIDATION_v2.18.1.md) and
+[local release notes](docs/RELEASE_v2.18.1.md), including remaining driver and RD64
+limits. Download the installer and standalone demo from the [v2.18.1 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.18.1).
+
 ### v2.18.0 - World Generation & Biome Expansion
 
 Generator V23 adds connected mountain ranges and eroded uplands, broader compatible

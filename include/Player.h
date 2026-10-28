@@ -4,6 +4,7 @@
 #include "Burning.h"
 #include <glm/glm.hpp>
 #include <string>
+#include <functional>
 
 class World;
 class Inventory;
@@ -23,6 +24,7 @@ struct PlayerInput {
 };
 
 class Player {
+    friend class EngineOptimizationTest;
     friend class AutomationTest;
     friend class FarmingTest;
     friend class BuildingTest;
@@ -63,6 +65,7 @@ public:
     void setRidePosition(glm::vec3 position,glm::vec3 velocity){position_=position;velocity_=velocity;fallDistance_=0;grounded_=false;}
     void setFlying(bool enabled);
     bool save(const std::string& path, std::uint32_t seed) const;
+    std::function<bool()> captureSave(const std::string& path,std::uint32_t seed) const;
     bool load(const std::string& path, std::uint32_t seed);
     glm::vec3 cameraPosition() const;
     glm::vec3 lookDirection() const;

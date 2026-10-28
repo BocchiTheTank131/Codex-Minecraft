@@ -1,0 +1,44 @@
+{
+  "baseline_commit": "507fefdec29f5b2848d1344b520d94a34fe8df95",
+  "published": false,
+  "installed": false,
+  "historical_hashes": 1326,
+  "exact_v23_files_per_variant": 495,
+  "release_suites": 20,
+  "packages": [
+    {
+      "name": "VoxelFrontier-v2.18.1-Windows-Standalone.exe",
+      "bytes": 77300736,
+      "sha256": "c6eb1cb1e33caa6fc744b7484acfeb8039199bcc88a091e654ba86a493d4f74f"
+    },
+    {
+      "name": "VoxelFrontier-v2.18.1-Windows-Setup.exe",
+      "bytes": 71566930,
+      "sha256": "197d3c3f53f94f742082024cea5211df62693bf57b3f8a384fb31529d4ca09d1"
+    }
+  ],
+  "notes": "See report for rejected general RD32 deletion policy, inclusive save timers, unverified hard memory/iGPU limits, and unresolved RD64 whole-frame/driver stalls.",
+  "resource_cycles": 60,
+  "resource_ram_mib": {
+    "min": 279.367,
+    "max": 339.785,
+    "final": 298.176
+  },
+  "resource_terrain_capacity_mib": {
+    "max": 80.0,
+    "final": 32.0
+  },
+  "embedded_assets_per_variant": 135,
+  "protected_files_verified": 1007,
+  "test_assertions": {
+    "automation": 689,
+    "stabilization": 375,
+    "building": 4774,
+    "creative_ui": 3474,
+    "qol": 1389,
+    "farming": 261,
+    "v23_validate": 24193,
+    "ecosystems": 1302,
+    "spawn_checks": 500
+  }
+}

@@ -29,6 +29,7 @@ const char* automationDescription(Block);
 
 // Main-thread owned. No terrain generation, worker callbacks or background writes.
 class Automation {
+    friend class EngineOptimizationTest;
     friend class AutomationTest;
 public:
     struct Node {
@@ -56,6 +57,7 @@ public:
     bool placementsValid(const std::function<Block(glm::ivec3)>& savedBlock) const;
     bool read(std::istream&,int minimumY,int maximumY);
     bool write(std::ostream&) const;
+    std::function<bool(std::ostream&)> captureWrite() const;
     const Diagnostics& diagnostics()const{return stats_;}
     void reset();
     std::function<bool(const glm::vec3&,const glm::vec3&)> additionalCollision;

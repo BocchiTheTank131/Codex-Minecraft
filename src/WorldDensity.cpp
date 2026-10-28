@@ -5,6 +5,7 @@
 #include "TerrainAesthetics.h"
 #include "TerrainChaos.h"
 #include "TerrainExpansion.h"
+#include "GenerationMetrics.h"
 #include <bitset>
 #include <algorithm>
 #include <array>
@@ -51,6 +52,7 @@ World::TerrainSample World::sampleTerrainDensity(int x,int z) const {
 }
 
 World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
+    GenerationMetrics::Scope profile(GenerationMetrics::Columns);
     using namespace TerrainDensity;
     constexpr int Span=18;
     const int ox=cx*CHUNK_SIZE,oz=cz*CHUNK_SIZE;
@@ -88,11 +90,13 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
             std::abs(terrainAt(ox+x,oz+z+1).height-h)}))*.25f;
     }
     const auto structureTerrain=[&](int x,int z) { return structureTerrainAt(x,z); };
+    profile.next(GenerationMetrics::Plans);
     const auto plans=structures_.plansForChunk(cx,cz,structureTerrain);
     const auto reserved=[&](int x,int z) {
         for(const auto& p:plans) if(x>=p.bounds.minX-1&&x<=p.bounds.maxX+1&&z>=p.bounds.minZ-1&&z<=p.bounds.maxZ+1) return true;
         return false;
     };
+    profile.next(GenerationMetrics::Entrances);
     std::vector<TerrainExploration::CaveEntrance> entrances;
     std::array<std::bitset<384>,Span*Span> entranceMask{};
     if(generationVersion_>=12) {
@@ -126,11 +130,13 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
     for(const auto& t:terrain) highest=std::max(highest,t.height);
     const int generationTop=generationVersion_>=15?272:MaximumY; // aligned band containing Y256
     const int scanTop=std::min(generationTop,MinimumY+((highest+(generationVersion_>=13?25:53)-MinimumY+15)/16)*16);
+    profile.next(GenerationMetrics::Lattice);
     const Grid grid(cx,cz,ridgeNoise_,cheeseNoise_,spaghettiNoise_,noodleNoise_,caveNoise_,scanTop);
     result.blocks.resize(CHUNK_SIZE*CHUNK_SIZE*(scanTop-MinimumY),Block::Air);
     // Immutable local occupancy includes a halo for exact exposed-ore tests.
     std::vector<std::uint8_t> solid(Span*Span*(scanTop-MinimumY));
     const auto occupancyIndex=[](int x,int y,int z) { return ((y-MinimumY)*Span+z+1)*Span+x+1; };
+    profile.next(GenerationMetrics::Density);
     for(int y=MinimumY;y<scanTop;++y) for(int z=-1;z<=16;++z) for(int x=-1;x<=16;++x) {
         const auto& c=columns[(z+1)*Span+x+1];
         const auto f=grid.at(ox+x,y,oz+z);
@@ -140,6 +146,7 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
     }
     // Ore probabilities are constant per depth and random rolls per 3^3 cell.
     // Compute both once instead of repeating seven hashes for every rock voxel.
+    profile.next(GenerationMetrics::Materials);
     constexpr int OreCount=7;
     std::array<std::array<float,OreCount>,384> oreChances{};
     for(int y=MinimumY;y<scanTop;++y) for(int ore=0;ore<OreCount;++ore) {
@@ -230,6 +237,7 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
             at(x,t.height+1,z)=Block::Snow;
     }
     const int featureTop=generationVersion_>=15?std::min(scanTop,TerrainChaos::NaturalMaximumY):scanTop;
+    profile.next(GenerationMetrics::Vegetation);
     decorateBiomeChunk(cx,cz,seed_,result.blocks,[&](int x,int z) {
         const auto t=terrainAt(x,z); return BiomeTerrain{t.height,t.biome,t.river};
     },reserved,[&](int x,int z) {
@@ -268,8 +276,10 @@ World::GeneratedChunk World::generateChunkDataDensity(int cx,int cz) const {
             }
         }
     }
+    profile.next(GenerationMetrics::Structures);
     result.hasStructure=structures_.applyToChunk(cx,cz,result.blocks,result.loot,result.mobs,structureTerrain,MinimumY,featureTop);
     if(generationVersion_>=19) result.hasStructure=applyUnderground(cx,cz,result)||result.hasStructure;
+    profile.next(GenerationMetrics::Shore);
     // Shore vegetation uses actual generated water, not a biome-name heuristic.
     for(int z=0;z<16;++z) for(int x=0;x<16;++x) {
         const auto t=terrainAt(ox+x,oz+z); const int y=t.height;

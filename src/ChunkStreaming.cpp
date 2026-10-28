@@ -1,5 +1,23 @@
 #include "ChunkStreaming.h"
 #include <cmath>
+#include <thread>
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <Windows.h>
+#endif
+unsigned availableStreamingProcessors() {
+    unsigned count=std::max(1U,std::thread::hardware_concurrency());
+#ifdef _WIN32
+    DWORD_PTR process=0,system=0;
+    if(GetProcessAffinityMask(GetCurrentProcess(),&process,&system)) {
+        unsigned available=0;for(auto mask=process;mask;mask>>=1)available+=unsigned(mask&1);
+        if(available)count=std::min(count,available);
+    }
+#endif
+    return count;
+}
 StreamingWorkerPlan streamingWorkerPlan(unsigned hardware, ChunkStreamingQuality quality) {
     hardware=std::max(1U,hardware);
     if(hardware<=3 || quality==ChunkStreamingQuality::Low) return {1,1};

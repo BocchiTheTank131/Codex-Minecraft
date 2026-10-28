@@ -713,6 +713,7 @@ void Game::pollSave(bool wait) {
     if(!pendingSave_.valid() || (!wait && pendingSave_.wait_for(std::chrono::seconds(0))!=std::future_status::ready))return;
     bool saved=false;try{saved=pendingSave_.get();}catch(const std::exception& e){std::cerr<<"Background checkpoint error: "<<e.what()<<'\n';}
     const auto status=std::move(pendingSaveStatus_);
+    if(settingsSaveQueued_){settingsSaveQueued_=false;settings_.save(SettingsPath);}
     const bool queued=saveQueued_;saveQueued_=false;
     saveFeedback_.complete(saved,glfwGetTime());
     if(!saved && status && status->permanentFailure){blockSaving(status->reason);return;}
@@ -732,6 +733,20 @@ bool Game::saveAll(bool asynchronous) {
     if(!loadedStateValid_ || !player_ || !inventory_ || !survival_ || !transportation_)return false;
     // Global preferences are independent of a per-world checkpoint.
     const bool settingsSaved=settings_.save(SettingsPath);
+    if(asynchronous) {
+        try {
+            pendingSaveStatus_=std::make_shared<SaveFile::CommitStatus>();
+            pendingSave_=captureCheckpointAsync(pendingSaveStatus_);
+            saveFeedback_.pending(glfwGetTime());timing_.lastSave=glfwGetTime();
+            if(!settingsSaved)chat_.addMessage("World checkpoint queued; settings save failed. See log.",ChatTone::Error,glfwGetTime());
+            return settingsSaved;
+        } catch(const std::exception& error) {
+            pendingSaveStatus_.reset();saveFeedback_.complete(false,glfwGetTime());timing_.lastSave=glfwGetTime();
+            std::cerr<<"Checkpoint capture rejected; previous generation retained: "<<error.what()<<'\n';
+            chat_.addMessage("Background save capture failed; previous checkpoint retained. Manual saving remains available. See log.",ChatTone::Error,glfwGetTime());
+            return false;
+        }
+    }
     SaveFile::Checkpoint checkpoint(worldSavePath("save.checkpoint"));
     if(!checkpoint.ready()){
         saveFeedback_.complete(false,glfwGetTime());
@@ -748,14 +763,6 @@ bool Game::saveAll(bool asynchronous) {
     saved &= player_->save(worldSavePath(PlayerSavePath), seed_);
     saved &= survival_->save(worldSavePath(MobSavePath), seed_);
     if (saved) saved &= saveWorldMetadata();
-    if(saved && asynchronous){
-        pendingSaveStatus_=std::make_shared<SaveFile::CommitStatus>();
-        pendingSave_=checkpoint.commitAsync(pendingSaveStatus_);
-        saveFeedback_.pending(glfwGetTime());
-        if(!settingsSaved)chat_.addMessage("World checkpoint queued; settings save failed. See log.",ChatTone::Error,glfwGetTime());
-        timing_.lastSave=glfwGetTime();
-        return settingsSaved; // Queued only; success/failure reported by pollSave.
-    }
     if (saved) saved = checkpoint.commit();
     saveFeedback_.complete(saved,glfwGetTime());
     const bool complete=saved&&settingsSaved;
@@ -771,6 +778,7 @@ bool Game::saveAll(bool asynchronous) {
 }
 
 void Game::saveSettings() {
+    if(pendingSave_.valid()){settingsSaveQueued_=true;return;}
     if (Persistence::enabled())
         settings_.save(SettingsPath);
 }

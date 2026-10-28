@@ -1,0 +1,58 @@
+[
+  {
+    "image": "forest-old.png",
+    "original": "build\\v2181-validation\\final-scenes\\old-rd32-0-profile\\screenshots\\voxel_1793186148801.bmp",
+    "original_sha256": "bc2621b46eab5495aadd25d3d3ca6bb91f1250966df51aca31bd1cb141a53461",
+    "png_sha256": "e7ab6db02a8ec83fb43cc58b71300b5e49a622ba9d12a8c780a93538947dfe5b",
+    "note": "Lossless format conversion only; native scene, no image edits."
+  },
+  {
+    "image": "mountain-old.png",
+    "original": "build\\v2181-validation\\final-scenes\\old-rd32-0-profile\\screenshots\\voxel_1793186168740.bmp",
+    "original_sha256": "6cc1a82cbc1ce4e037efc68fb78b988f6ac8edca3443492ba9ac8f4f33bc1e32",
+    "png_sha256": "e3dda49b5329f5bef095678410933a2799de38454ddf4e2c0b0a78a46600abf1",
+    "note": "Lossless format conversion only; native scene, no image edits."
+  },
+  {
+    "image": "structures-old.png",
+    "original": "build\\v2181-validation\\final-scenes\\old-rd32-0-profile\\screenshots\\voxel_1793186219025.bmp",
+    "original_sha256": "562dff0614268020a860c44e69203a19fde7b5ca8193822c67b1386289ad5393",
+    "png_sha256": "67eeb468a6a706113bc74a5584931fa74f4b6160db6566095e25ef9c6c4ad6a4",
+    "note": "Lossless format conversion only; native scene, no image edits."
+  },
+  {
+    "image": "forest-new.png",
+    "original": "build\\v2181-validation\\final-scenes\\new-rd32-0-profile\\screenshots\\voxel_1793186273436.bmp",
+    "original_sha256": "89736c9230eed22be8b9c7d220604b6aa035ff2e6f9b8eb67b41a94743667fef",
+    "png_sha256": "4ecbaf12b47007a3a22f2b17144121ea3402b7abc5c8d8648012a45612aa629a",
+    "note": "Lossless format conversion only; native scene, no image edits."
+  },
+  {
+    "image": "mountain-new.png",
+    "original": "build\\v2181-validation\\final-scenes\\new-rd32-0-profile\\screenshots\\voxel_1793186293388.bmp",
+    "original_sha256": "e5a4694fb44d024b8c885f6880eaa4f87adf273b5e9b0c43960872ae3bcdbac6",
+    "png_sha256": "ec53021ff714b649f92ce55afd57b0ce3f3e25dcf76d8fd7ed833030df5f382b",
+    "note": "Lossless format conversion only; native scene, no image edits."
+  },
+  {
+    "image": "structures-new.png",
+    "original": "build\\v2181-validation\\final-scenes\\new-rd32-0-profile\\screenshots\\voxel_1793186343015.bmp",
+    "original_sha256": "95b780fc662e907499981799f8e5d5e0a7d3168329d890c318c34f0c0c37de21",
+    "png_sha256": "8d314715c836558cc185b752d7e0a73ae4776285acc9d605368ed9f85fb6d97c",
+    "note": "Lossless format conversion only; native scene, no image edits."
+  },
+  {
+    "image": "survival-rain.png",
+    "original": "build\\v2181-validation\\final-traversal\\new-rd32-n10000\\rd32-voxel_1793187732137.bmp",
+    "original_sha256": "a5b47eede59ff9069acfd51969030a7120e9b2cb4c79330f85df45ea468e242c",
+    "png_sha256": "3c13cb9e155c5696eaab39a1607e78d0d38da1605a549dc0db1bc117123ed8d8",
+    "note": "Native rain/equipment/map/automation traversal; lossless PNG."
+  },
+  {
+    "image": "survival-boat.png",
+    "original": "build\\v2181-validation\\final-traversal\\new-rd32-n10000\\rd32-voxel_1793187752175.bmp",
+    "original_sha256": "d0157884c965c28aed56620a2658c1dc9c8de60103db589f6ec7d5ce3088042f",
+    "png_sha256": "2f4902edc0e1064fea0d772f25150fb9444053257a47101b59c030ee8e316c91",
+    "note": "Native rain/equipment/map/automation traversal; lossless PNG."
+  }
+]

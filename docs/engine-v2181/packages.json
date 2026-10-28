@@ -1,0 +1,12 @@
+[
+  {
+    "name": "VoxelFrontier-v2.18.1-Windows-Standalone.exe",
+    "bytes": 77300736,
+    "sha256": "c6eb1cb1e33caa6fc744b7484acfeb8039199bcc88a091e654ba86a493d4f74f"
+  },
+  {
+    "name": "VoxelFrontier-v2.18.1-Windows-Setup.exe",
+    "bytes": 71566930,
+    "sha256": "197d3c3f53f94f742082024cea5211df62693bf57b3f8a384fb31529d4ca09d1"
+  }
+]

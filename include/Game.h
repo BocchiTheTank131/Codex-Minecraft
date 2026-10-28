@@ -31,6 +31,7 @@ class Transportation;
 namespace SaveFile { class Session; struct CommitStatus; }
 
 class Game {
+    friend class EngineOptimizationTest;
     friend class AutomationTest;
     friend class QolTest;
     friend class IconTest;
@@ -58,6 +59,8 @@ private:
     std::shared_ptr<SaveFile::CommitStatus> pendingSaveStatus_;
     std::string saveBlockedReason_;
     bool saveQueued_=false;
+    bool settingsSaveQueued_=false;
+    std::future<bool> captureCheckpointAsync(std::shared_ptr<SaveFile::CommitStatus>);
     SaveFeedback saveFeedback_;
     void pollSave(bool wait=false);
     void blockSaving(const std::string& reason);

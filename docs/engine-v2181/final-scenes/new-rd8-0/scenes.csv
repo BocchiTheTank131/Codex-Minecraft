@@ -1,0 +1,8 @@
+scene,x,y,z,biome
+plains,256.5,111.01,-8191.5,PLAINS
+forest,-6910.5,150.01,-8190.5,FOREST
+mountains,-1022.5,162.01,-8191.5,SNOWY PEAKS
+cave,2181.5,20,-3804.5,TAIGA
+ocean,-8191.5,64.5,-8191.5,WARM OCEAN
+structures,388.5,-12,-1375.5,SNOWY SLOPES
+gameplay,256.5,111.01,-8191.5,PLAINS

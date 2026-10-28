@@ -2,6 +2,7 @@
 #include "Survival.h"
 #include <array>
 #include <future>
+#include <functional>
 #include <unordered_set>
 
 class World;
@@ -21,6 +22,7 @@ struct ExplorationMap {
 };
 struct Waypoint {std::string name; glm::vec3 position{0};};
 class Transportation {
+    friend class EngineOptimizationTest;
     friend class IconTest;
 public:
     explicit Transportation(glm::vec3 spawn):spawn_(spawn){}
@@ -43,6 +45,7 @@ public:
     bool refreshing(std::uint32_t id) const{return refreshMap_==id;}
     void reveal(const World&,const Player&,std::uint32_t);
     bool save(const std::string&,std::uint32_t seed) const;
+    std::function<bool()> captureSave(const std::string&,std::uint32_t seed) const;
     bool load(const std::string&,std::uint32_t seed);
     const std::vector<Waypoint>& waypoints() const{return waypoints_;}
     int selectedWaypoint=-1;

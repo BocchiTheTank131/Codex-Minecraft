@@ -1,0 +1,32 @@
+[
+  {
+    "name": "full-validate",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "full-spawns",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "full-ecosystems",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "full-freeze",
+    "exit": 0,
+    "exe_sha256": "8348397faf29a92b605a266f4bfc4c033c5cb73327a248ec12dbf30f086eb0bb"
+  },
+  {
+    "name": "demo-validate",
+    "exit": 0,
+    "exe_sha256": "1aa0cdfbf6ec42d5f4f1ba0f738633e5f834189de1aa896e2e9f0ba2bd41211c"
+  },
+  {
+    "name": "demo-freeze",
+    "exit": 0,
+    "exe_sha256": "1aa0cdfbf6ec42d5f4f1ba0f738633e5f834189de1aa896e2e9f0ba2bd41211c"
+  }
+]
