@@ -1,0 +1,47 @@
+[
+  {
+    "name": "full-adventure-generation",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "demo-adventure-tests",
+    "exit": 0,
+    "exe_sha256": "907a5639b380e387219e35ac9cdceed34307b0e44df1dde065c2d859c21f5733"
+  },
+  {
+    "name": "demo-adventure-generation",
+    "exit": 0,
+    "exe_sha256": "907a5639b380e387219e35ac9cdceed34307b0e44df1dde065c2d859c21f5733"
+  },
+  {
+    "name": "full-validate",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "full-spawns",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "full-ecosystems",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "full-freeze",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "demo-validate",
+    "exit": 0,
+    "exe_sha256": "907a5639b380e387219e35ac9cdceed34307b0e44df1dde065c2d859c21f5733"
+  },
+  {
+    "name": "demo-freeze",
+    "exit": 0,
+    "exe_sha256": "907a5639b380e387219e35ac9cdceed34307b0e44df1dde065c2d859c21f5733"
+  }
+]

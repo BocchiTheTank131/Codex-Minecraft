@@ -1,0 +1,12 @@
+{
+  "command": [
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\driver\\Release\\StabilityDriver.exe",
+    "--adventure-route",
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-paced-native-rd8-fps60",
+    "60",
+    "8"
+  ],
+  "sha256": "8192cf286646e62fc42162d5d92641e1ce03723e19903f89e83fcbfd72248717",
+  "profile": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-paced-native-rd8-fps60\\profile",
+  "native_route_starting_kit": "Established Survival common resources and iron armor; every relic and core comes from native containers; recorded teleports between sites"
+}

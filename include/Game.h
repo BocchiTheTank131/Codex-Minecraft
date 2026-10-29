@@ -31,6 +31,7 @@ class Transportation;
 namespace SaveFile { class Session; struct CommitStatus; }
 
 class Game {
+    friend class AdventureTest;
     friend class EngineOptimizationTest;
     friend class AutomationTest;
     friend class QolTest;
@@ -164,6 +165,9 @@ private:
     std::string waypointName_="Camp",waypointCoordinates_,navigationMessage_;
     bool waypointCoordinatesFocused_=false;
     float mapTimer_=0;
+    bool journalOpen_=false;int journalCategory_=0,journalPage_=0;
+    bool adventureInput();
+    bool adventureUse(bool offhand);
     bool navigationInput();
     bool transportationUse(bool offhand);
     void updateTransportation(float deltaTime,bool inputEnabled);

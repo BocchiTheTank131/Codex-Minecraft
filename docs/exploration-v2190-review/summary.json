@@ -1,0 +1,294 @@
+{
+  "functional": [
+    {
+      "name": "adventure-tests",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "subsystems",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "game",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "checkpoint",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "engine-tests",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "engine-stream-stress",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "automation",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "automation-stabilization",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "building",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "creative-ui",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "qol",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "farming",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "legacy-building",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    }
+  ],
+  "generation": [
+    {
+      "name": "full-adventure-generation",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "demo-adventure-tests",
+      "exit": 0,
+      "exe_sha256": "907a5639b380e387219e35ac9cdceed34307b0e44df1dde065c2d859c21f5733"
+    },
+    {
+      "name": "demo-adventure-generation",
+      "exit": 0,
+      "exe_sha256": "907a5639b380e387219e35ac9cdceed34307b0e44df1dde065c2d859c21f5733"
+    },
+    {
+      "name": "full-validate",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "full-spawns",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "full-ecosystems",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "full-freeze",
+      "exit": 0,
+      "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+    },
+    {
+      "name": "demo-validate",
+      "exit": 0,
+      "exe_sha256": "907a5639b380e387219e35ac9cdceed34307b0e44df1dde065c2d859c21f5733"
+    },
+    {
+      "name": "demo-freeze",
+      "exit": 0,
+      "exe_sha256": "907a5639b380e387219e35ac9cdceed34307b0e44df1dde065c2d859c21f5733"
+    }
+  ],
+  "release": [
+    {
+      "name": "full-transport",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-command",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-survival",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-weather",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-fluid",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-reset",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-spectator",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-menu",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-optimization",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-patch272",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "full-ui",
+      "exit": 0,
+      "exe_sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c"
+    },
+    {
+      "name": "demo-transport",
+      "exit": 0,
+      "exe_sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b"
+    },
+    {
+      "name": "demo-command",
+      "exit": 0,
+      "exe_sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b"
+    },
+    {
+      "name": "demo-survival",
+      "exit": 0,
+      "exe_sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b"
+    },
+    {
+      "name": "demo-weather",
+      "exit": 0,
+      "exe_sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b"
+    },
+    {
+      "name": "demo-fluid",
+      "exit": 0,
+      "exe_sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b"
+    },
+    {
+      "name": "demo-menu",
+      "exit": 0,
+      "exe_sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b"
+    },
+    {
+      "name": "demo-optimization",
+      "exit": 0,
+      "exe_sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b"
+    },
+    {
+      "name": "demo-patch272",
+      "exit": 0,
+      "exe_sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b"
+    },
+    {
+      "name": "demo-ui",
+      "exit": 0,
+      "exe_sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b"
+    }
+  ],
+  "full_review_probes": 380,
+  "demo_review_probes": 378,
+  "route": {
+    "assertions": 863,
+    "passed": true
+  },
+  "packages": {
+    "VoxelFrontier-v2.19.0-Windows-Setup.exe": {
+      "sha256": "1380cdecaeca92860d02ddb9e0d617fa67e0e7aa6cadde86af527a3817adc898",
+      "bytes": 71602031
+    },
+    "VoxelFrontier-v2.19.0-Windows-Standalone.exe": {
+      "sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b",
+      "bytes": 77358592
+    }
+  },
+  "source": {
+    "assets/inventory/relic_ancientexplorertool.png": "14b6a36d870b86e6737f21fe2a12cc989fa533dbfd15e09e37cf278f5022738e",
+    "assets/inventory/relic_echolantern.png": "c533ae03a68b76a0ec51c0d17992c5e16acff2712278cc7c9a11213711e05ddd",
+    "assets/inventory/relic_resonantcore.png": "709ae80443f0f95f2fb993c0a5cd114732d277727dcdc21059598ae49fef7bf5",
+    "assets/inventory/relic_surveyorcompass.png": "6497940f573d1290f5d8c18aa497b22d52ee5073f2faba8152a54d2db9305840",
+    "assets/inventory_art_source.rgba": "2e350eb92a0defec64b8a5ea84c40c7552b882687aebd76f4ca959d6d8b887e2",
+    "assets/inventory_atlas_16.png": "21182655c1d01ad9ffbf0d555d73af57942bf5925519a10987bd194cd9d7920f",
+    "assets/inventory_previews.json": "1514cb011d521ee9333e919ee76b669ca6d7488da7e46a85cbba72561196b947",
+    "assets/inventory_previews/362.png": "5e3723d4cd30a5cb1e4fca6182cc11ff012e1dd4b3b7f93dd35285d2ed229114",
+    "assets/inventory_previews/363.png": "ce28b27f7d072ee6e6355c4e57c9f08d6231d7548a3bb9146219e33699d05e84",
+    "assets/inventory_previews/364.png": "456632bd5b5c2c2f4bcae9ec64ec0ffe4922b606d2d27dfb5c359e5f2001a957",
+    "assets/inventory_previews/365.png": "6b3b80d16721551259ea19d854c8eabc1e08b000bdc0a2abad38192702d8f254",
+    "assets/item_icons_expansion.png": "1c4bf66a275fa50888bd385a3d3f2cd194f15971b0f9762678783bbb3499e708",
+    "assets/item_icons_expansion.rgba": "d63b7c5e19a837f179d8eb88e7b1904fe1c5b687f10498c41460947ecda607af",
+    "include/Adventure.h": "9e9f970b178d00083e80aee7ee6ab76c09a84483c1a57f406c7f7bbfec560005",
+    "include/Automation.h": "74bebd8709076e4552dde096f3f78b778224d0189783d20f321adc323be097fb",
+    "include/Building.h": "46cc5f2f1d87bd38b64b34a538fcd607af0f4da41fe9d650fed66eefe1160a11",
+    "include/ExplorationLoot.h": "f66a52fd0952dc402dab40e6d3459ce9b28192050f27285b3b47ac896b6d6c2b",
+    "include/Game.h": "b3b461641f9cadf9e71d0e0b4f9966da4b263cfff3fd434bc10c2e286d24d40b",
+    "include/GeneratorVersion.h": "8fbbe5629a1269845185f061b113b8a56660f28048af4e4c196ef8675a76f470",
+    "include/InputManager.h": "76476c7bef27002a255eaf95a038bb68c18f2b98ef9c32d50a925cd4cf816d95",
+    "include/Player.h": "635a79fb19be412937ab200f04327efc6a9cda12ce1b2fd07e8ba789c6b065ad",
+    "include/Renderer.h": "d2eeb2c7fa83c16928f006240233a781a947862e4e6b3cdc01b5ae8ce0e23fcf",
+    "include/Structure.h": "d724cc171507c324184effd62fef2e8c88e8f7d3ac86e0951c467e9a39363698",
+    "include/Survival.h": "e646196a3dc591d0a24e1215660984bf9ba0526ccd64df3aac4d27913d298293",
+    "include/UndergroundStructures.h": "cbd4e64f664d120310de020765fbf508b409ad9d82749e0ca1cc7add613bfb20",
+    "include/World.h": "9534042617c218256271d78de3393a2803b489e52e312935b057b7b732c45c1f",
+    "src/Adventure.cpp": "82e6fef0d6ab430871406c95a8914fc86e9229b7a0ba552ead7d4f66645b4f14",
+    "src/AdventureChambers.cpp": "4e2d33d73fe8974050a3333bd15b19bac1747f441fc15e8e0eb6317ebc39c737",
+    "src/Automation.cpp": "908da9106b01e4b10c64553432fdafdbc2ff7cbc4f1be1287f2acfbd37d883fb",
+    "src/Building.cpp": "c890c04c1f177ae57eacdda627681553bcea3014e1cdd5ed67e52aafd3d9bd03",
+    "src/Definitions.cpp": "b61f1f5096721422d69ef24c9c422348c9253a7200848266d409da2cd8575ac5",
+    "src/Equipment.cpp": "599a09a4bc788546de221b55ff3b3fe1f1c8dec8181cc6409ac423c2a25f4e8e",
+    "src/EquipmentInput.cpp": "99b3fa83a4ced319569278825a97e9f9e6249314e44e6a0c6eef75cce37d9c69",
+    "src/Game.cpp": "4f864c9acf20876a063d4125dd239148ff90788bdf41e5ee46dc5dad108326ed",
+    "src/GameAdventure.cpp": "5cbbd88b5c063f80911d022c415e37a7c8230772c961579d753f032b567bb761",
+    "src/GameBuilding.cpp": "010a59b6d84b623ff089527afd42a291f535e21b26214ccb23251ce78894155e",
+    "src/InputManager.cpp": "6453a170233bb7f06c277e9823f627e16f0b5f8e3e7e800f71cfbddc0f949ddb",
+    "src/InventoryUI.cpp": "2e7616ef1be21a02961c98958ae763bdfae94eda199284c183562ad3ef405509",
+    "src/QualityOfLife.cpp": "b4e29e95244e84f86a2d0d878795bc99e27b6e477544808d6a1e9a2fc9abda31",
+    "src/Renderer.cpp": "aa0f411dd9771665e5c4d9421a807ddf16bd3ff47412165719b80ee0662bfc02",
+    "src/SaveSnapshot.cpp": "b34e0e9f772a66e069051127ac09192da64d0dd6c34696c7f94374b55cfd74ba",
+    "src/Structure.cpp": "8982f59fa0372a162685f836f7aa439e8af31cbd49b9c3a4e35b44d2a9906b4d",
+    "src/Survival.cpp": "39175db2932c49530a8088b3c05946525362e84bac27f5b16c46579f7cfc2d68",
+    "src/UndergroundStructures.cpp": "e4110a2352f25bdf5a08b947365730b306b13419adffe317ee6f4eb9a10ec821",
+    "src/UndergroundValidation.cpp": "ef4d17400d5f7424e934342a9b82dcb55c422ca47c224542bdf3f96f4e267722",
+    "src/UndergroundWorld.cpp": "438d9d415da1c62f8d67a9262fc2e7709eb1570c4a078787285c1b5306467ad4",
+    "src/World.cpp": "af0cde9d16ce25f2f8a8ae88338e9b018e7880eb2701e75e53e6929e78a208d0",
+    "src/WorldExpansionValidation.cpp": "a99d6a8c29fdfc624413513042eed57790cb1aeab7ed7a09fec135a9f4fb225b",
+    "tests/stability/CMakeLists.txt": "c737fd9013ce551a347afba8a93528997fcd6f8b6062e42378a39d32960f49c0",
+    "tests/stability/adventure.cpp": "2a6bf127cc0366d6e6def58a25e7ac722894f2aa52d68cab3ed8e3101c5de430",
+    "tests/stability/main.cpp": "c66fb7b310d7f7403d3f50c398453d1f4c2501172b3145c36575666a1235fd08",
+    "tools/benchmark_relics_v2190.py": "2af2f688bcea86039108a6e02f9213845bf93e0894a673bf9e0a1ec1829babef",
+    "tools/generate_item_thumbnails.py": "2aba266537df0cf3292110ae57c5a3070f501aa05a79fd1554ccc9ed93755657",
+    "tools/generate_relic_assets.py": "02f4ac1a046d2f924e5173a2cc016fcbc3cd91da37a6a10ef3a5af8ef9252fbd",
+    "tools/run_relic_fixture.py": "99546e14cec7c37d9882591190cfcb65fddd5bc46fa03521fe8ef83564e98059",
+    "tools/summarize_relics_v2190.py": "ad4062c414e81b6ed614cbe98cc58d17fc7052b243a9b2490f560980b1dca9e3",
+    "tools/validate_relics_v2190.py": "d26dd71c8b9ed7848cb89d0b70db04af521f4ffc494d9a5df4149c133b0647b8",
+    "tools/verify_relics_packages.py": "584e97073e070a57dc0264e317891b1ae2c22264f2ee6561d1ab9509dd574d7a"
+  }
+}

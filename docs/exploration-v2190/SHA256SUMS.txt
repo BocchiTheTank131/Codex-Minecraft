@@ -1,0 +1,2 @@
+3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7  VoxelFrontier-v2.19.0-Windows-Standalone.exe
+907f7ce45847e7e3e98adefe3eedea96793bd4a7d364664d696d24735058ff71  VoxelFrontier-v2.19.0-Windows-Setup.exe

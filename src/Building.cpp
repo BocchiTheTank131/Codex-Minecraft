@@ -19,7 +19,7 @@ const std::array<BuildingDefinition,15>& automationContent(){
  }};return content;
 }
 const BuildingDefinition* buildingDefinition(Block b){const auto t=blockType(b);if(automationBlock(b))return &automationContent()[int(t)-int(Block::PowerWire)];return t>=Block::OakStairs&&t<=Block::Scaffold?&buildingContent()[int(t)-int(Block::OakStairs)]:nullptr;}
-const BuildingDefinition* buildingDefinition(Item i){if(i>=Item::PowerWire&&i<Item::Count)return &automationContent()[int(i)-int(Item::PowerWire)];return i>=Item::OakStairs && i<=Item::Scaffold?&buildingContent()[int(i)-int(Item::OakStairs)]:nullptr;}
+const BuildingDefinition* buildingDefinition(Item i){if(i>=Item::PowerWire&&i<=Item::AutoHarvester)return &automationContent()[int(i)-int(Item::PowerWire)];return i>=Item::OakStairs && i<=Item::Scaffold?&buildingContent()[int(i)-int(Item::OakStairs)]:nullptr;}
 glm::ivec3 buildingFacing(int f){constexpr glm::ivec3 d[]={{0,0,-1},{1,0,0},{0,0,1},{-1,0,0}};return d[f&3];}
 bool buildingIsContainer(Block b){return blockType(b)==Block::Barrel||blockType(b)==Block::Hopper;}
 bool buildingIsBed(Block b){return blockType(b)==Block::Bed;}
@@ -143,4 +143,16 @@ int buildingTexture(Block b,int face){const auto d=buildingDefinition(b);if(!d)r
  if(t==Block::Campfire)return p&8?169:168;if(t==Block::Bed)return face==2?((p&16)?170:181)+((p>>8)&3):blockTexture(Block::Planks,face);
  if(t==Block::Barrel)return 174;if(t==Block::Painting)return 175+((p>>8)&3);if(t==Block::ItemFrame)return 179;if(t==Block::FlowerPot)return 180;if(t==Block::Carpet)return 181+((p>>8)&3);if(t==Block::DirtPath)return 185;if(t==Block::Scaffold)return 186;
  return blockTexture(d->material,face);
+}
+
+std::optional<glm::ivec3> blockSupportPosition(glm::ivec3 pos,Block b){
+ const auto props=blockProperties(b);if(isTorch(b)&&props)return pos-buildingFacing(props-1);
+ if(isVine(b)||isLadder(b)){constexpr glm::ivec3 wall[]={{0,0,-1},{0,0,1},{1,0,0},{-1,0,0}};return pos+wall[int(b)-int(isVine(b)?Block::VineNorth:Block::LadderNorth)];}
+ if(auto d=buildingDefinition(b);d&&buildingNeedsSupport(b)){
+  if(d->shape==BuildingShape::Chain||(d->shape==BuildingShape::Lantern&&(props&4)))return pos+glm::ivec3(0,1,0);
+  if(d->shape==BuildingShape::Frame||d->shape==BuildingShape::Painting||d->shape==BuildingShape::Button||(d->shape==BuildingShape::Sign&&(props&16)))return pos+(d->shape==BuildingShape::Button?buildingFacing(props):-buildingFacing(props));
+  return pos+glm::ivec3(0,-1,0);
+ }
+ if(isTorch(b)||isPlant(b)||isCrop(b)||isBerryBush(b)||b==Block::Cactus||b==Block::SugarCane||b==Block::Bamboo||b==Block::Fire||isDoor(b))return pos+glm::ivec3(0,-1,0);
+ return {};
 }

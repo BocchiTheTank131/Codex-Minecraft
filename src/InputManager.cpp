@@ -9,13 +9,13 @@ ControlBindings defaultControlBindings() {
     return {GLFW_KEY_W, GLFW_KEY_S, GLFW_KEY_A, GLFW_KEY_D,
             GLFW_KEY_SPACE, GLFW_KEY_LEFT_CONTROL, GLFW_KEY_LEFT_SHIFT,
             GLFW_KEY_E, GLFW_KEY_Q, GLFW_KEY_R, GLFW_KEY_C,
-            GLFW_KEY_G, GLFW_KEY_F3, GLFW_KEY_F2, GLFW_KEY_F, GLFW_KEY_U};
+            GLFW_KEY_G, GLFW_KEY_F3, GLFW_KEY_F2, GLFW_KEY_F, GLFW_KEY_U, GLFW_KEY_J};
 }
 
 const char* controlActionName(ControlAction action) {
     static constexpr std::array<const char*, ControlActionCount> names{
         "FORWARD", "BACKWARD", "LEFT", "RIGHT", "JUMP", "SPRINT", "SNEAK",
-        "INVENTORY", "DROP", "PICK BLOCK", "ZOOM", "FULLBRIGHT", "DEBUG", "SCREENSHOT", "SWAP OFFHAND", "RECIPES USING ITEM"};
+        "INVENTORY", "DROP", "PICK BLOCK", "ZOOM", "FULLBRIGHT", "DEBUG", "SCREENSHOT", "SWAP OFFHAND", "RECIPES USING ITEM", "ADVENTURE JOURNAL"};
     const int index = static_cast<int>(action);
     return index >= 0 && index < ControlActionCount ? names[static_cast<std::size_t>(index)] : "?";
 }

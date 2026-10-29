@@ -1,6 +1,8 @@
 #pragma once
 #include "Structure.h"
 
+std::array<ItemStack,27> rollRelicVaultLoot(std::uint32_t,const StructureLootMarker&);
+
 enum class LootRarity : std::uint8_t { Common, Uncommon, Rare };
 struct WeightedLootEntry {
     Item item;

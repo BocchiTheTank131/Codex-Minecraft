@@ -2847,6 +2847,20 @@ bool Renderer::validateTerrainPacking() const {return validateTerrainPackingGpu(
 unsigned Renderer::occlusionCulledCount() const {return occlusion_->diagnostics().culled;}
 unsigned Renderer::occlusionQueryCount() const {return occlusion_->diagnostics().queries;}
 
+void Renderer::renderAdventure(int width,int height,const Adventure& adventure,int category,int page) const {
+    thread_local std::vector<UiVertex> vertices;vertices.clear();
+    const float panelWidth=std::min(680.f,float(width)-32),panelHeight=std::min(430.f,float(height)-32);
+    const float x=(width-panelWidth)*.5f,y=(height-panelHeight)*.5f;
+    addRect(vertices,x,y,panelWidth,panelHeight,{.07f,.10f,.12f,.97f},width,height);
+    auto text=[&](std::string s,float yy,float scale,glm::vec4 color=glm::vec4(1)){textGeometry_->appendRun(vertices,s,x+18,yy,scale,color,width,height);};
+    text("ADVENTURE JOURNAL",y+18,2,{1,.85f,.52f,1});
+    const char* categories[]={"DISCOVERIES","CHALLENGES","RELICS","ACHIEVEMENTS"};
+    text(std::string(categories[category])+" / PAGE "+std::to_string(page+1),y+52,1.5f,{.65f,.9f,.92f,1});
+    int row=0;for(const auto& line:adventure.journal(category,page))text(line,y+88+row++*22,1.12f);
+    text("LEFT/RIGHT: CATEGORY  UP/DOWN: PAGE  ESC: CLOSE",y+panelHeight-28,1.1f,{.8f,.8f,.8f,1});
+    drawMenuVertices(vertices.data(),vertices.size());
+}
+
 void Renderer::renderNavigation(int width,int height,const Transportation& travel,const Player& player,const Inventory& inventory,bool open,bool large,std::uint32_t viewed,const std::string& name,const std::string& coords,bool focus,const std::string& message) const {
     const auto held=inventory.selectedStack(),off=inventory.equipment(4);
     const bool compass=held.item==Item::Compass||off.item==Item::Compass;

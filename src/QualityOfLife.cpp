@@ -8,6 +8,7 @@
 
 int itemCategory(Item item){
  const auto& d=itemDefinition(item);const auto b=itemToBlock(item);
+ if(item==Item::SurveyorCompass||item==Item::EchoLantern)return 3;
  if(d.tool!=ToolKind::None||armorSlot(item)>=0||item==Item::Shield)return 3;
  if(isFood(item))return 4;
  if(isPlant(b)||isLeaf(b)||isLog(b)||b==Block::Grass||b==Block::Dirt||b==Block::Sand||b==Block::Snow||b==Block::Water||b==Block::Lava||item==Item::Seeds)return 5;

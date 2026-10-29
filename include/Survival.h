@@ -14,6 +14,7 @@ class Player;
 struct UiHit;
 class SoundSystem;
 class World;
+class Adventure;
 
 // Never reorder existing values: inventory V4 saves store these numeric IDs.
 enum class Item : std::uint16_t {
@@ -143,6 +144,7 @@ enum class Item : std::uint16_t {
     OakStairs, OakSlab, OakFence, OakFenceGate, OakTrapdoor, OakDoor, OakStrippedLog, OakButton, OakPressurePlate, OakTable, OakChair, OakBench, OakSign, OakShelf, BirchStairs, BirchSlab, BirchFence, BirchFenceGate, BirchTrapdoor, BirchDoor, BirchStrippedLog, BirchButton, BirchPressurePlate, BirchTable, BirchChair, BirchBench, BirchSign, BirchShelf, SpruceStairs, SpruceSlab, SpruceFence, SpruceFenceGate, SpruceTrapdoor, SpruceDoor, SpruceStrippedLog, SpruceButton, SprucePressurePlate, SpruceTable, SpruceChair, SpruceBench, SpruceSign, SpruceShelf, JungleStairs, JungleSlab, JungleFence, JungleFenceGate, JungleTrapdoor, JungleDoor, JungleStrippedLog, JungleButton, JunglePressurePlate, JungleTable, JungleChair, JungleBench, JungleSign, JungleShelf, AcaciaStairs, AcaciaSlab, AcaciaFence, AcaciaFenceGate, AcaciaTrapdoor, AcaciaDoor, AcaciaStrippedLog, AcaciaButton, AcaciaPressurePlate, AcaciaTable, AcaciaChair, AcaciaBench, AcaciaSign, AcaciaShelf, DarkOakStairs, DarkOakSlab, DarkOakFence, DarkOakFenceGate, DarkOakTrapdoor, DarkOakDoor, DarkOakStrippedLog, DarkOakButton, DarkOakPressurePlate, DarkOakTable, DarkOakChair, DarkOakBench, DarkOakSign, DarkOakShelf, CobblestoneStairs, CobblestoneSlab, CobblestoneWall, StoneStairs, StoneCutSlab, StoneWall, StoneBricksStairs, StoneBricksSlab, StoneBricksWall, MossyCobblestoneStairs, MossyCobblestoneSlab, MossyCobblestoneWall, MossyStoneBricksStairs, MossyStoneBricksSlab, MossyStoneBricksWall, BricksStairs, BricksSlab, BricksWall, SandstoneStairs, SandstoneSlab, SandstoneWall, DeepslateStairs, DeepslateSlab, DeepslateWall, PolishedGraniteStairs, PolishedGraniteSlab, PolishedGraniteWall, PolishedDioriteStairs, PolishedDioriteSlab, PolishedDioriteWall, PolishedAndesiteStairs, PolishedAndesiteSlab, PolishedAndesiteWall, ChiseledStoneBricks, SmoothStone, SmoothSandstone, CutSandstone, PolishedDeepslate, DeepslateBricks, CrackedDeepslateBricks, RoofShingles, GlassPane, RoseGlassPane, AmberGlassPane, SmokedGlassPane, Lantern, Chain, Candle, Campfire, Bed, Barrel, Painting, ItemFrame, FlowerPot, Carpet, DirtPath, StonePaving, Scaffold,
     // v2.17.0: append only; all signal and facing values are state properties.
     PowerWire, Lever, Repeater, AndGate, OrGate, NotGate, PowerLamp, Hopper, Piston, StickyPiston, DaylightSensor, Observer, CropSensor, AutoHarvester,
+    SurveyorCompass, EchoLantern, AncientExplorerTool, ResonantCore,
     Count
 };
 
@@ -197,6 +199,7 @@ struct RecipeInfo {
 const std::vector<RecipeInfo>& craftingRecipes();
 
 class Inventory {
+    friend class AdventureTest;
     friend class EngineOptimizationTest;
 public:
     static constexpr int HotbarSlots = 9, TotalSlots = 36, CraftSlots = 9;
@@ -214,6 +217,7 @@ public:
     float mitigatePhysical(float damage, bool blockable, const glm::vec3& incoming,
                           const glm::vec3& facing, bool blocking, bool& blocked);
     static bool runEquipmentSelfTest(std::string& report);
+    std::uint8_t craftedRelicTools=0; // session events, copied as values; journal owns persistence
     int selectedSlot() const {
         return selectedSlot_;
     }
@@ -349,6 +353,7 @@ struct AttackResult {
 
 class Weather;
 class SurvivalWorld {
+    friend class AdventureTest;
     friend class EngineOptimizationTest;
     friend class AutomationTest;
     friend class FarmingTest;
@@ -381,6 +386,9 @@ public:
                    float pickupDelay = 0.0f, std::uint32_t identity = 0);
     void spawnExperience(const glm::vec3& position, int amount);
     void spawnStructureMob(const glm::ivec3& position, bool hostile);
+    bool spawnRelicAmbush(std::uint64_t,const std::array<glm::ivec3,2>&,const World&);
+    bool relicEncounterAlive(std::uint64_t) const;
+    bool relicEncountersValid(const Adventure&) const;
     void spawnBillboardPreview(const glm::vec3& origin, const glm::vec3& forward);
     bool summonMob(const std::string& name, const glm::vec3& position);
     void mapReferences(std::unordered_set<std::uint32_t>& references) const;
@@ -420,6 +428,7 @@ private:
     static std::size_t billboardIndex(AnimalType type);
     static AnimalType billboardType(std::size_t index);
     struct Animal {
+        std::uint64_t relicEncounter=0;
         Burning burning;
         AnimalType type = AnimalType::Cow;
         glm::vec3 position{0}, velocity{0}, home{0};

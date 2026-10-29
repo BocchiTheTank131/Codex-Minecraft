@@ -1,0 +1,4 @@
+rd,target_fps,phase,samples,mean_frame_ms,p95_frame_ms,p99_frame_ms,worst_frame_ms,mean_work_ms,p95_work_ms,p99_work_ms,worst_work_ms,gpu_samples,mean_gpu_ms,worst_gpu_ms,ram_mb,terrain_capacity,puzzles
+32,30,ambush,63,33.606,33.819,33.8339,33.8358,5.6244,6.8471,7.5074,8.9648,63,3.94533,37.6601,445.398,3.0199e+08,3
+32,30,pulse-trial,580,33.6322,33.8856,33.9908,34.1129,5.30695,7.1525,8.5814,9.4639,579,3.90431,38.8522,529.004,8.89192e+08,3
+32,30,walking,149,33.6372,33.8843,33.9909,34.0413,5.32497,6.709,7.8202,9.0647,149,3.64555,36.9924,467.57,5.4526e+08,3

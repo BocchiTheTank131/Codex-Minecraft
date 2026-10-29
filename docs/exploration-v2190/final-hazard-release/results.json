@@ -1,0 +1,102 @@
+[
+  {
+    "name": "full-transport",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-command",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-survival",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-weather",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-fluid",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-reset",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-spectator",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-menu",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-optimization",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-patch272",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "full-ui",
+    "exit": 0,
+    "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+  },
+  {
+    "name": "demo-transport",
+    "exit": 0,
+    "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+  },
+  {
+    "name": "demo-command",
+    "exit": 0,
+    "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+  },
+  {
+    "name": "demo-survival",
+    "exit": 0,
+    "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+  },
+  {
+    "name": "demo-weather",
+    "exit": 0,
+    "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+  },
+  {
+    "name": "demo-fluid",
+    "exit": 0,
+    "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+  },
+  {
+    "name": "demo-menu",
+    "exit": 0,
+    "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+  },
+  {
+    "name": "demo-optimization",
+    "exit": 0,
+    "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+  },
+  {
+    "name": "demo-patch272",
+    "exit": 0,
+    "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+  },
+  {
+    "name": "demo-ui",
+    "exit": 0,
+    "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+  }
+]

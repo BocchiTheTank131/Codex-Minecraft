@@ -1,0 +1,7 @@
+{
+  "matched_files": 495,
+  "reference_commit": "507fefdec29f5b2848d1344b520d94a34fe8df95",
+  "reference_sha256": "68d1c5f9811581a2d791cd1948a1b793d2a5d3a029f9dd7913afe39073bb74d9",
+  "actual_directory": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-hazard-generation\\full-freeze",
+  "encoding": "little-endian seed/chunk coordinates, all block states, structure flag, chest markers and rolled 27-slot gear loot, finite encounter markers; no padded structs"
+}

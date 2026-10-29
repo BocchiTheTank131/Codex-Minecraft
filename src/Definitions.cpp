@@ -354,6 +354,13 @@ const Items& items() {
             result[int(c.item)].placedBlock=c.block;
         }
         for(const auto& c:automationContent())if(c.item!=Item::None){put(c.item,std::uint16_t(c.item),int(c.item),c.name);result[int(c.item)].placedBlock=c.block;result[int(c.item)].displayName=c.name;}
+        put(Item::ResonantCore,std::uint16_t(Item::ResonantCore),int(Item::ResonantCore),"ResonantCore");result[std::size_t(Item::ResonantCore)].maxStack=16;
+        for(auto entry : {std::pair<Item,const char*>{Item::SurveyorCompass,"Surveyor Compass"}, {Item::EchoLantern,"Echo Lantern"}, {Item::AncientExplorerTool,"Ancient Explorer Tool"}}) {
+            put(entry.first,std::uint16_t(entry.first),int(entry.first),entry.second);
+            auto& d=result[std::size_t(entry.first)];d.displayName=entry.second;d.maxStack=1;
+            d.durability=entry.first==Item::SurveyorCompass?96:entry.first==Item::EchoLantern?64:1024;
+            if(entry.first==Item::AncientExplorerTool){d.tool=ToolKind::Pickaxe;d.tier=3;d.attackDamage=5;d.attackCooldown=.58f;}
+        }
         return result;
     }();
     return definitions;

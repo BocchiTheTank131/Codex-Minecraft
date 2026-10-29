@@ -2,6 +2,7 @@
 
 #include "Block.h"
 #include "GeneratorVersion.h"
+#include "Adventure.h"
 #include "CompactBlocks.h"
 #include "Building.h"
 #include "Automation.h"
@@ -125,6 +126,7 @@ struct FurnaceData {
     float fuelRemaining = 0.0f;
     float fuelCapacity = 0.0f;
     float progress = 0.0f;
+    Item progressInput=Item::None;
 };
 
 struct ChestData {
@@ -233,6 +235,7 @@ public:
 };
 
 class World {
+    friend class AdventureTest;
     friend class EngineOptimizationTest;
     friend class Automation;
     friend class AutomationTest;
@@ -267,6 +270,7 @@ public:
     void setStreamingView(const glm::vec3& direction, float frameMilliseconds);
     ChunkStreamingDiagnostics streamingDiagnostics() const;
     Automation automation;
+    void revalidateSupports(glm::ivec3);
     bool automationBatch(const std::vector<std::pair<glm::ivec3,Block>>& expected,const std::vector<std::pair<glm::ivec3,Block>>& replacement);
     void updateFluids(float deltaTime, int updateBudget = 96);
     void updateBlockEntities(float deltaTime);
@@ -305,7 +309,7 @@ public:
     ChestData* chestAt(const glm::ivec3& position, bool create = false);
     std::vector<ItemStack> takeBlockEntityContents(const glm::ivec3& position);
     int terrainHeight(int worldX, int worldZ) const;
-    std::optional<glm::vec3> findBedSpawn(const glm::ivec3&) const;
+    std::optional<glm::vec3> findBedSpawn(const glm::ivec3&,bool generateMissing=true) const;
     glm::vec3 findSafeSpawnNear(int worldX, int worldZ) const;
     glm::vec3 findSurvivalSpawnNear(int worldX, int worldZ) const;
     bool runDiversityAudit(const std::string& directory, std::string& report, bool spawnOnly=false) const;
@@ -328,6 +332,9 @@ public:
     WorldGenerationDebug generationDebugAt(int worldX, int worldZ,
                                            int worldY = SEA_LEVEL,
                                            bool detailed = false) const;
+    Adventure adventure;
+    std::shared_ptr<const UndergroundPlan> cachedUndergroundPlan(int rx,int rz) const;
+    std::vector<AdventureDiscovery> nearbyAdventureSites(glm::vec3,float) const;
     int generationVersion() const { return generationVersion_; }
     int minimumY() const { return generationVersion_ >= 11 ? -64 : 0; }
     int maximumY() const { return generationVersion_ >= 11 ? 320 : WORLD_HEIGHT; }
@@ -496,6 +503,7 @@ private:
     UndergroundStructures underground20_;
     UndergroundStructures underground21_;
     UndergroundStructures underground23_;
+    UndergroundStructures underground24_;
     std::uint32_t seed_ = 0;
     std::uint32_t generationVersion_ = LatestGeneratorVersion;
     std::unordered_map<std::int64_t, std::unique_ptr<Chunk>> chunks_;
@@ -678,7 +686,9 @@ private:
     void rebuildRequestOffsets();
     void discardObsoleteRequests(int centerX, int centerZ);
     void integrateCompleted(int budget, int centerX, int centerZ);
+    std::map<std::int64_t,std::vector<AdventureDiscovery>> adventureSites_;
     void initializeGeneratedLoot(const GeneratedChunk& generated);
+    void retainGeneratedAutomation(int chunkX,int chunkZ);
     void queueGeneratedMobs(const GeneratedChunk& generated);
     void unloadDistant(int centerX, int centerZ);
     void markDirty(int chunkX, int chunkZ, bool highPriority = false);

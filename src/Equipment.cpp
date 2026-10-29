@@ -7,7 +7,7 @@
 
 bool isDurable(Item item) { return Inventory::maxDurability(item)>0; }
 bool hasMainHandUse(Item item) {
-    return (item>=Item::OakBoat && item<=Item::Compass) || isFood(item) ||
+    return item==Item::SurveyorCompass || item==Item::EchoLantern || (item>=Item::OakBoat && item<=Item::Compass) || isFood(item) ||
         itemToBlock(item)!=Block::Air || FarmingSystem::plantedBlock(item)!=Block::Air ||
         item==Item::Wheat || item==Item::Bucket || item==Item::BoneMeal ||
         itemDefinition(item).tool==ToolKind::Hoe || itemDefinition(item).tool==ToolKind::Shovel ||

@@ -32,7 +32,7 @@ enum class StructureKind : std::uint8_t {
     RuinedHouse, Well, Campsite
 };
 
-enum class StructureLoot : std::uint8_t { Village, Outpost, Pyramid, Ruin, Mineshaft, Dungeon, Ancient };
+enum class StructureLoot : std::uint8_t { Village, Outpost, Pyramid, Ruin, Mineshaft, Dungeon, Ancient, RelicVault, RelicSupplies };
 
 struct StructureLootMarker {
     int x = 0;

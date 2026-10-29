@@ -231,8 +231,8 @@ bool Automation::transfer(World& w,glm::ivec3 p,Block b){
 
 bool Automation::piston(World& w,SurvivalWorld& mobs,const Player* player,glm::ivec3 p,Block b,bool extend){
  const auto f=automationFacing(b);const auto head=p+f;auto movable=[&](Block v){if(v==Block::Air)return true;if(automationDevice(v)||blockType(v)==Block::PistonHead||v==Block::Bedrock||v==Block::Chest||v==Block::Furnace||isDoor(v))return false;if(isBuilding(v)){auto d=buildingDefinition(v);return d&&(d->shape==BuildingShape::Cube||d->shape==BuildingShape::Stairs||d->shape==BuildingShape::Slab||d->shape==BuildingShape::StrippedLog||d->shape==BuildingShape::Path);}return isSolid(v)&&!isWater(v)&&!isLava(v)&&(blockGeometry(v).shape==BlockShape::Cube||isSlab(v));};
- auto eligible=[&](glm::ivec3 q){if(!movable(at(w,q)))return false;for(auto offset:neighbors){auto attached=at(w,q+offset);if(buildingNeedsSupport(attached)||isTorch(attached)||isPlant(attached)||(attached>=Block::LadderNorth&&attached<=Block::LadderWest)||isVine(attached)||isCrop(attached)||isBerryBush(attached)||attached==Block::Cactus||attached==Block::SugarCane||attached==Block::Bamboo||attached==Block::Fire||isDoor(attached))return false;}return true;};
- auto clearOfActors=[&](glm::ivec3 q,Block v){auto boxes=w.blockBoxes(q,true);if(isBuilding(v))boxes=buildingBoxes(v,true);else {boxes={};auto g=blockGeometry(v);boxes.add(g.minX,g.minY,g.minZ,g.maxX,g.maxY,g.maxZ);}for(int i=0;i<boxes.count;++i){auto a=glm::vec3(q)+boxes.boxes[i].minimum,c=glm::vec3(q)+boxes.boxes[i].maximum;if((player&&!player->isSpectator()&&intersects(a,c,player->aabbMinimum(),player->aabbMaximum()))||mobs.anyMobIntersects(a,c)||(additionalCollision&&additionalCollision(a,c)))return false;}return true;};
+ auto eligible=[&](glm::ivec3 q){if(!movable(at(w,q)))return false;for(auto offset:neighbors){auto support=blockSupportPosition(q+offset,at(w,q+offset));if(support&&*support==q)return false;}return true;};
+  auto clearOfActors=[&](glm::ivec3 q,Block v){auto boxes=w.blockBoxes(q,true);if(isBuilding(v))boxes=buildingBoxes(v,true);else {boxes={};auto g=blockGeometry(v);boxes.add(g.minX,g.minY,g.minZ,g.maxX,g.maxY,g.maxZ);}for(int i=0;i<boxes.count;++i){auto a=glm::vec3(q)+boxes.boxes[i].minimum,c=glm::vec3(q)+boxes.boxes[i].maximum;if((player&&!player->isSpectator()&&intersects(a,c,player->aabbMinimum(),player->aabbMaximum()))||mobs.anyMobIntersects(a,c)||(additionalCollision&&additionalCollision(a,c)))return false;}return true;};
  std::vector<std::pair<glm::ivec3,Block>> before,after;auto add=[&](glm::ivec3 q,Block v){before.push_back({q,at(w,q)});after.push_back({q,v});};
  if(extend){if(blockProperties(b)&8){if(blockType(at(w,head))==Block::PistonHead)return false;add(p,blockState(b,blockProperties(b)&~8));return w.automationBatch(before,after);}int count=0;auto q=head;
   while(at(w,q)!=Block::Air){if(!ready(w,q)||count>=12||!eligible(q))return false;
@@ -274,6 +274,7 @@ bool World::automationBatch(const std::vector<std::pair<glm::ivec3,Block>>& befo
  for(auto edit:after)if(automationDevice(getBlock(edit.first.x,edit.first.y,edit.first.z))&&!automationDevice(edit.second))setBlockInternal(edit.first.x,edit.first.y,edit.first.z,edit.second,true,false);
  for(auto edit:after)if(getBlock(edit.first.x,edit.first.y,edit.first.z)!=edit.second)setBlockInternal(edit.first.x,edit.first.y,edit.first.z,edit.second,true,false);
  automationMoving_=false;
+ for(auto edit:after)revalidateSupports(edit.first);
  for(auto edit:after){auto p=edit.first;for(int y=-1;y<=1;++y)for(auto d:neighbors){auto q=p+d+glm::ivec3(0,y,0);auto value=getBlock(q.x,q.y,q.z);if(isBuilding(value)){auto connected=buildingConnectedState(*this,q,value);if(value!=connected)setBlockInternal(q.x,q.y,q.z,connected,true,false);}}}
  return true;
 }

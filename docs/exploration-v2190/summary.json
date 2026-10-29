@@ -1,0 +1,1194 @@
+{
+  "baseline": {
+    "commit": "a910ec8a22b537038b99cb95be2dbc7cbb841d2d",
+    "status": "?? .codex-remote-attachments/\n?? .idea/\n?? tools/__pycache__/\n",
+    "files": {
+      "build/installed-release/Release/VoxelFrontier.exe": {
+        "bytes": 77578240,
+        "sha256": "803431c91b0bccd4024cfd8d39b14e5125c83d5bbf1334017315d5820ce27b86"
+      },
+      "dist/VoxelFrontier-v2.18.1-Windows-Standalone.exe": {
+        "bytes": 77300736,
+        "sha256": "c6eb1cb1e33caa6fc744b7484acfeb8039199bcc88a091e654ba86a493d4f74f"
+      },
+      "build/v2181-validation/driver/Release/StabilityDriver.exe": {
+        "bytes": 78097920,
+        "sha256": "fd08646d9b52c223cd5a9b67510bee7a80e02dbc2e8907328f1b03f8605baaed"
+      },
+      "assets/inventory_previews.json": {
+        "bytes": 139346,
+        "sha256": "6a7154d15f8fa0a5e859aa91e656001e684bf69efa39065f4fede83bc235f3fe"
+      },
+      "tests/fixtures/v23-exact-v2180.zip": {
+        "bytes": 1497771,
+        "sha256": "68d1c5f9811581a2d791cd1948a1b793d2a5d3a029f9dd7913afe39073bb74d9"
+      }
+    }
+  },
+  "suites": {
+    "final-hazard-functional": {
+      "passed": 13,
+      "results": [
+        {
+          "name": "adventure-tests",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "subsystems",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "game",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "checkpoint",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "engine-tests",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "engine-stream-stress",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "automation",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "automation-stabilization",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "building",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "creative-ui",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "qol",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "farming",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "legacy-building",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        }
+      ]
+    },
+    "final-hazard-generation": {
+      "passed": 9,
+      "results": [
+        {
+          "name": "full-adventure-generation",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "demo-adventure-tests",
+          "exit": 0,
+          "exe_sha256": "cd8544a59085bc6e60fd66508472fe34f0b7408175a92c4095cb9eb663380cb3"
+        },
+        {
+          "name": "demo-adventure-generation",
+          "exit": 0,
+          "exe_sha256": "cd8544a59085bc6e60fd66508472fe34f0b7408175a92c4095cb9eb663380cb3"
+        },
+        {
+          "name": "full-validate",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "full-spawns",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "full-ecosystems",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "full-freeze",
+          "exit": 0,
+          "exe_sha256": "78925df75b061c7fc1b4e92a6222e368004cfbbf01b91e59f4aa5c73b1d6255c"
+        },
+        {
+          "name": "demo-validate",
+          "exit": 0,
+          "exe_sha256": "cd8544a59085bc6e60fd66508472fe34f0b7408175a92c4095cb9eb663380cb3"
+        },
+        {
+          "name": "demo-freeze",
+          "exit": 0,
+          "exe_sha256": "cd8544a59085bc6e60fd66508472fe34f0b7408175a92c4095cb9eb663380cb3"
+        }
+      ]
+    },
+    "final-hazard-release": {
+      "passed": 20,
+      "results": [
+        {
+          "name": "full-transport",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-command",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-survival",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-weather",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-fluid",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-reset",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-spectator",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-menu",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-optimization",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-patch272",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "full-ui",
+          "exit": 0,
+          "exe_sha256": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae"
+        },
+        {
+          "name": "demo-transport",
+          "exit": 0,
+          "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+        },
+        {
+          "name": "demo-command",
+          "exit": 0,
+          "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+        },
+        {
+          "name": "demo-survival",
+          "exit": 0,
+          "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+        },
+        {
+          "name": "demo-weather",
+          "exit": 0,
+          "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+        },
+        {
+          "name": "demo-fluid",
+          "exit": 0,
+          "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+        },
+        {
+          "name": "demo-menu",
+          "exit": 0,
+          "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+        },
+        {
+          "name": "demo-optimization",
+          "exit": 0,
+          "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+        },
+        {
+          "name": "demo-patch272",
+          "exit": 0,
+          "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+        },
+        {
+          "name": "demo-ui",
+          "exit": 0,
+          "exe_sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+        }
+      ]
+    }
+  },
+  "native": {
+    "full-adventure-generation": {
+      "last_lines": [
+        "adventure V24_spawn_47 passed=1",
+        "adventure V24_spawn_48 passed=1",
+        "adventure V24_spawn_49 passed=1",
+        "Adventure checks passed: 89652"
+      ],
+      "log_sha256": "ec19fa73af67ede7580a8630880b5e856fd5a166d1508a00a1ba216179cd75d9"
+    },
+    "demo-adventure-tests": {
+      "last_lines": [
+        "adventure actual_RMB_echo_wear_no_terrain_edit passed=1",
+        "adventure actual_RMB_mainhand_breakage passed=1",
+        "adventure actual_RMB_compass_shield_priority passed=1",
+        "Adventure checks passed: 144"
+      ],
+      "log_sha256": "e290d568483e85e767707022a2a6a02eed72aeef3793580cd39c950deca8d30d"
+    },
+    "demo-adventure-generation": {
+      "last_lines": [
+        "adventure V24_spawn_47 passed=1",
+        "adventure V24_spawn_48 passed=1",
+        "adventure V24_spawn_49 passed=1",
+        "Adventure checks passed: 89646"
+      ],
+      "log_sha256": "95b64864148e958e96f72defe0fe7ee741666f038388e52a424f4d3cf05ad2a8"
+    },
+    "full-validate": {
+      "last_lines": [
+        "Generation seed 123456789 V23 deterministic",
+        "Generation seed 42 V22 deterministic",
+        "Generation seed 42 V23 deterministic",
+        "V23 validate: 24193 checks passed"
+      ],
+      "log_sha256": "762e45713ef80d6ab10433904d13199b09915744d976323070d9cd222cb195bd"
+    },
+    "full-spawns": {
+      "last_lines": [
+        "Spawn 48 V23 safe; cave 197.274",
+        "Spawn 49 V22 safe; cave 176.139",
+        "Spawn 49 V23 safe; cave 260.017",
+        "V23 spawns: 500 checks passed"
+      ],
+      "log_sha256": "ba01a05c703214d899181a17399fd6174b8248beaaf379514c2de5075e865630"
+    },
+    "full-ecosystems": {
+      "last_lines": [
+        "Ecosystems seed 20260917 validated 5 landmark types and 8 entrances",
+        "Ecosystems seed 123456789 validated 5 landmark types and 6 entrances",
+        "Ecosystems seed 42 validated 5 landmark types and 5 entrances",
+        "V23 ecosystems: 1302 checks passed"
+      ],
+      "log_sha256": "042cefec8574d46f2015f8d3fbe702edfa0f1e205bb033403daff33d76a60877"
+    },
+    "demo-validate": {
+      "last_lines": [
+        "Generation seed 123456789 V23 deterministic",
+        "Generation seed 42 V22 deterministic",
+        "Generation seed 42 V23 deterministic",
+        "V23 validate: 24101 checks passed"
+      ],
+      "log_sha256": "af4859ad43d500227afddb3eb675ad1615eb0c3e986f114e950bf64a9cddf256"
+    },
+    "final-paced-native-rd16-fps30": {
+      "assertions": 863,
+      "passed": true
+    },
+    "final-paced-native-rd32-fps30": {
+      "assertions": 863,
+      "passed": true
+    },
+    "final-paced-native-rd8-fps15": {
+      "assertions": 146,
+      "passed": true
+    },
+    "final-paced-native-rd8-fps30": {
+      "assertions": 863,
+      "passed": true
+    },
+    "final-paced-native-rd8-fps60": {
+      "assertions": 338,
+      "passed": true
+    }
+  },
+  "packages": {
+    "VoxelFrontier-v2.19.0-Windows-Setup.exe": {
+      "bytes": 71601102,
+      "sha256": "907f7ce45847e7e3e98adefe3eedea96793bd4a7d364664d696d24735058ff71"
+    },
+    "VoxelFrontier-v2.19.0-Windows-Standalone.exe": {
+      "bytes": 77357056,
+      "sha256": "3c37accc411848f6523efc7652ecd43d471f8d73c017bd2c80aadfe5b48df8f7"
+    }
+  },
+  "matched": {
+    "8": {
+      "old": {
+        "fps": 2629.79,
+        "mean_ms": 0.380259,
+        "p95_ms": 0.46599999999999997,
+        "p99_ms": 0.65755,
+        "p999_ms": 1.0321500000000001,
+        "gpu_ms": 0.1718945,
+        "cpu_percent": 4.454784999999999,
+        "ram_mb": 337.988,
+        "worst_ms": 4.3945,
+        "max_ram_mb": 343.012,
+        "triangles": [
+          233848,
+          602210
+        ],
+        "loaded": [
+          197,
+          197
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 18
+      },
+      "new": {
+        "fps": 2615.505,
+        "mean_ms": 0.3823375,
+        "p95_ms": 0.47085,
+        "p99_ms": 0.6698500000000001,
+        "p999_ms": 1.0588,
+        "gpu_ms": 0.173409,
+        "cpu_percent": 4.408345,
+        "ram_mb": 338.4865,
+        "worst_ms": 4.6957,
+        "max_ram_mb": 346.176,
+        "triangles": [
+          233866,
+          602210
+        ],
+        "loaded": [
+          197,
+          197
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 18
+      }
+    },
+    "16": {
+      "old": {
+        "fps": 1638.275,
+        "mean_ms": 0.6104125,
+        "p95_ms": 0.70915,
+        "p99_ms": 0.91255,
+        "p999_ms": 1.27645,
+        "gpu_ms": 0.4045315,
+        "cpu_percent": 3.7848,
+        "ram_mb": 408.3025,
+        "worst_ms": 3.7665,
+        "max_ram_mb": 415.039,
+        "triangles": [
+          236474,
+          1901864
+        ],
+        "loaded": [
+          797,
+          797
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 18
+      },
+      "new": {
+        "fps": 1631.475,
+        "mean_ms": 0.6129435,
+        "p95_ms": 0.7154,
+        "p99_ms": 0.9178,
+        "p999_ms": 1.3206,
+        "gpu_ms": 0.4063305,
+        "cpu_percent": 3.9433949999999998,
+        "ram_mb": 404.043,
+        "worst_ms": 4.4547,
+        "max_ram_mb": 415.301,
+        "triangles": [
+          236476,
+          1902146
+        ],
+        "loaded": [
+          797,
+          797
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 18
+      }
+    },
+    "32": {
+      "old": {
+        "fps": 690.0905,
+        "mean_ms": 1.449115,
+        "p95_ms": 1.6609500000000001,
+        "p99_ms": 1.8412000000000002,
+        "p999_ms": 2.3293999999999997,
+        "gpu_ms": 1.2591999999999999,
+        "cpu_percent": 2.250355,
+        "ram_mb": 681.9549999999999,
+        "worst_ms": 4.3442,
+        "max_ram_mb": 703.641,
+        "triangles": [
+          2417406,
+          5809724
+        ],
+        "loaded": [
+          3209,
+          3209
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 18
+      },
+      "new": {
+        "fps": 690.5630000000001,
+        "mean_ms": 1.44809,
+        "p95_ms": 1.69245,
+        "p99_ms": 1.8578000000000001,
+        "p999_ms": 2.4958,
+        "gpu_ms": 1.258705,
+        "cpu_percent": 2.22255,
+        "ram_mb": 676.4375,
+        "worst_ms": 7.3009,
+        "max_ram_mb": 680.078,
+        "triangles": [
+          2464094,
+          5809532
+        ],
+        "loaded": [
+          3209,
+          3209
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 18
+      }
+    }
+  },
+  "package_canary": {
+    "8": {
+      "old": {
+        "fps": 3407.64,
+        "mean_ms": 0.293458,
+        "p95_ms": 0.4075,
+        "p99_ms": 0.4645,
+        "p999_ms": 1.6739,
+        "gpu_ms": 0.147279,
+        "cpu_percent": 7.32884,
+        "ram_mb": 341.031,
+        "worst_ms": 7.3998,
+        "max_ram_mb": 341.648,
+        "triangles": [
+          273368,
+          459592
+        ],
+        "loaded": [
+          197,
+          197
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 3
+      },
+      "new": {
+        "fps": 3462.58,
+        "mean_ms": 0.288802,
+        "p95_ms": 0.433,
+        "p99_ms": 0.4819,
+        "p999_ms": 1.6232,
+        "gpu_ms": 0.144338,
+        "cpu_percent": 7.7379,
+        "ram_mb": 341.566,
+        "worst_ms": 7.18,
+        "max_ram_mb": 342.172,
+        "triangles": [
+          273366,
+          459592
+        ],
+        "loaded": [
+          197,
+          197
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 3
+      }
+    },
+    "16": {
+      "old": {
+        "fps": 2000.66,
+        "mean_ms": 0.499836,
+        "p95_ms": 0.5646,
+        "p99_ms": 0.5991,
+        "p999_ms": 0.7155,
+        "gpu_ms": 0.341902,
+        "cpu_percent": 3.94344,
+        "ram_mb": 410.668,
+        "worst_ms": 3.1989,
+        "max_ram_mb": 410.75,
+        "triangles": [
+          744226,
+          1376374
+        ],
+        "loaded": [
+          797,
+          797
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 3
+      },
+      "new": {
+        "fps": 1998.88,
+        "mean_ms": 0.500281,
+        "p95_ms": 0.5692,
+        "p99_ms": 0.6114,
+        "p999_ms": 0.7549,
+        "gpu_ms": 0.340719,
+        "cpu_percent": 4.66862,
+        "ram_mb": 411.574,
+        "worst_ms": 3.0797,
+        "max_ram_mb": 411.711,
+        "triangles": [
+          759106,
+          1376380
+        ],
+        "loaded": [
+          797,
+          797
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 3
+      }
+    },
+    "32": {
+      "old": {
+        "fps": 746.09,
+        "mean_ms": 1.34032,
+        "p95_ms": 1.4567,
+        "p99_ms": 1.5083,
+        "p999_ms": 1.5993,
+        "gpu_ms": 1.18414,
+        "cpu_percent": 2.73348,
+        "ram_mb": 699.664,
+        "worst_ms": 13.7714,
+        "max_ram_mb": 702.707,
+        "triangles": [
+          3323448,
+          4925650
+        ],
+        "loaded": [
+          3209,
+          3209
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 3
+      },
+      "new": {
+        "fps": 730.361,
+        "mean_ms": 1.36919,
+        "p95_ms": 1.5018,
+        "p99_ms": 1.5882,
+        "p999_ms": 1.6902,
+        "gpu_ms": 1.19955,
+        "cpu_percent": 2.30635,
+        "ram_mb": 703.25,
+        "worst_ms": 3.1312,
+        "max_ram_mb": 703.309,
+        "triangles": [
+          3017202,
+          4925422
+        ],
+        "loaded": [
+          3209,
+          3209
+        ],
+        "focused_percent": 100.0,
+        "phase_summaries": 3
+      }
+    }
+  },
+  "captures": {
+    "30-cave-approach.png": {
+      "native_source_sha256": "f9250d2d6826dd984bc0dbec904e1b3ba8b1af33afbd032b15cb541458827567",
+      "png_sha256": "689547edc7a0a26392593909bddc5c5819cd1bb7df46e9d1913a63b11ef7a068",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-chamber-unsolved.png": {
+      "native_source_sha256": "fc6944fbe0c6a1a7768de0f60c1fb1037fa6c57f5e76319de92118a91b79a46b",
+      "png_sha256": "ddc63519096f67a207bbc9f20f2317a06106ba5f264a2f66ae312e2a86e90247",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-finite-ambush.png": {
+      "native_source_sha256": "dc0f3e2fea3902166754c68589a0f201e77e632a365c017d6c511eacf53266c2",
+      "png_sha256": "3f7fc8fbe4a384890316d29907559d1105767c3f889453119dfa75b830804613",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-journal-1280.png": {
+      "native_source_sha256": "07d6d7e94f204f5260cc52c7afcb209ce2deb501a7ddf93553d0210e18fe5b54",
+      "png_sha256": "b37609a7a5b128a6e64329a25286e8004bf364f55d5701e955a38d8d33c06e15",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-journal-1920.png": {
+      "native_source_sha256": "fa4faa2d4374dc926340b69883859dcda97d03a1abf9bd9d9268539ab6275a1d",
+      "png_sha256": "9ad060fe3ec3a861a9d9ed29c255ceac8fad16e61381c15bcb17b11d2dc1bd04",
+      "dimensions": [
+        1920,
+        1061
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-journal-2560.png": {
+      "native_source_sha256": "d43df5ad14784329b891590b43fe9c66a90a8774d6f9d8737e639608a2ba5c30",
+      "png_sha256": "6783a07992e00685f02afdb1f8307e6087f8c4e6e62752c12d7516c325e6ef6b",
+      "dimensions": [
+        1924,
+        1061
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-landmark.png": {
+      "native_source_sha256": "a923818e28f5badb309f679e27406e2cc8cd7b0ce2d16e714569e62c95dcb587",
+      "png_sha256": "6d78ff9eda0b57f2927420e2f088b5ab7c34a5b11d3f5bd481e304497f05ca0f",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-pulse-warning-1.png": {
+      "native_source_sha256": "76b61276dafc5b3aadda559f0282de96d78f2214017728d064d01009152713aa",
+      "png_sha256": "dccba5c556a702243e61a09000d49eb46ac272f5984cea44921ddde336d1eb24",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-pulse-warning-2.png": {
+      "native_source_sha256": "b258ea4f71a01072f7c7d03ac10f2519171ad241b893359fd3bcc43c1532282f",
+      "png_sha256": "d3966506e5ea0d9f7dca1aed9f8498d63f7063b81ee1e5ea125347227ce0c38d",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-puzzle-1.png": {
+      "native_source_sha256": "3626f90948dbdc5bf3cf4211cfac5c6914fa8e45b6b452d6127e5a44b4c0fd6f",
+      "png_sha256": "01d6f80a93f4f694fa71e3453792383f08f1ee23e788ff54b5c27800b600faa9",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-puzzle-2.png": {
+      "native_source_sha256": "003a51fadbf4662fb96c43e15360e98da09015222e8337c32780893630b40b2a",
+      "png_sha256": "e105e593e08d82257e01b220c1b4b41719f8a337ede67f49f277a8f37b32d512",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-relic-cache.png": {
+      "native_source_sha256": "ce4f583b2f154984685f4417ddc69da487ae9909f50f36e4d93e6d3bd5df24fe",
+      "png_sha256": "dfbec36cc7f2c41655c9a44d9f158d6c164a27661488650d2133a15722ca4707",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-relic-tools.png": {
+      "native_source_sha256": "0e1ded65a9ddece021be5e77253f5c88e7f64932432f37bcf870fa005e1337b4",
+      "png_sha256": "abeefb304e3c9c3d7101b59815087f1e55a9b9df5c1e6f238f64060933b4e44d",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "30-treasure.png": {
+      "native_source_sha256": "f564ad1869bd849ae2456b3a5ea04129e133e5a995323349a6bfe389fbc1a811",
+      "png_sha256": "100c348296b15836557744110d55b6ff8963c8e99add7b8e198259afc66cb96e",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "source_fixture": "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\final-native-gallery"
+    },
+    "journal-offscreen-1280-s0-c0.png": {
+      "native_source_sha256": "4004c8686ef3a470551b548aa68b66afb6bf978f03aec91e18595afee0c94290",
+      "png_sha256": "e3235a58b985f47d7ceb283abf9569469bf6259584dfb7910a3be5f7bda55310",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s0-c1.png": {
+      "native_source_sha256": "1cbd5330211f878a7c27b657e2f59929be67901648a192a546f1b54559fb6a6e",
+      "png_sha256": "dd6d34e70cfb1d588c86a1ec053f7ef824b4d88a76f9278cdee5d17b0bf2d7fa",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s0-c2.png": {
+      "native_source_sha256": "8afbd3328302a7cc38645e107cc8bdf7dad1cdaed4f845cbed1de0e8b15865ef",
+      "png_sha256": "b524a28de26d8bd04f46da4192d9920c893397fbbb4868e3c7b8ca0e9c9934ad",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s0-c3.png": {
+      "native_source_sha256": "87206baf32778c5e38c36a0bfa2bda03c670f5a0e024b394a4fd4fa0848e6014",
+      "png_sha256": "d07cee63474534e870ce0036b537a74744ae1e81e39bad63d1226d784eee1a81",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s1-c0.png": {
+      "native_source_sha256": "5740f3749e4a97bcbec5de6de775a42d8f312ffd9f6874c37ae4bf5dd428ff2d",
+      "png_sha256": "05dc1558caaa2a7f19ca77a6aa29b47da609780edf83324b97e7dae2821242ee",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s1-c1.png": {
+      "native_source_sha256": "b35040f9281e38bdd353f9b5eb598f6d52c0fb703160e5c78f4bc7981ad4a07b",
+      "png_sha256": "8db554ce7fc5e6b06c3f7c2cdc7019e8973da83ef120063ae343ac059f8ee4a1",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s1-c2.png": {
+      "native_source_sha256": "da06b905106f7385693cdd0f6247531a2f0df229eeb5b6de7e19b61d32f2468e",
+      "png_sha256": "16354e64d3fc792e1cb7c8148b6536af2adf46558a7fa8474bca5820178baf15",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s1-c3.png": {
+      "native_source_sha256": "82c188294d2d6098eccd8c8aaad1481fb943b1bc37abb55b7e1fa01149f46951",
+      "png_sha256": "d286c0f248a11115e7cee71f4a7d20e5c0c32dc48a1fcad5de7c60e42ca1a5e7",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s2-c0.png": {
+      "native_source_sha256": "4004c8686ef3a470551b548aa68b66afb6bf978f03aec91e18595afee0c94290",
+      "png_sha256": "e3235a58b985f47d7ceb283abf9569469bf6259584dfb7910a3be5f7bda55310",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s2-c1.png": {
+      "native_source_sha256": "1cbd5330211f878a7c27b657e2f59929be67901648a192a546f1b54559fb6a6e",
+      "png_sha256": "dd6d34e70cfb1d588c86a1ec053f7ef824b4d88a76f9278cdee5d17b0bf2d7fa",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s2-c2.png": {
+      "native_source_sha256": "8afbd3328302a7cc38645e107cc8bdf7dad1cdaed4f845cbed1de0e8b15865ef",
+      "png_sha256": "b524a28de26d8bd04f46da4192d9920c893397fbbb4868e3c7b8ca0e9c9934ad",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s2-c3.png": {
+      "native_source_sha256": "87206baf32778c5e38c36a0bfa2bda03c670f5a0e024b394a4fd4fa0848e6014",
+      "png_sha256": "d07cee63474534e870ce0036b537a74744ae1e81e39bad63d1226d784eee1a81",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s3-c0.png": {
+      "native_source_sha256": "a124fcc1821158828099062fcd10d91ad942ccc1c21838f557daed64d3398614",
+      "png_sha256": "43468aaaf1d67790c0112c8c4c48b09c0b775a90bcf05ce86198502860d405e7",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s3-c1.png": {
+      "native_source_sha256": "42d50a30fd1dd5fefa6fc5f6a398311314f0d5fbcba4eabd185cb58e984f8e5b",
+      "png_sha256": "f1c05171e521ece4380a60079d3364882f31f6d45432099f9b1a516271282cb6",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s3-c2.png": {
+      "native_source_sha256": "087f9228f3291fdb0ac33e58af254912d5792cf7c1de7bfef55963bb68c1e83d",
+      "png_sha256": "a45314a2395ea679776f88eae5bc40718a6170d2e54c61ff4353a69bbc8b6e94",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1280-s3-c3.png": {
+      "native_source_sha256": "b5bb0c5bd8aca55b2f21829d42f3171065ac19ae20823bd0b02b4b89da230aa7",
+      "png_sha256": "8000b770b0b9c8fd040fead28872c7f43a1276993252ab9cd2da0001dbd7b90b",
+      "dimensions": [
+        1280,
+        720
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s0-c0.png": {
+      "native_source_sha256": "eab3c60433af499edaa48a0e375116c485ece999b35c04f9b3a147d2d73d3cd4",
+      "png_sha256": "1e3711d87380d89b1397d774ade8a13161fc6d7229edd7f1624028bae1a26123",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s0-c1.png": {
+      "native_source_sha256": "ac7f297d8b7749867660f0efdeef51ee93318e426b34d27f81308f375b3b2089",
+      "png_sha256": "04f51aeab40ee1febdd39cbd74bb76325a14b394c446916dc1f09e12d4bb6f89",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s0-c2.png": {
+      "native_source_sha256": "4376cdc5a2823525cb763ba5d574956bdcd1545044c77c1725b39413bf39d868",
+      "png_sha256": "596c0a59099a652d068d6c8c2a6488db0a17bd8a21fc5db571dc3086162373c3",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s0-c3.png": {
+      "native_source_sha256": "b5e60c8220404c783fabf1649b1b7677617feed106d588f5187c0054d8517ec1",
+      "png_sha256": "19360638de8f676bde1c6bd48511c1acf453d3cd9756cb7a3ad553c90aae0338",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s1-c0.png": {
+      "native_source_sha256": "42a59214909c8655270d266d9ef74d047f9d238a91f93e2285b21e66311fa76d",
+      "png_sha256": "aa4555ef3f183d996140817914f185f1aba790873df2764cb400e98b3aba5deb",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s1-c1.png": {
+      "native_source_sha256": "c83204221d0a19ad740b41d53639a05b508ff7bc0511aa1080e11d5d0f4278e4",
+      "png_sha256": "dea9882951d76ba8e7127584845bb07209fac831108b61cc2171427e0ecd2747",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s1-c2.png": {
+      "native_source_sha256": "cf73d56a99f0afc9a710e97862a99139ffc43c0a3f1e5655af6d8eb84a003f94",
+      "png_sha256": "e59ed4c2b6e4491aac94e89090b37fcea109b77dd7bf1793a6bd812f822cb4b3",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s1-c3.png": {
+      "native_source_sha256": "51a507db6b5231cbc3f63d3761f8ae83b3bbbf714d85dc560ccb727ccabe5767",
+      "png_sha256": "212f24914d0607a53be36e49236b9dfd40be7181fec07a0f900ca20e78e8c714",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s2-c0.png": {
+      "native_source_sha256": "07c39469be96d22a00ad227ed54fff15a1b0b91a7212555c07a98f2c4303561b",
+      "png_sha256": "ea07ecf62d3ba0184425f2b35ded1da9daf1d38ff54308e33331806c8ba3a80a",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s2-c1.png": {
+      "native_source_sha256": "5f2e95ccb6b31ff7ce77f3e3e82edec6cfb19179dc8a869c7235970a673e10c0",
+      "png_sha256": "8ec83092ef132c01ccbf48c5eb86609acf66ef4f06cdc898671bc0fe59bf90aa",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s2-c2.png": {
+      "native_source_sha256": "e3b375428f862695f9ccb62f413d2629a6be11159bd0e82bc56d05f57c343b2a",
+      "png_sha256": "3782925df2de19faeefd66da8ac55dbfdf99138fb3cf043278df24da1fc06ce3",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s2-c3.png": {
+      "native_source_sha256": "e99cd1f302c97f78df0e04ca335250d918570c3499dc7f0423d02727ea318331",
+      "png_sha256": "9b42c80809bd4c672da444a9af542688e8d1c998e69233600298904a82519d03",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s3-c0.png": {
+      "native_source_sha256": "eab3c60433af499edaa48a0e375116c485ece999b35c04f9b3a147d2d73d3cd4",
+      "png_sha256": "1e3711d87380d89b1397d774ade8a13161fc6d7229edd7f1624028bae1a26123",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s3-c1.png": {
+      "native_source_sha256": "ac7f297d8b7749867660f0efdeef51ee93318e426b34d27f81308f375b3b2089",
+      "png_sha256": "04f51aeab40ee1febdd39cbd74bb76325a14b394c446916dc1f09e12d4bb6f89",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s3-c2.png": {
+      "native_source_sha256": "4376cdc5a2823525cb763ba5d574956bdcd1545044c77c1725b39413bf39d868",
+      "png_sha256": "596c0a59099a652d068d6c8c2a6488db0a17bd8a21fc5db571dc3086162373c3",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-1920-s3-c3.png": {
+      "native_source_sha256": "b5e60c8220404c783fabf1649b1b7677617feed106d588f5187c0054d8517ec1",
+      "png_sha256": "19360638de8f676bde1c6bd48511c1acf453d3cd9756cb7a3ad553c90aae0338",
+      "dimensions": [
+        1920,
+        1080
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s0-c0.png": {
+      "native_source_sha256": "29e9b783455a7444dbea63bc2346e2ec2c3fbeeabac546c723644ccb15fe2f47",
+      "png_sha256": "a904aee4cd4a6829f6b330c889e054265ee9a016269e1e04a0db9771e99c8b0d",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s0-c1.png": {
+      "native_source_sha256": "151edb394fb5cc61d16f152db8f77bc2421ce81c0144a57894bfa2b0a0c6b71c",
+      "png_sha256": "80a4cfd3f73626f3f4c3a856003416b1c77595cd5e1acbb7f1ee9d9a44105bfa",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s0-c2.png": {
+      "native_source_sha256": "578c06ed72581792ee75d7e0b0c80cab977cd7706111e98c697a838dca504737",
+      "png_sha256": "cd2edf8026159c13ddd86569ca570e9e515fda0fc2facc55da72e79cc2ca4215",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s0-c3.png": {
+      "native_source_sha256": "e992d4b2801a9cc1b700104f3a346fe39f573856f3c6bb2c48f83ed996994fe0",
+      "png_sha256": "ee65cfbbe26407acc748dff5b58bafacf5fe730ec1fc7680f3171a06c85536d3",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s1-c0.png": {
+      "native_source_sha256": "e7d5856e0682e794b63a7f91f0fe3e8007f38236b0bd87b281b3bf9444d850f4",
+      "png_sha256": "f7cbd983e44d54120fdd6b4efc2f8d8c6b30093e16db5c897dd01d21e8ace92e",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s1-c1.png": {
+      "native_source_sha256": "b24dc0b9bdc7b8f0b8db1d2c27e224791b2e67803193e18e516fb96cf12a5dbd",
+      "png_sha256": "49cb79e19453c6feb046302678dd4e4f4d68ad131b81f48cc63ab2282561dd48",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s1-c2.png": {
+      "native_source_sha256": "2fa9140c76c8ae4567ad0dfe3af4a3e3f580ef27a593dc47dc195899f17e159a",
+      "png_sha256": "35ce96413833ac0268818d420fd72aa2a971550a5248d1d6827e63f2a128f3c1",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s1-c3.png": {
+      "native_source_sha256": "25acf718f1525945f063a7d83f7f3a97f7f2957f519bba615eead06f1d24fd2d",
+      "png_sha256": "1784d157217c2853b32625bd8c48646a43a05abca35b3a51889475ffa956b397",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s2-c0.png": {
+      "native_source_sha256": "c8d877008d828d747f8011588050d6974f21fcae8209177eec3d9176eedd6805",
+      "png_sha256": "07d78b2d1a5df49488ca16d2a7155fce3c0c0fbabc9a129f4fd3f8a28d5ff4e8",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s2-c1.png": {
+      "native_source_sha256": "531049b65c7bec0f8108d22bdfee25af41131ab7d32a5aeafbf06eee01734c37",
+      "png_sha256": "1b890d4ecbe2ee55f31a0fa57fea83d778a902071be68697d0534d2dc233b629",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s2-c2.png": {
+      "native_source_sha256": "4b1bad500de0641ab8a540ec4e4f8a4e1009d82e6b3b3f17a670141543034220",
+      "png_sha256": "3bdcba149e9342a5f5efd0e0e63e63d3055ff5aafa6a5e744002f0b27342ec26",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s2-c3.png": {
+      "native_source_sha256": "1486a69e5c2a9b9e690ea3a19dc45f2532769a910941ab1bf775b10a4c317f10",
+      "png_sha256": "3b13c6e8f4399102534f539808132d293097eeda066f4cee738fac97fe9f0a53",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s3-c0.png": {
+      "native_source_sha256": "69b18a6b6772bc07bbb1c7afc628ef3caafb8247d8d88dbcc1e5fa39a1ac97cf",
+      "png_sha256": "800ca1088b950b87fb3e07d5c48bcbca797d43991d9de0a328a5a058b0aed280",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s3-c1.png": {
+      "native_source_sha256": "65a3b8aaa07221b0d1538f55be77acb373b21dbd48735a124ff5eb2c4936f37c",
+      "png_sha256": "edebf6039d16fc18cec0d3c2c75ce534dc14a0922943a53e73424e783602bebe",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s3-c2.png": {
+      "native_source_sha256": "51a85cce881468f03db1e4d1492a7711a90dfb0bd6c5851b339605746c579648",
+      "png_sha256": "d2ad93228b3354c1eff25bb97d0126f5267c96ddba902ece2a433c6ed863a39c",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    },
+    "journal-offscreen-2560-s3-c3.png": {
+      "native_source_sha256": "98693b7b116eb56b6e921fc7d572cadd0787908b66a54cbce3c69a6722213e23",
+      "png_sha256": "66ee56ad150dc18ef888fa7c413903f5f4ac216690e546dd2a219cecf821d906",
+      "dimensions": [
+        2560,
+        1440
+      ],
+      "offscreen_journal_only": true
+    }
+  },
+  "exact_ui": {
+    "assertions": 101,
+    "passed": true
+  }
+}

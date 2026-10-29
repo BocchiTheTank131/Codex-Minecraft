@@ -42,11 +42,11 @@ bool World::undergroundReserved(const StructureBox& box) const {
     return false;
 }
 std::shared_ptr<const UndergroundPlan> World::undergroundPlan(int rx,int rz) const {
-    return (generationVersion_>=23?underground23_:generationVersion_>=21?underground21_:generationVersion_>=20?underground20_:underground_).plan(rx,rz,[&](int x,int z){const auto t=sampleTerrain(x,z);return UndergroundSite{t.height,t.biome,t.river};},
+    return (generationVersion_>=24?underground24_:generationVersion_>=23?underground23_:generationVersion_>=21?underground21_:generationVersion_>=20?underground20_:underground_).plan(rx,rz,[&](int x,int z){const auto t=sampleTerrain(x,z);return UndergroundSite{t.height,t.biome,t.river};},
         [&](int x,int y,int z){return dryUndergroundCave(x,y,z);},[&](const StructureBox& b){return undergroundReserved(b);});
 }
 bool World::applyUnderground(int cx,int cz,GeneratedChunk& data) const {
-    return (generationVersion_>=23?underground23_:generationVersion_>=21?underground21_:generationVersion_>=20?underground20_:underground_).apply(cx,cz,data.blocks,data.loot,data.mobs,
+    return (generationVersion_>=24?underground24_:generationVersion_>=23?underground23_:generationVersion_>=21?underground21_:generationVersion_>=20?underground20_:underground_).apply(cx,cz,data.blocks,data.loot,data.mobs,
         [&](int x,int z){const auto t=sampleTerrain(x,z);return UndergroundSite{t.height,t.biome,t.river};},
         [&](int x,int y,int z){return dryUndergroundCave(x,y,z);},[&](const StructureBox& b){return undergroundReserved(b);},minimumY(),maximumY());
 }

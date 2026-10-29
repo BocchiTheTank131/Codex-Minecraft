@@ -561,7 +561,7 @@ void Game::createWorldAndSystems() {
         creativeMode_=activeWorld_.mode==GameMode::Creative;spectatorMode_=activeWorld_.mode==GameMode::Spectator;
     }
     saveRetryAt_=0;saveRetryCount_=0;saveBlockedReason_.clear();saveQueued_=false;
-    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=signEditorOpen_=false;pressedPlate_.reset();pressedButtons_.clear(); viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
+    transportation_.reset(); renderer_->resetNavigationCache(); journalOpen_=navigationOpen_=mapView_=signEditorOpen_=false;pressedPlate_.reset();pressedButtons_.clear(); viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setTerrainLod(settings_.terrainLod);
@@ -638,6 +638,7 @@ void Game::createWorldAndSystems() {
     player_->setEquipment(inventory_.get());
     survival_ = std::make_unique<SurvivalWorld>(seed_);
     requireSidecar(MobSavePath,*survival_);
+    if(!survival_->relicEncountersValid(world_->adventure))throw std::runtime_error("Exploration encounter state does not match its world checkpoint; original files preserved");
     survival_->setSoundSystem(sounds_.get());
     if (smokeTest_.billboardPreview) {
         saveOnExit_ = false;
@@ -677,7 +678,7 @@ void Game::createWorldAndSystems() {
 }
 
 void Game::synchronizeCursorCapture() {
-    input_.setCursorCaptured(ui_.cursorShouldBeCaptured() && !chat_.isOpen() && !navigationOpen_ && !signEditorOpen_);
+    input_.setCursorCaptured(ui_.cursorShouldBeCaptured() && !chat_.isOpen() && !navigationOpen_ && !journalOpen_ && !signEditorOpen_);
 }
 
 void Game::applyFullscreenSetting() {
@@ -730,6 +731,7 @@ bool Game::saveAll(bool asynchronous) {
     }
     if (!Persistence::enabled() || !world_) return true;
     if(!saveBlockedReason_.empty())return false;
+    if(survival_&&!survival_->relicEncountersValid(world_->adventure)){const bool report=saveFeedback_.phase!=SaveFeedback::Phase::Failed;saveFeedback_.complete(false,glfwGetTime());if(report){std::cerr<<"Exploration encounter/checkpoint mismatch; previous checkpoint preserved\n";chat_.addMessage("Save rejected: unmatched relic encounter; previous checkpoint retained",ChatTone::Error,glfwGetTime());}return false;}
     if(!loadedStateValid_ || !player_ || !inventory_ || !survival_ || !transportation_)return false;
     // Global preferences are independent of a per-world checkpoint.
     const bool settingsSaved=settings_.save(SettingsPath);
@@ -757,6 +759,7 @@ bool Game::saveAll(bool asynchronous) {
     bool saved = true;
     // Terrain and containers belong to the same checkpoint even during death.
     // Persist the death location; Player's death timer restores the normal respawn.
+    world_->adventure.observeInventory(*inventory_);
     saved &= world_->saveWorld(worldSavePath(WorldSavePath), player_->position());
     saved &= transportation_->save(worldSavePath("voxel_travel.vtn"), seed_);
     saved &= inventory_->save(worldSavePath(InventorySavePath), seed_);
@@ -974,7 +977,7 @@ void Game::resetWorld(std::uint32_t newSeed, GameMode mode) {
     spectatorMode_ = mode == GameMode::Spectator;
     timing_.worldTime = WorldTime::DefaultSeconds;
 
-    transportation_.reset(); renderer_->resetNavigationCache(); navigationOpen_=mapView_=signEditorOpen_=false;pressedPlate_.reset();pressedButtons_.clear(); viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
+    transportation_.reset(); renderer_->resetNavigationCache(); journalOpen_=navigationOpen_=mapView_=signEditorOpen_=false;pressedPlate_.reset();pressedButtons_.clear(); viewedMap_=0;waypointDeletePending_=-1;mapZoomAfter_=0;
     world_ = std::make_unique<World>(seed_, fixtureGenerator_);
     world_->setStreamingQuality(static_cast<ChunkStreamingQuality>(settings_.chunkStreamingQuality));
     world_->setTerrainLod(settings_.terrainLod);
@@ -1066,6 +1069,7 @@ void Game::handleGlobalInput() {
     }
     if(transportPreview_)updateTransportationPreview(glfwGetTime());
     if(buildingInput())return;
+    if(adventureInput())return;
     if(navigationInput()) return;
     if (chat_.isOpen()) {
         const std::string submitted = chat_.update(input_, window_, commands_);
@@ -1580,7 +1584,7 @@ void Game::updateSimulation(float deltaTime) {
     // Queue maintenance and edge-triggered input run once per rendered frame.
     world_->setStreamingView(player_->lookDirection(),timing_.streamingWorkMilliseconds);
     world_->updateStreaming(player_->cameraPosition(),2);
-    updateEquipmentInput(ui_.state()==GameState::Playing && input_.cursorCaptured() && !navigationOpen_);
+    updateEquipmentInput(ui_.state()==GameState::Playing && input_.cursorCaptured() && !navigationOpen_ && !journalOpen_);
     const auto steps=simulationClock_.advance(deltaTime);
     for(unsigned i=0;i<steps;++i)simulationStep(float(SimulationClock::Step));
     updateTargets();
@@ -1602,7 +1606,7 @@ void Game::updateSimulation(float deltaTime) {
         interaction_.breakProgress = 0.0f;
         interaction_.hasMiningTarget = false;
     } else if (ui_.state() == GameState::Playing && input_.cursorCaptured() &&
-               !player_->isDead() && !spectatorMode_ && !navigationOpen_) {
+               !player_->isDead() && !spectatorMode_ && !navigationOpen_ && !journalOpen_) {
         updatePlayingInteraction(deltaTime);
     }
 
@@ -1619,7 +1623,7 @@ void Game::simulationStep(float deltaTime) {
     world_->updateFluids(deltaTime);
     world_->updateBlockEntities(deltaTime);
     const bool playerInputEnabled =
-        ui_.state() == GameState::Playing && input_.cursorCaptured() && !navigationOpen_ && weatherBenchmark_.empty() && optimizationBenchmark_.empty();
+        ui_.state() == GameState::Playing && input_.cursorCaptured() && !navigationOpen_ && !journalOpen_ && weatherBenchmark_.empty() && optimizationBenchmark_.empty();
     const bool wasDead = player_->isDead();
     const bool wasBelowWorld = player_->position().y < world_->minimumY() - 24.0f;
     updateTransportation(deltaTime,playerInputEnabled);
@@ -1631,6 +1635,8 @@ void Game::simulationStep(float deltaTime) {
     farming_->update(deltaTime, *world_, player_->position(), weather_.get(), daylight(timing_.worldTime)*weather_->daylightScale());
 
     finishSimulationFrame(deltaTime,oldHealth);
+    world_->adventure.update(deltaTime,*world_,*survival_,*player_,*inventory_);
+    const auto adventureNotice=world_->adventure.takeNotice();if(!adventureNotice.empty())chat_.addMessage(adventureNotice,ChatTone::Success,glfwGetTime());
 }
 
 void Game::updateTargets() {
@@ -1826,6 +1832,7 @@ void Game::handleUseAction() {
     const auto toolHand=buildingToolHand();
     const bool useOffhand=toolHand.value_or(inventory_->selectedStack().empty() ||
         (!inventory_->equipment(4).empty() && !hasMainHandUse(inventory_->selectedItem())));
+    if(adventureUse(useOffhand))return;
     if(transportationUse(useOffhand)) return;
     const Item heldItem = useOffhand?inventory_->equipment(4).item:inventory_->selectedItem();
     const auto consume=[&] {return useOffhand?inventory_->consumeOffhand():inventory_->consumeSelected();};
@@ -2251,8 +2258,8 @@ void Game::renderFrame(float deltaTime) {
 
     }
     std::string qolHint;
-    if(ui_.state()==GameState::Playing&&!spectatorMode_&&!player_->isDead()&&!chat_.isOpen()&&!navigationOpen_&&!signEditorOpen_){
-        const auto action=interactionHint();if(settings_.interactionHints)qolHint=action;
+    if(ui_.state()==GameState::Playing&&!spectatorMode_&&!player_->isDead()&&!chat_.isOpen()&&!navigationOpen_ && !journalOpen_&&!signEditorOpen_){
+        const auto action=(settings_.interactionHints||settings_.placementPreview)?interactionHint():std::string();if(settings_.interactionHints)qolHint=action;
         if(settings_.placementPreview && action.empty()){
             const bool off=buildingToolHand().value_or(inventory_->selectedStack().empty()||(!inventory_->equipment(4).empty()&&!hasMainHandUse(inventory_->selectedItem())));
             const auto plan=placementPlan(off?inventory_->equipment(4).item:inventory_->selectedItem());
@@ -2300,8 +2307,9 @@ void Game::renderFrame(float deltaTime) {
         }
     }
     if(ui_.state()==GameState::Playing && !chat_.isOpen()  )renderer_->renderBuildingOverlay(width,height,*world_,*player_,view,projection,signEditorOpen_,signDraft_,signEditorOpen_?signPosition_:interaction_.blockTarget.block,&signEdit_);
-    if(ui_.state()==GameState::Playing && !chat_.isOpen()) renderer_->renderNavigation(width,height,*transportation_,*player_,*inventory_,navigationOpen_,mapView_,viewedMap_,waypointName_,waypointCoordinates_,waypointCoordinatesFocused_,navigationMessage_);
+    if(ui_.state()==GameState::Playing && !chat_.isOpen() && !journalOpen_) renderer_->renderNavigation(width,height,*transportation_,*player_,*inventory_,navigationOpen_,mapView_,viewedMap_,waypointName_,waypointCoordinates_,waypointCoordinatesFocused_,navigationMessage_);
 
+    if(journalOpen_ && ui_.state()==GameState::Playing)renderer_->renderAdventure(width,height,world_->adventure,journalCategory_,journalPage_);
     const glm::dvec2 cursor = input_.framebufferCursorPosition()/double(uiScale);
     if (ui_.gameplayInterfaceOpen()) {
         if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) ||

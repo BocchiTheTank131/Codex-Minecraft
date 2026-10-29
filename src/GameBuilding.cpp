@@ -158,7 +158,7 @@ bool Game::buildingUse(Item held,bool offhand){
   case BuildingShape::FenceGate:case BuildingShape::Trapdoor:case BuildingShape::Door:{const auto next=blockState(old,p^8);set(target,next);if(d->shape==BuildingShape::Door){auto mate=target+glm::ivec3(0,p&16?-1:1,0);if(blockType(get(mate))==blockType(old))set(mate,blockState(get(mate),blockProperties(get(mate))^8));}sounds_->playDoor(!(p&8),glm::vec3(target));return true;}
   case BuildingShape::Barrel:ui_.openChest(target);synchronizeCursorCapture();sounds_->playChest(true,glm::vec3(target));return true;
   case BuildingShape::Sign:signPosition_=target;signDraft_=world_->buildingText(target);signEditorOpen_=true;signEdit_.begin(signDraft_);input_.consumeTypedCharacters();synchronizeCursorCapture();return true;
-  case BuildingShape::Bed:{auto foot=target;if(p&16)foot-=buildingFacing(p);if(!world_->findBedSpawn(foot)){message("Bed has no safe exit; clear space beside it");return true;}player_->setPersonalBed(foot);
+  case BuildingShape::Bed:{auto foot=target;if(p&16)foot-=buildingFacing(p);if(!world_->findBedSpawn(foot,false)){message("Bed has no safe exit; clear space beside it");return true;}player_->setPersonalBed(foot);
     if(std::sin(WorldTime::angle(timing_.worldTime))<-.05f){timing_.worldTime=WorldTime::DefaultSeconds;message("Slept until morning. Respawn point set.");}else message("Respawn point set. Sleep is available at night.");return true;}
   case BuildingShape::Frame:case BuildingShape::Pot:{auto* chest=world_->chestAt(target,true);if(!chest)return true;auto& owned=chest->slots[0];
    if(sneak && !owned.empty()){auto item=owned;if(survival_->spawnDrop(glm::vec3(target)+.5f,item.item,item.count,item.durability,glm::vec3(.1f,.2f,.1f),0,item.identity))owned.clear();else message("Too many dropped items; displayed item retained");return true;}
@@ -191,6 +191,26 @@ std::string Game::interactionHint()const {
  const auto held=off?inventory_->equipment(4).item:inventory_->selectedItem();
  const auto sneak=controlKeyName(settings_.controls[int(ControlAction::Sneak)]);
  const bool sneaking=input_.actionDown(ControlAction::Sneak);
+ if(held==Item::EchoLantern&&sneaking)return sneak+" + RMB: ECHO LOADED CAVE OPENINGS";
+ if(world_->generationVersion()>=24&&(!sneaking||itemToBlock(held)==Block::Air)){
+  auto plan=world_->cachedUndergroundPlan(adventureFloorDiv(p.x,256),adventureFloorDiv(p.z,256));
+  if(plan&&plan->kind!=UndergroundKind::Mineshaft&&!plan->rooms.empty()){
+   const auto c=relicChamber(*plan,world_->seed());const bool locked=world_->adventure.locked(c);
+   if(p==c.gate()&&blockType(b)==Block::OakFenceGate)return locked?"SEALED VAULT: SOLVE CHAMBER / JOURNAL":std::string("RMB: ")+(blockProperties(b)&8?"CLOSE GATE":"OPEN GATE");
+   if(p==c.chest()&&blockType(b)==Block::Chest){
+    const auto state=world_->adventure.puzzles().find(Adventure::regionId(c.regionX,c.regionZ));
+    return locked?"SEALED VAULT: SOLVE CHAMBER / JOURNAL":state!=world_->adventure.puzzles().end()&&(state->second.flags&8)?"RMB: OPEN VAULT":"RMB: UNLOCK WITH ANCIENT SEAL (KEY RETAINED)";
+   }
+   for(int n=0;n<3;++n)if(p==c.control(n)){
+    if(c.kind==RelicPuzzle::Sequence&&blockType(b)==Block::Lever)return "RMB: BELL "+std::to_string(n+1)+" / FOLLOW YELLOW INLAYS";
+    if(c.kind==RelicPuzzle::Routing){if(n==1&&blockType(b)==Block::AndGate)return "AND GATE: LEFT AND RIGHT INPUTS REQUIRED";if(n!=1&&blockType(b)==Block::Lever)return "RMB: TOGGLE INPUT / BOTH INPUTS REQUIRED";}
+    if(c.kind==RelicPuzzle::Plates&&blockType(b)==Block::OakPressurePlate)return "WALK ONTO BOTH PLATES / WATCH RED FLOOR";
+   }
+  }
+ }
+
+ if(held==Item::SurveyorCompass)return "RMB: SURVEY NEARBY PLANNED SITES";
+ if(held==Item::EchoLantern)return "RMB: PLACE CAVE LIGHT ON SUPPORTED FLOOR";
  if(automationBlock(b)&&(!sneaking||held==Item::None||itemToBlock(held)==Block::Air)){
   if(blockType(b)==Block::Hopper)return "RMB: OPEN HOPPER";
   if(blockType(b)==Block::Lever)return "RMB: TOGGLE POWER";
@@ -203,7 +223,7 @@ std::string Game::interactionHint()const {
   switch(d->shape){
    case BuildingShape::FenceGate:return "RMB: "+std::string(blockProperties(b)&8?"CLOSE GATE":"OPEN GATE");
    case BuildingShape::Trapdoor:case BuildingShape::Door:return "RMB: "+std::string(blockProperties(b)&8?"CLOSE":"OPEN");
-   case BuildingShape::Bed:{auto foot=p;if(blockProperties(b)&16)foot-=buildingFacing(blockProperties(b));if(!world_->findBedSpawn(foot))return "";return std::sin(WorldTime::angle(timing_.worldTime))<-.05f?"RMB: SLEEP":"RMB: SET RESPAWN";}
+   case BuildingShape::Bed:{auto foot=p;if(blockProperties(b)&16)foot-=buildingFacing(blockProperties(b));if(!world_->findBedSpawn(foot,false))return "";return std::sin(WorldTime::angle(timing_.worldTime))<-.05f?"RMB: SLEEP":"RMB: SET RESPAWN";}
    case BuildingShape::Sign:return "RMB: EDIT SIGN";
    case BuildingShape::Barrel:return "RMB: OPEN BARREL";
    case BuildingShape::Frame:case BuildingShape::Pot:{const auto* storage=world_->chestAt(p,false);if(storage&&!storage->slots[0].empty())return sneak+" + RMB: REMOVE ITEM";if(held==Item::None)return "";if(d->shape==BuildingShape::Pot&&!isPlant(itemToBlock(held))&&held!=Item::Cactus&&!isLeaf(itemToBlock(held)))return "";return "RMB: DISPLAY ITEM";}

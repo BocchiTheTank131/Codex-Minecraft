@@ -901,6 +901,7 @@ bool StructureGenerator::applyToChunk(
 
 std::array<ItemStack, 27> StructureGenerator::rollLoot(
     const StructureLootMarker& marker) const {
+    if(marker.table==StructureLoot::RelicVault||marker.table==StructureLoot::RelicSupplies)return rollRelicVaultLoot(seed_,marker);
     if(marker.table>=StructureLoot::Mineshaft) return rollExplorationLoot(seed_,marker);
     std::array<ItemStack, 27> slots{};
     struct Entry { Item item; int minimum; int maximum; int weight; };

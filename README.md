@@ -4,6 +4,26 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.19.0 - Exploration & Relics
+
+Relics now power a Surveyor Compass, charged Echo Lantern with loaded-only cave
+echoes, and a durable Ancient
+Explorer Tool. A per-world Adventure Journal (`J`, configurable) tracks discovered
+biomes, structures, relics, puzzles, finite challenges and one-time milestones.
+Generator V24 retains V23 geography and adds Three Bells, Divided Current and
+Pulse Hall chambers, accessible relic caches, locked finite vaults, a two-guard
+ambush and a visible timed trap trial. Ancient Seals unlock vaults without being
+consumed; Resonant Cores support a rare explorer upgrade and can also be crafted
+in older worlds. Paid relic recipes also support pre-structure worlds.
+
+All generators V1–V23, their existing loot, the 361 historical previews, original
+world textures and the four hostile billboard mobs are preserved. New exploration
+records share the immutable transactional checkpoint; the demo remains stateless.
+See [review corrections](docs/V2190_REVIEW_FIXES.md), [validation](docs/EXPLORATION_RELICS_VALIDATION_v2.19.0.md) and
+[release notes](docs/RELEASE_v2.19.0.md).
+
+[Download v2.19.0](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.19.0).
+
 ### v2.18.1 - Engine Optimization
 
 Exact V23 column reuse, bounded shared-buffer retirement, immutable background

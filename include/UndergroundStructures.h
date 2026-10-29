@@ -27,6 +27,7 @@ public:
     std::shared_ptr<const UndergroundPlan> plan(int rx,int rz,const Site&,const Cave&,const Reserved&) const;
     bool apply(int cx,int cz,std::vector<Block>&,std::vector<StructureLootMarker>&,
                std::vector<StructureMobMarker>&,const Site&,const Cave&,const Reserved&,int minY,int maxY) const;
+    std::shared_ptr<const UndergroundPlan> cached(int rx,int rz) const;
     static const char* name(UndergroundKind);
 private:
     std::uint32_t seed_;

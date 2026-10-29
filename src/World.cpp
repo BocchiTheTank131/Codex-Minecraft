@@ -415,7 +415,7 @@ World::World(std::uint32_t seed, std::uint32_t generationVersion)
       weirdnessNoise_(seed ^ 0xe37219adU), ridgeNoise_(seed ^ 0x2f6b8053U),
       riverNoise_(seed ^ 0x7a316c5dU), aquiferNoise_(seed ^ 0xc45e1f09U),
       cheeseNoise_(seed ^ 0x91b37d65U), spaghettiNoise_(seed ^ 0x326fa1cbU),
-      noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed), underground_(seed), underground20_(seed,20), underground21_(seed,21), underground23_(seed,21),
+      noodleNoise_(seed ^ 0xf84c2069U), canyonCarver_(seed), structures_(seed), underground_(seed), underground20_(seed,20), underground21_(seed,21), underground23_(seed,21), underground24_(seed,24),
       seed_(seed) {
     generationVersion_ = std::clamp(generationVersion, 1U, LatestGeneratorVersion);
     structures_.setGenerationVersion(generationVersion_);
@@ -765,6 +765,13 @@ StructureTerrain World::structureTerrainAt(int worldX, int worldZ) const {
     return {sample.height, biome, sample.river, seaLevel(), generationVersion_>=15?257:maximumY(), generationVersion_ < 11 || sample.ravine < .02f, generationVersion_>=15};
 }
 
+static bool safeRespawnGround(Block b,bool natural=true) {
+        const auto g = blockGeometry(b);
+        return isSolid(b) && !isWater(b) && b != Block::Cactus &&
+               (!natural || (!isLeaf(b) && !isLog(b))) &&
+               g.shape == BlockShape::Cube && g.minY == 0 && g.maxY == 1;
+}
+
 glm::vec3 World::findSafeSpawnNear(int worldX, int worldZ) const {
     try {return findCollisionSpawnNear(worldX,worldZ);}
     catch(const std::runtime_error&) {
@@ -792,12 +799,7 @@ glm::vec3 World::findCollisionSpawnNear(int worldX, int worldZ) const {
         const auto index = localIndex(floorMod(x, CHUNK_SIZE), y, floorMod(z, CHUNK_SIZE));
         return index < it->second.blocks.size() ? it->second.blocks[index] : Block::Air;
     };
-    const auto safeGround = [](Block b) {
-        const auto g = blockGeometry(b);
-        return isSolid(b) && !isWater(b) && !isLeaf(b) && b != Block::Cactus &&
-               !isLog(b) &&
-               g.shape == BlockShape::Cube && g.minY == 0 && g.maxY == 1;
-    };
+    const auto safeGround = [](Block b){return safeRespawnGround(b);};
     for (int radius = 0; radius <= 48; ++radius) {
         glm::vec3 best(0.0f);
         int bestDistance = std::numeric_limits<int>::max();
@@ -877,7 +879,7 @@ void World::prepareSpawnTerrain(const glm::vec3& position) {
             chunk->meshIdentity = nextMeshIdentity_++;
             computeSunlight(*chunk);
             chunks_.emplace(chunkKey(cx,cz),std::move(chunk));
-            automation.activateChunk(*this,cx,cz);
+            retainGeneratedAutomation(cx,cz);automation.activateChunk(*this,cx,cz);
             queueLightingUpdate(cx,cz,false);
             scheduleFluidBoundaryUpdates(cx,cz);
             markDirty(cx,cz,true);
@@ -1953,7 +1955,7 @@ void World::generate(int renderDistance, const glm::vec3& initialPosition) {
     computeSunlight(*centerChunk);
     const bool generatedEmitter = !centerChunk->lightEmitters.empty();
     chunks_.emplace(key, std::move(centerChunk));
-    automation.activateChunk(*this,centerX,centerZ);
+    retainGeneratedAutomation(centerX,centerZ);automation.activateChunk(*this,centerX,centerZ);
     if (center.hasStructure || generatedEmitter)
         queueLightingUpdate(centerX, centerZ, false);
     if (savedEdits != edits_.end()) {
@@ -2067,6 +2069,12 @@ void World::requestChunksAround(int centerX, int centerZ) {
 }
 
 void World::initializeGeneratedLoot(const GeneratedChunk& generated) {
+    if(!generated.loot.empty()){
+        auto& sites=adventureSites_[chunkKey(generated.x,generated.z)];sites.clear();
+        for(const auto& m:generated.loot)if(m.table<=StructureLoot::Ancient)sites.push_back({std::uint8_t(m.table),{m.x,m.y,m.z}});
+    }
+    // Index only a bounded recent residency window; discovery never queries generation.
+    while(adventureSites_.size()>8192)adventureSites_.erase(adventureSites_.begin());
     for (const StructureLootMarker& marker : generated.loot) {
         const int localX = marker.x - generated.x * CHUNK_SIZE;
         const int localZ = marker.z - generated.z * CHUNK_SIZE;
@@ -2185,7 +2193,7 @@ void World::integrateCompleted(int budget, int centerX, int centerZ) {
         }
         scheduleFluidBoundaryUpdates(generated.x, generated.z);
         refreshBuildingConnections(generated.x,generated.z);
-        automation.activateChunk(*this,generated.x,generated.z);
+        retainGeneratedAutomation(generated.x,generated.z);automation.activateChunk(*this,generated.x,generated.z);
         markDirty(generated.x, generated.z);
         markDirty(generated.x + 1, generated.z);
         markDirty(generated.x - 1, generated.z);
@@ -2615,6 +2623,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     decltype(buildingTexts_) loadedTexts;
     decltype(buildingDrops_) loadedBuildingDrops;
     Automation loadedAutomation;
+    Adventure loadedAdventure;
     const auto commit = [&] {
         equipmentLoot_=loadedEquipmentLoot;
         edits_.swap(loadedEdits);
@@ -2622,6 +2631,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         chests_.swap(loadedChests);
         buildingTexts_.swap(loadedTexts);buildingDrops_.swap(loadedBuildingDrops);
         automation=std::move(loadedAutomation);
+        adventure=std::move(loadedAdventure);adventureSites_.clear();
         fluidQueue_.clear();
         fluidQueued_.clear(); fluidLavaDue_.clear();
         fluidUpdateAccumulator_ = 0.0f;
@@ -2695,6 +2705,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         furnace.fuelRemaining = std::max(0.0f, furnace.fuelRemaining);
         furnace.fuelCapacity = std::max(0.0f, furnace.fuelCapacity);
         furnace.progress = std::clamp(furnace.progress, 0.0f, 1.0f);
+        furnace.progressInput=furnace.input.item;
         loadedFurnaces[position] = furnace;
     }
     std::uint32_t chestCount = 0;
@@ -2740,6 +2751,8 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     if(input.peek()!=std::char_traits<char>::eof()){
         if(!loadedAutomation.read(input,loadedGenerationVersion>=11?-64:0,loadedGenerationVersion>=11?320:WORLD_HEIGHT))return false;
     }
+    if(input.peek()!=std::char_traits<char>::eof()&&!loadedAdventure.read(input))return false;
+    if(loadedGenerationVersion<24&&!loadedAdventure.puzzles().empty())return false;
     if(!loadedAutomation.placementsValid([&](glm::ivec3 p){
         auto chunk=loadedEdits.find(chunkKey(floorDiv(p.x,16),floorDiv(p.z,16)));
         const auto index=std::size_t(((p.y-(loadedGenerationVersion>=11?-64:0))*16+floorMod(p.z,16))*16+floorMod(p.x,16));
@@ -4007,15 +4020,7 @@ bool World::setBlockInternal(int x, int y, int z, Block block, bool rebuildImmed
     if (rebuildImmediately && dispatchImmediately && !synchronousMeshForSmokeTest_)
         dispatchMeshJobs(2);
     queueFluidNeighborhood(x, y, z);
-    if(rebuildImmediately && !automationMoving_)for(auto direction:FaceNormals){glm::ivec3 pos=glm::ivec3(x,y,z)+direction;Block b=getBlock(pos.x,pos.y,pos.z);if(isTorch(b) && blockProperties(b)){auto support=pos-buildingFacing(blockProperties(b)-1);if(support==glm::ivec3(x,y,z)&&!isSolid(getBlock(x,y,z))){if(retainBuildingDrop(glm::vec3(pos)+.5f,{Item::Torch,1}))setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);}continue;}if(!buildingNeedsSupport(b))continue;
-        auto d=buildingDefinition(b);auto p=blockProperties(b);glm::ivec3 support=pos+glm::ivec3(0,-1,0);
-        if(d->shape==BuildingShape::Chain || ((d->shape==BuildingShape::Lantern)&&(p&4)))support=pos+glm::ivec3(0,1,0);
-        if(d->shape==BuildingShape::Frame||d->shape==BuildingShape::Painting||d->shape==BuildingShape::Button||(d->shape==BuildingShape::Sign && (p&16)))support=pos+(d->shape==BuildingShape::Button?buildingFacing(p):-buildingFacing(p));
-        if(support!=glm::ivec3(x,y,z)||isSolid(getBlock(support.x,support.y,support.z))||blockType(getBlock(support.x,support.y,support.z))==Block::Chain)continue;
-        auto output=blockEntityContents(pos);const auto item=blockToItem(b);if(item!=Item::None)output.push_back({item,1});
-        if(!retainBuildingDrops(glm::vec3(pos)+.5f,output))continue;
-        takeBlockEntityContents(pos);setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);
-    }
+    if(rebuildImmediately && !automationMoving_)revalidateSupports({x,y,z});
     if (rebuildImmediately && isDoor(previous) && !isDoorUpper(previous) &&
         !isDoor(block) && y + 1 < maximumY()) {
         const Block upper = getBlock(x, y + 1, z);
@@ -4091,6 +4096,7 @@ void World::updateBlockEntities(float deltaTime) {
                                 static_cast<float>(entry.first.z)))
             continue;
         FurnaceData& furnace = entry.second;
+        if(furnace.progressInput!=furnace.input.item){furnace.progress=0;furnace.progressInput=furnace.input.item;}
         const Item result = furnace.input.empty() ? Item::None : smeltingResult(furnace.input.item);
         const bool outputAccepts = result != Item::None &&
                                    (furnace.output.empty() ||
@@ -5064,12 +5070,12 @@ bool World::retainBuildingDrops(const glm::vec3& position,const std::vector<Item
 }
 void World::refreshBuildingConnections(int cx,int cz){for(int z=cz-1;z<=cz+1;++z)for(int x=cx-1;x<=cx+1;++x){auto* c=findChunk(x,z);if(!c)continue;for(auto index:c->buildingCells){glm::ivec3 p(x*16+int(index%16),c->minimumY+int(index/256),z*16+int((index/16)%16));auto b=getBlock(p.x,p.y,p.z),connected=buildingConnectedState(*this,p,b);auto definition=buildingDefinition(b);if(b!=connected)setBlockInternal(p.x,p.y,p.z,connected,true,false);}}}
 
-std::optional<glm::vec3> World::findBedSpawn(const glm::ivec3& foot) const {
+std::optional<glm::vec3> World::findBedSpawn(const glm::ivec3& foot,bool generateMissing) const {
  // At most four columns of chunks, only on a real respawn. Never change terrain.
  std::unordered_map<std::int64_t,GeneratedChunk> cache;
- auto at=[&](glm::ivec3 p)->Block{if(p.y<minimumY()||p.y>=maximumY())return Block::Air;const int cx=floorDiv(p.x,16),cz=floorDiv(p.z,16);if(auto* c=findChunk(cx,cz))return c->getLocal(floorMod(p.x,16),p.y,floorMod(p.z,16));auto key=chunkKey(cx,cz);const auto edit=edits_.find(key);auto index=localIndex(floorMod(p.x,16),p.y,floorMod(p.z,16));if(edit!=edits_.end()){auto e=edit->second.find(index);if(e!=edit->second.end())return e->second;}auto it=cache.find(key);if(it==cache.end())it=cache.emplace(key,generateChunkData(cx,cz)).first;return index<it->second.blocks.size()?it->second.blocks[index]:Block::Air;};
+ auto at=[&](glm::ivec3 p)->Block{if(p.y<minimumY()||p.y>=maximumY())return Block::Air;const int cx=floorDiv(p.x,16),cz=floorDiv(p.z,16);if(auto* c=findChunk(cx,cz))return c->getLocal(floorMod(p.x,16),p.y,floorMod(p.z,16));if(!generateMissing)return Block::Bedrock;auto key=chunkKey(cx,cz);const auto edit=edits_.find(key);auto index=localIndex(floorMod(p.x,16),p.y,floorMod(p.z,16));if(edit!=edits_.end()){auto e=edit->second.find(index);if(e!=edit->second.end())return e->second;}auto it=cache.find(key);if(it==cache.end())it=cache.emplace(key,generateChunkData(cx,cz)).first;return index<it->second.blocks.size()?it->second.blocks[index]:Block::Air;};
  auto b=at(foot);if(!buildingIsBed(b)||(blockProperties(b)&16))return {};auto head=foot+buildingFacing(blockProperties(b));auto h=at(head);if(!buildingIsBed(h)||!(blockProperties(h)&16)||(blockProperties(h)&3)!=(blockProperties(b)&3))return {};
- for(int z=-1;z<=1;++z)for(int x=-1;x<=1;++x){if(!x&&!z)continue;auto p=foot+glm::ivec3(x,0,z);Block below=at(p-glm::ivec3(0,1,0)),a=at(p),c=at(p+glm::ivec3(0,1,0));if(isSolid(below)&&occludesLight(below)&&a==Block::Air&&c==Block::Air)return glm::vec3(p)+glm::vec3(.5f,0,.5f);}
+ for(int z=-1;z<=1;++z)for(int x=-1;x<=1;++x){if(!x&&!z)continue;auto p=foot+glm::ivec3(x,0,z);Block below=at(p-glm::ivec3(0,1,0)),a=at(p),c=at(p+glm::ivec3(0,1,0));if(safeRespawnGround(below,false)&&a==Block::Air&&c==Block::Air)return glm::vec3(p)+glm::vec3(.5f,0,.5f);}
  return {};
 }
 
@@ -5083,3 +5089,14 @@ void World::renderBuildingItems(std::vector<RenderItemSprite>& out,const glm::ve
 }
 
 void World::nearbyBuildingSigns(const glm::vec3& camera,std::vector<glm::ivec3>& out) const {out.clear();const int cx=floorDiv(int(std::floor(camera.x)),16),cz=floorDiv(int(std::floor(camera.z)),16);for(int z=cz-1;z<=cz+1;++z)for(int x=cx-1;x<=cx+1;++x){auto c=findChunk(x,z);if(!c)continue;for(auto index:c->signCells){glm::ivec3 p(x*16+int(index%16),c->minimumY+int(index/256),z*16+int((index/16)%16));if(glm::length(glm::vec3(p)+.5f-camera)<=8 && !buildingText(p).empty()){out.push_back(p);if(out.size()==8)return;}}}}
+
+void World::revalidateSupports(glm::ivec3 changed){const int x=changed.x,y=changed.y,z=changed.z;for(auto direction:FaceNormals){glm::ivec3 pos=glm::ivec3(x,y,z)+direction;Block b=getBlock(pos.x,pos.y,pos.z);if(isTorch(b) && blockProperties(b)){auto support=pos-buildingFacing(blockProperties(b)-1);if(support==glm::ivec3(x,y,z)&&!isSolid(getBlock(x,y,z))){if(retainBuildingDrop(glm::vec3(pos)+.5f,{Item::Torch,1}))setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);}continue;}if(!buildingNeedsSupport(b))continue;
+        auto d=buildingDefinition(b);auto p=blockProperties(b);glm::ivec3 support=pos+glm::ivec3(0,-1,0);
+        if(d->shape==BuildingShape::Chain || ((d->shape==BuildingShape::Lantern)&&(p&4)))support=pos+glm::ivec3(0,1,0);
+        if(d->shape==BuildingShape::Frame||d->shape==BuildingShape::Painting||d->shape==BuildingShape::Button||(d->shape==BuildingShape::Sign && (p&16)))support=pos+(d->shape==BuildingShape::Button?buildingFacing(p):-buildingFacing(p));
+        if(support!=glm::ivec3(x,y,z)||isSolid(getBlock(support.x,support.y,support.z))||blockType(getBlock(support.x,support.y,support.z))==Block::Chain)continue;
+        auto output=blockEntityContents(pos);const auto item=blockToItem(b);if(item!=Item::None)output.push_back({item,1});
+        if(!retainBuildingDrops(glm::vec3(pos)+.5f,output))continue;
+        takeBlockEntityContents(pos);setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);
+    }
+}

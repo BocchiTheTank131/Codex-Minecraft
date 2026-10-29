@@ -1,6 +1,7 @@
 #pragma once
 #include "Definitions.h"
 #include <array>
+#include <optional>
 #include <glm/glm.hpp>
 class World;
 class Game;
@@ -23,6 +24,7 @@ Block buildingConnectedState(const World&,const glm::ivec3&,Block);
 Block buildingPlacement(Block,const glm::vec3& look,const glm::ivec3& normal,const glm::vec3& hit);
 int buildingTexture(Block,int face);
 bool buildingNeedsSupport(Block);
+std::optional<glm::ivec3> blockSupportPosition(glm::ivec3,Block);
 bool buildingIsContainer(Block);
 bool buildingIsBed(Block);
 bool buildingIsDoor(Block);

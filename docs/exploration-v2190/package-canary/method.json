@@ -1,0 +1,18 @@
+{
+  "phase": "scenes",
+  "seed": 20260917,
+  "generator": 23,
+  "repeats": 1,
+  "distances": null,
+  "recovery_seconds": 15,
+  "scenes": [
+    "gameplay"
+  ],
+  "binaries": {
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\baseline\\VoxelFrontier.exe": "803431c91b0bccd4024cfd8d39b14e5125c83d5bbf1334017315d5820ce27b86",
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\installed-release\\Release\\VoxelFrontier.exe": "5a37d625081a58fc5a30a7c7845eb8b7f869797444ea4198d6b54e2d636f46ae",
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\baseline\\StabilityDriver.exe": "fd08646d9b52c223cd5a9b67510bee7a80e02dbc2e8907328f1b03f8605baaed",
+    "C:\\Users\\Win\\Documents\\Codex\\Voxel\\Codex-Minecraft\\build\\v2190-validation\\driver\\Release\\StabilityDriver.exe": "8192cf286646e62fc42162d5d92641e1ce03723e19903f89e83fcbfd72248717"
+  },
+  "note": "Untouched released v2.18.1 baseline, matched V23 scenes; no concurrent benchmark or compiler workloads. No physical low-end certification."
+}

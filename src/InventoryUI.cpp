@@ -158,7 +158,7 @@ void tooltip(std::vector<V>& vertices, UiMode mode, int W, int H,
     if(armorDefense(item)>0) name+="  ARMOR "+std::to_string(armorDefense(item));
     if(isDurable(item)) name+="  "+std::to_string(stack?stack->durability:Inventory::maxDurability(item))+"/"+std::to_string(Inventory::maxDurability(item));
     const auto placed=itemToBlock(item);
-    const std::string help=automationBlock(placed)?automationDescription(placed):"";
+    const std::string help=item==Item::SurveyorCompass?"RMB: REGIONAL SITE / 10S / 96 USES":item==Item::EchoLantern?"RMB: LIGHT / SNEAK+RMB: CAVE ECHO / 64 USES":item==Item::AncientExplorerTool?"RELIC PICKAXE / IRON TIER / 1024 USES":item==Item::AncientSeal?"REUSABLE V24 VAULT KEY / RARE CRAFTING":item==Item::SurveyorToken?"CRAFT A SURVEYOR COMPASS":item==Item::CavernShard?"CRAFT AN ECHO LANTERN":automationBlock(placed)?automationDescription(placed):"";
     const float scale = std::min(1.5f, (W-24.0f)/std::max(1.0f,name.size()*6.0f));
     UiRect b = InventoryTooltip::bounds(W,H,mouseX,mouseY,std::max(name.size()*6.0f*scale,help.size()*6.f));
     if(!help.empty()){b.height+=15;b.y=std::min(b.y,float(H)-b.height-4);}

@@ -11,7 +11,7 @@ struct PlayerInput;
 enum class ControlAction : int {
     Forward, Backward, Left, Right, Jump, Sprint, Sneak,
     Inventory, Drop, PickBlock, Zoom, Fullbright, Debug, Screenshot,
-    SwapOffhand, RecipeUses, Count
+    SwapOffhand, RecipeUses, Journal, Count
 };
 inline constexpr int ControlActionCount = static_cast<int>(ControlAction::Count);
 using ControlBindings = std::array<int, ControlActionCount>;
@@ -20,6 +20,7 @@ const char* controlActionName(ControlAction action);
 std::string controlKeyName(int key);
 
 class InputManager {
+    friend class AdventureTest;
 public:
     void attach(GLFWwindow* window);
     void pollEvents();

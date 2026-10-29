@@ -19,7 +19,7 @@ assets=ROOT/'assets';manifest=assets/'inventory_previews.json'
 inputs=['src/World.cpp','src/Renderer.cpp','src/Building.cpp','src/Definitions.cpp','src/Transportation.cpp',
         'include/Block.h','include/Survival.h','include/BuildingContent.inc','include/Definitions.h',
         'assets/crafting_blocks.rgba','assets/inventory_atlas_16.png','tests/stability/icons.cpp',
-        'tools/generate_item_thumbnails.py','src/Automation.cpp','include/Automation.h','include/Building.h','include/AutomationContent.inc','tools/generate_automation_assets.py']
+        'tools/generate_item_thumbnails.py','src/Automation.cpp','include/Automation.h','include/Building.h','include/AutomationContent.inc','tools/generate_automation_assets.py','tools/generate_relic_assets.py']
 def atomic_bytes(path, data):
     path=Path(path);temporary=path.with_name(path.name+'.'+uuid.uuid4().hex+'.tmp')
     temporary.write_bytes(data)

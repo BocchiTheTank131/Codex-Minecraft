@@ -4,7 +4,7 @@
   "supersample_pixels": 128,
   "columns": 10,
   "rows": 37,
-  "items": 361,
+  "items": 365,
   "camera": {
     "azimuth_degrees": 45,
     "elevation_degrees": 30,
@@ -12,29 +12,30 @@
     "padding_factor": 1.13
   },
   "inputs": {
-    "src/World.cpp": "c243cc04133bd4acc63b81108519f52963f7392ca652fc4991c910cb046b0c13",
-    "src/Renderer.cpp": "674f4a9b1dacff918f37153ad34f79bb0cf2277634494ebca308aef96d5bd80a",
-    "src/Building.cpp": "c26f8ef3f147b5e66991bdbb6ead3ab99c82bb11dc2a23fff12baddaa5b80060",
-    "src/Definitions.cpp": "cafaf1ca087dcf59057cc799448c6bab29f85858fe53cdd00a21c63c8b0c9e37",
+    "src/World.cpp": "af0cde9d16ce25f2f8a8ae88338e9b018e7880eb2701e75e53e6929e78a208d0",
+    "src/Renderer.cpp": "aa0f411dd9771665e5c4d9421a807ddf16bd3ff47412165719b80ee0662bfc02",
+    "src/Building.cpp": "c890c04c1f177ae57eacdda627681553bcea3014e1cdd5ed67e52aafd3d9bd03",
+    "src/Definitions.cpp": "b61f1f5096721422d69ef24c9c422348c9253a7200848266d409da2cd8575ac5",
     "src/Transportation.cpp": "2d759eb93b51231c61dee81d6b4b75898b6f3ed8a882b7ea9878fe4a9d4a9aee",
     "include/Block.h": "6187e31633cf2e96577e00f73f40f2288c7f809823f9fa7c0634677ea80a66c4",
-    "include/Survival.h": "acca11e923c98449838a91806627b1c1c04bd62987c7e5401431e77dceaf1abe",
+    "include/Survival.h": "e646196a3dc591d0a24e1215660984bf9ba0526ccd64df3aac4d27913d298293",
     "include/BuildingContent.inc": "6a741be6169f0336aed124f383e40a68f6908ae63f5ea3540e7ec45a7f285823",
     "include/Definitions.h": "83f686d1f54f9ff5a73f4c5194ada95d6dcb209cf7f983516706165a39bc20ac",
     "assets/crafting_blocks.rgba": "2e4bb3d2581410e0eb0297115dc2092d01f229764e72e18cf1fb7538c962ae44",
-    "assets/inventory_atlas_16.png": "868325e5a82920076b7bdd034a20c9bb1bfa90cfbdf4ad1adee970779e3d2f26",
+    "assets/inventory_atlas_16.png": "21182655c1d01ad9ffbf0d555d73af57942bf5925519a10987bd194cd9d7920f",
     "tests/stability/icons.cpp": "abf2e0bc44e3be7315bee6e77d08c562f23a036c395e733137f9e39f2cb97869",
-    "tools/generate_item_thumbnails.py": "5ff22aaec311e9309157352d69695a897608e5a89b402410b82d72b2bfb39201",
-    "src/Automation.cpp": "20feee86210af372ffab0cc6b768c3949b4f12f2b8d26728586433ecc6a4b074",
-    "include/Automation.h": "5733ebc517e2dbbaa52f2863cae7a3d0b3e6d28df3d5db059d83af0b8678a6d5",
-    "include/Building.h": "3bb4025df7aa6d42643052dfe11b5bba27f7939cd79ad075404933f2288a1627",
+    "tools/generate_item_thumbnails.py": "2aba266537df0cf3292110ae57c5a3070f501aa05a79fd1554ccc9ed93755657",
+    "src/Automation.cpp": "908da9106b01e4b10c64553432fdafdbc2ff7cbc4f1be1287f2acfbd37d883fb",
+    "include/Automation.h": "74bebd8709076e4552dde096f3f78b778224d0189783d20f321adc323be097fb",
+    "include/Building.h": "46cc5f2f1d87bd38b64b34a538fcd607af0f4da41fe9d650fed66eefe1160a11",
     "include/AutomationContent.inc": "3553a77241e6cf672bf8eb1d51336a51edcb91b6fc5fd1ffd7d613c338b027a9",
-    "tools/generate_automation_assets.py": "fc5972ca2b17c7ad863e45a70e985eedf9d6c8f8cfc81b1af49794e60ee6cf15"
+    "tools/generate_automation_assets.py": "fc5972ca2b17c7ad863e45a70e985eedf9d6c8f8cfc81b1af49794e60ee6cf15",
+    "tools/generate_relic_assets.py": "02f4ac1a046d2f924e5173a2cc016fcbc3cd91da37a6a10ef3a5af8ef9252fbd"
   },
   "outputs": {
-    "assets/item_icons_expansion.png": "ec0536396e17a258c9fa2e38372da042aa1687215057806f1ee80a338593ac28",
-    "assets/item_icons_expansion.rgba": "4b910fecaa9f4f6f5f99336da40d7be82bc5bbd231cd3dc0264efd50ad6ac03d",
-    "assets/inventory_art_source.rgba": "28e00091f74a1f75ca505659fdc4735d8df0419ce0cd695b3f46d1afb5ad3192",
+    "assets/item_icons_expansion.png": "1c4bf66a275fa50888bd385a3d3f2cd194f15971b0f9762678783bbb3499e708",
+    "assets/item_icons_expansion.rgba": "d63b7c5e19a837f179d8eb88e7b1904fe1c5b687f10498c41460947ecda607af",
+    "assets/inventory_art_source.rgba": "2e350eb92a0defec64b8a5ea84c40c7552b882687aebd76f4ca959d6d8b887e2",
     "assets/inventory_previews/001.png": "a370236a9871bb6c9169e1302fbde6ac1952f06fea51521b7e9f915394221888",
     "assets/inventory_previews/002.png": "8c3e5e027c2d8ce98d86fe2d1e58d992a0c242cf2fe80a0172887de4b0cf97e3",
     "assets/inventory_previews/003.png": "7fb9d481066c6f5cc2ff73341f7d221f80b71a42151d5b9bdbf5cb18ba308cbe",
@@ -395,7 +396,11 @@
     "assets/inventory_previews/358.png": "70215fb9e0f05e74c393840e67765eb16d5ab3b6a582d021db64a67800c2c884",
     "assets/inventory_previews/359.png": "e28f0ee0f6b4733c1ef259b67273f9bb5374ee9a3297e38c29eec1fdbff76164",
     "assets/inventory_previews/360.png": "90dcd3ad309e5675c0491bcf268aaba9d88232c7ceb8dbbdbfcc1b3ee0b36a21",
-    "assets/inventory_previews/361.png": "845bb32eccf105f75d3f79cedb7c68b025fbf5496e8096d812e3635d0bd0af0f"
+    "assets/inventory_previews/361.png": "845bb32eccf105f75d3f79cedb7c68b025fbf5496e8096d812e3635d0bd0af0f",
+    "assets/inventory_previews/362.png": "5e3723d4cd30a5cb1e4fca6182cc11ff012e1dd4b3b7f93dd35285d2ed229114",
+    "assets/inventory_previews/363.png": "ce28b27f7d072ee6e6355c4e57c9f08d6231d7548a3bb9146219e33699d05e84",
+    "assets/inventory_previews/364.png": "456632bd5b5c2c2f4bcae9ec64ec0ffe4922b606d2d27dfb5c359e5f2001a957",
+    "assets/inventory_previews/365.png": "6b3b80d16721551259ea19d854c8eabc1e08b000bdc0a2abad38192702d8f254"
   },
   "entries": [
     {
@@ -6173,6 +6178,70 @@
         60
       ],
       "file": "361.png"
+    },
+    {
+      "id": 362,
+      "sprite": 362,
+      "name": "Surveyor Compass",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 5616,
+      "bounds": [
+        4,
+        4,
+        59,
+        60
+      ],
+      "file": "362.png"
+    },
+    {
+      "id": 363,
+      "sprite": 363,
+      "name": "Echo Lantern",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4248,
+      "bounds": [
+        13,
+        4,
+        51,
+        60
+      ],
+      "file": "363.png"
+    },
+    {
+      "id": 364,
+      "sprite": 364,
+      "name": "Ancient Explorer Tool",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 3420,
+      "bounds": [
+        6,
+        4,
+        58,
+        60
+      ],
+      "file": "364.png"
+    },
+    {
+      "id": 365,
+      "sprite": 365,
+      "name": "Resonant Core",
+      "category": "extruded-item-art",
+      "block": 0,
+      "state": 0,
+      "vertices": 4644,
+      "bounds": [
+        4,
+        7,
+        60,
+        56
+      ],
+      "file": "365.png"
     }
   ]
 }

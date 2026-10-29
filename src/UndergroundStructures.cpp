@@ -1,5 +1,6 @@
 #include "UndergroundStructures.h"
 #include "TerrainDensity.h"
+#include "Adventure.h"
 #include <algorithm>
 #include <map>
 #include <set>
@@ -77,6 +78,7 @@ std::shared_ptr<const UndergroundPlan> UndergroundStructures::build(int rx,int r
         p->rooms.push_back({x+grid[i].first*20,y,z+grid[i].second*20,half,3+int(next()%3U)+(version_>=20 && p->kind==UndergroundKind::Dungeon?1:0),
             p->kind==UndergroundKind::Mineshaft?4:4+int(next()%2U)+(version_>=20 && p->kind==UndergroundKind::Dungeon?1:0)});
     }
+    if(version_>=24 && p->kind!=UndergroundKind::Mineshaft){auto& r=p->rooms.back();r.halfX=7;r.halfZ=7;r.height=5;}
     // Region margin bounds neighboring underground plans by construction.
     // Reject all surface structure footprints, including their shallow foundations.
     p->bounds={x-76,base-6,z-76,x+76,base+14,z+76};
@@ -257,6 +259,7 @@ std::shared_ptr<const UndergroundPlan> UndergroundStructures::build(int rx,int r
         auto& b=p->bounds;b.minX=std::min(b.minX,wx);b.minY=std::min(b.minY,wy);b.minZ=std::min(b.minZ,wz);
         b.maxX=std::max(b.maxX,wx);b.maxY=std::max(b.maxY,wy);b.maxZ=std::max(b.maxZ,wz);
     }
+    if(version_>=24 && p->kind!=UndergroundKind::Mineshaft)addRelicChamber(*p,seed_);
     return p;
 }
 bool UndergroundStructures::apply(int cx,int cz,std::vector<Block>& blocks,std::vector<StructureLootMarker>& loot,

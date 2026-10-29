@@ -51,6 +51,7 @@ int runQolTests(int argc,char** argv);
 int runAutomationTests(int argc,char** argv);
 int runExpansionTests(int argc,char** argv);
 int runEngineTests(int argc,char** argv);
+int runAdventureTests(int argc,char** argv);
 double fixtureWorkingSetMb();
 void setupAutomationTraversal(Game&,int);
 void driveAutomationTraversal(Game&,double);
@@ -129,6 +130,7 @@ int StabilityTest::run(int argc,char** argv){
    if(e.path().extension()==".bmp")std::filesystem::copy_file(e.path(),output/e.path().filename());
   return result;
  }
+ if(argc>1 && std::string(argv[1]).find("--adventure")==0)return runAdventureTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--engine-")==0)return runEngineTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--generation-")==0)return runExpansionTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--automation")==0)return runAutomationTests(argc,argv);

@@ -358,7 +358,7 @@ bool World::runExpansionAudit(const std::string& directory,std::string& report,c
                 std::cout<<"Ecosystems seed "<<seed<<" validated "<<kinds.size()<<" landmark types and "<<inspected.size()<<" entrances"<<std::endl;
             }
         } else {
-            check(World().generationVersion()==23,"New-world default is not V23");
+            check(World().generationVersion()==LatestGeneratorVersion,"New-world default is not latest");
             for(int cz=-4;cz<4;++cz)for(int cx=-4;cx<4;++cx) {
                 std::vector<Block> blocks(256*321,Block::Air);
                 for(int z=0;z<16;++z)for(int x=0;x<16;++x)blocks[localIndex(x,80,z)]=Block::Mycelium;
@@ -375,7 +375,7 @@ bool World::runExpansionAudit(const std::string& directory,std::string& report,c
                 check(loaded->loadWorld(path,restored)&&loaded->generationVersion()==version&&restored==position,"Historical generator migrated on load");
                 check(loaded->generateChunkData(-17,31).blocks==saved->generateChunkData(-17,31).blocks,"Historical unexplored chunk changed after upgrade");
                 std::fstream file(path,std::ios::binary|std::ios::in|std::ios::out);
-                file.seekp(36);const unsigned invalid=24;file.write(reinterpret_cast<const char*>(&invalid),4);file.close();
+                file.seekp(36);const unsigned invalid=LatestGeneratorVersion+1;file.write(reinterpret_cast<const char*>(&invalid),4);file.close();
                 const auto old=restored;
                 check(!loaded->loadWorld(path,restored)&&restored==old&&loaded->generationVersion()==version,"Invalid generator partially mutated active world");
             }

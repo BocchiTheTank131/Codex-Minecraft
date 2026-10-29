@@ -31,6 +31,7 @@ const char* automationDescription(Block);
 class Automation {
     friend class EngineOptimizationTest;
     friend class AutomationTest;
+    friend class AdventureTest;
 public:
     struct Node {
         Block type=Block::Air;

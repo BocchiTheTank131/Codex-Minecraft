@@ -1,0 +1,67 @@
+[
+  {
+    "name": "adventure-tests",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "subsystems",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "game",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "checkpoint",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "engine-tests",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "engine-stream-stress",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "automation",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "automation-stabilization",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "building",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "creative-ui",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "qol",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "farming",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  },
+  {
+    "name": "legacy-building",
+    "exit": 0,
+    "exe_sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71"
+  }
+]

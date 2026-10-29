@@ -12,7 +12,7 @@ void Game::updateEquipmentInput(bool enabled) {
     bool raise=enabled && input_.mouseDown(GLFW_MOUSE_BUTTON_RIGHT);
     // Existing primary uses retain priority over the offhand shield.
     // Holding a sword/empty hand leaves RMB available for defense.
-    const auto navigation=[](Item i){return i>=Item::OakBoat && i<=Item::Compass;};
+    const auto navigation=[](Item i){return (i>=Item::OakBoat && i<=Item::Compass)||i==Item::SurveyorCompass||i==Item::EchoLantern;};
     if(raise && (navigation(inventory_->selectedItem()) || navigation(inventory_->equipment(4).item))) raise=false;
     if(raise) {
         if(buildingToolHand().has_value()) raise=false;

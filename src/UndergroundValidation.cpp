@@ -154,9 +154,9 @@ bool World::runUndergroundAudit(const std::string& directory,std::string& report
                     require(a[s].item==b[s].item&&a[s].count==b[s].count&&a[s].durability==b[s].durability,"Loot determinism");
                     if(a[s].empty())continue;
                     require(a[s].count<=itemDefinition(a[s].item).maxStack,"Loot stack overflow");
-                    const auto item=a[s].item;bool rare=item==Item::Diamond||item>=Item::SurveyorToken;
+                    const auto item=a[s].item;bool rare=item==Item::Diamond||item==Item::SurveyorToken||item==Item::CavernShard||item==Item::AncientSeal;
                     if(rare)++c[2];else if(item==Item::IronIngot||item==Item::GoldIngot||item==Item::IronPickaxe||item==Item::IronSword||item==Item::CookedBeef||item==Item::Book)++c[1];else ++c[0];
-                    if(item==Item::Diamond)c[3]+=a[s].count;if(item>=Item::SurveyorToken)++c[4];
+                    if(item==Item::Diamond)c[3]+=a[s].count;if(item==Item::SurveyorToken||item==Item::CavernShard||item==Item::AncientSeal)++c[4];
                 }
             }
             lootStats<<depth<<','<<int(table)<<",10000";for(int v:c)lootStats<<','<<v;lootStats<<'\n';

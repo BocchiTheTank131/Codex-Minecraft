@@ -509,6 +509,15 @@ const std::vector<Recipe>& recipes() {
         r.push_back(recipe(3,2,{Item::Cobblestone,Item::Glass,Item::Cobblestone,Item::PowerWire,Item::IronIngot,Item::PowerWire},Item::Observer,1,true));
         r.push_back(recipe(2,2,{Item::Wheat,Item::Carrot,Item::PowerWire,Item::Glass},Item::CropSensor,1,false));
         r.push_back(recipe(3,3,{Item::IronIngot,Item::IronIngot,Item::IronIngot,Item::PowerWire,Item::Hopper,Item::PowerWire,Item::Cobblestone,Item::IronIngot,Item::Cobblestone},Item::AutoHarvester,1,true));
+        // Paid acquisition preserves access in pre-V19 worlds without changing
+        // a single historical generated chest or requiring a lucky relic roll.
+        r.push_back(recipe(3,3,{Item::Paper,Item::GoldIngot,Item::Paper,Item::GoldIngot,Item::Compass,Item::GoldIngot,Item::Paper,Item::GoldIngot,Item::Paper},Item::SurveyorToken,1,true));
+        r.push_back(recipe(3,3,{Item::Glass,Item::CopperIngot,Item::Glass,Item::CopperIngot,Item::Diamond,Item::CopperIngot,Item::Glass,Item::CopperIngot,Item::Glass},Item::CavernShard,1,true));
+        r.push_back(recipe(3,3,{Item::GoldIngot,Item::Book,Item::GoldIngot,Item::Book,Item::Diamond,Item::Book,Item::GoldIngot,Item::Diamond,Item::GoldIngot},Item::AncientSeal,1,true));
+        r.push_back(recipe(3,3,{Item::CopperIngot,Item::SurveyorToken,Item::CopperIngot,Item::IronIngot,Item::Compass,Item::IronIngot,Item::None,Item::GoldIngot,Item::None},Item::SurveyorCompass,1,true));
+        r.push_back(recipe(3,3,{Item::IronIngot,Item::CavernShard,Item::IronIngot,Item::Glass,Item::Torch,Item::Glass,Item::None,Item::GoldIngot,Item::None},Item::EchoLantern,1,true));
+        r.push_back(recipe(3,3,{Item::CopperIngot,Item::CavernShard,Item::CopperIngot,Item::GoldIngot,Item::IronIngot,Item::GoldIngot,Item::None,Item::CavernShard,Item::None},Item::ResonantCore,1,true));
+        r.push_back(recipe(3,3,{Item::Diamond,Item::AncientSeal,Item::Diamond,Item::None,Item::IronPickaxe,Item::None,Item::None,Item::ResonantCore,Item::None},Item::AncientExplorerTool,1,true));
         return r;
     }();
     return all;
@@ -822,6 +831,8 @@ bool Inventory::takeCraftingOutput(bool table) {
         cursor_.count += out.count;
     else
         return false;
+    if(out.item>=Item::SurveyorCompass&&out.item<=Item::AncientExplorerTool)craftedRelicTools|=1U<<(int(out.item)-int(Item::SurveyorCompass));
+    if(isCollectibleRelic(out.item))craftedRelicTools|=8U<<(int(out.item)-int(Item::SurveyorToken));
     for (int i : used) {
         --crafting_[i].count;
         normalize(crafting_[i]);
@@ -850,6 +861,8 @@ int Inventory::craftOutputToInventory(bool table) {
             normalize(crafting_[static_cast<std::size_t>(index)]);
         }
         add(output.item, output.count, output.durability);
+        if(output.item>=Item::SurveyorCompass&&output.item<=Item::AncientExplorerTool)craftedRelicTools|=1U<<(int(output.item)-int(Item::SurveyorCompass));
+        if(isCollectibleRelic(output.item))craftedRelicTools|=8U<<(int(output.item)-int(Item::SurveyorToken));
         ++crafted;
     }
     return crafted;
@@ -1508,6 +1521,7 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
     std::string recipeFailures;
     for (std::size_t index = 0; index < craftingRecipes().size(); ++index) {
         const RecipeInfo& definition = craftingRecipes()[index];
+        const bool singleIngredient=std::any_of(definition.cells.begin(),definition.cells.end(),[](const Ingredient& i){return !i.empty()&&i.group==IngredientGroup::None&&Inventory::maxStack(i.item)==1;});
         Inventory manual;
         Inventory book;
         manual.clear(); book.clear();
@@ -1520,7 +1534,7 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
                 const Item item = ingredient.group == IngredientGroup::Planks
                     ? planks[(x+y*definition.w)%6]
                     : ingredient.group == IngredientGroup::Logs ? Item::Log : ingredient.item;
-                manual.crafting_[static_cast<std::size_t>(y * 3 + x)] = {item, 2, 0};
+                manual.crafting_[static_cast<std::size_t>(y * 3 + x)] = {item, singleIngredient?1:2, Inventory::maxDurability(item)};
                 book.add(item, 2);
             }
         }
@@ -1536,7 +1550,12 @@ bool Inventory::runCraftingSelfTest(std::string& report) {
         recipePassed &= book.craftingOutput(true).item == definition.output &&
                         book.craftingOutput(true).count == definition.count;
         const int crafted = book.craftOutputToInventory(true);
-        recipePassed &= crafted == 2 && book.count(definition.output) == definition.count * 2;
+        recipePassed &= crafted == (singleIngredient?1:2) && book.count(definition.output) == definition.count * (singleIngredient?1:2);
+        if(singleIngredient){
+            // Equipment ingredients cannot form illegal two-tool grid stacks.
+            // Still verify two outputs and exact conservation via two autofills.
+            recipePassed &= book.fillRecipe(int(index),true,true)&&book.craftOutputToInventory(true)==1&&book.count(definition.output)==definition.count*2;
+        }
         if (!recipePassed) {
             report = "recipe/book/batch regression: " + itemDefinition(definition.output).displayName +
                 " manual " + std::to_string(static_cast<int>(output.item)) + "/" + std::to_string(output.count) +
@@ -2908,6 +2927,7 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     if(animals_.size()>SaveValidation::MaxMobs || drops_.size()>SaveValidation::MaxDrops || spawnedStructureMarkers_.size()>SaveValidation::MaxMarkers)return false;
     for(const auto& a:animals_)if(a.deathTimer<=0 && (!SaveValidation::position(a.position) || !std::isfinite(a.health) || a.health<=0 || a.health>20 || !std::isfinite(a.age) || a.age < -1000000 || a.age>1000000000 || int(a.type)<0 || int(a.type)==3 || (int(a.type)>=6+BillboardMobCount && a.type!=AnimalType::Chicken)))return false;
     for(const auto& a:animals_)if(a.deathTimer<=0 && (!std::isfinite(a.resourceTimer)||a.resourceTimer<0||a.resourceTimer>600||!std::isfinite(a.woolTimer)||a.woolTimer<0||a.woolTimer>180||!std::isfinite(a.loveTimer)||a.loveTimer<0||a.loveTimer>30||!std::isfinite(a.breedingCooldown)||a.breedingCooldown<0||a.breedingCooldown>300))return false;
+    for(const auto& a:animals_)if(a.deathTimer<=0&&a.relicEncounter&&(!validRelicEncounterTag(a.relicEncounter)||a.type!=AnimalType::Pillager||!a.persistent))return false;
     for(const auto& d:drops_)if(!SaveValidation::position(d.position) || !SaveValidation::velocity(d.velocity) || !SaveValidation::stack(d.stack) || !std::isfinite(d.age) || d.age<0 || !std::isfinite(d.pickupDelay) || d.pickupDelay<0)return false;
     return SaveFile::write(p, std::ios::binary, [&](std::ofstream& f) {
     f.write(MobMagic, 8);
@@ -2956,6 +2976,9 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     for(const auto& a:animals_)if(a.deathTimer<=0)wr(f,std::uint8_t(a.persistent));
     f.write("HUS1",4);wr(f,n);
     for(const auto& a:animals_)if(a.deathTimer<=0){wr(f,std::uint8_t(a.sheared));wr(f,a.resourceTimer);wr(f,a.woolTimer);wr(f,a.loveTimer);wr(f,a.breedingCooldown);}
+    if(std::any_of(animals_.begin(),animals_.end(),[](const Animal& a){return a.deathTimer<=0&&a.relicEncounter;})){
+        f.write("ENC1",4);wr(f,n);for(const auto& a:animals_)if(a.deathTimer<=0)wr(f,a.relicEncounter);
+    }
     return !!f;
     });
 }
@@ -3077,6 +3100,10 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
             if(!rd(f,sheared)||sheared>1||!rd(f,resource)||!rd(f,wool)||!rd(f,love)||!rd(f,breed)||!std::isfinite(resource)||resource<0||resource>600||!std::isfinite(wool)||wool<0||wool>180||!std::isfinite(love)||love<0||love>30||!std::isfinite(breed)||breed<0||breed>300)return false;
             if(index<recordIndices.size() && recordIndices[index]==k) {auto& a=loaded[index++];a.sheared=sheared;a.resourceTimer=resource;a.woolTimer=wool;a.loveTimer=love;a.breedingCooldown=breed;}
         }
+    }
+    if(f.peek()!=std::char_traits<char>::eof()){
+        char tag[4];std::uint32_t count=0;f.read(tag,4);if(!f||std::memcmp(tag,"ENC1",4)||!rd(f,count)||count!=n)return false;
+        std::size_t index=0;for(unsigned k=0;k<n;++k){std::uint64_t id=0;if(!rd(f,id))return false;if(index<recordIndices.size()&&recordIndices[index]==k){auto& a=loaded[index++];if(id&&(!validRelicEncounterTag(id)||a.type!=AnimalType::Pillager||!a.persistent))return false;a.relicEncounter=id;}}
     }
     if(f.peek()!=std::char_traits<char>::eof())return false;
     drops_=std::move(loadedDrops);
