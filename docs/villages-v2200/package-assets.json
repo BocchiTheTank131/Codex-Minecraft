@@ -1,0 +1,2099 @@
+{
+  "full": {
+    "assets/item_icons_expansion.rgba": {
+      "bytes": 6062088,
+      "sha256": "d63b7c5e19a837f179d8eb88e7b1904fe1c5b687f10498c41460947ecda607af"
+    },
+    "assets/crafting_blocks.rgba": {
+      "bytes": 176136,
+      "sha256": "2e4bb3d2581410e0eb0297115dc2092d01f229764e72e18cf1fb7538c962ae44"
+    },
+    "sprites/panorama/panorama.jpg": {
+      "bytes": 1031912,
+      "sha256": "970d9b807ed9c702f002e62ad0db7a079c92f978b76b5ac40dd6d623c432e31f"
+    },
+    "sounds/background/Bundle up your dreams.ogg": {
+      "bytes": 3297071,
+      "sha256": "97187021704e9953bef4859c6c6b07d54fe0ad28978dff5d6368f97bfa9ae0a2"
+    },
+    "sounds/background/Chronostasis.ogg": {
+      "bytes": 2997550,
+      "sha256": "c6a0a55f6ebac37bae20318f5099fa6f5c4d2418b6fa1cbf9e8da0fa3a581695"
+    },
+    "sounds/background/Distortion.ogg": {
+      "bytes": 2295414,
+      "sha256": "12e36e1d6905becf0c3326baf78bf1d32ec8593ee302fc88a7cb1deb8974c0bc"
+    },
+    "sounds/background/Doppelganger.ogg": {
+      "bytes": 2456652,
+      "sha256": "0ee9bd039e5aac4d3c5032a0200b47a582c0ca635ee3992689aaab5196d185b3"
+    },
+    "sounds/background/Flashbacker.ogg": {
+      "bytes": 3062958,
+      "sha256": "719682650208c41fe348f947925011b709ce48617363a9b3bf8f9225ba5d649d"
+    },
+    "sounds/background/Guitar, Loneliness and Blue Planet.ogg": {
+      "bytes": 2582964,
+      "sha256": "2b0b33f84cd3029894470489c57ea0af9f6b607d7e460c3c74527bd1c5586342"
+    },
+    "sounds/background/I cant sing a love song.ogg": {
+      "bytes": 2135421,
+      "sha256": "ef77e0c062fe48a9b1ca5b287bc8b282c56c7da26e4e9ff0dbbe635a14c18d6f"
+    },
+    "sounds/background/If I could be a constellation.ogg": {
+      "bytes": 2958049,
+      "sha256": "41902adab4fece1cde450e56d320c8a794f54548fc2ccf252433bed2f9514342"
+    },
+    "sounds/background/Karakara.ogg": {
+      "bytes": 2952704,
+      "sha256": "4d7753f67b8d1965f4a85b7bc97c26c63c0402afbadcc019bc7757a4f933fe6e"
+    },
+    "sounds/background/Me and the three primary colors.ogg": {
+      "bytes": 2510021,
+      "sha256": "618837a5d1cca6152476b30ef23fa5ebae4f15ce879be038548c1cf51caded11"
+    },
+    "sounds/background/Never forget.ogg": {
+      "bytes": 2524455,
+      "sha256": "d73aa3abdff14012b111769c6533d8560cc18ec4539cdccc639df4db62ac0325"
+    },
+    "sounds/background/Now, Im going from underground.ogg": {
+      "bytes": 2916890,
+      "sha256": "8704625f4552cbee0a0b6a825f6fce127892d9e3de31ee9b6a0feb3d5a5dee09"
+    },
+    "sounds/background/Planet.ogg": {
+      "bytes": 3014647,
+      "sha256": "ef8fe4809c32d5df56441958bdbfc92f1d176470a48259ebd14c7cd1fa2d1294"
+    },
+    "sounds/background/ReRe.ogg": {
+      "bytes": 3488659,
+      "sha256": "9be7c24cebcf24626b4ae687ec6bfc257bae076ec7f9c1a420136f7418e577d3"
+    },
+    "sounds/background/Rockn Roll, Morning Light Falls on You.ogg": {
+      "bytes": 3084132,
+      "sha256": "17ff1b5c70b01822a3287078783977b8d88154becbbdb2dd000035bc5ccb4b17"
+    },
+    "sounds/background/Secret base.ogg": {
+      "bytes": 2591386,
+      "sha256": "580678d9c805254b2b8129dee6461b17dad80eb93fc0c5ae3882ce76ce8b0bcb"
+    },
+    "sounds/background/Shine as usual.ogg": {
+      "bytes": 2776161,
+      "sha256": "cf2278ca1cd227eeaed2737b87544382905bbbe2dcf92c43a9f4ed1492a4ea50"
+    },
+    "sounds/background/That band.ogg": {
+      "bytes": 2436791,
+      "sha256": "578f459bc9be810051f4ab7a8f494a1877b5955f4634800024900eafdd5e8de6"
+    },
+    "sounds/background/The Little Sea.ogg": {
+      "bytes": 2439749,
+      "sha256": "b39d514fcc38d1ee3da5f40cd67aea52f1975cda36a86c2e3d31a2aa0992a86a"
+    },
+    "sounds/background/UNITE.ogg": {
+      "bytes": 2244703,
+      "sha256": "a4f6bb577cbd2401927be53124f818c1a32a082410b82e5313e98e6aefd1bb31"
+    },
+    "sounds/background/What is wrong with.ogg": {
+      "bytes": 2572878,
+      "sha256": "8eadf6e7bd448b82a449b66f187fa3509f77cad16e298cd42f3023657ade8dd6"
+    },
+    "sounds/background/hitoribocchi tokyo.ogg": {
+      "bytes": 2602044,
+      "sha256": "29909288a0f76d682476927ab03b0729ffe17815dc4d11712ef81e6a3cf1f032"
+    },
+    "sounds/background/milky way.ogg": {
+      "bytes": 2370941,
+      "sha256": "aa987b3c591b78c74e012a30d19ce7efa826655a12a070b6909f2f946ec86429"
+    },
+    "sounds/background/seisyun complex.ogg": {
+      "bytes": 2318198,
+      "sha256": "87182b941f888f7ed38ca5841c3dabccf873aa9b4f1d7c8bdcb8d00980666422"
+    },
+    "sounds/boowomp.ogg": {
+      "bytes": 23046,
+      "sha256": "5b4e9356b442c58ce48e425fb2e263728d95bdfaa65540d2ccee46b8b543ee0c"
+    },
+    "sounds/break.ogg": {
+      "bytes": 6551,
+      "sha256": "5f6a07395aff066ab493beb36cec9e40879a1c70e66f181878b10ef7568be581"
+    },
+    "sounds/burp.ogg": {
+      "bytes": 6337,
+      "sha256": "e49f343cf4289dc1c25f9932075a6b07a89bb13c885fea4ebc2634f43ba35c8d"
+    },
+    "sounds/chest/close.ogg": {
+      "bytes": 17135,
+      "sha256": "40f0b3212c9a8dc835eb368f284485b2f2569c4339d36fda2ca82d0c750cace2"
+    },
+    "sounds/chest/close2.ogg": {
+      "bytes": 18271,
+      "sha256": "08c2e383401fa27515e6ea25a771ed0cd85de5652860547183d7841f6bc305dc"
+    },
+    "sounds/chest/close3.ogg": {
+      "bytes": 16175,
+      "sha256": "b54ef7661015c416de57d8398d5a3e5c75a68d3ddf20db1f765c605e9c6ed207"
+    },
+    "sounds/chest/open.ogg": {
+      "bytes": 8916,
+      "sha256": "6b9b0c3672b4bb8413ea0371c28d79ebad41e49ea03850251b4e16f5cb533612"
+    },
+    "sounds/chicken/death1.ogg": {
+      "bytes": 6161,
+      "sha256": "c3841ac71143ee9ce5fac406791d588bde000cccca9db83fac75702a162625bf"
+    },
+    "sounds/chicken/hurt1.ogg": {
+      "bytes": 5122,
+      "sha256": "8da5b9317ec9fc1bc1ce0d20bca95b7004d0841ce04d3c0a1c65b91b6d766b6a"
+    },
+    "sounds/chicken/say1.ogg": {
+      "bytes": 5411,
+      "sha256": "c209bb67183b5b87a7dd2cb521ea45f5253b3c141ec1efcbb9fdacd0ae409046"
+    },
+    "sounds/chicken/step1.ogg": {
+      "bytes": 4128,
+      "sha256": "7cf3b2133df8878cb9582970f66a4856022510d3ed8a7ffa433097c6333e97c3"
+    },
+    "sounds/click.ogg": {
+      "bytes": 9138,
+      "sha256": "c8e78aea3a020d743189fd4d5b0636b791b557b608c62f6474d0f16abcfcc0d8"
+    },
+    "sounds/cow/hurt1.ogg": {
+      "bytes": 7302,
+      "sha256": "64ae6f38e43887d15e3378beecba6be48ffff5f3fb00c8a04a8a25c3d695698b"
+    },
+    "sounds/cow/hurt2.ogg": {
+      "bytes": 8430,
+      "sha256": "90043c5ac292ba4477d66e240cf22372364c1e5ddf5d6fee45ba3d3634c05215"
+    },
+    "sounds/cow/hurt3.ogg": {
+      "bytes": 8934,
+      "sha256": "e53e8ab4a4b3bf51ccb252f3cd8299524a423f422538401415067b341a434694"
+    },
+    "sounds/cow/say1.ogg": {
+      "bytes": 9714,
+      "sha256": "24acaae2e89ca52a913177222ad37b36385267e85e52f3e320dbd34d295efde8"
+    },
+    "sounds/cow/say2.ogg": {
+      "bytes": 13553,
+      "sha256": "efe992562b1fc7c03fd02ff720ac9d4564b047bce25b8afb4636db990d7f26dd"
+    },
+    "sounds/cow/say3.ogg": {
+      "bytes": 13330,
+      "sha256": "4c693c4cf38212c6a34f5bf27f1290bf67c25a688a6cb0d2fae15be6c6db02f2"
+    },
+    "sounds/cow/say4.ogg": {
+      "bytes": 12300,
+      "sha256": "13605ec89e48f2fbc3b5605ec52ad826b6a97e298112d01623f043ff329df935"
+    },
+    "sounds/cow/step1.ogg": {
+      "bytes": 7411,
+      "sha256": "f8ae9a17a9f622cc3ca1b85888a24c6b4fc03a84803c4e0b72a53dede3b56c81"
+    },
+    "sounds/cow/step2.ogg": {
+      "bytes": 7885,
+      "sha256": "e7bfe425913a6d70392ca37b329078d3d59cf6ac0b7344f5482a0f0e3fc9ccd3"
+    },
+    "sounds/cow/step3.ogg": {
+      "bytes": 7923,
+      "sha256": "45ee1c5109612b2db284d8490811d4fb8ee1c07d20119319fced10666707d186"
+    },
+    "sounds/cow/step4.ogg": {
+      "bytes": 7394,
+      "sha256": "534ae3bd903ccb2ff231eabe8f1b0bc5f61bd2b66f8759aebea353cc93774cd3"
+    },
+    "sounds/damage/fallbig.ogg": {
+      "bytes": 6079,
+      "sha256": "abd98f86021018e2d448759135059e71e51f0a5b415b07fde0271f27bd359577"
+    },
+    "sounds/damage/fallsmall.ogg": {
+      "bytes": 5232,
+      "sha256": "f6c607669ba75d517d7d7af994fb10f94a07d997b28b7fabf29f0b02c358e5f7"
+    },
+    "sounds/damage/hit1.ogg": {
+      "bytes": 6539,
+      "sha256": "5e190650c27cc38dce750ac7d5fb5044c3cf714bc116d0bdc3e9e93cdeffdc35"
+    },
+    "sounds/damage/hit2.ogg": {
+      "bytes": 6227,
+      "sha256": "67ceec1f40e125adcfa44c2af4c66ca6f0278c6b8ac917c5a0f508bcc6af9091"
+    },
+    "sounds/damage/hit3.ogg": {
+      "bytes": 7660,
+      "sha256": "637b73c4218d190c0e405737f85b86ec5fae59ff0a211f5e7e2e005e887336e0"
+    },
+    "sounds/dig/grass1.ogg": {
+      "bytes": 7468,
+      "sha256": "3619fdb8f8aad57a48d45e02a3e8be90a9ca5d0ab8c8802961c78fd59c1f84fa"
+    },
+    "sounds/dig/grass2.ogg": {
+      "bytes": 7691,
+      "sha256": "b0763cf2c5b4d49602cb143e457b6206b6b101113a525795ef9c622ae31149df"
+    },
+    "sounds/dig/grass3.ogg": {
+      "bytes": 7194,
+      "sha256": "9ac02803710f8556be3501d021ca2120d121339fa07f0a18a0b63ba5547508fd"
+    },
+    "sounds/dig/grass4.ogg": {
+      "bytes": 7163,
+      "sha256": "dd73335714e52237ef6ebc05035418367b4785cfef749b5ea1cd9b6b1c523b93"
+    },
+    "sounds/dig/gravel1.ogg": {
+      "bytes": 6851,
+      "sha256": "55a610c8739c045a65343b8447c6b95c1e54465939aab666001af2d4869c1e83"
+    },
+    "sounds/dig/gravel2.ogg": {
+      "bytes": 7501,
+      "sha256": "60ebf0ed49f258a62adb9849386b2795f7e409d21ff958a803eb0727d7e98913"
+    },
+    "sounds/dig/gravel3.ogg": {
+      "bytes": 6905,
+      "sha256": "ab5e4b408d1eca44546e86c11f5fcc66d3a4c035910ab14736f952d1e8ce98fd"
+    },
+    "sounds/dig/gravel4.ogg": {
+      "bytes": 6728,
+      "sha256": "fd4aa7553a4f99fe435b2df57bf9ec1040ee2409d09fbd15dbc7049f0e261ddb"
+    },
+    "sounds/dig/sand1.ogg": {
+      "bytes": 5543,
+      "sha256": "1260ef32a374eb6ca23da821764886b67d655bd2ee34a71a1520e90c308aa63e"
+    },
+    "sounds/dig/sand2.ogg": {
+      "bytes": 5553,
+      "sha256": "74ef2fa1b6c52356ffa9bce77c826681be52d73f0deaa423e87694a2fd79fffd"
+    },
+    "sounds/dig/sand3.ogg": {
+      "bytes": 5552,
+      "sha256": "0441e996d75a0d2d67cec2ef60251f2a9cde6e15299589db79f4690ea8cc580e"
+    },
+    "sounds/dig/sand4.ogg": {
+      "bytes": 5491,
+      "sha256": "42ac91167d26014e04fa8c50435d655e2b0c6168f319c9c99ea7377b4df912a5"
+    },
+    "sounds/dig/snow1.ogg": {
+      "bytes": 6532,
+      "sha256": "f7e03bb5bcc487cea313bfd72ded4cfd4e215b82228cf9744760f61da4c496bb"
+    },
+    "sounds/dig/snow2.ogg": {
+      "bytes": 6567,
+      "sha256": "a0d603f69ad58662e688d74b9ca2f345eebc0938b4af954f16840adf436fe8d9"
+    },
+    "sounds/dig/snow3.ogg": {
+      "bytes": 6540,
+      "sha256": "ae97513c5bcac9d08f5c8bcbaf55b7a3112134603c141b5de70e15a06c77e325"
+    },
+    "sounds/dig/snow4.ogg": {
+      "bytes": 6501,
+      "sha256": "c7918a0b58c45a6f0d29fa990bbd31a7b482ef61387c83a02eb7f70b672e4761"
+    },
+    "sounds/dig/stone1.ogg": {
+      "bytes": 6695,
+      "sha256": "97f2a8a73b6f577b85c1a162c31810c7aff1ad1f34564dfdacebb64b26d1c7c6"
+    },
+    "sounds/dig/stone2.ogg": {
+      "bytes": 6728,
+      "sha256": "98a5c3197845526e6ca9e8a669ffda843cfae3f5c7ac842ee6aac8896bae03b2"
+    },
+    "sounds/dig/stone3.ogg": {
+      "bytes": 6627,
+      "sha256": "19273f0e7e25b459ea29511dcbc4f7f209c04cea2fd1c34a16250737469ca51c"
+    },
+    "sounds/dig/stone4.ogg": {
+      "bytes": 6516,
+      "sha256": "b164e7324510480abac9518090e48439123ea05ebc48970e48fc59406729a197"
+    },
+    "sounds/dig/wood1.ogg": {
+      "bytes": 6541,
+      "sha256": "cb6071c83a7f19ee555e9d661dc9e564c77ad9fcf2d1a6848aab21bc3b1c0289"
+    },
+    "sounds/dig/wood2.ogg": {
+      "bytes": 6294,
+      "sha256": "59edca84840951f2d6f0ad9ff5fd439a6dc916b2cc50164569b94ee107b4bc3f"
+    },
+    "sounds/dig/wood3.ogg": {
+      "bytes": 6604,
+      "sha256": "cf6be2314c08ea3fd311bdaebe14d0c73ca189bbbda09f96d26a3dea7e711cf6"
+    },
+    "sounds/dig/wood4.ogg": {
+      "bytes": 6817,
+      "sha256": "de868b3119b03ad42cbe502805e895a5fd8565f059f991f542b4ee68d6556bfe"
+    },
+    "sounds/eat1.ogg": {
+      "bytes": 5678,
+      "sha256": "b2c679f3a7c177a94134cbaa11dfe08ddefee439c1cffc448d7621f3e4229e82"
+    },
+    "sounds/eat2.ogg": {
+      "bytes": 5677,
+      "sha256": "71a4b8035a72e7c881219b6419bb7de66ffd128c10743448fc1c69cdfb3b8a35"
+    },
+    "sounds/eat3.ogg": {
+      "bytes": 5813,
+      "sha256": "3c6f012d2ceb63062d2705c4892a53970ed504c20b08d82e113fa876e734c5f0"
+    },
+    "sounds/explode/explode1.ogg": {
+      "bytes": 23161,
+      "sha256": "f5951a4f5ece95d595398c3519ab26044c359bc088a0f0684ee6f1b14c02ebc0"
+    },
+    "sounds/explode/explode2.ogg": {
+      "bytes": 28696,
+      "sha256": "cb262b2af5fdfaac7b83cc64790c83cc852506444f382f06ded37e83f105b5a8"
+    },
+    "sounds/explode/explode3.ogg": {
+      "bytes": 28255,
+      "sha256": "c2a8b6821fe8a50d72605bff3410bd8c4c82bff47cbce37d99e225dbaf55f6a4"
+    },
+    "sounds/explode/explode4.ogg": {
+      "bytes": 27561,
+      "sha256": "f676d7fb3ddd9623ca931004ad380c5027846394b51b96b0ac2518159ff915c2"
+    },
+    "sounds/orb.ogg": {
+      "bytes": 7139,
+      "sha256": "5998bf8ee2eecc2779ef896f04a540f9d48d4e96cc9227aae4646f4d9b817749"
+    },
+    "sounds/pig/death.ogg": {
+      "bytes": 13694,
+      "sha256": "3fe52ae493581b67313461f95d2119a36cf346de2ff846946cd2e224a5228171"
+    },
+    "sounds/pig/say1.ogg": {
+      "bytes": 5645,
+      "sha256": "a6d53f56193788d32344d615db34d203f3060aa579ca7a572738178db94c9faf"
+    },
+    "sounds/pig/say2.ogg": {
+      "bytes": 6798,
+      "sha256": "46a7eb96fb0eb120419d894b9b9d003a3ec6dc1e5ea12a5b8b1e09bd624bcc76"
+    },
+    "sounds/pig/say3.ogg": {
+      "bytes": 5602,
+      "sha256": "172d6d666dd6c4506ed6313bbe3d8f0baea506f981d669509da0d1946568d26b"
+    },
+    "sounds/pig/step1.ogg": {
+      "bytes": 5285,
+      "sha256": "ba052ef96d6f488b6d298e4dd77e99d565f5c4d43c162708534f315b6b97cc3d"
+    },
+    "sounds/pig/step2.ogg": {
+      "bytes": 4508,
+      "sha256": "b9ffe20520214a859ac6312cfe21807d51311f4a02b0d34dfa150d8d53642d36"
+    },
+    "sounds/pig/step3.ogg": {
+      "bytes": 4722,
+      "sha256": "29c842e9815252079190938de3d29d015a14635888f9af21b5916edaadeef1e9"
+    },
+    "sounds/pig/step4.ogg": {
+      "bytes": 4483,
+      "sha256": "d97a58ff50e33c276a3b48fe2e200263da7d5aea035286d95753b2f3cb58a910"
+    },
+    "sounds/pig/step5.ogg": {
+      "bytes": 5493,
+      "sha256": "890b578fc31d04f901e5ed538a58ee2c850cc2b7602a14ebcdae5eb3731d230d"
+    },
+    "sounds/pop.ogg": {
+      "bytes": 4193,
+      "sha256": "5e3baf518a0104760dc06a2e0088b377433997b46511c1730db0e3ba6f2b0ca7"
+    },
+    "sounds/sheep/say1.ogg": {
+      "bytes": 9784,
+      "sha256": "3138381f5a3d51a6bb9f61b36e45afb0e769281433d4b4e4b7b0191471edb74c"
+    },
+    "sounds/sheep/say2.ogg": {
+      "bytes": 8875,
+      "sha256": "3a81accff735f48eb4ddb631ae74e903d619f0f0803a792f895a149d7be082d9"
+    },
+    "sounds/sheep/say3.ogg": {
+      "bytes": 9150,
+      "sha256": "0147bcae0c1907b6a2f34c7f1c4c848424f8f558c9960a38c20198a917b601c8"
+    },
+    "sounds/sheep/step1.ogg": {
+      "bytes": 4838,
+      "sha256": "8ec849cc7a28c4296da42936ae77e37da5ea81ff09e8643b472924c47badb2ad"
+    },
+    "sounds/sheep/step2.ogg": {
+      "bytes": 4819,
+      "sha256": "6547f39a5b4b5a3868d1b03a7caff2fce2221a24263637b1ebb69cc0d43105c4"
+    },
+    "sounds/sheep/step3.ogg": {
+      "bytes": 4843,
+      "sha256": "49d89b03207f94462ce16101bd3baf896a41ca563de47266814b0de462901441"
+    },
+    "sounds/sheep/step4.ogg": {
+      "bytes": 5018,
+      "sha256": "2c77b0fc59c740b2d077f1d058b570fc7407af1fdc1777329198808ed617095c"
+    },
+    "sounds/sheep/step5.ogg": {
+      "bytes": 5185,
+      "sha256": "e9ae71a3ae9cc36f1467afb79e951cbed3eeddb1206fefd6e8767b39f646a273"
+    },
+    "sounds/splash.ogg": {
+      "bytes": 11333,
+      "sha256": "7a04c68c956f4fe67935e6665666e603de918f64683a79f9e5d5700e6a4c2765"
+    },
+    "sounds/weather/rain1.ogg": {
+      "bytes": 23112,
+      "sha256": "5cad76e1f62599d1854b840ffeb887809fccb8d70d30f9976e4c1fedb793600c"
+    },
+    "sounds/weather/rain2.ogg": {
+      "bytes": 23781,
+      "sha256": "295e4015ee54707145b7f04b65f6b21b476df6841a6c7c28e6d52eb49e2182bc"
+    },
+    "sounds/weather/rain3.ogg": {
+      "bytes": 24455,
+      "sha256": "99357e53cb9c169a7b587acbbcf5d710601bf24b018996550d12184e853c7008"
+    },
+    "sounds/weather/rain4.ogg": {
+      "bytes": 24563,
+      "sha256": "42f5576cf969560743d80f401ac72b9a410f1fd2a64cd52dfcc6e1e10bc5957d"
+    },
+    "sounds/weather/rain5.ogg": {
+      "bytes": 23185,
+      "sha256": "aadd69fc20c1fa28d4f4a6952ce81c00cab90eacf3c535b7393a0299d6a6ac50"
+    },
+    "sounds/weather/rain6.ogg": {
+      "bytes": 23215,
+      "sha256": "ae4ee4939b8b5bbf92ce11b750c9e46b8e86e6eb71ccf827c98d6b88a0e6f5ea"
+    },
+    "sounds/weather/rain7.ogg": {
+      "bytes": 24307,
+      "sha256": "9263e6ed7cad45112532f295b0f221fe4fcad02602443d2b53345c54068471d0"
+    },
+    "sounds/weather/rain8.ogg": {
+      "bytes": 25510,
+      "sha256": "c40311cc02fa616ba9c3aa53f77a42041c1ad90a949197d1ff344e2ba8297f6c"
+    },
+    "sounds/weather/rainabove1.ogg": {
+      "bytes": 23112,
+      "sha256": "5cad76e1f62599d1854b840ffeb887809fccb8d70d30f9976e4c1fedb793600c"
+    },
+    "sounds/weather/rainabove2.ogg": {
+      "bytes": 23781,
+      "sha256": "295e4015ee54707145b7f04b65f6b21b476df6841a6c7c28e6d52eb49e2182bc"
+    },
+    "sounds/weather/rainabove3.ogg": {
+      "bytes": 24455,
+      "sha256": "99357e53cb9c169a7b587acbbcf5d710601bf24b018996550d12184e853c7008"
+    },
+    "sounds/weather/rainabove4.ogg": {
+      "bytes": 24563,
+      "sha256": "42f5576cf969560743d80f401ac72b9a410f1fd2a64cd52dfcc6e1e10bc5957d"
+    },
+    "sounds/weather/thunder1.ogg": {
+      "bytes": 39387,
+      "sha256": "d407a7b11be826d5c3b08199861cf6a85a93707690f7878c84ec0bebe4db93ed"
+    },
+    "sounds/weather/thunder2.ogg": {
+      "bytes": 43220,
+      "sha256": "ecfb20e38b2e682464020309c38c65c102b91cb0342b139a35c3e21d6e5fff0d"
+    },
+    "sounds/weather/thunder3.ogg": {
+      "bytes": 45050,
+      "sha256": "65acefae26577d5aad581bc6659021c0b5f7228fd897d4f996bb47bb9fad6253"
+    },
+    "sounds/wooden_door/close.ogg": {
+      "bytes": 6789,
+      "sha256": "eb09b741702e68850934c53bb420c3e7fb5ee4a72895a305be65a4d1389cd7d9"
+    },
+    "sounds/wooden_door/close2.ogg": {
+      "bytes": 6504,
+      "sha256": "d77a889b0881364f6705558b82b3cd70c30f64350ac58c32606633ca88854313"
+    },
+    "sounds/wooden_door/close3.ogg": {
+      "bytes": 6427,
+      "sha256": "0c28a224e24866c427b7cf1e7fa3d8b6d7d1e22982b24802235fca0a089f1152"
+    },
+    "sounds/wooden_door/close4.ogg": {
+      "bytes": 6363,
+      "sha256": "9480a7eeb55f704e2dfcf82d958716ae0f9bc0e20e3e6f08125f6a202f18071d"
+    },
+    "sounds/wooden_door/close5.ogg": {
+      "bytes": 11754,
+      "sha256": "25122bcbf8511498fa0608f54618f6f78383fa4a924f1376df81f0a5ea83d730"
+    },
+    "sounds/wooden_door/close6.ogg": {
+      "bytes": 12570,
+      "sha256": "4a84b8d55149c234a863f56db413458351e7d4c2ccc8cddf7c2e8c8412a278f8"
+    },
+    "sounds/wooden_door/open.ogg": {
+      "bytes": 8011,
+      "sha256": "6e6f1f647d6949ef00a4142125c0300901e47ce93d945de6fd689f43ece1d456"
+    },
+    "sounds/wooden_door/open2.ogg": {
+      "bytes": 7320,
+      "sha256": "00615012143382079061084c0356616992be74e32b04eb38c2a552b46f8f3f1f"
+    },
+    "sounds/wooden_door/open3.ogg": {
+      "bytes": 6820,
+      "sha256": "0f6799c9b410bfd11a44d185cc617e47316d885d6615b0882297af995c62959d"
+    },
+    "sounds/wooden_door/open4.ogg": {
+      "bytes": 7472,
+      "sha256": "d051a29e4469c1433744825b63185dbfb59d62b89151a38ab96bfd3aa5125432"
+    },
+    "sprites/HitoriGotoh.png": {
+      "bytes": 63951,
+      "sha256": "e88c393f562ea7fb2fc5168b16d5262eb674f58b2d42934f8d8c523c0e8d642c"
+    },
+    "sprites/KitaIkuyo.png": {
+      "bytes": 61414,
+      "sha256": "f6b28367594163e48c91bb709a3f1087f6c6e6c1df7a17c8f8740281973a4a1a"
+    },
+    "sprites/NijikaIjichi.png": {
+      "bytes": 60356,
+      "sha256": "86fa98d13ae3305ba34544c33a35b114863a51f07123fa7b4cba214048834bd6"
+    },
+    "sprites/RyoYamada.png": {
+      "bytes": 59494,
+      "sha256": "62626fec3167da143a255629e16b702d467da8296be95ee5b894c0d05b186068"
+    }
+  },
+  "demo": {
+    "assets/item_icons_expansion.rgba": {
+      "bytes": 6062088,
+      "sha256": "d63b7c5e19a837f179d8eb88e7b1904fe1c5b687f10498c41460947ecda607af"
+    },
+    "assets/crafting_blocks.rgba": {
+      "bytes": 176136,
+      "sha256": "2e4bb3d2581410e0eb0297115dc2092d01f229764e72e18cf1fb7538c962ae44"
+    },
+    "sprites/panorama/panorama.jpg": {
+      "bytes": 1031912,
+      "sha256": "970d9b807ed9c702f002e62ad0db7a079c92f978b76b5ac40dd6d623c432e31f"
+    },
+    "sounds/background/Bundle up your dreams.ogg": {
+      "bytes": 3297071,
+      "sha256": "97187021704e9953bef4859c6c6b07d54fe0ad28978dff5d6368f97bfa9ae0a2"
+    },
+    "sounds/background/Chronostasis.ogg": {
+      "bytes": 2997550,
+      "sha256": "c6a0a55f6ebac37bae20318f5099fa6f5c4d2418b6fa1cbf9e8da0fa3a581695"
+    },
+    "sounds/background/Distortion.ogg": {
+      "bytes": 2295414,
+      "sha256": "12e36e1d6905becf0c3326baf78bf1d32ec8593ee302fc88a7cb1deb8974c0bc"
+    },
+    "sounds/background/Doppelganger.ogg": {
+      "bytes": 2456652,
+      "sha256": "0ee9bd039e5aac4d3c5032a0200b47a582c0ca635ee3992689aaab5196d185b3"
+    },
+    "sounds/background/Flashbacker.ogg": {
+      "bytes": 3062958,
+      "sha256": "719682650208c41fe348f947925011b709ce48617363a9b3bf8f9225ba5d649d"
+    },
+    "sounds/background/Guitar, Loneliness and Blue Planet.ogg": {
+      "bytes": 2582964,
+      "sha256": "2b0b33f84cd3029894470489c57ea0af9f6b607d7e460c3c74527bd1c5586342"
+    },
+    "sounds/background/I cant sing a love song.ogg": {
+      "bytes": 2135421,
+      "sha256": "ef77e0c062fe48a9b1ca5b287bc8b282c56c7da26e4e9ff0dbbe635a14c18d6f"
+    },
+    "sounds/background/If I could be a constellation.ogg": {
+      "bytes": 2958049,
+      "sha256": "41902adab4fece1cde450e56d320c8a794f54548fc2ccf252433bed2f9514342"
+    },
+    "sounds/background/Karakara.ogg": {
+      "bytes": 2952704,
+      "sha256": "4d7753f67b8d1965f4a85b7bc97c26c63c0402afbadcc019bc7757a4f933fe6e"
+    },
+    "sounds/background/Me and the three primary colors.ogg": {
+      "bytes": 2510021,
+      "sha256": "618837a5d1cca6152476b30ef23fa5ebae4f15ce879be038548c1cf51caded11"
+    },
+    "sounds/background/Never forget.ogg": {
+      "bytes": 2524455,
+      "sha256": "d73aa3abdff14012b111769c6533d8560cc18ec4539cdccc639df4db62ac0325"
+    },
+    "sounds/background/Now, Im going from underground.ogg": {
+      "bytes": 2916890,
+      "sha256": "8704625f4552cbee0a0b6a825f6fce127892d9e3de31ee9b6a0feb3d5a5dee09"
+    },
+    "sounds/background/Planet.ogg": {
+      "bytes": 3014647,
+      "sha256": "ef8fe4809c32d5df56441958bdbfc92f1d176470a48259ebd14c7cd1fa2d1294"
+    },
+    "sounds/background/ReRe.ogg": {
+      "bytes": 3488659,
+      "sha256": "9be7c24cebcf24626b4ae687ec6bfc257bae076ec7f9c1a420136f7418e577d3"
+    },
+    "sounds/background/Rockn Roll, Morning Light Falls on You.ogg": {
+      "bytes": 3084132,
+      "sha256": "17ff1b5c70b01822a3287078783977b8d88154becbbdb2dd000035bc5ccb4b17"
+    },
+    "sounds/background/Secret base.ogg": {
+      "bytes": 2591386,
+      "sha256": "580678d9c805254b2b8129dee6461b17dad80eb93fc0c5ae3882ce76ce8b0bcb"
+    },
+    "sounds/background/Shine as usual.ogg": {
+      "bytes": 2776161,
+      "sha256": "cf2278ca1cd227eeaed2737b87544382905bbbe2dcf92c43a9f4ed1492a4ea50"
+    },
+    "sounds/background/That band.ogg": {
+      "bytes": 2436791,
+      "sha256": "578f459bc9be810051f4ab7a8f494a1877b5955f4634800024900eafdd5e8de6"
+    },
+    "sounds/background/The Little Sea.ogg": {
+      "bytes": 2439749,
+      "sha256": "b39d514fcc38d1ee3da5f40cd67aea52f1975cda36a86c2e3d31a2aa0992a86a"
+    },
+    "sounds/background/UNITE.ogg": {
+      "bytes": 2244703,
+      "sha256": "a4f6bb577cbd2401927be53124f818c1a32a082410b82e5313e98e6aefd1bb31"
+    },
+    "sounds/background/What is wrong with.ogg": {
+      "bytes": 2572878,
+      "sha256": "8eadf6e7bd448b82a449b66f187fa3509f77cad16e298cd42f3023657ade8dd6"
+    },
+    "sounds/background/hitoribocchi tokyo.ogg": {
+      "bytes": 2602044,
+      "sha256": "29909288a0f76d682476927ab03b0729ffe17815dc4d11712ef81e6a3cf1f032"
+    },
+    "sounds/background/milky way.ogg": {
+      "bytes": 2370941,
+      "sha256": "aa987b3c591b78c74e012a30d19ce7efa826655a12a070b6909f2f946ec86429"
+    },
+    "sounds/background/seisyun complex.ogg": {
+      "bytes": 2318198,
+      "sha256": "87182b941f888f7ed38ca5841c3dabccf873aa9b4f1d7c8bdcb8d00980666422"
+    },
+    "sounds/boowomp.ogg": {
+      "bytes": 23046,
+      "sha256": "5b4e9356b442c58ce48e425fb2e263728d95bdfaa65540d2ccee46b8b543ee0c"
+    },
+    "sounds/break.ogg": {
+      "bytes": 6551,
+      "sha256": "5f6a07395aff066ab493beb36cec9e40879a1c70e66f181878b10ef7568be581"
+    },
+    "sounds/burp.ogg": {
+      "bytes": 6337,
+      "sha256": "e49f343cf4289dc1c25f9932075a6b07a89bb13c885fea4ebc2634f43ba35c8d"
+    },
+    "sounds/chest/close.ogg": {
+      "bytes": 17135,
+      "sha256": "40f0b3212c9a8dc835eb368f284485b2f2569c4339d36fda2ca82d0c750cace2"
+    },
+    "sounds/chest/close2.ogg": {
+      "bytes": 18271,
+      "sha256": "08c2e383401fa27515e6ea25a771ed0cd85de5652860547183d7841f6bc305dc"
+    },
+    "sounds/chest/close3.ogg": {
+      "bytes": 16175,
+      "sha256": "b54ef7661015c416de57d8398d5a3e5c75a68d3ddf20db1f765c605e9c6ed207"
+    },
+    "sounds/chest/open.ogg": {
+      "bytes": 8916,
+      "sha256": "6b9b0c3672b4bb8413ea0371c28d79ebad41e49ea03850251b4e16f5cb533612"
+    },
+    "sounds/chicken/death1.ogg": {
+      "bytes": 6161,
+      "sha256": "c3841ac71143ee9ce5fac406791d588bde000cccca9db83fac75702a162625bf"
+    },
+    "sounds/chicken/hurt1.ogg": {
+      "bytes": 5122,
+      "sha256": "8da5b9317ec9fc1bc1ce0d20bca95b7004d0841ce04d3c0a1c65b91b6d766b6a"
+    },
+    "sounds/chicken/say1.ogg": {
+      "bytes": 5411,
+      "sha256": "c209bb67183b5b87a7dd2cb521ea45f5253b3c141ec1efcbb9fdacd0ae409046"
+    },
+    "sounds/chicken/step1.ogg": {
+      "bytes": 4128,
+      "sha256": "7cf3b2133df8878cb9582970f66a4856022510d3ed8a7ffa433097c6333e97c3"
+    },
+    "sounds/click.ogg": {
+      "bytes": 9138,
+      "sha256": "c8e78aea3a020d743189fd4d5b0636b791b557b608c62f6474d0f16abcfcc0d8"
+    },
+    "sounds/cow/hurt1.ogg": {
+      "bytes": 7302,
+      "sha256": "64ae6f38e43887d15e3378beecba6be48ffff5f3fb00c8a04a8a25c3d695698b"
+    },
+    "sounds/cow/hurt2.ogg": {
+      "bytes": 8430,
+      "sha256": "90043c5ac292ba4477d66e240cf22372364c1e5ddf5d6fee45ba3d3634c05215"
+    },
+    "sounds/cow/hurt3.ogg": {
+      "bytes": 8934,
+      "sha256": "e53e8ab4a4b3bf51ccb252f3cd8299524a423f422538401415067b341a434694"
+    },
+    "sounds/cow/say1.ogg": {
+      "bytes": 9714,
+      "sha256": "24acaae2e89ca52a913177222ad37b36385267e85e52f3e320dbd34d295efde8"
+    },
+    "sounds/cow/say2.ogg": {
+      "bytes": 13553,
+      "sha256": "efe992562b1fc7c03fd02ff720ac9d4564b047bce25b8afb4636db990d7f26dd"
+    },
+    "sounds/cow/say3.ogg": {
+      "bytes": 13330,
+      "sha256": "4c693c4cf38212c6a34f5bf27f1290bf67c25a688a6cb0d2fae15be6c6db02f2"
+    },
+    "sounds/cow/say4.ogg": {
+      "bytes": 12300,
+      "sha256": "13605ec89e48f2fbc3b5605ec52ad826b6a97e298112d01623f043ff329df935"
+    },
+    "sounds/cow/step1.ogg": {
+      "bytes": 7411,
+      "sha256": "f8ae9a17a9f622cc3ca1b85888a24c6b4fc03a84803c4e0b72a53dede3b56c81"
+    },
+    "sounds/cow/step2.ogg": {
+      "bytes": 7885,
+      "sha256": "e7bfe425913a6d70392ca37b329078d3d59cf6ac0b7344f5482a0f0e3fc9ccd3"
+    },
+    "sounds/cow/step3.ogg": {
+      "bytes": 7923,
+      "sha256": "45ee1c5109612b2db284d8490811d4fb8ee1c07d20119319fced10666707d186"
+    },
+    "sounds/cow/step4.ogg": {
+      "bytes": 7394,
+      "sha256": "534ae3bd903ccb2ff231eabe8f1b0bc5f61bd2b66f8759aebea353cc93774cd3"
+    },
+    "sounds/damage/fallbig.ogg": {
+      "bytes": 6079,
+      "sha256": "abd98f86021018e2d448759135059e71e51f0a5b415b07fde0271f27bd359577"
+    },
+    "sounds/damage/fallsmall.ogg": {
+      "bytes": 5232,
+      "sha256": "f6c607669ba75d517d7d7af994fb10f94a07d997b28b7fabf29f0b02c358e5f7"
+    },
+    "sounds/damage/hit1.ogg": {
+      "bytes": 6539,
+      "sha256": "5e190650c27cc38dce750ac7d5fb5044c3cf714bc116d0bdc3e9e93cdeffdc35"
+    },
+    "sounds/damage/hit2.ogg": {
+      "bytes": 6227,
+      "sha256": "67ceec1f40e125adcfa44c2af4c66ca6f0278c6b8ac917c5a0f508bcc6af9091"
+    },
+    "sounds/damage/hit3.ogg": {
+      "bytes": 7660,
+      "sha256": "637b73c4218d190c0e405737f85b86ec5fae59ff0a211f5e7e2e005e887336e0"
+    },
+    "sounds/dig/grass1.ogg": {
+      "bytes": 7468,
+      "sha256": "3619fdb8f8aad57a48d45e02a3e8be90a9ca5d0ab8c8802961c78fd59c1f84fa"
+    },
+    "sounds/dig/grass2.ogg": {
+      "bytes": 7691,
+      "sha256": "b0763cf2c5b4d49602cb143e457b6206b6b101113a525795ef9c622ae31149df"
+    },
+    "sounds/dig/grass3.ogg": {
+      "bytes": 7194,
+      "sha256": "9ac02803710f8556be3501d021ca2120d121339fa07f0a18a0b63ba5547508fd"
+    },
+    "sounds/dig/grass4.ogg": {
+      "bytes": 7163,
+      "sha256": "dd73335714e52237ef6ebc05035418367b4785cfef749b5ea1cd9b6b1c523b93"
+    },
+    "sounds/dig/gravel1.ogg": {
+      "bytes": 6851,
+      "sha256": "55a610c8739c045a65343b8447c6b95c1e54465939aab666001af2d4869c1e83"
+    },
+    "sounds/dig/gravel2.ogg": {
+      "bytes": 7501,
+      "sha256": "60ebf0ed49f258a62adb9849386b2795f7e409d21ff958a803eb0727d7e98913"
+    },
+    "sounds/dig/gravel3.ogg": {
+      "bytes": 6905,
+      "sha256": "ab5e4b408d1eca44546e86c11f5fcc66d3a4c035910ab14736f952d1e8ce98fd"
+    },
+    "sounds/dig/gravel4.ogg": {
+      "bytes": 6728,
+      "sha256": "fd4aa7553a4f99fe435b2df57bf9ec1040ee2409d09fbd15dbc7049f0e261ddb"
+    },
+    "sounds/dig/sand1.ogg": {
+      "bytes": 5543,
+      "sha256": "1260ef32a374eb6ca23da821764886b67d655bd2ee34a71a1520e90c308aa63e"
+    },
+    "sounds/dig/sand2.ogg": {
+      "bytes": 5553,
+      "sha256": "74ef2fa1b6c52356ffa9bce77c826681be52d73f0deaa423e87694a2fd79fffd"
+    },
+    "sounds/dig/sand3.ogg": {
+      "bytes": 5552,
+      "sha256": "0441e996d75a0d2d67cec2ef60251f2a9cde6e15299589db79f4690ea8cc580e"
+    },
+    "sounds/dig/sand4.ogg": {
+      "bytes": 5491,
+      "sha256": "42ac91167d26014e04fa8c50435d655e2b0c6168f319c9c99ea7377b4df912a5"
+    },
+    "sounds/dig/snow1.ogg": {
+      "bytes": 6532,
+      "sha256": "f7e03bb5bcc487cea313bfd72ded4cfd4e215b82228cf9744760f61da4c496bb"
+    },
+    "sounds/dig/snow2.ogg": {
+      "bytes": 6567,
+      "sha256": "a0d603f69ad58662e688d74b9ca2f345eebc0938b4af954f16840adf436fe8d9"
+    },
+    "sounds/dig/snow3.ogg": {
+      "bytes": 6540,
+      "sha256": "ae97513c5bcac9d08f5c8bcbaf55b7a3112134603c141b5de70e15a06c77e325"
+    },
+    "sounds/dig/snow4.ogg": {
+      "bytes": 6501,
+      "sha256": "c7918a0b58c45a6f0d29fa990bbd31a7b482ef61387c83a02eb7f70b672e4761"
+    },
+    "sounds/dig/stone1.ogg": {
+      "bytes": 6695,
+      "sha256": "97f2a8a73b6f577b85c1a162c31810c7aff1ad1f34564dfdacebb64b26d1c7c6"
+    },
+    "sounds/dig/stone2.ogg": {
+      "bytes": 6728,
+      "sha256": "98a5c3197845526e6ca9e8a669ffda843cfae3f5c7ac842ee6aac8896bae03b2"
+    },
+    "sounds/dig/stone3.ogg": {
+      "bytes": 6627,
+      "sha256": "19273f0e7e25b459ea29511dcbc4f7f209c04cea2fd1c34a16250737469ca51c"
+    },
+    "sounds/dig/stone4.ogg": {
+      "bytes": 6516,
+      "sha256": "b164e7324510480abac9518090e48439123ea05ebc48970e48fc59406729a197"
+    },
+    "sounds/dig/wood1.ogg": {
+      "bytes": 6541,
+      "sha256": "cb6071c83a7f19ee555e9d661dc9e564c77ad9fcf2d1a6848aab21bc3b1c0289"
+    },
+    "sounds/dig/wood2.ogg": {
+      "bytes": 6294,
+      "sha256": "59edca84840951f2d6f0ad9ff5fd439a6dc916b2cc50164569b94ee107b4bc3f"
+    },
+    "sounds/dig/wood3.ogg": {
+      "bytes": 6604,
+      "sha256": "cf6be2314c08ea3fd311bdaebe14d0c73ca189bbbda09f96d26a3dea7e711cf6"
+    },
+    "sounds/dig/wood4.ogg": {
+      "bytes": 6817,
+      "sha256": "de868b3119b03ad42cbe502805e895a5fd8565f059f991f542b4ee68d6556bfe"
+    },
+    "sounds/eat1.ogg": {
+      "bytes": 5678,
+      "sha256": "b2c679f3a7c177a94134cbaa11dfe08ddefee439c1cffc448d7621f3e4229e82"
+    },
+    "sounds/eat2.ogg": {
+      "bytes": 5677,
+      "sha256": "71a4b8035a72e7c881219b6419bb7de66ffd128c10743448fc1c69cdfb3b8a35"
+    },
+    "sounds/eat3.ogg": {
+      "bytes": 5813,
+      "sha256": "3c6f012d2ceb63062d2705c4892a53970ed504c20b08d82e113fa876e734c5f0"
+    },
+    "sounds/explode/explode1.ogg": {
+      "bytes": 23161,
+      "sha256": "f5951a4f5ece95d595398c3519ab26044c359bc088a0f0684ee6f1b14c02ebc0"
+    },
+    "sounds/explode/explode2.ogg": {
+      "bytes": 28696,
+      "sha256": "cb262b2af5fdfaac7b83cc64790c83cc852506444f382f06ded37e83f105b5a8"
+    },
+    "sounds/explode/explode3.ogg": {
+      "bytes": 28255,
+      "sha256": "c2a8b6821fe8a50d72605bff3410bd8c4c82bff47cbce37d99e225dbaf55f6a4"
+    },
+    "sounds/explode/explode4.ogg": {
+      "bytes": 27561,
+      "sha256": "f676d7fb3ddd9623ca931004ad380c5027846394b51b96b0ac2518159ff915c2"
+    },
+    "sounds/orb.ogg": {
+      "bytes": 7139,
+      "sha256": "5998bf8ee2eecc2779ef896f04a540f9d48d4e96cc9227aae4646f4d9b817749"
+    },
+    "sounds/pig/death.ogg": {
+      "bytes": 13694,
+      "sha256": "3fe52ae493581b67313461f95d2119a36cf346de2ff846946cd2e224a5228171"
+    },
+    "sounds/pig/say1.ogg": {
+      "bytes": 5645,
+      "sha256": "a6d53f56193788d32344d615db34d203f3060aa579ca7a572738178db94c9faf"
+    },
+    "sounds/pig/say2.ogg": {
+      "bytes": 6798,
+      "sha256": "46a7eb96fb0eb120419d894b9b9d003a3ec6dc1e5ea12a5b8b1e09bd624bcc76"
+    },
+    "sounds/pig/say3.ogg": {
+      "bytes": 5602,
+      "sha256": "172d6d666dd6c4506ed6313bbe3d8f0baea506f981d669509da0d1946568d26b"
+    },
+    "sounds/pig/step1.ogg": {
+      "bytes": 5285,
+      "sha256": "ba052ef96d6f488b6d298e4dd77e99d565f5c4d43c162708534f315b6b97cc3d"
+    },
+    "sounds/pig/step2.ogg": {
+      "bytes": 4508,
+      "sha256": "b9ffe20520214a859ac6312cfe21807d51311f4a02b0d34dfa150d8d53642d36"
+    },
+    "sounds/pig/step3.ogg": {
+      "bytes": 4722,
+      "sha256": "29c842e9815252079190938de3d29d015a14635888f9af21b5916edaadeef1e9"
+    },
+    "sounds/pig/step4.ogg": {
+      "bytes": 4483,
+      "sha256": "d97a58ff50e33c276a3b48fe2e200263da7d5aea035286d95753b2f3cb58a910"
+    },
+    "sounds/pig/step5.ogg": {
+      "bytes": 5493,
+      "sha256": "890b578fc31d04f901e5ed538a58ee2c850cc2b7602a14ebcdae5eb3731d230d"
+    },
+    "sounds/pop.ogg": {
+      "bytes": 4193,
+      "sha256": "5e3baf518a0104760dc06a2e0088b377433997b46511c1730db0e3ba6f2b0ca7"
+    },
+    "sounds/sheep/say1.ogg": {
+      "bytes": 9784,
+      "sha256": "3138381f5a3d51a6bb9f61b36e45afb0e769281433d4b4e4b7b0191471edb74c"
+    },
+    "sounds/sheep/say2.ogg": {
+      "bytes": 8875,
+      "sha256": "3a81accff735f48eb4ddb631ae74e903d619f0f0803a792f895a149d7be082d9"
+    },
+    "sounds/sheep/say3.ogg": {
+      "bytes": 9150,
+      "sha256": "0147bcae0c1907b6a2f34c7f1c4c848424f8f558c9960a38c20198a917b601c8"
+    },
+    "sounds/sheep/step1.ogg": {
+      "bytes": 4838,
+      "sha256": "8ec849cc7a28c4296da42936ae77e37da5ea81ff09e8643b472924c47badb2ad"
+    },
+    "sounds/sheep/step2.ogg": {
+      "bytes": 4819,
+      "sha256": "6547f39a5b4b5a3868d1b03a7caff2fce2221a24263637b1ebb69cc0d43105c4"
+    },
+    "sounds/sheep/step3.ogg": {
+      "bytes": 4843,
+      "sha256": "49d89b03207f94462ce16101bd3baf896a41ca563de47266814b0de462901441"
+    },
+    "sounds/sheep/step4.ogg": {
+      "bytes": 5018,
+      "sha256": "2c77b0fc59c740b2d077f1d058b570fc7407af1fdc1777329198808ed617095c"
+    },
+    "sounds/sheep/step5.ogg": {
+      "bytes": 5185,
+      "sha256": "e9ae71a3ae9cc36f1467afb79e951cbed3eeddb1206fefd6e8767b39f646a273"
+    },
+    "sounds/splash.ogg": {
+      "bytes": 11333,
+      "sha256": "7a04c68c956f4fe67935e6665666e603de918f64683a79f9e5d5700e6a4c2765"
+    },
+    "sounds/weather/rain1.ogg": {
+      "bytes": 23112,
+      "sha256": "5cad76e1f62599d1854b840ffeb887809fccb8d70d30f9976e4c1fedb793600c"
+    },
+    "sounds/weather/rain2.ogg": {
+      "bytes": 23781,
+      "sha256": "295e4015ee54707145b7f04b65f6b21b476df6841a6c7c28e6d52eb49e2182bc"
+    },
+    "sounds/weather/rain3.ogg": {
+      "bytes": 24455,
+      "sha256": "99357e53cb9c169a7b587acbbcf5d710601bf24b018996550d12184e853c7008"
+    },
+    "sounds/weather/rain4.ogg": {
+      "bytes": 24563,
+      "sha256": "42f5576cf969560743d80f401ac72b9a410f1fd2a64cd52dfcc6e1e10bc5957d"
+    },
+    "sounds/weather/rain5.ogg": {
+      "bytes": 23185,
+      "sha256": "aadd69fc20c1fa28d4f4a6952ce81c00cab90eacf3c535b7393a0299d6a6ac50"
+    },
+    "sounds/weather/rain6.ogg": {
+      "bytes": 23215,
+      "sha256": "ae4ee4939b8b5bbf92ce11b750c9e46b8e86e6eb71ccf827c98d6b88a0e6f5ea"
+    },
+    "sounds/weather/rain7.ogg": {
+      "bytes": 24307,
+      "sha256": "9263e6ed7cad45112532f295b0f221fe4fcad02602443d2b53345c54068471d0"
+    },
+    "sounds/weather/rain8.ogg": {
+      "bytes": 25510,
+      "sha256": "c40311cc02fa616ba9c3aa53f77a42041c1ad90a949197d1ff344e2ba8297f6c"
+    },
+    "sounds/weather/rainabove1.ogg": {
+      "bytes": 23112,
+      "sha256": "5cad76e1f62599d1854b840ffeb887809fccb8d70d30f9976e4c1fedb793600c"
+    },
+    "sounds/weather/rainabove2.ogg": {
+      "bytes": 23781,
+      "sha256": "295e4015ee54707145b7f04b65f6b21b476df6841a6c7c28e6d52eb49e2182bc"
+    },
+    "sounds/weather/rainabove3.ogg": {
+      "bytes": 24455,
+      "sha256": "99357e53cb9c169a7b587acbbcf5d710601bf24b018996550d12184e853c7008"
+    },
+    "sounds/weather/rainabove4.ogg": {
+      "bytes": 24563,
+      "sha256": "42f5576cf969560743d80f401ac72b9a410f1fd2a64cd52dfcc6e1e10bc5957d"
+    },
+    "sounds/weather/thunder1.ogg": {
+      "bytes": 39387,
+      "sha256": "d407a7b11be826d5c3b08199861cf6a85a93707690f7878c84ec0bebe4db93ed"
+    },
+    "sounds/weather/thunder2.ogg": {
+      "bytes": 43220,
+      "sha256": "ecfb20e38b2e682464020309c38c65c102b91cb0342b139a35c3e21d6e5fff0d"
+    },
+    "sounds/weather/thunder3.ogg": {
+      "bytes": 45050,
+      "sha256": "65acefae26577d5aad581bc6659021c0b5f7228fd897d4f996bb47bb9fad6253"
+    },
+    "sounds/wooden_door/close.ogg": {
+      "bytes": 6789,
+      "sha256": "eb09b741702e68850934c53bb420c3e7fb5ee4a72895a305be65a4d1389cd7d9"
+    },
+    "sounds/wooden_door/close2.ogg": {
+      "bytes": 6504,
+      "sha256": "d77a889b0881364f6705558b82b3cd70c30f64350ac58c32606633ca88854313"
+    },
+    "sounds/wooden_door/close3.ogg": {
+      "bytes": 6427,
+      "sha256": "0c28a224e24866c427b7cf1e7fa3d8b6d7d1e22982b24802235fca0a089f1152"
+    },
+    "sounds/wooden_door/close4.ogg": {
+      "bytes": 6363,
+      "sha256": "9480a7eeb55f704e2dfcf82d958716ae0f9bc0e20e3e6f08125f6a202f18071d"
+    },
+    "sounds/wooden_door/close5.ogg": {
+      "bytes": 11754,
+      "sha256": "25122bcbf8511498fa0608f54618f6f78383fa4a924f1376df81f0a5ea83d730"
+    },
+    "sounds/wooden_door/close6.ogg": {
+      "bytes": 12570,
+      "sha256": "4a84b8d55149c234a863f56db413458351e7d4c2ccc8cddf7c2e8c8412a278f8"
+    },
+    "sounds/wooden_door/open.ogg": {
+      "bytes": 8011,
+      "sha256": "6e6f1f647d6949ef00a4142125c0300901e47ce93d945de6fd689f43ece1d456"
+    },
+    "sounds/wooden_door/open2.ogg": {
+      "bytes": 7320,
+      "sha256": "00615012143382079061084c0356616992be74e32b04eb38c2a552b46f8f3f1f"
+    },
+    "sounds/wooden_door/open3.ogg": {
+      "bytes": 6820,
+      "sha256": "0f6799c9b410bfd11a44d185cc617e47316d885d6615b0882297af995c62959d"
+    },
+    "sounds/wooden_door/open4.ogg": {
+      "bytes": 7472,
+      "sha256": "d051a29e4469c1433744825b63185dbfb59d62b89151a38ab96bfd3aa5125432"
+    },
+    "sprites/HitoriGotoh.png": {
+      "bytes": 63951,
+      "sha256": "e88c393f562ea7fb2fc5168b16d5262eb674f58b2d42934f8d8c523c0e8d642c"
+    },
+    "sprites/KitaIkuyo.png": {
+      "bytes": 61414,
+      "sha256": "f6b28367594163e48c91bb709a3f1087f6c6e6c1df7a17c8f8740281973a4a1a"
+    },
+    "sprites/NijikaIjichi.png": {
+      "bytes": 60356,
+      "sha256": "86fa98d13ae3305ba34544c33a35b114863a51f07123fa7b4cba214048834bd6"
+    },
+    "sprites/RyoYamada.png": {
+      "bytes": 59494,
+      "sha256": "62626fec3167da143a255629e16b702d467da8296be95ee5b894c0d05b186068"
+    }
+  },
+  "protected_files": {
+    "assets/building/AcaciaStrippedLog.png": "f6fa03a0ab47295c536362b8c36eecbae355a007",
+    "assets/building/AmberGlassPane.png": "9d30e266aed5768aea20dfdb124a4a3e7df5f326",
+    "assets/building/Barrel.png": "0ba10b240c344d60ea7ec6fbe7c7226a5fc0f0ca",
+    "assets/building/Bed0.png": "87059e01de4c00fdce43cd0b16ca57379e04bee0",
+    "assets/building/Bed1.png": "44fbd6f2322b328702ff78d2c3efa33fa9afcab3",
+    "assets/building/Bed2.png": "ae488f75666cd538432229a81497df4655cb5af8",
+    "assets/building/Bed3.png": "ce45373aaeb2ee1fc0805976fbb1fee5a3cf5655",
+    "assets/building/BirchStrippedLog.png": "1b84b24b197cfe830e53378119fb473184b9f5be",
+    "assets/building/CampfireLit.png": "362a8af0af8f7d3864f5bf95f8e258896130b385",
+    "assets/building/CampfireUnlit.png": "94ab892dbee1eabc6b972a869d7b57806f993c66",
+    "assets/building/Candle0.png": "e340df4908665d1561ef2b17a25e7b5ca2e6292a",
+    "assets/building/Candle1.png": "589bde3586413d0a20d5f184a26bbaf45051fbfe",
+    "assets/building/Candle2.png": "2782a59ac5dc325cf20645204ef2de64484cd765",
+    "assets/building/Candle3.png": "1b679ff1be2b1b8dbec29b35d18f14782efb8c92",
+    "assets/building/Carpet0.png": "4e04741a4c7d014d8c961930b785f7b8f2a98918",
+    "assets/building/Carpet1.png": "1b70badf6a9822d24f8cdb7509878ce3768852da",
+    "assets/building/Carpet2.png": "a02671d7db75d148adb25f3b53582c4d3f1cbf66",
+    "assets/building/Carpet3.png": "137b57b5e174d703230b1eaa11f6436e6f109d42",
+    "assets/building/Chain.png": "8281be5eb3347ba811adac2bb3673cf7f031d683",
+    "assets/building/ChiseledStoneBricks.png": "9cf59897a1a90610bf9b144990332fabc8970ca3",
+    "assets/building/CrackedDeepslateBricks.png": "057155a1cf465e521d5729859ca73896fe01f0d7",
+    "assets/building/CutSandstone.png": "c184247bfbd368e79f36994d1344269e975564bc",
+    "assets/building/DarkOakStrippedLog.png": "dd54f129d2ed346f66e5223618718a76d06f71dd",
+    "assets/building/DeepslateBricks.png": "07a509ad9126aa3734f5c6ff4899e51fe367105c",
+    "assets/building/DirtPath.png": "01f97575c24f2f6bf99efe3fea4fc1599b5e3341",
+    "assets/building/FlowerPot.png": "81a0590b7885ffc0eaba32769e4a53ec29cb940e",
+    "assets/building/GlassPane.png": "1e7e9bae0e8e7e70f49ad24bce99da14364aa3b7",
+    "assets/building/ItemFrame.png": "458fe1435981b5f2b54ddad219024604ebb9ea3e",
+    "assets/building/JungleStrippedLog.png": "2913b559addb69ae8846d0455844d2c644cc363a",
+    "assets/building/Lantern.png": "8301fbdfc66ba3488557fa07c5c9299ce0b40f67",
+    "assets/building/OakStrippedLog.png": "dc6fda8ad1e5b9f26d768bcfaca6e56988698c63",
+    "assets/building/Painting0.png": "8b87650298e6c5212881f58bfed41207ee22d454",
+    "assets/building/Painting1.png": "28c28da74acf978d1feba99df84c8e01e6c3521e",
+    "assets/building/Painting2.png": "eeac42bd7aaddff31378882d13928691e192d21d",
+    "assets/building/Painting3.png": "fdf181e5027bf6ce8f7be67abcce037c108f2dcf",
+    "assets/building/PolishedDeepslate.png": "5569a4a03b220d695311d71e8f929e46c25f1584",
+    "assets/building/RoofShingles.png": "5d2ac715d23e43314e2f5624fbec2137feb0c73c",
+    "assets/building/RoseGlassPane.png": "c85f4b8fae53356a3b2586b54d10d5ddba8b7dd9",
+    "assets/building/Scaffold.png": "dcd4da51073b8d639f71083497da228ef5c14594",
+    "assets/building/SmokedGlassPane.png": "6091b6a0a85cff9aa7921c676500e8e3871f3b3c",
+    "assets/building/SmoothSandstone.png": "cf6c76c392f4a4c8d156248a147099cd04fe4894",
+    "assets/building/SmoothStone.png": "809c878c92f7c47ab55abb70ed13358104f4b087",
+    "assets/building/SpruceStrippedLog.png": "55647088191a3e91d6d86e78c8d84db22b117bc8",
+    "assets/building/StonePaving.png": "901bb3148939dbec631f20176905b7ddf9187d77",
+    "assets/crafting/book.png": "0912d19c5a8232479e59e530e131f46dd44daf21",
+    "assets/crafting/brick.png": "b83eff3d6240fdea6799ef928aa02f4624517360",
+    "assets/crafting/charcoal.png": "5720ed8f02fe6c1b615e92cfbd3e6d592056e9a2",
+    "assets/crafting/clay_ball.png": "c8f5b919e6531260cea8a8a51e602459d0c35593",
+    "assets/crafting/coal_block.png": "d526f55fb759545f882b9c6ceaf2462babf42e79",
+    "assets/crafting/copper_block.png": "72d67f33073fc8519a4e2da522ef40a58085c334",
+    "assets/crafting/diamond_block.png": "d9042f7e9ba89ec3b1e7a9b04279b0432925bb3e",
+    "assets/crafting/gold_block.png": "61bb0568fa72a14d513d0529859187dd2b52af45",
+    "assets/crafting/hay_bale.png": "66ff2988d43614c4d1230e52e9d3fe2c64dac359",
+    "assets/crafting/hay_top.png": "89ecf094b03d714288028025f523d680ee55cb78",
+    "assets/crafting/iron_block.png": "8fc331c590f2a521f05489db15d41fd411d91eca",
+    "assets/crafting/paper.png": "47b228598e4aace606404a1e238ae6245aeaca6f",
+    "assets/crafting/polished_andesite.png": "fdc5abfd29dbbe5d495596c2f538419240741ba7",
+    "assets/crafting/polished_diorite.png": "cea4c2bcf9616f23b87db2702dc8110a498eb6dc",
+    "assets/crafting/polished_granite.png": "635e9571b4ee0a70e8c8f07f2cfa7c234566ce8a",
+    "assets/crafting/sandstone.png": "6c360090c24bbc861f8eb9c37a4bbf571e6cd294",
+    "assets/crafting/sandstone_top.png": "4bde3d8711f81654b43c2e74e4a6f73d988739a3",
+    "assets/crafting/snowball.png": "366d05d54175cda5650e1df766e667872c4a5cfd",
+    "assets/crafting/sugar_cane.png": "24c7fae358e9da601ba939aa4ca3cb4283f379a5",
+    "assets/crafting/vine.png": "3fd9dfd4d7a7918660576fac118660259888dd6a",
+    "assets/crafting_blocks.png": "1b8c725660c9d9abc77c0c03ac6b5ca3cd5cfd4d",
+    "assets/crafting_blocks.rgba": "86294879ea7fac86f7557e8e5a7e5139966ae40f",
+    "assets/creative_items_generated.png": "a50f12dd37da8ced012ade527edeb353bb195f15",
+    "assets/farming/Beetroot0.png": "08a8f08fa756fa2bf60688dcacff7a2581edc342",
+    "assets/farming/Beetroot1.png": "17b7290d5c9f7f980c56a86a9718d0d2e48f6765",
+    "assets/farming/Beetroot2.png": "40315b5151773521e462b281597bdc60d1ee52d9",
+    "assets/farming/Beetroot3.png": "7fa9ce9ec93b400ed84d0755b5ca5fde44199ada",
+    "assets/farming/BerryBush0.png": "b36e4daed24542127240642d47db40239f84c687",
+    "assets/farming/BerryBush1.png": "055c3dddc13e2fbf25d5ca5bce6be6eddeaa59c3",
+    "assets/farming/BerryBush2.png": "27e7f398c27e5572ae10b2094d17220e0d4b1eca",
+    "assets/farming/BerryBush3.png": "466db29b40b1c165944e20190cdafef4e8c9e9c1",
+    "assets/farming/Carrot0.png": "08a8f08fa756fa2bf60688dcacff7a2581edc342",
+    "assets/farming/Carrot1.png": "17b7290d5c9f7f980c56a86a9718d0d2e48f6765",
+    "assets/farming/Carrot2.png": "40315b5151773521e462b281597bdc60d1ee52d9",
+    "assets/farming/Carrot3.png": "55513d16b2ecaef81dba0f6bd79527a650a0240d",
+    "assets/farming/Composter0.png": "2799b9fc2c3a5d9838056293f2b282af8566057b",
+    "assets/farming/Composter1.png": "5299a6818506dfa213f1bff9dca0b253c78d656a",
+    "assets/farming/Composter2.png": "5db50db058048b8ea5b46ad7dc90da8d7891e0b1",
+    "assets/farming/Composter3.png": "298c7a99dfb7030b9b6f675dfb2d80b05aaeb2d5",
+    "assets/farming/Composter4.png": "26c4b81101fe805a4e0fd009383969744df62f04",
+    "assets/farming/DrySoil.png": "a3cf49523a5898e07e8689efc9e82f6df377f754",
+    "assets/farming/Melon.png": "c8bafdf6f4bedd89aa719a6427c3bce628cd75b9",
+    "assets/farming/MelonStem0.png": "08a8f08fa756fa2bf60688dcacff7a2581edc342",
+    "assets/farming/MelonStem1.png": "17b7290d5c9f7f980c56a86a9718d0d2e48f6765",
+    "assets/farming/MelonStem2.png": "40315b5151773521e462b281597bdc60d1ee52d9",
+    "assets/farming/MelonStem3.png": "7ca46bbfc267184d6dc28bf897eb593e5ab9b0a4",
+    "assets/farming/Potato0.png": "08a8f08fa756fa2bf60688dcacff7a2581edc342",
+    "assets/farming/Potato1.png": "17b7290d5c9f7f980c56a86a9718d0d2e48f6765",
+    "assets/farming/Potato2.png": "40315b5151773521e462b281597bdc60d1ee52d9",
+    "assets/farming/Potato3.png": "b1721201aa39b7f0be46fe5f0ee2b6cacc6caf79",
+    "assets/farming/Pumpkin.png": "2149f4f434bb5867beff085f76001d0057e15343",
+    "assets/farming/PumpkinStem0.png": "08a8f08fa756fa2bf60688dcacff7a2581edc342",
+    "assets/farming/PumpkinStem1.png": "17b7290d5c9f7f980c56a86a9718d0d2e48f6765",
+    "assets/farming/PumpkinStem2.png": "40315b5151773521e462b281597bdc60d1ee52d9",
+    "assets/farming/PumpkinStem3.png": "7ca46bbfc267184d6dc28bf897eb593e5ab9b0a4",
+    "assets/farming/WetSoil.png": "82348597d9a3e43286468c0d046a880f16d71294",
+    "assets/farming/Wheat0.png": "652cc71cf64d3867d581435c7ea517507ec5778c",
+    "assets/farming/Wheat1.png": "652cc71cf64d3867d581435c7ea517507ec5778c",
+    "assets/farming/Wheat2.png": "d913ed20ad522d30e71baae3d90d4ec3ad7366a6",
+    "assets/farming/Wheat3.png": "683f9bf9f225269f72c1c6a1ab49785a20c1119e",
+    "assets/farming/block_atlas.png": "fd0acd153344bc43fa92774f9fac12635d2a6991",
+    "assets/inventory/acacia_bench.png": "6cc146629a3adfaf150dfc5bebf96d24cd876e88",
+    "assets/inventory/acacia_boat.png": "c73208ab2bbadcc8fcd3154c69a97125add4d5a8",
+    "assets/inventory/acacia_button.png": "197ba920f408716cf632de3288fe0551f694a7c3",
+    "assets/inventory/acacia_chair.png": "f87f75df607068427abfa72f164d9fb0215046f8",
+    "assets/inventory/acacia_door.png": "bfe65ef3be5b1655137395cef6dcca878921125f",
+    "assets/inventory/acacia_fence.png": "0a0830c43582ff85126d415202d13dd6f63991c4",
+    "assets/inventory/acacia_fence_gate.png": "b756a6ca999d76999e04d363f27ff28059950dcb",
+    "assets/inventory/acacia_leaves.png": "c51d40dbf281885a8c9f15f6406267e086b58cd5",
+    "assets/inventory/acacia_log.png": "630e8d587fb9eabee1e4488613bcdd27f7d22541",
+    "assets/inventory/acacia_planks.png": "72a77a6b94d999040397644fd9c95efc717b49cf",
+    "assets/inventory/acacia_pressure_plate.png": "0c15fe98e6ab32520a480dacb8835c91623ed5de",
+    "assets/inventory/acacia_shelf.png": "bfe65ef3be5b1655137395cef6dcca878921125f",
+    "assets/inventory/acacia_sign.png": "bfe65ef3be5b1655137395cef6dcca878921125f",
+    "assets/inventory/acacia_slab.png": "60ab83fb74896422562856c22ece129945588232",
+    "assets/inventory/acacia_stairs.png": "123c646949f26ce28b57425163a045cd50c89eb1",
+    "assets/inventory/acacia_stripped_log.png": "539c071aee6bd26d96021998283e7d2e5c65b1ea",
+    "assets/inventory/acacia_table.png": "6cc146629a3adfaf150dfc5bebf96d24cd876e88",
+    "assets/inventory/acacia_trapdoor.png": "bfe65ef3be5b1655137395cef6dcca878921125f",
+    "assets/inventory/amber_glass_pane.png": "00d31c14e87ed1445751ce3bff9aaa256ceff3fe",
+    "assets/inventory/ancient_seal.png": "7bd82cbe7f71c0f5f27f7bb6c6941034b10c9585",
+    "assets/inventory/andesite.png": "5482d94bf78c0217112f894d1dae49f43d84638f",
+    "assets/inventory/apple.png": "8f29a123655e4cc3092b5bb5bdf1bc88b0cb4349",
+    "assets/inventory/baked_potato.png": "119d31e7187d7909a73b1e341f45c291264b5d68",
+    "assets/inventory/bamboo.png": "7872ec86737fadf3f979911e919c9a52f2eca707",
+    "assets/inventory/barrel.png": "0140de035d899b96baaf93026232ab8a46f89dd6",
+    "assets/inventory/bed.png": "7d0712ded8c76c869bd5c38ecbe04dd1871375a6",
+    "assets/inventory/bedrock.png": "8c41b910838f3d12eb182b1de72d6beeffd70748",
+    "assets/inventory/beetroot.png": "2015871eed9af501ae794cb8e0b37f56329a48fb",
+    "assets/inventory/beetroot_seeds.png": "b9801e518406cef9f6c921faae36d008c8cbfa30",
+    "assets/inventory/beetroot_soup.png": "887b5a62d96552baed5a0606e89b2542b423d10a",
+    "assets/inventory/birch_bench.png": "33784579a9f64a7a1758e44ffae86e243c6d5dcd",
+    "assets/inventory/birch_boat.png": "02501c1b0fe81c1b3a81d24e9de8085c7db0aefe",
+    "assets/inventory/birch_button.png": "1cf39de186114dad2d39520e5b48e7120718a9c0",
+    "assets/inventory/birch_chair.png": "3b5f1d539664a9d806ba5bad41f9a688b4e279f1",
+    "assets/inventory/birch_door.png": "e0e3ddb5e5a2565b12cd2b6a9d7515a39c416bd0",
+    "assets/inventory/birch_fence.png": "22265ff56b8d8c184b5896dad6b579822e152f5c",
+    "assets/inventory/birch_fence_gate.png": "97c7d19785903ad98f6b9f6dcab42ff22fca710d",
+    "assets/inventory/birch_leaves.png": "3255596d081991f99dd5185732b73c64eefe171e",
+    "assets/inventory/birch_log.png": "6027a19f82cca1efa4ba5ad5fcb42bfedc0e6eb3",
+    "assets/inventory/birch_planks.png": "bac7fb7e76e9b1683ef658c59bf0eefbf6f83df1",
+    "assets/inventory/birch_pressure_plate.png": "43665c86664a511e5ad223e39e09ae120c6d3da0",
+    "assets/inventory/birch_shelf.png": "e0e3ddb5e5a2565b12cd2b6a9d7515a39c416bd0",
+    "assets/inventory/birch_sign.png": "e0e3ddb5e5a2565b12cd2b6a9d7515a39c416bd0",
+    "assets/inventory/birch_slab.png": "e5032ca9dc7c918be4030d3d0067ea7f3c6a200f",
+    "assets/inventory/birch_stairs.png": "9647543ed24470dfa7cabbf1f878aeff219ce08e",
+    "assets/inventory/birch_stripped_log.png": "5b90c5798b10157a47aa064a1b2b631d443565fe",
+    "assets/inventory/birch_table.png": "33784579a9f64a7a1758e44ffae86e243c6d5dcd",
+    "assets/inventory/birch_trapdoor.png": "e0e3ddb5e5a2565b12cd2b6a9d7515a39c416bd0",
+    "assets/inventory/blue_ice.png": "e9c9caeb08ec582b88607b2df36121996c0757a3",
+    "assets/inventory/bone_meal.png": "711794832f6eee77e539b7488d56995fc6fe3ef6",
+    "assets/inventory/book.png": "b0b07c14517505be92edf372353de4060ae5066b",
+    "assets/inventory/bookshelf.png": "69c1c52cc60d632843ad1b3aa7d9f6e43e04da79",
+    "assets/inventory/bowl.png": "43427fa77c8e0259f4b0b3337795434e1d8a83d4",
+    "assets/inventory/bread.png": "2a183ed04b0825b5309f88f77b09dbfa4b9a18ae",
+    "assets/inventory/brick.png": "8f1094459af7b8d8e78cde11529479eac7b8935b",
+    "assets/inventory/bricks.png": "9539f9ed08d6ba6f64999657ccbba4012940d85f",
+    "assets/inventory/bricks_slab.png": "d998163928003ff6c9e5baf4820596c4abe5e3c9",
+    "assets/inventory/bricks_stairs.png": "00d46e252da6db587d6aa3e64ebda2bcf585feb0",
+    "assets/inventory/bricks_wall.png": "c463975bdf0b99bc2074f09f15b28bd01563bfff",
+    "assets/inventory/brown_mushroom.png": "7e76a7cad5974927aab1d422d47d708d746583d0",
+    "assets/inventory/brown_mushroom_block.png": "8fcdbbd02e9258eb5cf2614f53aa0421c5cddfc3",
+    "assets/inventory/bucket.png": "73bfb99179fe09e0c9b9b7ea97e8bc8320562289",
+    "assets/inventory/cactus.png": "53e59aa0cb1f6ecc0cbdd2c0056942b460247d63",
+    "assets/inventory/campfire.png": "fddbe708f3331330b08f57e7b5ca5c9ce9bce373",
+    "assets/inventory/candle.png": "3f4eff1528bcea50c5c6a025be9a5c47ef6fad5c",
+    "assets/inventory/carpet.png": "e8902ce11e815def94aac9e424b9810daf141a8d",
+    "assets/inventory/carrot.png": "2a9691aca8fbe3751619ea7007c0752b4e341398",
+    "assets/inventory/cavern_shard.png": "74c91ea0191341da4d7e9173850956b478dd725c",
+    "assets/inventory/chain.png": "d3fa68cd445efe641b7192e41a79e920a912ab3f",
+    "assets/inventory/charcoal.png": "374c9458faca746ebdc59f9a83a144d232204fba",
+    "assets/inventory/chest.png": "bf8de9d2801fb7e2847065e0e993d34219f95c62",
+    "assets/inventory/chiseled_stone_bricks.png": "29ddcdfab0155411771fe7b116ef4390248fbde3",
+    "assets/inventory/clay.png": "d6e3cb533bc71eed5f2c82050e1d7424f024be64",
+    "assets/inventory/clay_ball.png": "7f0375b992464d78e71b278d65b98372b29c41df",
+    "assets/inventory/coal.png": "42114b4963138672af66636193699f1b69a40e2c",
+    "assets/inventory/coal_block.png": "4926254d01f4b25db97166f7925e7edec7cfe159",
+    "assets/inventory/coal_ore.png": "da3a6a72f0614f360466eacf7c3aa52d287c2f27",
+    "assets/inventory/coarse_dirt.png": "7dab0f575d05f866c714dd30c38374fe95be67eb",
+    "assets/inventory/cobblestone.png": "be309797af099b5966d5acb59009a6964738e5ae",
+    "assets/inventory/cobblestone_slab.png": "d998163928003ff6c9e5baf4820596c4abe5e3c9",
+    "assets/inventory/cobblestone_stairs.png": "00d46e252da6db587d6aa3e64ebda2bcf585feb0",
+    "assets/inventory/cobblestone_wall.png": "c463975bdf0b99bc2074f09f15b28bd01563bfff",
+    "assets/inventory/cobweb.png": "851040148b9458269811e5f9ef610f077a78ee3b",
+    "assets/inventory/compass.png": "b53bec0d4da02b20821c2856bd464b0a8537c244",
+    "assets/inventory/composter.png": "8328674a93c4ec64b56d21f1ead0c320e4c490d6",
+    "assets/inventory/cooked_beef.png": "2ab258ffc1eec4467a8b671f87167ec6f1759ac6",
+    "assets/inventory/cooked_chicken.png": "bcead4ef044150b5415bcef884a0c575ed41dede",
+    "assets/inventory/cooked_mutton.png": "3fed28952bbcdb908d346ff1bf54e61ea0844c62",
+    "assets/inventory/cooked_pork.png": "80564453dac0e665fed7eb55d82fad49af520ccd",
+    "assets/inventory/cookie.png": "a8aa3d3573491c9b006412687464b827e4263305",
+    "assets/inventory/copper_block.png": "8268dcdfaaa93647f5b1cc2fab5fd91cc0b515b5",
+    "assets/inventory/copper_ingot.png": "985701d5120ee5e29a01e5edcbc0eeade24d9b6b",
+    "assets/inventory/copper_ore.png": "6aab6357d3bb5c7f536b8efb09cf49fd46584d1d",
+    "assets/inventory/cracked_deepslate_bricks.png": "995048381828cbb5518412071528748bf65138d1",
+    "assets/inventory/cracked_stone_bricks.png": "8aa5b7e1efac3678f16a25174a7fe47f97aec85f",
+    "assets/inventory/crafting_table.png": "58ad97669017c12b2898639930782fd4fdb60112",
+    "assets/inventory/cut_sandstone.png": "137c1b26337fd601d7251f2703cedf7a8b3809ba",
+    "assets/inventory/dark_oak_bench.png": "aacd0581442635983132f9988e9d390a725556c2",
+    "assets/inventory/dark_oak_boat.png": "1fe48f11cc7d295d8286e1804b86326529c4ce65",
+    "assets/inventory/dark_oak_button.png": "40833857d46caabbb09467ea3326bb5475b8c427",
+    "assets/inventory/dark_oak_chair.png": "e54f24070b520d863af89049646f77df511a6b8b",
+    "assets/inventory/dark_oak_door.png": "7aec77452978d68b1da0a8a8db6be8ce825b05d9",
+    "assets/inventory/dark_oak_fence.png": "7fb188244413b793daddab497723007ffd22e9c2",
+    "assets/inventory/dark_oak_fence_gate.png": "e13987a1d86c08fc02da0e0cd45d17dfd93261d8",
+    "assets/inventory/dark_oak_leaves.png": "57db02ab76263805c7990fc8c2d03171a707d44d",
+    "assets/inventory/dark_oak_log.png": "3f5d1e9ee5c017c2f24d075e21b79e7381f99580",
+    "assets/inventory/dark_oak_planks.png": "aec96361233987f293886829199313499bc214e9",
+    "assets/inventory/dark_oak_pressure_plate.png": "9b2c84cf1364071f6f2e53bd407e473b7f3d8237",
+    "assets/inventory/dark_oak_shelf.png": "7aec77452978d68b1da0a8a8db6be8ce825b05d9",
+    "assets/inventory/dark_oak_sign.png": "7aec77452978d68b1da0a8a8db6be8ce825b05d9",
+    "assets/inventory/dark_oak_slab.png": "43e650e87a11c69743f72d6ea0b946dddf7a048d",
+    "assets/inventory/dark_oak_stairs.png": "a3bb8b90f88027fd0284c7d201aad3d11b20ee80",
+    "assets/inventory/dark_oak_stripped_log.png": "fb2b42ea46461456b538f7721e95b2e6b5d5d47e",
+    "assets/inventory/dark_oak_table.png": "aacd0581442635983132f9988e9d390a725556c2",
+    "assets/inventory/dark_oak_trapdoor.png": "7aec77452978d68b1da0a8a8db6be8ce825b05d9",
+    "assets/inventory/dead_bush.png": "3183f10399a466351d969737ccf3b1ed5fc3968e",
+    "assets/inventory/deepslate.png": "50868ffbc4e24f44b54b70550f147b196d8c3c9b",
+    "assets/inventory/deepslate_bricks.png": "beba89adc1e3c9ae9b82626daece380114a5118c",
+    "assets/inventory/deepslate_coal_ore.png": "b19b272d370e0c551373e82fdac698d5999d6755",
+    "assets/inventory/deepslate_copper_ore.png": "f73e87483e3828b4502330ba549ba2cf6c502828",
+    "assets/inventory/deepslate_diamond_ore.png": "7e037e597727d902ffddc1c1d4985ef1a2661be6",
+    "assets/inventory/deepslate_gold_ore.png": "3ca6c8cc45b4cb8166af8fe6f832917360abd0fb",
+    "assets/inventory/deepslate_iron_ore.png": "9c2022e4737c7599f2691599e5a1b10b882e39b4",
+    "assets/inventory/deepslate_slab.png": "abe36ce80753574f9c87aebc503f48cb3e141660",
+    "assets/inventory/deepslate_stairs.png": "3c490fa1df8ea5a4cfb03b0cf52b5e471809957f",
+    "assets/inventory/deepslate_wall.png": "3a23ef652a97b5b743e24055570f6a59620cb8d6",
+    "assets/inventory/diamond.png": "cbb2d1f90cd17cd02d83b7028c37e6ec48ce290a",
+    "assets/inventory/diamond_axe.png": "4ce1d4a33fea396d978a8aa1b72b96c1fc246213",
+    "assets/inventory/diamond_block.png": "27208ba24b98b3b7b7cf0693f48103f79a20efa6",
+    "assets/inventory/diamond_boots.png": "56c368b76336222f0ef0bd2869c38f7c0603c708",
+    "assets/inventory/diamond_chestplate.png": "2261d5a00dc609daa145c3f40a337ca69bb01e0b",
+    "assets/inventory/diamond_helmet.png": "9c2e98b996da0b439b94088f5a02130baf8bfd5a",
+    "assets/inventory/diamond_hoe.png": "7ae7e03511937a90cf90a08d19bea9295be28ecd",
+    "assets/inventory/diamond_leggings.png": "69d7203ee10b13604c49941876dbba3a4db85bfc",
+    "assets/inventory/diamond_ore.png": "a6ca3ee726af72f5178f0f363395e31c0a3e4cce",
+    "assets/inventory/diamond_pickaxe.png": "6e2f29d5ba2f6b970c079a6e219bd2bba1e8ee81",
+    "assets/inventory/diamond_shovel.png": "e6f57e41c8c2ad7fbef9d054cf35f4867027a426",
+    "assets/inventory/diamond_sword.png": "839706a8409dac3a59e3e930ba7fc8369bc74c98",
+    "assets/inventory/diorite.png": "06b2a8c0e278bbdbf4e889f702643c0cdd8e23c5",
+    "assets/inventory/dirt.png": "f2fe57cac2f932af93dabb48734d1047dda28db9",
+    "assets/inventory/dirt_path.png": "2dc5c935c0819c409eebe868556ba2778ad64171",
+    "assets/inventory/egg.png": "66308ff1dd0d647812a455d7c6340802c86eab07",
+    "assets/inventory/empty_map.png": "d802237bfb7b6bd53134ae7506f9625dcc17f899",
+    "assets/inventory/feather.png": "e9d96634e2372afd73265fb976bc90353bfba8be",
+    "assets/inventory/fern.png": "91d5806fb0da54c35dc8dcccfa6899779a9a28f8",
+    "assets/inventory/filled_map.png": "3664013e4227b1ba860f47af3b4430f624162af8",
+    "assets/inventory/flower_pot.png": "ef6227d924d38abf0820c278ce434de8ae59b667",
+    "assets/inventory/furnace.png": "55eed06c2adcfc0b13f540653faac3a28815c60b",
+    "assets/inventory/glass.png": "cd65ef6244d5f207d688fc00a1d544cb184155db",
+    "assets/inventory/glass_pane.png": "cd544e806db2c6d43dff9c56f315a95d73e63ed9",
+    "assets/inventory/gold_axe.png": "db9f04baf33ec56e0e05b29071d55a1897115fa1",
+    "assets/inventory/gold_block.png": "a3e642d7713033893c8c50dc9be1fadd27eea434",
+    "assets/inventory/gold_boots.png": "bcd0e82590c8460c779f4b25d167df69bef9f94b",
+    "assets/inventory/gold_chestplate.png": "5a181dcc41b85fdc4a28be0915d9825aba73667d",
+    "assets/inventory/gold_helmet.png": "dd5e11402b8d26bd2bfc7e8d7fdf5040f79a53a0",
+    "assets/inventory/gold_hoe.png": "ef72410af219b094c75627a8617b054e76533c81",
+    "assets/inventory/gold_ingot.png": "adb24ad68e2ceaa86410d01db692f988f7d38fbe",
+    "assets/inventory/gold_leggings.png": "718edceb021f672e7e690f9c0b8f12072c0cf08d",
+    "assets/inventory/gold_ore.png": "73913efb2bc2a42fd46eec2bfbdb5989faf55cb1",
+    "assets/inventory/gold_pickaxe.png": "c43777bca488281ccc126fe1118b9aecd126966d",
+    "assets/inventory/gold_shovel.png": "391f1c41165b81cbdd6b69d56c876768a1891ac1",
+    "assets/inventory/gold_sword.png": "e7397a43521b2efb88fbb2093f8c72635df025c6",
+    "assets/inventory/granite.png": "4caa3fce25b635a113108854db124384258ccbce",
+    "assets/inventory/grass.png": "a82b971f510cfbc34331c15043c0d434759877fe",
+    "assets/inventory/gravel.png": "5a7cb4fe7f6b682435c63656ac8cda9bef5a3242",
+    "assets/inventory/hay_bale.png": "eafbdf3cb201b56c13732f79e7432a5d201ef9a4",
+    "assets/inventory/ice.png": "99653e93537937955b327cdeec4a00c628408c05",
+    "assets/inventory/iron_axe.png": "0828401513717cffeaf9e9a91b31925a18cb140a",
+    "assets/inventory/iron_block.png": "1c2cd42c7eec66e0607b528fd32a4252ba5308a9",
+    "assets/inventory/iron_boots.png": "a3e468a5c1b71f910d087893cfebe325e118ca86",
+    "assets/inventory/iron_chestplate.png": "a5ac3558184f3bd1b1828a0bc6da220411b842de",
+    "assets/inventory/iron_helmet.png": "b74dc7f0e4f23d8713cf5410c01340786e2e51e2",
+    "assets/inventory/iron_hoe.png": "1bf1397a4b5770dbf694c57eb44a78cc32b73e53",
+    "assets/inventory/iron_ingot.png": "92f3b4e85fade7579a3c85925bc1cff8e998aefa",
+    "assets/inventory/iron_leggings.png": "d1879a80648017db272eb01c5d06627bdc7cbd9f",
+    "assets/inventory/iron_ore.png": "d151e1c83758e66301722809d6fafeb4cdbbec0d",
+    "assets/inventory/iron_pickaxe.png": "f00defac8249de3f553095a06b5c3fc48928afd5",
+    "assets/inventory/iron_shovel.png": "f6842e2837511900dcdbe9846e77e8b4457f32e4",
+    "assets/inventory/iron_sword.png": "9daad883f86611f0a55e8d0f109a04d50e055d39",
+    "assets/inventory/item_frame.png": "85937872e9f54afc75a5be53a960149c50c2fa28",
+    "assets/inventory/jungle_bench.png": "14849b5c2e7a635a65aac15ea3ce8e5243e1306e",
+    "assets/inventory/jungle_boat.png": "44b153d36e8d9bdbd4f67af29718d5ab1f5b9214",
+    "assets/inventory/jungle_button.png": "0f5ee5622c49c46d6cdfc7d7634ca9bda3b930e8",
+    "assets/inventory/jungle_chair.png": "302b4e1940fdb0c782d79a96edcc4a75ee7b90a4",
+    "assets/inventory/jungle_door.png": "442d3f27ae3981db3de419ae551b2ff585df9157",
+    "assets/inventory/jungle_fence.png": "2fc92584dc8a1455f986cf0f25799afdcdf8ba34",
+    "assets/inventory/jungle_fence_gate.png": "e1f1769bb909952b555f2db6bedc2656e52cbce8",
+    "assets/inventory/jungle_leaves.png": "7141c6fc6ba400d6644fd392046c47aee7b10618",
+    "assets/inventory/jungle_log.png": "1e6dfbf7de604ddd8d8e9d9886412bf24b1961cd",
+    "assets/inventory/jungle_planks.png": "70e334a19f4e4884962fe31ddd088834bef0c91a",
+    "assets/inventory/jungle_pressure_plate.png": "cf1f05425882b6777045a9f319e227f595a3081f",
+    "assets/inventory/jungle_shelf.png": "442d3f27ae3981db3de419ae551b2ff585df9157",
+    "assets/inventory/jungle_sign.png": "442d3f27ae3981db3de419ae551b2ff585df9157",
+    "assets/inventory/jungle_slab.png": "035e2eb086b30468c24711665b47685090880c69",
+    "assets/inventory/jungle_stairs.png": "cc363f40dfc7d586cc5f5f27d3aa539887a59677",
+    "assets/inventory/jungle_stripped_log.png": "8c5eca43ceaee2d4a0b74e5515863419cffecbb3",
+    "assets/inventory/jungle_table.png": "14849b5c2e7a635a65aac15ea3ce8e5243e1306e",
+    "assets/inventory/jungle_trapdoor.png": "442d3f27ae3981db3de419ae551b2ff585df9157",
+    "assets/inventory/ladder.png": "d9b140b26ff60235356885b46a4884af9cd1fcc7",
+    "assets/inventory/lantern.png": "c2f0ce6887e54fac4b692b6240cdfcb0e9910dc4",
+    "assets/inventory/lava.png": "41375182ff51ac1d750f1b146753290c5d667f26",
+    "assets/inventory/leather.png": "d19434ca3198a5c906efbf0f8c5d4f970cb55239",
+    "assets/inventory/leather_boots.png": "5139c8c8ab000b6d0d75407f96e418812fff7a9a",
+    "assets/inventory/leather_chestplate.png": "fcbcbcfad49966a8c2f3354fa8497f6c330cf869",
+    "assets/inventory/leather_helmet.png": "964b109b2a9636571d9c94131063f01e48784ab9",
+    "assets/inventory/leather_leggings.png": "9f1ed73c3c7ea2731f64f14ad3f0b6007fc513af",
+    "assets/inventory/leaves.png": "4ea6fd1592669e1c5e3ee5139ae86444cc94a6f7",
+    "assets/inventory/lily_pad.png": "b0d6f86efc6a13c860148651bbcce7f45cf14842",
+    "assets/inventory/log.png": "875df1131d76878e866a7bda4481c90823af126e",
+    "assets/inventory/melon.png": "9f639273b3ff82c84728b2c119aa45a344496246",
+    "assets/inventory/melon_seeds.png": "1c8bb8eae4d53a92f521f27d09527e4ef63b70ab",
+    "assets/inventory/melon_slice.png": "abf6e80b9f43c5c00055b57f92fd2af90cee64d5",
+    "assets/inventory/milk_bucket.png": "76a04f612f0163a1edbece66e202cc4093833bc8",
+    "assets/inventory/mossy_cobblestone.png": "c8e5309e25d44b61e87162eb64f3ffc5215f69bc",
+    "assets/inventory/mossy_cobblestone_slab.png": "d998163928003ff6c9e5baf4820596c4abe5e3c9",
+    "assets/inventory/mossy_cobblestone_stairs.png": "00d46e252da6db587d6aa3e64ebda2bcf585feb0",
+    "assets/inventory/mossy_cobblestone_wall.png": "c463975bdf0b99bc2074f09f15b28bd01563bfff",
+    "assets/inventory/mossy_stone_bricks.png": "8c5c624343bec2c056b5091b3d3fd4f3dfa57826",
+    "assets/inventory/mossy_stone_bricks_slab.png": "d998163928003ff6c9e5baf4820596c4abe5e3c9",
+    "assets/inventory/mossy_stone_bricks_stairs.png": "00d46e252da6db587d6aa3e64ebda2bcf585feb0",
+    "assets/inventory/mossy_stone_bricks_wall.png": "c463975bdf0b99bc2074f09f15b28bd01563bfff",
+    "assets/inventory/mud.png": "d35a561251d9c0c0025201d84d0a5774c01b438e",
+    "assets/inventory/mushroom_stem.png": "7dd3e6c5dce37ae74bc7ce7b6face2e403878728",
+    "assets/inventory/mushroom_stew.png": "d749b1d9cd7191abde5f85c514b0828286982bac",
+    "assets/inventory/mycelium.png": "c47151f8181d7c894b8125a7ae527ce99f43c6ee",
+    "assets/inventory/oak_bench.png": "476feaac72fca2aace5cb38411b08f1d622728db",
+    "assets/inventory/oak_boat.png": "85d29a505eda9f1f2a52d963f0b2ab9bc94b558d",
+    "assets/inventory/oak_button.png": "eaa78da0b454ba5d3e240741f90f6f6b9d116e92",
+    "assets/inventory/oak_chair.png": "7345e891c32b06fe815d161da698d1e12117242a",
+    "assets/inventory/oak_door.png": "fe017a066c928aa6705ae478ffb46ed9f752cca8",
+    "assets/inventory/oak_fence.png": "afbe06d2077a8443c80d496fe09b24caa6ca6e39",
+    "assets/inventory/oak_fence_gate.png": "65f23e917a3193852afae07699517dd375be4ca2",
+    "assets/inventory/oak_pressure_plate.png": "e031a6b1bb492407d2b8b6bcc8030cb70a5e8bb1",
+    "assets/inventory/oak_shelf.png": "fe017a066c928aa6705ae478ffb46ed9f752cca8",
+    "assets/inventory/oak_sign.png": "fe017a066c928aa6705ae478ffb46ed9f752cca8",
+    "assets/inventory/oak_slab.png": "83ba80e59a3a8c2bd517c57166dbd6cb1e90031c",
+    "assets/inventory/oak_stairs.png": "073e103f515048d21048154608cf9811ffeaef34",
+    "assets/inventory/oak_stripped_log.png": "cfaf2673fb7c502347c2556c53e532a12076d97e",
+    "assets/inventory/oak_table.png": "476feaac72fca2aace5cb38411b08f1d622728db",
+    "assets/inventory/oak_trapdoor.png": "fe017a066c928aa6705ae478ffb46ed9f752cca8",
+    "assets/inventory/packed_ice.png": "3b4b442d9e92dca1a42096882b2360bcb4a9b455",
+    "assets/inventory/painting.png": "e6ed469b9f0db14d4e48c2426de7a845e451876d",
+    "assets/inventory/paper.png": "e5657dc6759a430cf5106ed63abfdf29dcac2b5f",
+    "assets/inventory/planks.png": "d9ff59681f98340b4b49542bbe1f8206c8f263de",
+    "assets/inventory/podzol.png": "811a8fd6cf27a468f798dc659de1900fcec416d1",
+    "assets/inventory/polished_andesite.png": "50159939563620e36aec4ba86ca77fad00fca4d3",
+    "assets/inventory/polished_andesite_slab.png": "d998163928003ff6c9e5baf4820596c4abe5e3c9",
+    "assets/inventory/polished_andesite_stairs.png": "00d46e252da6db587d6aa3e64ebda2bcf585feb0",
+    "assets/inventory/polished_andesite_wall.png": "c463975bdf0b99bc2074f09f15b28bd01563bfff",
+    "assets/inventory/polished_deepslate.png": "2c2da773703edf3d6a5e9f69d9d37e50f8718488",
+    "assets/inventory/polished_diorite.png": "56ce636f6966e5d6f164b14b33cf7255b294d8ab",
+    "assets/inventory/polished_diorite_slab.png": "d998163928003ff6c9e5baf4820596c4abe5e3c9",
+    "assets/inventory/polished_diorite_stairs.png": "00d46e252da6db587d6aa3e64ebda2bcf585feb0",
+    "assets/inventory/polished_diorite_wall.png": "c463975bdf0b99bc2074f09f15b28bd01563bfff",
+    "assets/inventory/polished_granite.png": "95147cc8d7c2debb84a6b74d39b9d8bcd602aacc",
+    "assets/inventory/polished_granite_slab.png": "d998163928003ff6c9e5baf4820596c4abe5e3c9",
+    "assets/inventory/polished_granite_stairs.png": "00d46e252da6db587d6aa3e64ebda2bcf585feb0",
+    "assets/inventory/polished_granite_wall.png": "c463975bdf0b99bc2074f09f15b28bd01563bfff",
+    "assets/inventory/potato.png": "18c75bce4e2e24c030e6b432a3b3edb747c345c1",
+    "assets/inventory/pumpkin.png": "dda066e9d25117b8969f79c51cee1db8062ad0aa",
+    "assets/inventory/pumpkin_pie.png": "709e0ef076464c8372dc49c6df4d5dccb0c8f3ee",
+    "assets/inventory/pumpkin_seeds.png": "f76ee6898d0849f4603c198453b134c9b9775108",
+    "assets/inventory/raw_beef.png": "beccb21ea440523de780ecbe380fe68b619da77c",
+    "assets/inventory/raw_chicken.png": "cab44c92cd7c1300386dce2df30b29e47c885c2b",
+    "assets/inventory/raw_meat.png": "7b9cb33c975be61b82efd3ef1951146de9bb92b3",
+    "assets/inventory/raw_mutton.png": "33ac606ec5e372b422dc18dda8073f11aa3eef4d",
+    "assets/inventory/raw_pork.png": "9f6367c971a3a11e8703b2db1c058676cfb5affe",
+    "assets/inventory/red_flower.png": "5eaeefd8f17b14cfe593cf578ce8625db3c5b0b5",
+    "assets/inventory/red_mushroom.png": "b59b5bdb726b326d425cf2779ccfc0e772ddc837",
+    "assets/inventory/red_mushroom_block.png": "e908db15acbcb23877c880870872b90b6d5ad177",
+    "assets/inventory/relic_ancientexplorertool.png": "7e8fc3b7777d6360177c90a7b33759fec2dd9330",
+    "assets/inventory/relic_echolantern.png": "88fdc8d8bb1f99e762ffaa8dd2497f333595edde",
+    "assets/inventory/relic_resonantcore.png": "317fc1bb492d08d039fa648d6aa5f801c992ff5b",
+    "assets/inventory/relic_surveyorcompass.png": "cfed7e056fa87062f52b8189428779478b044c1a",
+    "assets/inventory/roof_shingles.png": "326ab48632f5d3d9d8af9aa8b46452ea81a568cf",
+    "assets/inventory/rose_glass_pane.png": "2ddf8571252ebc4713dd680809710cc85727a003",
+    "assets/inventory/sand.png": "09ae62c84c8977fedf5678147833d5b33fecd0d2",
+    "assets/inventory/sandstone.png": "1bb24a64af99aaaca68de8f83b69ab991b6d3012",
+    "assets/inventory/sandstone_slab.png": "de68679d827e188859a9d1972a8ca1d19679aec1",
+    "assets/inventory/sandstone_stairs.png": "7082b195c0b086f3f43601ea77d04932427ca01c",
+    "assets/inventory/sandstone_wall.png": "75032e463939cf5a5b479c72dcba6af24e03809f",
+    "assets/inventory/scaffold.png": "46ef6908da31d80cf65a8d2bea6a9656f03c5b21",
+    "assets/inventory/seeds.png": "ab75c162bf7247cdc17d4a87c0790c5792f94718",
+    "assets/inventory/shears.png": "5956cf270b318971d6d11f67561553ffb4586071",
+    "assets/inventory/shield.png": "0ce7b1f5a94983dac915f0af467781ef3c131646",
+    "assets/inventory/smoked_glass_pane.png": "642022b90e441841dd3d2c0d638f2f7e4b9e4ab6",
+    "assets/inventory/smooth_sandstone.png": "d00ffe4c4b71c9037311d8340f428b6fec7f036b",
+    "assets/inventory/smooth_stone.png": "d04dc047243a6565a0403189ffff0fcbb7de15dd",
+    "assets/inventory/snow.png": "8cf91a5b20cbe169587ac5bb17e12bb72f311605",
+    "assets/inventory/snow_block.png": "a1c8d59b80d23ac2498fd0de0455a012174e6b5a",
+    "assets/inventory/snowball.png": "ca6b4077ead6c6b76ab51fd91b183b4cc2337bd3",
+    "assets/inventory/spruce_bench.png": "cb8982ed100a8152542fa93cc35488ef65616f16",
+    "assets/inventory/spruce_boat.png": "1c931be3790f78a52ba950b93b1577afbea08a89",
+    "assets/inventory/spruce_button.png": "159c78d29a37a618300a99b336fdc3f6b5159a2c",
+    "assets/inventory/spruce_chair.png": "aca370533f544b7496692d520c94555828b321b3",
+    "assets/inventory/spruce_door.png": "41aa92b37987eb258afe94afd9aed0afdd2ecb52",
+    "assets/inventory/spruce_fence.png": "933aa9355fb92e961fd5d14817cb8603a64ce8d0",
+    "assets/inventory/spruce_fence_gate.png": "3f138015e6a6f6fb466a96d9b3218c42db104216",
+    "assets/inventory/spruce_leaves.png": "8fdb3caf4f8774fbea1e01e0d2c41bd702de8d21",
+    "assets/inventory/spruce_log.png": "9dbd1779eb58f70a9d6da588faa85686e7b97ba6",
+    "assets/inventory/spruce_planks.png": "e68f40e8a0f72869c33f81a5738f2d202d0697c6",
+    "assets/inventory/spruce_pressure_plate.png": "5f9a4968264a6d3576d603b7f60cd1557f1d8855",
+    "assets/inventory/spruce_shelf.png": "41aa92b37987eb258afe94afd9aed0afdd2ecb52",
+    "assets/inventory/spruce_sign.png": "41aa92b37987eb258afe94afd9aed0afdd2ecb52",
+    "assets/inventory/spruce_slab.png": "599a79d6bd731c9b119cf659a74e51406c08bdd9",
+    "assets/inventory/spruce_stairs.png": "7b45cedbaacd5bc7996795ff6d6f9fdcf86882da",
+    "assets/inventory/spruce_stripped_log.png": "5d07da5278a4536ae476adb112171a3362873150",
+    "assets/inventory/spruce_table.png": "cb8982ed100a8152542fa93cc35488ef65616f16",
+    "assets/inventory/spruce_trapdoor.png": "41aa92b37987eb258afe94afd9aed0afdd2ecb52",
+    "assets/inventory/stick.png": "3ebf6dd2c4b5fbe19c494391c5f557249b2e2cb9",
+    "assets/inventory/stone.png": "8a144d014827efe1680478675c1c26d41808fb31",
+    "assets/inventory/stone_axe.png": "a13febc04f3de5d92b10f9ccdbecff768c1994d0",
+    "assets/inventory/stone_bricks.png": "039eecaf0f6909582f72e8275e50c96c4e8d8741",
+    "assets/inventory/stone_bricks_slab.png": "d998163928003ff6c9e5baf4820596c4abe5e3c9",
+    "assets/inventory/stone_bricks_stairs.png": "00d46e252da6db587d6aa3e64ebda2bcf585feb0",
+    "assets/inventory/stone_bricks_wall.png": "c463975bdf0b99bc2074f09f15b28bd01563bfff",
+    "assets/inventory/stone_cut_slab.png": "d998163928003ff6c9e5baf4820596c4abe5e3c9",
+    "assets/inventory/stone_hoe.png": "01bca75ca497a0a3d18fdaaf424cf880ecb0418c",
+    "assets/inventory/stone_paving.png": "fb48c4177336e51e41b25ff11989bb7587ece0f0",
+    "assets/inventory/stone_pickaxe.png": "dd26d88810d67647816181015cdd31cb9d212573",
+    "assets/inventory/stone_shovel.png": "3fc0daa130372adb7d0ff320428d0090c282e30b",
+    "assets/inventory/stone_slab.png": "7470cc114e06b90061701a6924519faa333e460d",
+    "assets/inventory/stone_stairs.png": "00d46e252da6db587d6aa3e64ebda2bcf585feb0",
+    "assets/inventory/stone_sword.png": "c670b90e3d5ba90a93272dd94b7666c04f648fbd",
+    "assets/inventory/stone_wall.png": "c463975bdf0b99bc2074f09f15b28bd01563bfff",
+    "assets/inventory/sugar.png": "7d87e32fd37d12924cef4ef0578e385daedc80ea",
+    "assets/inventory/sugar_cane.png": "37322bd4ef03e3a3f8d254217806af42539ac3de",
+    "assets/inventory/surveyor_token.png": "c67ba3f8663cf4bd84038370d5d301ca69eba275",
+    "assets/inventory/sweet_berries.png": "128cb60868f55241c17da1251ce6412ca4f267e0",
+    "assets/inventory/tall_grass.png": "2c6663212c72f4eb5ec2be8e116041c55bfd7141",
+    "assets/inventory/terracotta.png": "aa83412837a2601a3b852e30777f38dde8994fad",
+    "assets/inventory/terracotta_brown.png": "e881a5296ccfc39e04260bc0ede7f294714e7856",
+    "assets/inventory/terracotta_orange.png": "c977cadc133742ea272cd00e98ccf531b12734ec",
+    "assets/inventory/terracotta_red.png": "f1ca46b4f97cf2c59533a89985333bbfa686414d",
+    "assets/inventory/terracotta_white.png": "adfe784f3820acc141c74ffae9c256e34ed78459",
+    "assets/inventory/terracotta_yellow.png": "a6882df5813840665617d4be0dba060ec3dda67b",
+    "assets/inventory/torch.png": "cc957a6e14d0ee60eb31cb2515055978c79bc7bf",
+    "assets/inventory/vegetable_stew.png": "c8bea6ea9bb8d8b3aec24c5c2486f5af03e49e22",
+    "assets/inventory/vine.png": "18cc3aa998c67549fafc006d4a191dc8ede61e98",
+    "assets/inventory/water.png": "95731cb4c511eb4e0e4ccd91e92622382eb95a35",
+    "assets/inventory/wheat.png": "a93400234ab3704e313c26d35bd51b095a7c0852",
+    "assets/inventory/wood_axe.png": "d7b1629468a1d6b0f45fdfa7ff167a34eba709bb",
+    "assets/inventory/wood_hoe.png": "8df4b7671a21d72be78f4eaf8244c7debf5966eb",
+    "assets/inventory/wood_pickaxe.png": "6b79cd9382eef4ed946433fcb4fa229d9cabfab2",
+    "assets/inventory/wood_shovel.png": "7c2777ad5b74295a7e27f8fda84a028e750adb8f",
+    "assets/inventory/wood_sword.png": "7586b1317bddd7a4bb3fe2aa547135e377745f1c",
+    "assets/inventory/wooden_door.png": "6ec3024734c5aaaf7f260d9584d71459c518ffdc",
+    "assets/inventory/wooden_slab.png": "2f2c84045bb6f44c7df234168161610a1383b073",
+    "assets/inventory/wool.png": "251325bab2ae3d7246be32245bbdaa5b728ca125",
+    "assets/inventory/yellow_flower.png": "8393d1ed3aac53ceaa12c3e97d28ab402a6f9c6a",
+    "assets/inventory_art_source.rgba": "5860fbc34098488325ba745680aab1ff3def2fde",
+    "assets/inventory_atlas_16.png": "8f2cdbf11a6733defef67c936e6c73fe9eba8b4c",
+    "assets/inventory_previews/001.png": "3a28575050d584c399394302d724b0bce5eccf2f",
+    "assets/inventory_previews/002.png": "2346b8b34b0ba621c8a07fc00500de8185ab24f9",
+    "assets/inventory_previews/003.png": "5b88e71e8820af685edcca5c75b23837903ea550",
+    "assets/inventory_previews/004.png": "31414a4018511b0fbd78380f57ea3796513bb865",
+    "assets/inventory_previews/005.png": "574bd5201b173def5d85a4d125704650eba38d3b",
+    "assets/inventory_previews/006.png": "7f895029fb33d1b3271bec741bb251a08c3502ad",
+    "assets/inventory_previews/007.png": "471f9c46b4ca6eca9a76ead2fea56d9206478667",
+    "assets/inventory_previews/008.png": "8f4b56434c311555d32dec8521ca1867e1a5a5d7",
+    "assets/inventory_previews/009.png": "dbd6937d5cbd0cde0fa31c97434333fc26bd0866",
+    "assets/inventory_previews/010.png": "018cd4f779db889bb4a2ad5e7f97ee734dd54c8d",
+    "assets/inventory_previews/011.png": "ae0c9aa8f8db7bd72ca45d0545e91b768d080180",
+    "assets/inventory_previews/012.png": "69456c4acbdf5ec6314bba668e6266fface2437f",
+    "assets/inventory_previews/013.png": "a05149580bfc7265184a126f1e52dc796596f8d3",
+    "assets/inventory_previews/014.png": "e21d7b7e0d5b34975db3bcb95388d7ae470a4eed",
+    "assets/inventory_previews/015.png": "49190d3de9e3fa60330d778cb91861a67c8b47cb",
+    "assets/inventory_previews/016.png": "6485de1bd4af0f3f0199477abca56d5afa8d2dda",
+    "assets/inventory_previews/017.png": "218a019e2f463997052882e7941c8fbe89ca80c9",
+    "assets/inventory_previews/018.png": "a6435139333d89a7ba146d58ccc20dbded9b8c83",
+    "assets/inventory_previews/019.png": "32dae32f6e41a5086c9d0cbaae0e3f1ccd463b62",
+    "assets/inventory_previews/020.png": "043287f5931020ca333c2c60e3ba2e63b167d988",
+    "assets/inventory_previews/021.png": "d1e2abf2076feec90f4b3c09b330260199f0c503",
+    "assets/inventory_previews/022.png": "11de1dc3c0863ece50a79f676111fc20b2d6d894",
+    "assets/inventory_previews/023.png": "f0b1e7e00cfe00c36484e6e8034740c233966cf7",
+    "assets/inventory_previews/024.png": "ca1c8fe800b6bcc2f552175e1b587fc6f35d6cfb",
+    "assets/inventory_previews/025.png": "b9ec585e36065f04365acf5e63813e1a0e18707b",
+    "assets/inventory_previews/026.png": "ef284c2fe5f54c1703a943b6a66cb8a5c6455f15",
+    "assets/inventory_previews/027.png": "c4ee8c61896b47b43c232a983bc843362df9b38c",
+    "assets/inventory_previews/028.png": "07e5ba6f1c8b624a344dddae6923e060c9669d41",
+    "assets/inventory_previews/029.png": "52370c970c8838b56bff79002f5ab4cb3ea89f12",
+    "assets/inventory_previews/030.png": "1eb7f8787a42e4c3c17486166c10e11c5ef3f67e",
+    "assets/inventory_previews/031.png": "669d1ed6cc6b9b06893151e4c171dcf6cb340832",
+    "assets/inventory_previews/032.png": "6fbcef1db35e636fe171ede8cc56cfbe8c7843f3",
+    "assets/inventory_previews/033.png": "be17fdd11f7425cfe6e631df3ceabc48032f2028",
+    "assets/inventory_previews/034.png": "665f3dee1702f1e38399812d2dd21dd756877d3e",
+    "assets/inventory_previews/035.png": "6ac310647caa8f3d01246c3c9ecfe2f5e8e5311c",
+    "assets/inventory_previews/036.png": "6750cc30352bcf45640735c9b30efafc154e6fac",
+    "assets/inventory_previews/037.png": "99d7a1296f6fb313f5637d78adc6e075bbe51906",
+    "assets/inventory_previews/038.png": "b2a5f76746337107832534dbc7c45b82603e7661",
+    "assets/inventory_previews/039.png": "dc3e7607f9f78bc4c3d9e599490bc62f182b61f9",
+    "assets/inventory_previews/040.png": "30168320cbd86d08f58fdf3c6c0d56c81c6df229",
+    "assets/inventory_previews/041.png": "3a84b242b7520d8608a3a47429a31d7af147a183",
+    "assets/inventory_previews/042.png": "5490aef928b1148fc0ba4a3f8afd9599a2248b70",
+    "assets/inventory_previews/043.png": "84ac6771fe771c8ddb34f8c2323c89dcdbeae62f",
+    "assets/inventory_previews/044.png": "15ee888764ab98ef52b3a2d403b878e07d37596f",
+    "assets/inventory_previews/045.png": "6841635b291ddf350d828de3e0f45b395a8e7632",
+    "assets/inventory_previews/046.png": "af75d72553a2e06faf50494d1d61e1ada1ca494b",
+    "assets/inventory_previews/047.png": "8077dc6edcaaa04cba9130a600dcd268268708b0",
+    "assets/inventory_previews/048.png": "0bf1a3343a772aa8ab770f7eb0359739d6d7c15b",
+    "assets/inventory_previews/049.png": "cdcfff16a8c7976df1145dcf4049c1372a0e5a92",
+    "assets/inventory_previews/050.png": "d34100b403ebd3770034ac044451b3d56f492512",
+    "assets/inventory_previews/051.png": "2253bda913edeee62f58d1bf80bf00eecf21011c",
+    "assets/inventory_previews/052.png": "69dba6e5b0db7f50fa3e6c4ee09d6ede13223ca2",
+    "assets/inventory_previews/053.png": "dcd8b81ad7907138ef46715eb22fe155ce28e34f",
+    "assets/inventory_previews/054.png": "1c3333c517e9d056322f8cfadc1a80cad7e2160f",
+    "assets/inventory_previews/055.png": "b8aea3476b7def18e8f138cc7f3f1203757cd3cb",
+    "assets/inventory_previews/056.png": "5aa0f3b0ce78bd7f0fda584c8356103e7f783062",
+    "assets/inventory_previews/057.png": "ed8b3f68658df3330d4f2e554fa09e5d11fc5541",
+    "assets/inventory_previews/058.png": "05a329b4621b536f66805193a2ef69b5e76ae880",
+    "assets/inventory_previews/059.png": "82f7d948d3ddf9478a24ca93de096fa1cc00e66d",
+    "assets/inventory_previews/060.png": "dce3dea7b280a97f94c72429c71473e6e5872dea",
+    "assets/inventory_previews/061.png": "50c694e91d0bc8f1b90d8f00390801609eeb05d8",
+    "assets/inventory_previews/062.png": "234e481170ab1316ac01d26aab4475f4899e029a",
+    "assets/inventory_previews/063.png": "8d077ed3e9c86da9700cfb55ed1a5b29e67454d4",
+    "assets/inventory_previews/064.png": "0f0f3fc69bf7392001c9bb0b2f4b0671f126e8c8",
+    "assets/inventory_previews/065.png": "8b4370e9d113846fc7dc80e9b32c65742c783744",
+    "assets/inventory_previews/066.png": "9cd681a732cb37b2060040ded56d7c946c6026cc",
+    "assets/inventory_previews/067.png": "afe5acd7969a17bb0eac642f87a827cd7db5c492",
+    "assets/inventory_previews/068.png": "f8f99d889f316764f95eec2fd4cf1c62760665b3",
+    "assets/inventory_previews/069.png": "140a7faeb097a1417bee8f4853ad4efa968ebf28",
+    "assets/inventory_previews/070.png": "de49d9b4a6ef998531f60471e94b0602d4bb7402",
+    "assets/inventory_previews/071.png": "0484fd8bcc7e469819aec424896fa536e69728fa",
+    "assets/inventory_previews/072.png": "7c056292238483f9441a90e4a3fe09e520c8022a",
+    "assets/inventory_previews/073.png": "64b0f0b5016243ef0a0282d2e89c59e244e23e17",
+    "assets/inventory_previews/074.png": "ba65a055a6ca86b586aa6e8b3ed9f80c6f521ddf",
+    "assets/inventory_previews/075.png": "f78ffb9436b26018dec1f62e8022e2c2c6e2fa4a",
+    "assets/inventory_previews/076.png": "730e054dadd4bbc993b7dfa9b28570a2fbfb30dc",
+    "assets/inventory_previews/077.png": "9bdd17242767d69b7ee932da8650cebb7c5e5ec7",
+    "assets/inventory_previews/078.png": "e6dea0edb425b18562b33702f097444ea31fdf2f",
+    "assets/inventory_previews/079.png": "727d11e0f88518efff1c32d895c67d31dcdc3ed5",
+    "assets/inventory_previews/080.png": "e6b9be949ec3be437031c7bd0ef994bc68dd2c66",
+    "assets/inventory_previews/081.png": "36bbeae8aa457b45c09a677f028281b0d07486b5",
+    "assets/inventory_previews/082.png": "56f664f63c0540141f755a1c8d0622f83b1c3d81",
+    "assets/inventory_previews/083.png": "951005710844052f6e04d98f098cbcb3edb987ff",
+    "assets/inventory_previews/084.png": "46bf93bf4727949c181358923d900d67d3fe3cac",
+    "assets/inventory_previews/085.png": "94d35c5f83e81138700aefbcdc15bf5ff254a935",
+    "assets/inventory_previews/086.png": "f97dcc7200ccc77f5b7014bd86e8b1bf6effb6db",
+    "assets/inventory_previews/087.png": "53f27eeb51a13755265e16565212350bf30538f5",
+    "assets/inventory_previews/088.png": "6b8b994a82f397a2f51b631f2e8430cbe30639cd",
+    "assets/inventory_previews/089.png": "3175251f20c024ab24742d01cb8338dfc1387aaa",
+    "assets/inventory_previews/090.png": "2ce00d2443095fcae5349b67e9bef7cffb397761",
+    "assets/inventory_previews/091.png": "4a130cff66c7c757d49b6bb62732583876dc2ca1",
+    "assets/inventory_previews/092.png": "b5c4237873f3450f360a9fbb3687cd3a1b63f95c",
+    "assets/inventory_previews/093.png": "71bee6b9f84b937a679677624d133be26ec48d7b",
+    "assets/inventory_previews/094.png": "96aedf2b3315c6f968b24067ca527f3dfc07e769",
+    "assets/inventory_previews/095.png": "88c680cbcd035819e3a98e04965b729f4eea2aec",
+    "assets/inventory_previews/096.png": "c42fb58b650e3ea9b609d5980d6334019faaa844",
+    "assets/inventory_previews/097.png": "8fd4099ad3ebd213f96efac11c0408970b46639b",
+    "assets/inventory_previews/098.png": "a01a76a3e3d0130d7f24093fe165b049600050c8",
+    "assets/inventory_previews/099.png": "62774a3f6d9a12b219b95f6c5db5b1785798a9af",
+    "assets/inventory_previews/100.png": "2db03ef94eb352080fc8e97968cbd1e092475180",
+    "assets/inventory_previews/101.png": "7ed2e752ceb5a9780785596ecd22ba74d58a8d7f",
+    "assets/inventory_previews/102.png": "be231b4b5d6c7cf50d8e175334cab6f0cc19c0ba",
+    "assets/inventory_previews/103.png": "156feb847837e986ef5560af64175d84a48b20d8",
+    "assets/inventory_previews/104.png": "9c604234a8499e62381debec34ba185ebda1b662",
+    "assets/inventory_previews/105.png": "1765114a52356501457013aaddb0f98bc0d5230b",
+    "assets/inventory_previews/106.png": "1c98b2b0ee79a34597858c7b9b7c2b7be4ea0ff6",
+    "assets/inventory_previews/107.png": "42a498c978ef846cc2d5e7ed4b51428763eabd49",
+    "assets/inventory_previews/108.png": "0e36b6096bfbd94782e51981b748f1f76d031c7b",
+    "assets/inventory_previews/109.png": "39a548b2c6d0f8525d8e81e8951b0a42c2a9e8ee",
+    "assets/inventory_previews/110.png": "6c1eda2a8b1570626433ef8a0f6a45e23fb7a6d1",
+    "assets/inventory_previews/111.png": "8c5cc151bb36312a6a6d4335b97c968b902ff4ad",
+    "assets/inventory_previews/112.png": "79a166bf7f4cc4874340ca8b88eaa652b14562a2",
+    "assets/inventory_previews/113.png": "08d594f2053c8088183e41435a34deb1e2a640ec",
+    "assets/inventory_previews/114.png": "c350a0fda141279e423ad70561979abe50304dc3",
+    "assets/inventory_previews/115.png": "a1268e9f3cd5f78c8d2515fcd59c90ad12197217",
+    "assets/inventory_previews/116.png": "9f5ab8030fb7305c51ec4bf9ebf2f9fae017cf1f",
+    "assets/inventory_previews/117.png": "98ec4e4eb13a04f9af6b4f29c5840908b8f0bd17",
+    "assets/inventory_previews/118.png": "d3eaf61dcb54e180712acaa7e410db28e7eb68c9",
+    "assets/inventory_previews/119.png": "5ea94475125bdfadb6ff30c72c3ecdcce165025b",
+    "assets/inventory_previews/120.png": "2d7bd2e024c4d80dbb6513f96afb70b878c049e0",
+    "assets/inventory_previews/121.png": "af2d273573aadb9dfdb625da0cff2ebe0b09b833",
+    "assets/inventory_previews/122.png": "d0a5d25f7aac9e7e82376d7da4a181e06873869a",
+    "assets/inventory_previews/123.png": "3b2bf16eb012c2d7881aa4ccc668158fbdb49b09",
+    "assets/inventory_previews/124.png": "e4e180372d8fdf2ec85f211ac92b15b234708cd6",
+    "assets/inventory_previews/125.png": "4380024c966ac4ffd0b95e0c884f55b1a7dacf37",
+    "assets/inventory_previews/126.png": "abc57611031acde39403636ff4ee527ab0d7b9db",
+    "assets/inventory_previews/127.png": "e7ac7139225a3837b195d29abe43c215b4ef4ee7",
+    "assets/inventory_previews/128.png": "9076476cb7ae99e8dfd46d23399197c1a1451599",
+    "assets/inventory_previews/129.png": "916a9494e9ebf8f52675a7dd2cba7e5de4b235c7",
+    "assets/inventory_previews/130.png": "24e83ef693a484cb3c8d2e4e9d745c862b386f10",
+    "assets/inventory_previews/131.png": "bbeb5b5685a21eb542fc550d31052e9912253965",
+    "assets/inventory_previews/132.png": "2ef601cb276def0be4cf34fa3c059c960100b729",
+    "assets/inventory_previews/133.png": "433a55c6e7ae0d637175c0a2f6d67f6687894a40",
+    "assets/inventory_previews/134.png": "4fe50267299e80ff7cca3db2f281fb4844c04402",
+    "assets/inventory_previews/135.png": "f9c945d35583263fc3cbf6ac6bf15a5589382ec3",
+    "assets/inventory_previews/136.png": "7e764ad0ff77a952fdd83b7e8324c32954591b86",
+    "assets/inventory_previews/137.png": "f9b3a65a4af78a2c6223f05bbbf7523cd9ddb44d",
+    "assets/inventory_previews/138.png": "51fa9a936fc130a9b49ed9cfe39bc947869d8117",
+    "assets/inventory_previews/139.png": "5a2fe11fb43009dcf6a77c02a1a51675060e0f85",
+    "assets/inventory_previews/140.png": "7dc083a30e11dd7add5dbc63e82f269946b484b3",
+    "assets/inventory_previews/141.png": "a9aacf2af1b0e35709d988c33c08dd8239f8e354",
+    "assets/inventory_previews/142.png": "5be85dadc353a7e10360684ef187428ea05134cd",
+    "assets/inventory_previews/143.png": "3bc64af070ad24c421c19471e7cf1f38910e604e",
+    "assets/inventory_previews/144.png": "4ceff318e8c1b5aeb4abe4e30c57e9cfe0ffff78",
+    "assets/inventory_previews/145.png": "8e9e3c74a483c0012af570fc74b7c039e84fe30c",
+    "assets/inventory_previews/146.png": "2fead644dee38687ede73b4d99e343f56b42663e",
+    "assets/inventory_previews/147.png": "ecd60164176ad27ad3b6234465d92e49bcb16466",
+    "assets/inventory_previews/148.png": "33a1566a3594e596905397308ee9b77d1f5d2ba0",
+    "assets/inventory_previews/149.png": "059bce4319a1c366977b3e7d07f19db426712876",
+    "assets/inventory_previews/150.png": "c51b33ab946820e89e1d2afd3bd36af44e6e7b2e",
+    "assets/inventory_previews/151.png": "780f3427539fca699f5da72c15bb4212ecabcd75",
+    "assets/inventory_previews/152.png": "1559e1e86ecbf109a7ffd1428ecc0c0fbff46b42",
+    "assets/inventory_previews/153.png": "559f9be4671d9e1c0aa43c6c473d0c5fbf812482",
+    "assets/inventory_previews/154.png": "7c4141bd1a133b5ce0240f234b4dddfec24d7b42",
+    "assets/inventory_previews/155.png": "95dcdb11d08e988c5d2d6c30c039d0064abfe939",
+    "assets/inventory_previews/156.png": "b2c43beb8d113a995875391caa9407dd21a6f7ed",
+    "assets/inventory_previews/157.png": "ff9ed8727f3e8078a0a4650553f82edf054f90db",
+    "assets/inventory_previews/158.png": "d89dd729da11e84585874a3a5b222008605eb980",
+    "assets/inventory_previews/159.png": "a8cb33b082945fa1661a655066f1bbd4884176c4",
+    "assets/inventory_previews/160.png": "9515ce2628a79cbc719f92232324b619234718b3",
+    "assets/inventory_previews/161.png": "35d923669233203810ec405715b8da21abb632ed",
+    "assets/inventory_previews/162.png": "356836a2d0e8c6f413b4e289aa8b5565b0f293f9",
+    "assets/inventory_previews/163.png": "da0a52170723170db5272c425ec672f3581f3312",
+    "assets/inventory_previews/164.png": "b197ff864b35a887280a2b3eab46761c56a500f3",
+    "assets/inventory_previews/165.png": "499d56dc74acf3586dd373032af1a21bf1176c31",
+    "assets/inventory_previews/166.png": "1041ab87e7351e4df0ba6a68477cc348bb3beb38",
+    "assets/inventory_previews/167.png": "9a228fb544f59981a61f55c14101bc8bfe092da2",
+    "assets/inventory_previews/168.png": "2cc4825ad202e4b6a9a51505800f3feef9b1b718",
+    "assets/inventory_previews/169.png": "b144b8bbeef6b2367bbd7426e26455d32ef49c2b",
+    "assets/inventory_previews/170.png": "96f2f40640eb40b66c9e6372a8692d8840e52834",
+    "assets/inventory_previews/171.png": "24886ad845bcf27de32e0392d67fdc7ccf314f9f",
+    "assets/inventory_previews/172.png": "44ee321ed5536eea8aa3bfd05a1a7655bf3c2bdb",
+    "assets/inventory_previews/173.png": "2a39b46e0fee919bdcdcdd069f6314faba25528d",
+    "assets/inventory_previews/174.png": "91d2b7013438d6f9847ffab32966ae193631b188",
+    "assets/inventory_previews/175.png": "10faab427bac8247f10d5e0492f58d6775d09383",
+    "assets/inventory_previews/176.png": "47b59b9850b4bc1cbb1ea8521894e5c581864ead",
+    "assets/inventory_previews/177.png": "171e2ad31cbbb0fc02d88e8e8fa93d8ee3e7aa8a",
+    "assets/inventory_previews/178.png": "8b0de7459a3b938888f91b113d6c2a44564ac805",
+    "assets/inventory_previews/179.png": "59f2d6042e97cc1c5609cc885ae989532abba768",
+    "assets/inventory_previews/180.png": "e896998e64d5b3d95b34ae4c2a39ea4a3ce535ef",
+    "assets/inventory_previews/181.png": "cb70fb442baf8afaa16c3f36a8db421a3b6d78de",
+    "assets/inventory_previews/182.png": "c4eddd856c7f3ce199e876a4a26ffa235c250807",
+    "assets/inventory_previews/183.png": "3f7b393f4c2dc5c2f9fdf20fe7038190de0abba4",
+    "assets/inventory_previews/184.png": "e76217ec2953b3066e7d08546c6b8496f5eade82",
+    "assets/inventory_previews/185.png": "9416a3e1cd6f431e438fdb9247c85350b70108e5",
+    "assets/inventory_previews/186.png": "e3c15fe5b104f01580b3cd56f14d61c3cd0ee597",
+    "assets/inventory_previews/187.png": "a18bbde7c01720c43881f3d0ae41dad848ea6322",
+    "assets/inventory_previews/188.png": "c42c8f9e133684bdea7657a542ee45921e425a2d",
+    "assets/inventory_previews/189.png": "9da0f9a3ecbaee8406d167e8a0eff1177739282f",
+    "assets/inventory_previews/190.png": "59992b5b16337a85effceefba94588835118fc70",
+    "assets/inventory_previews/191.png": "cae7caad32cc180822f2be5ef5fc8231b630dfbe",
+    "assets/inventory_previews/192.png": "b121e9e0744c34d655f8541e99e54a1670b87acf",
+    "assets/inventory_previews/193.png": "57f1e2aa9f68ca40a695e7a251a9615e97d68204",
+    "assets/inventory_previews/194.png": "239e98d6d91bc7d365d4a894aa3ce3a3ada204d8",
+    "assets/inventory_previews/195.png": "4761a5f6c55da38a91b81faad6738758edf9e0d6",
+    "assets/inventory_previews/196.png": "f962c90ad5bb28039f2fadf81ed7119d7b65b606",
+    "assets/inventory_previews/197.png": "2ae8e0d2fed19acd31ffeff2dab3d4807b58d30b",
+    "assets/inventory_previews/198.png": "ee268c5163b82c0ab6f9284d874c96164a7c157b",
+    "assets/inventory_previews/199.png": "dad72650a96390e45eb682ae8dcf0dfbe3449550",
+    "assets/inventory_previews/200.png": "fa106ecc48e204fd132032340039a14445d2941a",
+    "assets/inventory_previews/201.png": "02c12e5a5e35e78d96d6bed6679396df5c10e6b6",
+    "assets/inventory_previews/202.png": "776988d05447ad80233816af3911c4af9a39b149",
+    "assets/inventory_previews/203.png": "6ffc64810a9550c713cea063be80fcccc8a5afc9",
+    "assets/inventory_previews/204.png": "b61e94a15297b5c20b1ff54f794dbb30efbf7de0",
+    "assets/inventory_previews/205.png": "7ba4ace1b5196efed0ecdf4972e2dc371935c140",
+    "assets/inventory_previews/206.png": "0770de842c32b818a3c1eaffad72dd1496356627",
+    "assets/inventory_previews/207.png": "783867041d5f473f1860ac0ee8d0aefc2377c4d8",
+    "assets/inventory_previews/208.png": "9e76d7fa2c8b7b92afabf6015c9c06b6cac2402d",
+    "assets/inventory_previews/209.png": "9d107677c44ff45ff774f3a615ca27b6e6929ac4",
+    "assets/inventory_previews/210.png": "d27f8e2f5d73a7ba22e8a8d7d5d950d58906ed73",
+    "assets/inventory_previews/211.png": "47dcdce122b0119a2b474153fb93ae9cc7125c6b",
+    "assets/inventory_previews/212.png": "960ed498981d622bcfa958e76c66ace38689e01d",
+    "assets/inventory_previews/213.png": "fa6895086aee0501064a31c32c194b2e261d1819",
+    "assets/inventory_previews/214.png": "f8f2006c78db8863d9e468936460898c9481dff7",
+    "assets/inventory_previews/215.png": "95881fa77d6cd54bac6847cb4f0dad068601a08f",
+    "assets/inventory_previews/216.png": "ebfb71564c338e687110829e835509fced586a9e",
+    "assets/inventory_previews/217.png": "c91b79070da0521afa34ff84514e2000f0f4e078",
+    "assets/inventory_previews/218.png": "fd6e868caaf1e89d95e010a2739ba0dd915b3650",
+    "assets/inventory_previews/219.png": "7d31e5ec8b37473ad84ab45d16bb63eb89d5052d",
+    "assets/inventory_previews/220.png": "f070aea30d5287ed271509b05144e2e0ab3326db",
+    "assets/inventory_previews/221.png": "5f5179abfbeb5304bcf892d92907bad0c7369d28",
+    "assets/inventory_previews/222.png": "13c60004dd4d573c8d3bd4b7e09e9560269dbd63",
+    "assets/inventory_previews/223.png": "2b211808a0ee7f1880e1a9d40d96a97e86023fee",
+    "assets/inventory_previews/224.png": "32216f02a54528a525f2718297a58679fedb9990",
+    "assets/inventory_previews/225.png": "a6d50938ac59d72f6270b7c5573a9b338a2220cd",
+    "assets/inventory_previews/226.png": "734bedb8918ad04d5384c80c8d90e1ff7288b5a9",
+    "assets/inventory_previews/227.png": "db138e9265fbbe779c10fadbf01a336ed08ee071",
+    "assets/inventory_previews/228.png": "60003c73fc0f1e4c7e5a5e5be33cd77d58ebf420",
+    "assets/inventory_previews/229.png": "e734467f3fbd066c1f1e2c78e5dfae306a3d8ad6",
+    "assets/inventory_previews/230.png": "9914125aa2aff1698faaae6f06bfaf65da04174c",
+    "assets/inventory_previews/231.png": "81c8a30b6891b4e596c4f4ba672d73fad5178500",
+    "assets/inventory_previews/232.png": "4620c469155019586986e7a3b4cd1adf20cb9543",
+    "assets/inventory_previews/233.png": "ad3b7643eb72120961ef0d094fcaf180497d2762",
+    "assets/inventory_previews/234.png": "ee23d7dd0e057c3927c7b76fce22e239663f81f1",
+    "assets/inventory_previews/235.png": "82e7d3a899812bc3d63c28bf00be72b1500899f4",
+    "assets/inventory_previews/236.png": "652c1753754d6d78923d91a802d0e44ea5243460",
+    "assets/inventory_previews/237.png": "cee40390d4b0450eda9ce9d1153d53c45eecc516",
+    "assets/inventory_previews/238.png": "c6268c77f0a3b11bbf928a8a4b2d4656133db1ad",
+    "assets/inventory_previews/239.png": "44b7f128d340b97e5e6d80b855adaf3364324bf8",
+    "assets/inventory_previews/240.png": "c50ff1a2aff09c01cc1ffeb07595d2630d31b245",
+    "assets/inventory_previews/241.png": "babbb338848ef4b274213e5a8c1f602277dc07d4",
+    "assets/inventory_previews/242.png": "6719bea86fae9ef7a87f877df0d67b2292525bc0",
+    "assets/inventory_previews/243.png": "2274d87ad1e81c1a1b46a25dcced3c8bb53c328f",
+    "assets/inventory_previews/244.png": "3549e01d81623aaa7bdbc69af1e9a51540d9dd63",
+    "assets/inventory_previews/245.png": "7a93295fd0f0d0847b8e6ec35b18fb8621814e11",
+    "assets/inventory_previews/246.png": "1eb6d309f309fbfe219e69646fd0a54cdf6031e1",
+    "assets/inventory_previews/247.png": "ca1a20f5954b541ec23a66d0ab498f3e26229ce1",
+    "assets/inventory_previews/248.png": "f64e7cb4b1fbff949d4e7df787d3b94f58b339f5",
+    "assets/inventory_previews/249.png": "21d55b49ddd736d1298a9150781d63d1e66d5d2e",
+    "assets/inventory_previews/250.png": "f2e70f2e39e0ca3071a61d8614d92873b2696832",
+    "assets/inventory_previews/251.png": "a2d42a6f4ab4c0c02eae3aec6c97fd0cfccb63c4",
+    "assets/inventory_previews/252.png": "18866b61d168dd3a89d27499999b08e7149e21da",
+    "assets/inventory_previews/253.png": "6fd03509bd3e74bb44dd3bf2dca02a1418d3e357",
+    "assets/inventory_previews/254.png": "f4cd8cd0b3c51f2cfa5ea2de57caa7f9452108b9",
+    "assets/inventory_previews/255.png": "a6f22123f92a71f1f0cf74d23027f978712fd3d0",
+    "assets/inventory_previews/256.png": "9467f28e77bf15f95fc6ec297d9c5ccd2df03144",
+    "assets/inventory_previews/257.png": "317c00e3aaa315a40ed1b35e17cfd8e1ee25890d",
+    "assets/inventory_previews/258.png": "be4163dc78b8304f5b1573e07146243317175cf9",
+    "assets/inventory_previews/259.png": "6019f5f3d6872297587def7f5a288e3ced626b92",
+    "assets/inventory_previews/260.png": "0fee5a5b0ffaafaaf37dbc01b630c153a42be16d",
+    "assets/inventory_previews/261.png": "5002724f8092be1549ed3914a7f87105a0bc6b1a",
+    "assets/inventory_previews/262.png": "d25a1576ad243c100046314d1574f26e583dc671",
+    "assets/inventory_previews/263.png": "8394ab98c41c5fe340f79395dda8721a92114411",
+    "assets/inventory_previews/264.png": "aea125c3c52e73e2939403153c6a3fe278f81b2b",
+    "assets/inventory_previews/265.png": "4a5e0e6a95a4f19f10840bad092929cbbe625a1d",
+    "assets/inventory_previews/266.png": "2e5b7d2bfaa2df1a3aae24e5dcf7d104d4d1c1be",
+    "assets/inventory_previews/267.png": "79367b8c05554057d7a9b31acfde678fdeb44dd0",
+    "assets/inventory_previews/268.png": "bc39394a87f0e82e2ced54c5ee1f540c361e2ccc",
+    "assets/inventory_previews/269.png": "9df81e20c13631e37b36b42a00a0daa526b87de8",
+    "assets/inventory_previews/270.png": "09d7e2e11a4cf0e7435ddf4b85d6e1e2ef90ecfb",
+    "assets/inventory_previews/271.png": "3ae9011c1d3328bc5b6a8ab4bd9c60b9a9a61907",
+    "assets/inventory_previews/272.png": "97b4b0cf4d6be7d159fe18b891508b3d1a7cca20",
+    "assets/inventory_previews/273.png": "9ec23c83595149c03d0c0c1901caefce2744f9af",
+    "assets/inventory_previews/274.png": "193c8b6eb3bfe5c8628a98ba337befd034b26799",
+    "assets/inventory_previews/275.png": "6ff5a3f50d274ae474302a0dea8b2afea7d48fe4",
+    "assets/inventory_previews/276.png": "90e132d340023b396c611a942f88c00da8c0dc64",
+    "assets/inventory_previews/277.png": "00347510e62492b12581086aaf26f10179108616",
+    "assets/inventory_previews/278.png": "1af13d3d79af30d4f64128a64964be523cc3ccbb",
+    "assets/inventory_previews/279.png": "cf8c69c8f8e9e85e41c1a0eaadb3649ce47d5db7",
+    "assets/inventory_previews/280.png": "5ae705a69ce4a242aa72dc3501c5a8bca160c47b",
+    "assets/inventory_previews/281.png": "e751095ec343421e4d48f62b55d5d9fc387580bf",
+    "assets/inventory_previews/282.png": "18853b61b871b66cd25143f94b04e7af8ad86ca5",
+    "assets/inventory_previews/283.png": "bfe91fddc713b0dabe0f321309e43294bf6f6572",
+    "assets/inventory_previews/284.png": "3a89027460ce1e54aa56e5fa5d97c2e089ad4a59",
+    "assets/inventory_previews/285.png": "97932bf3da06235fd819aa485f40b9968b225321",
+    "assets/inventory_previews/286.png": "4922f756d0da60f0791de9ebacd5c4b395b40b29",
+    "assets/inventory_previews/287.png": "56a34959b8c15f5f573eb9971e0d719fc4d6cb51",
+    "assets/inventory_previews/288.png": "5e6ef4888a3fa3fb6f218da17804becbf57ce022",
+    "assets/inventory_previews/289.png": "9b39b3f03c61fd9c15c2ff2bafb550653e13ceb1",
+    "assets/inventory_previews/290.png": "de03499e4db94beeae414f08437ffbf3aaf7528a",
+    "assets/inventory_previews/291.png": "ea74d51682a3996b211a0903952bdf4e28a3e6ce",
+    "assets/inventory_previews/292.png": "0bf6c6964b1769e99b6a941648e4c0fea90ec527",
+    "assets/inventory_previews/293.png": "d7c740c61e43da6d09f9c8a44d9ec4d1fc9a78ab",
+    "assets/inventory_previews/294.png": "3fdd6600230df113d727d34d3116d06bc11d6f31",
+    "assets/inventory_previews/295.png": "80bd07294dbb852d8ef873745f7585d3c273b26b",
+    "assets/inventory_previews/296.png": "6a6da7310c9aaeec055b4a850a01b1144ba41ca9",
+    "assets/inventory_previews/297.png": "e6b1fa806abfc1ed9542fee643f6e70cca096a3b",
+    "assets/inventory_previews/298.png": "920a7a406557787a72a12ed7ae7cf80d4afcbdbf",
+    "assets/inventory_previews/299.png": "4e52777d85bb1e3a81511e51930f95d1b32a6236",
+    "assets/inventory_previews/300.png": "91141ad961c82d8a87a3f3d224cc3821fd0432c6",
+    "assets/inventory_previews/301.png": "a20585c6dcae1e953ef6a1842fd9640dffbf59d3",
+    "assets/inventory_previews/302.png": "e4d8a3ee734c81cdf5512f73d9da9c670b2fd09a",
+    "assets/inventory_previews/303.png": "a82ae335ad0e5c74e0d6dbe7adf82d3f3f51400a",
+    "assets/inventory_previews/304.png": "35ca4eb1f4464d850edcf8c17da01090bbe92832",
+    "assets/inventory_previews/305.png": "176d5e08630bbc98413325b5d8d8574f5be43469",
+    "assets/inventory_previews/306.png": "106d3bfbcec68af9fe9723b38c9f388522beda0d",
+    "assets/inventory_previews/307.png": "6839602cb8c7541271b858b8ff248ff443c40619",
+    "assets/inventory_previews/308.png": "65afd0e7e120f8fb18de04299c3f0b1b8f9affcc",
+    "assets/inventory_previews/309.png": "7aa4393c74f26f6a2a4b24f5fc895ffc2786b35b",
+    "assets/inventory_previews/310.png": "eca0f552ef30322e37d9cd4433c359a4e6bfbffb",
+    "assets/inventory_previews/311.png": "bdeae11be047583ebbfbbfcaef9272793f7f6b3c",
+    "assets/inventory_previews/312.png": "1ba5e4caaab20abdad849489831ac24c33782af7",
+    "assets/inventory_previews/313.png": "e7fc5fea2bd1117e386ef0a357fe1e0146d7cd17",
+    "assets/inventory_previews/314.png": "e5e985875eea58bcd1d2faf83b8abe2dcd252271",
+    "assets/inventory_previews/315.png": "4faf6ba7d61a143f2a6a6c20ba9b982c64bb5939",
+    "assets/inventory_previews/316.png": "49575a05b45776f753374c3bc74d505b2c04363a",
+    "assets/inventory_previews/317.png": "028ab45fc5ea7413946ec15b923a61821cf504c4",
+    "assets/inventory_previews/318.png": "8f75ba20b264cf2fb83a4591de4fa3bf5c618249",
+    "assets/inventory_previews/319.png": "5f1b662fcccb676b15f9d63f17069655d9f0ad2f",
+    "assets/inventory_previews/320.png": "3738c2ee4f08ff67677faf6fc14fa9eba39a3d8a",
+    "assets/inventory_previews/321.png": "7d9f7cdcc1e94b26492e319a3ee3150e82e480f2",
+    "assets/inventory_previews/322.png": "291e4e7f6342b8c8a2f7a30670475ed15119d08b",
+    "assets/inventory_previews/323.png": "210f53e70d5a110afe2dc0ba2865dbdbf3b51a69",
+    "assets/inventory_previews/324.png": "151ea19de12157ae77d2669bafde00b020bdd0de",
+    "assets/inventory_previews/325.png": "fadbfc86e875110e06e9fef4e019e86cf6d4d3d8",
+    "assets/inventory_previews/326.png": "293f5f5d403416f6389b13ab9288821b00fb3d3d",
+    "assets/inventory_previews/327.png": "b743ccde677b4d78d5472e890030f970d31e9f09",
+    "assets/inventory_previews/328.png": "0d7c7153cdaf7b1e0b478ca7f4e6e606aab22dd5",
+    "assets/inventory_previews/329.png": "409015b8eaff262c00ca85def1ca1ad048179020",
+    "assets/inventory_previews/330.png": "cc7cbbb63f3b229689ec2e7bc96fe4b171314618",
+    "assets/inventory_previews/331.png": "2e0cb236a9671247f313adc36cb811803530931d",
+    "assets/inventory_previews/332.png": "9eccadcacf8c204d6974a9ad8403a35cc263fafe",
+    "assets/inventory_previews/333.png": "600a80604e321264f7231d189c47a09f69c16196",
+    "assets/inventory_previews/334.png": "d5fec8038479f63319b685afed73a4a4d92d2a9f",
+    "assets/inventory_previews/335.png": "6a482adef6d03308ac72d6a53d334ede6955ae4c",
+    "assets/inventory_previews/336.png": "1f76c06ab690aedd0da5adf6a8eebe058150075e",
+    "assets/inventory_previews/337.png": "1fd7290670c1f39d763d7fb21410cd351ed8ee1a",
+    "assets/inventory_previews/338.png": "66ac51c8f52fc42376f47bf0372ed9ad0f73759d",
+    "assets/inventory_previews/339.png": "db91f4889f846da60c30d50c597154cc6c4af8de",
+    "assets/inventory_previews/340.png": "4e3c7d96111d7aabb4594c7c0414a9f15ce70d30",
+    "assets/inventory_previews/341.png": "9e70bdcf43647484ce10039a55767cdd86d8333d",
+    "assets/inventory_previews/342.png": "9488d0d39eac24b1df962a10555fd72ac201d6c9",
+    "assets/inventory_previews/343.png": "e3451cfadc5ab3620fe6454dd23c639cb07a9d8e",
+    "assets/inventory_previews/344.png": "d82d6a0da346e4510548a3c9cd7cf8236c1aa2e9",
+    "assets/inventory_previews/345.png": "707db19c615cd376d7ff06d9e162c3797eb33eda",
+    "assets/inventory_previews/346.png": "843bcb48898a597c21913aec0df53175d32a6984",
+    "assets/inventory_previews/347.png": "31a0935f902c08ddc6a50acd8d4925fc1c61e7e3",
+    "assets/inventory_previews/348.png": "7798168ad1da5e41e70e967a2d456f20a9dd074b",
+    "assets/inventory_previews/349.png": "b361771464f15407e9b7197f62bedee55cafebe4",
+    "assets/inventory_previews/350.png": "c56c4e7628c5e71a9356216a93d4b4ce356214c2",
+    "assets/inventory_previews/351.png": "1553f44f424da9622c819c9795cc7d1e813970fe",
+    "assets/inventory_previews/352.png": "1f6b699a7f905f1f354d926c4f10fd03f4fedfad",
+    "assets/inventory_previews/353.png": "3832002783025a9ea61768fc96f5540fd7a61357",
+    "assets/inventory_previews/354.png": "464857dde183dd90511b7e0bbb3c3d7fd68ded2e",
+    "assets/inventory_previews/355.png": "2ba56b66056db3cf86e90c2c75d1671dbdfa6fb3",
+    "assets/inventory_previews/356.png": "31fdd2cfb2ce35907b3774f282ad8305d39f2cb9",
+    "assets/inventory_previews/357.png": "566ca54789a773b63ea92717853bbfe5ac961290",
+    "assets/inventory_previews/358.png": "f49f2026220575bf50988f47ac1e8a2d381940f4",
+    "assets/inventory_previews/359.png": "9b7d8aa30af92627e0a7d34b9d73595ca9453b34",
+    "assets/inventory_previews/360.png": "c9a329bee28700774d001d8b6b8198667c38bca6",
+    "assets/inventory_previews/361.png": "2b9c1b59210b8dc8050a87e1e51b5817647cc569",
+    "assets/inventory_previews/362.png": "610ad014de1e83bde750d513857ab900b06b78d7",
+    "assets/inventory_previews/363.png": "29352ce271b64a94ff4a1dade5bb0bd49d3d3d68",
+    "assets/inventory_previews/364.png": "40eeb68f185001e70b428ccd553ab6766fadc960",
+    "assets/inventory_previews/365.png": "d72ee0da052c67192535a3758d4a29c7d2a1509a",
+    "assets/item_icons.png": "daf0be9eac9cbf45996972e908bedb19a990fdd6",
+    "assets/item_icons.rgba": "088b848f54eb58879ab3b1cf162dae534ddc134c",
+    "assets/item_icons_creative.png": "85b52f782b03e44d594493633e6d08ca2c9fe682",
+    "assets/item_icons_creative.rgba": "ad9cb8e3f0e43b7c38c2115b0da738b5661bd7b2",
+    "assets/item_icons_expansion.png": "c7019339633f0ca41041f558f659f8fc339e0c78",
+    "assets/item_icons_expansion.rgba": "ef0dc04b3c9db1402049fdfd81b09315c8517ece",
+    "assets/item_icons_generated.png": "832be7fc503a5913220f7b315e07f7022b287342",
+    "assets/item_icons_v2.png": "daf0be9eac9cbf45996972e908bedb19a990fdd6",
+    "assets/mob_drop_icons_generated.png": "9b36c85e27d7d79c95295c08c7a2dc5ef1746bc2",
+    "assets/voxel_expansion_items_generated.png": "763baa272c1cf45ff10f7a96c430fde92044d4f0",
+    "include/Biome.h": "efdc5a81673f27629300ac21789e64c22215a2ef",
+    "include/BiomeBalance.h": "cbdcd27aee13b90a5ec53f68c3fc44b83c8bf8e8",
+    "include/BiomeContent.h": "3a40da8ec576ebb1789cc3afe2dfb5a7b2523b01",
+    "include/BiomeVegetation.h": "b8ee61f0193c687c4f22ee1c79db9d721efb1dd2",
+    "include/Block.h": "1065e77bea59260d0619b10b3cf85aaa032b2ac4",
+    "include/TerrainAesthetics.h": "4b7b64ce7897d01942fcde8fce01d735658aab42",
+    "include/TerrainChaos.h": "7825dc4486157652b2130acfbd3e9533cc2bd3c1",
+    "include/TerrainDensity.h": "954f7a101ff0f05e4e5ee3572340665d1b79a63a",
+    "include/TerrainExpansion.h": "2a8015963a04b333ca4e7df89aa0b01db39c9665",
+    "include/TerrainExploration.h": "1a03521edfef60ce71f943a7fa6a702a9a30e8b5",
+    "include/TerrainLod.h": "33751ff1cfbec08b32e4b20f947f995f26e6ee0e",
+    "include/TerrainOcclusion.h": "b8007b5ce9f340bc276ecf50f760a718c3d54411",
+    "include/TerrainVertex.h": "d110a27bb43f7fa922853fd7add98f7e162b46d7",
+    "sounds/background/Bundle up your dreams.ogg": "5bf1b1fae3e063b4c56e09a5fd0d7d5c06b8077d",
+    "sounds/background/Chronostasis.ogg": "29d1f8d0d1b26c8e8a846f6ab597374a95e17739",
+    "sounds/background/Distortion.ogg": "cc949e097be7d2a8076762c02d229a8213022188",
+    "sounds/background/Doppelganger.ogg": "fc28569765683f229ea9979b50a8c09403bb2f7a",
+    "sounds/background/Flashbacker.ogg": "d9a9b3e507c5882d63fdb67c4400ed214fa72039",
+    "sounds/background/Guitar, Loneliness and Blue Planet.ogg": "859dfa8208cb365c7f04bf39bf9356bcd8876a75",
+    "sounds/background/I cant sing a love song.ogg": "7d6239178b9e8f05e7ed1770b822e773a6c25965",
+    "sounds/background/If I could be a constellation.ogg": "ed0724504ce8aa1c4da7b860918c999882648575",
+    "sounds/background/Karakara.ogg": "4534f6e941a5ae15db3e49135191ca44f4435e8c",
+    "sounds/background/Me and the three primary colors.ogg": "ccc83df7e28f5723fce64be84004de9015bfbaee",
+    "sounds/background/Never forget.ogg": "31f79390948d14eddf9bab4763d0b68799a4af75",
+    "sounds/background/Now, Im going from underground.ogg": "1d847afc6d937f38de67821f4e22814ba011bf5b",
+    "sounds/background/Planet.ogg": "e7f31313b5e9180a4a29e66cbb583feb3c18f2b0",
+    "sounds/background/ReRe.ogg": "b54035696e00aec6cc1ac149a4b47f2a16f2022f",
+    "sounds/background/Rockn Roll, Morning Light Falls on You.ogg": "553d363f80433ce6810b8dee9c3bb626204b0b7d",
+    "sounds/background/Secret base.ogg": "d86f7f38f723180b728f693a1f0e2cba9303ef7a",
+    "sounds/background/Shine as usual.ogg": "d84b9527e204cfdde37cb7a53741ab7bcb6eb191",
+    "sounds/background/That band.ogg": "ac005b25edc3a8d03f599d5fbffdd97209fb73eb",
+    "sounds/background/The Little Sea.ogg": "575ca65396b71a70cc46264fe7cf403d51c1ed88",
+    "sounds/background/UNITE.ogg": "e1ab4a40fca4671b194c9eb4482a8ca270d3fb41",
+    "sounds/background/What is wrong with.ogg": "367ba1810b97b441f60cc3ba594987c7cbc03c01",
+    "sounds/background/hitoribocchi tokyo.ogg": "75e177c0f9586b3fd3507d3a53975d540a1bb376",
+    "sounds/background/milky way.ogg": "301ffabf2c6b8b95515d598eb4f9cede456057fc",
+    "sounds/background/seisyun complex.ogg": "a9ed920d01dff55e13dd8d81fa7ee3ce81cd4a69",
+    "sounds/boowomp.ogg": "a3e443d14021bc16616283cdcea0e39806ffa9a6",
+    "sounds/break.ogg": "8e565afc1e16ae9fed3c94bfd6fe4d7cf0a2715b",
+    "sounds/burp.ogg": "5ad3f57dfad010393dcf5bf13ff4dafdd601beed",
+    "sounds/chest/close.ogg": "e5d53a6c81059637ed795d665cda3022a485d2fd",
+    "sounds/chest/close2.ogg": "c3b30420c94bdd37b684d28aacc5b92d6ef89600",
+    "sounds/chest/close3.ogg": "7f6446bcd0e68840e5a23f8cf0e6736ed1e465b1",
+    "sounds/chest/open.ogg": "90146f654edd309e680a8eb15c824d30c82577d7",
+    "sounds/chicken/death1.ogg": "f757b10dd0efc0453c678a3f86d3405583b17670",
+    "sounds/chicken/hurt1.ogg": "29a0ecdd0599c90d12e645a998fa9bc10c2d076e",
+    "sounds/chicken/say1.ogg": "4ead71b905a3323133474d6535f85361e72d0bd0",
+    "sounds/chicken/step1.ogg": "779f59399c26b24b1a04c3bfca619d6a36853c87",
+    "sounds/click.ogg": "9afc483506c6eb48a45c6532997ca851dd9e0519",
+    "sounds/cow/hurt1.ogg": "a45f97a98ad10a01722335518835b1bdeee36114",
+    "sounds/cow/hurt2.ogg": "77dcd4a5538258be1ea8b745eafc548fd7958cfa",
+    "sounds/cow/hurt3.ogg": "465b6ae8cf58be6d320463cefd487e7fb9bc02fc",
+    "sounds/cow/say1.ogg": "4fdc93f83c352d88d2dfcd25cd7d727b2cad6dac",
+    "sounds/cow/say2.ogg": "bc6d9d270ade244e945f48fdaaacc5a248654a25",
+    "sounds/cow/say3.ogg": "692b579c03a4f5c69d549c84f39408e2bf4f107c",
+    "sounds/cow/say4.ogg": "e7c90786a426a9b365c266c97135c473c1c8fa21",
+    "sounds/cow/step1.ogg": "5490deb3fd4d150bd48c52b48f0440e6d2cad71a",
+    "sounds/cow/step2.ogg": "16dc7fdf00030255e49d2b9e31627e0939d1ee35",
+    "sounds/cow/step3.ogg": "becc7ba5327e13caadb21d6cb0c520693518b480",
+    "sounds/cow/step4.ogg": "d03bb1bba92b1113923e392c31d8c6922538cad7",
+    "sounds/damage/fallbig.ogg": "5a15d25bbe449b4c2db6c5f18d704604c0c5eff9",
+    "sounds/damage/fallsmall.ogg": "5fdca1abd1bbb10e29556890339fa3cf68f5edf2",
+    "sounds/damage/hit1.ogg": "1e0c1a1b49d2ecf2174c471e2e7914e0ec83a05e",
+    "sounds/damage/hit2.ogg": "02c3264b4de0fa070d1670514fa18003f843b6ef",
+    "sounds/damage/hit3.ogg": "5af45951de65d953ccca0dfb9d7c05c25cc21fe3",
+    "sounds/dig/grass1.ogg": "12f575110abad218ab5688899fdb29db5e5ec08c",
+    "sounds/dig/grass2.ogg": "05dff55c8fe2587119663e41c50d8b199ccf1465",
+    "sounds/dig/grass3.ogg": "e792b343e97865979e4286bba8e1184fd905f651",
+    "sounds/dig/grass4.ogg": "8421e6ae7f5baa5ae0b43a4a718c001222937e0a",
+    "sounds/dig/gravel1.ogg": "97ae71e0923f814e006b275606d26d28a8c047a2",
+    "sounds/dig/gravel2.ogg": "5133141161422bfdf3c12e71e1d32385a15c3254",
+    "sounds/dig/gravel3.ogg": "1b8debd795fe93955bbc8a0727029a1839c7df5f",
+    "sounds/dig/gravel4.ogg": "94a0c1cbe86bb36a87ba7114e60e60d37a3f9302",
+    "sounds/dig/sand1.ogg": "e9cb62d711997bbb140fb5bd82adb43f4d3e842d",
+    "sounds/dig/sand2.ogg": "ce2eeb09da9ebca55c2977682127bd3cf25fbf1b",
+    "sounds/dig/sand3.ogg": "c94fc1b10f2af3926aa526b9bccff0464bcec372",
+    "sounds/dig/sand4.ogg": "ae2d818d0f09f612ef22e9848acb65419976d5ae",
+    "sounds/dig/snow1.ogg": "f8d92e961357b5b150170015e1da5778f95a06bc",
+    "sounds/dig/snow2.ogg": "b75843de87c7b95114d81a1b4cd9d8c7549a80ba",
+    "sounds/dig/snow3.ogg": "b739c4d80050a1a6587aa06874e67748d31bbd45",
+    "sounds/dig/snow4.ogg": "6290af2473029c7596e8413962b34850298679fb",
+    "sounds/dig/stone1.ogg": "746d282e81c9fbcdfde0966a3123096ecf3c87ba",
+    "sounds/dig/stone2.ogg": "333c9704ece8e9482fd4097af66fe5c8596cba9a",
+    "sounds/dig/stone3.ogg": "f8b629fc3d782f588dc98ed562f2231425cb23ea",
+    "sounds/dig/stone4.ogg": "d705cf350e749642f45f3d035385c988d7dbed49",
+    "sounds/dig/wood1.ogg": "f9a474a38d5b67cc788e86b02c6d88cd69e9bce4",
+    "sounds/dig/wood2.ogg": "b55d49ba593ecee7396a9d1e6579657149da34f3",
+    "sounds/dig/wood3.ogg": "61922ae9a57b0abb1249056e9846caca00b0bd2e",
+    "sounds/dig/wood4.ogg": "f5a02c500713e72ef79f10493b9b07f3a11503f7",
+    "sounds/eat1.ogg": "1a568fa0e811ce32de2245ef39b4b666228ab896",
+    "sounds/eat2.ogg": "ccff5d9a6b0a6ad84f9814c6debc038ec5b866cc",
+    "sounds/eat3.ogg": "0aa6afc430de8c233042cedfd8f592dbce7a1a6b",
+    "sounds/explode/explode1.ogg": "12807721ca3eb7a85697c00885d78d238eefefb2",
+    "sounds/explode/explode2.ogg": "7d0b83ccd3cded4d4da751ca6cc4e1c75ba36406",
+    "sounds/explode/explode3.ogg": "3d061c4250b17b1f465b6d9e91487c9b8af19b89",
+    "sounds/explode/explode4.ogg": "ebebb0e5855ace16e1fd7e9b2eaa1e422ea96fb7",
+    "sounds/orb.ogg": "a38b2cc5b4033484464b53f489f9c2b1fc688428",
+    "sounds/pig/death.ogg": "959e98b338aa800813d532a0749e9de14dc5a716",
+    "sounds/pig/say1.ogg": "8516b3745705e3eab6c64de9e66a5fbefe44f6a0",
+    "sounds/pig/say2.ogg": "bf6740670a248e45f0e8d7510c921eba020ac4f2",
+    "sounds/pig/say3.ogg": "3f45533baa6f9a2e19d649324082bbc2687d4367",
+    "sounds/pig/step1.ogg": "545f24a92ae77e8800b9ee8f71ee49e41a986329",
+    "sounds/pig/step2.ogg": "047359f5fa612ca11d7a37520e332918f04fab60",
+    "sounds/pig/step3.ogg": "c61d8ee8809c193a3a31074ccb0e8f869ffdb9bd",
+    "sounds/pig/step4.ogg": "39b9efa847cf047eecbcc94ece3036341d160f12",
+    "sounds/pig/step5.ogg": "389490d823c247704d24aed700402a3f60742531",
+    "sounds/pop.ogg": "2890baf1ab1ef7127ab0ad65594ad428f47ba097",
+    "sounds/sheep/say1.ogg": "dbc3b4b08ae3799ff394d00a1115e532343a8e34",
+    "sounds/sheep/say2.ogg": "d592dd24903d15e3e8d9cf0119c2f05918354c76",
+    "sounds/sheep/say3.ogg": "2d333f309844b3900a603ed1fc44b2c2ab1c2298",
+    "sounds/sheep/step1.ogg": "179d081f7d6ee05dddd08d73336e6eba78754b31",
+    "sounds/sheep/step2.ogg": "bdf4fd0798beeafc9c637b99fac44143e75e1744",
+    "sounds/sheep/step3.ogg": "edb3df32cb7a84ed608de0127015c1a8fa356606",
+    "sounds/sheep/step4.ogg": "c9b2d2b50c50db2f3039bfdb2701e94c387e8993",
+    "sounds/sheep/step5.ogg": "ba22c18941a52b3bee76c8f9994179c17139ad37",
+    "sounds/splash.ogg": "8d91a239e1d3461b8d12e7c0714991423a70a720",
+    "sounds/weather/rain1.ogg": "61c1fc31093886a522134c699b5d30019d89e105",
+    "sounds/weather/rain2.ogg": "62de7f4f1ab481650961e8ac35afd8f4415ee7dd",
+    "sounds/weather/rain3.ogg": "e131dab417045388b445a904d6d8bd0770b59050",
+    "sounds/weather/rain4.ogg": "cb8cf15d3680bd40412b31b2c8c86b05d24cc956",
+    "sounds/weather/rain5.ogg": "e14fdaeb6c93af52eabe754a9c5cfeb11bc0cfbe",
+    "sounds/weather/rain6.ogg": "b2700298bbeff319b90cbfcb8619069f2f398487",
+    "sounds/weather/rain7.ogg": "895551955c337097cbc1eb847c8d7a5226c8881b",
+    "sounds/weather/rain8.ogg": "710b68d98502ffc1054ba2ca289e659d517c0013",
+    "sounds/weather/rainabove1.ogg": "61c1fc31093886a522134c699b5d30019d89e105",
+    "sounds/weather/rainabove2.ogg": "62de7f4f1ab481650961e8ac35afd8f4415ee7dd",
+    "sounds/weather/rainabove3.ogg": "e131dab417045388b445a904d6d8bd0770b59050",
+    "sounds/weather/rainabove4.ogg": "cb8cf15d3680bd40412b31b2c8c86b05d24cc956",
+    "sounds/weather/thunder1.ogg": "487b89e7d209a9bcee3d00f8d2f1d2420dce66c2",
+    "sounds/weather/thunder2.ogg": "aa7f962169b3e9b77da56f3e0954ec9b9a86b2d8",
+    "sounds/weather/thunder3.ogg": "c7887f64782d8ae894c370b638dbc452913f858d",
+    "sounds/wooden_door/close.ogg": "d1c30c9652b192df487b58942fa038c4477b9c5a",
+    "sounds/wooden_door/close2.ogg": "5fb4ce4bb18facfc077f11f15f2809992d24a803",
+    "sounds/wooden_door/close3.ogg": "36d2a3f077d5fc404144b8775a5b23911f2da1ae",
+    "sounds/wooden_door/close4.ogg": "707f7d9260f400d73bb3b6d042bceac8385cd0bb",
+    "sounds/wooden_door/close5.ogg": "7081aef3f36bc40ebb136fcc3b42eb63e63abf01",
+    "sounds/wooden_door/close6.ogg": "26242a430cfaf916fdb43c134158f33d119715c5",
+    "sounds/wooden_door/open.ogg": "04953c1a2af6535cb77f4a9332e9c5a0afc491fd",
+    "sounds/wooden_door/open2.ogg": "7984f0b5dcc5af6f48b7657b32eca593f3fe165c",
+    "sounds/wooden_door/open3.ogg": "ba3dd539abbfe0d75165acf8429e6fd0452948f2",
+    "sounds/wooden_door/open4.ogg": "a2e55dc5e5ad12fbf4e4ea123734df71a2fd2495",
+    "sprites/HitoriGotoh.png": "202e186ab991ac4c5f27dd83a067a8cf88dc8b84",
+    "sprites/KitaIkuyo.png": "8d90ad6fd5507a92f5d8ca317649485b47be0605",
+    "sprites/NijikaIjichi.png": "69f26f56e2f69b7aac5ee0cdc1d6ded1e2c18613",
+    "sprites/RyoYamada.png": "97884adfd08b82e97c4071581084b4075da8fde1",
+    "sprites/panorama/panorama.jpg": "f32db540d186f8570df700e54e61972cab553f5e",
+    "src/Biome.cpp": "0e5932cafc82cae9316aa702621aa8dc40ea1645",
+    "src/BiomeBalance.cpp": "41305790283874b75f3444f709003ff92a957100",
+    "src/BiomeVegetation.cpp": "a8d6856279116abf19c21fc4fa5fbe2fb833fc49",
+    "src/Farming.cpp": "30334b9ebf70918fbc91e8eadf3f14ea05c02fa1",
+    "src/GeographicDiversity.cpp": "3f64b5aa9069878c36f548d2771fa24a37f3c5a3",
+    "src/Navigation.cpp": "05c13b5aa40aaf7bc65a7a921ec358d64bd3686f",
+    "src/Player.cpp": "78b9753eb04ca69482f9b3b14ff2fc090adb8160",
+    "src/RegionalClimate.cpp": "e0723ecbde0798aa5d26ea2e52816a3b462b93b4",
+    "src/RiverNetwork.cpp": "08fec311d6c2bf4887ae94d37712b14a9bcc894b",
+    "src/RiverNetworkV22.cpp": "5ce521c5e28d3e4cd72167c31e36984f1ad4599b",
+    "src/TerrainAesthetics.cpp": "aa5e046f14f9627f544eb6cc10891620d838df1c",
+    "src/TerrainChaos.cpp": "8bc93da5ecd6340c8368658c96504ed7f7e77737",
+    "src/TerrainDensity.cpp": "139d0533ef68dfc2376d8155e7a13c2ac681989f",
+    "src/TerrainExpansion.cpp": "cbf95a35a379634a1b902ac8cd8fa9f5661902a7",
+    "src/TerrainExploration.cpp": "427a500df9e541b8b2ddff60a46e629b4e2bfda0",
+    "src/TerrainLod.cpp": "e40da366dc7918edd04a45c1f343f789a671bcd0",
+    "src/TerrainOcclusion.cpp": "639b3ad14aa3f7d0cd56c97a2a2172741319351a",
+    "src/TerrainValidation.cpp": "12a7eafffb5420e39740ede9913dcce5a9501c41",
+    "src/TerrainVertex.cpp": "1509a8577d02092668d152e402ffd060451a263f",
+    "src/Transportation.cpp": "dfde68ddbeb775deb6af94fa3b267ff96702c513",
+    "src/WorldAesthetics.cpp": "0b08ccfa487711868f58f3a91ae9f4a01ca64ec9",
+    "src/WorldDensity.cpp": "5046edfcf6fdbe99f840f65d7e418ff173dce0bb",
+    "src/WorldDiversity.cpp": "2de7a131f70f4a248c077a9460446435335b9315",
+    "src/WorldGeography.cpp": "c636c11a04eb1e8e7c2f42f3b82d841ab1d2a803"
+  },
+  "unchanged_source_regions": {
+    "src/Survival.cpp:bool billboardTerrainLoaded(": "bcb7746645c84b3bfd578c9602245ad23027b4e3a9dfa340512b0d83a757c4f4",
+    "src/Survival.cpp:glm::vec2 SurvivalWorld::chooseNavigationHeading(": "cdf6e691c3476aaf7a908cd6c6887a23c238663adb032ae59b8389600771fed5",
+    "src/Definitions.cpp:using Blocks =": "58b540276fb607928bcd3ddc1eac68fc4f3e3331f7352b0a37c8788c098bdc01",
+    "src/World.cpp:World::GeneratedChunk World::generateChunkData(": "dc8cf6d2c4580ac8c8ca74f3342d8f408ccce05128e7fc1dcf5f6ef9bc201a62",
+    "src/Survival.cpp:void SurvivalWorld::renderBillboards(std::vector<RenderBillboard>& out) const {": "644e899d92dc2e9a8453a590007e80e7486e6a87b1118a457101f204acbc215d"
+  },
+  "original_renderer_bodies_unchanged": true,
+  "historical_preview_entries_unchanged": 365
+}

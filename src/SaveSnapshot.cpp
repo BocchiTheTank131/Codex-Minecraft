@@ -34,7 +34,7 @@ template<class Edits,class Furnaces,class Chests,class Texts,class Drops,class A
 bool writeWorldData(const std::string& path,const glm::vec3& playerPosition,
     std::uint32_t seed_,unsigned generationVersion_,bool equipmentLoot_,int low,int high,
     const Edits& edits_,const Furnaces& furnaces_,const Chests& chests_,
-    const Texts& buildingTexts_,const Drops& buildingDrops_,const Adventure& adventure,AutomationWriter automationWrite) {
+    const Texts& buildingTexts_,const Drops& buildingDrops_,const Adventure& adventure,const Villages& villages,AutomationWriter automationWrite) {
 
     if(generationVersion_<24&&!adventure.puzzles().empty())return false;
     if(!SaveValidation::position(playerPosition) || buildingTexts_.size()>100000 || buildingDrops_.size()>100000)return false;
@@ -119,7 +119,7 @@ bool writeWorldData(const std::string& path,const glm::vec3& playerPosition,
     for(const auto& e:buildingTexts_){output.write(reinterpret_cast<const char*>(&e.first.x),4);output.write(reinterpret_cast<const char*>(&e.first.y),4);output.write(reinterpret_cast<const char*>(&e.first.z),4);auto len=std::uint16_t(e.second.text.size());output.write(reinterpret_cast<const char*>(&len),2);output.write(e.second.text.data(),len);}
     output.write("BDP1",4);const auto pendingCount=std::uint32_t(buildingDrops_.size());output.write(reinterpret_cast<const char*>(&pendingCount),4);
     for(const auto& drop:buildingDrops_){output.write(reinterpret_cast<const char*>(&drop.first.x),4);output.write(reinterpret_cast<const char*>(&drop.first.y),4);output.write(reinterpret_cast<const char*>(&drop.first.z),4);writeStack(drop.second);}
-    if(!automationWrite(output)||!adventure.write(output))return false;
+    if(!automationWrite(output)||!adventure.write(output)||!villages.write(output,seed_,generationVersion_))return false;
     return output.good();
     });
 
@@ -129,12 +129,13 @@ bool writeWorldData(const std::string& path,const glm::vec3& playerPosition,
 bool World::saveWorld(const std::string& path,const glm::vec3& playerPosition) const {
     if(!automation.valid())return false;
     return writeWorldData(path,playerPosition,seed_,generationVersion_,equipmentLoot_,minimumY(),maximumY(),
-        edits_,furnaces_,chests_,buildingTexts_,buildingDrops_,adventure,[&](std::ostream& out){return automation.write(out);});
+        edits_,furnaces_,chests_,buildingTexts_,buildingDrops_,adventure,villages,[&](std::ostream& out){return automation.write(out);});
 }
 
 std::function<bool()> World::captureSaveWorld(const std::string& path,const glm::vec3& playerPosition) const {
     struct Snapshot {
         Adventure adventure;
+        Villages villages;
         FlatEdits edits;
         std::vector<std::pair<BlockEntityPosition,FurnaceData>> furnaces;
         std::vector<std::pair<BlockEntityPosition,ChestData>> chests;
@@ -149,8 +150,9 @@ std::function<bool()> World::captureSaveWorld(const std::string& path,const glm:
         chests_.size()*sizeof(decltype(Snapshot::chests)::value_type)+buildingTexts_.size()*sizeof(decltype(Snapshot::texts)::value_type)+buildingDrops_.size()*sizeof(decltype(Snapshot::drops)::value_type);
     for(const auto& e:buildingTexts_)bytes+=e.second.text.size();
     SaveFile::reserveSnapshotBytes(bytes);
+    SaveFile::reserveSnapshotBytes(villages.people().size()*sizeof(VillageNpc)*2+villages.records().size()*sizeof(VillageRecord)*2+4096);
     SaveFile::reserveSnapshotBytes(adventure.discoveries().size()*sizeof(AdventureDiscovery)+adventure.puzzles().size()*64+4096);
-    auto data=std::make_shared<Snapshot>();data->adventure=adventure;data->edits.reserve(std::size_t(n));
+    auto data=std::make_shared<Snapshot>();data->adventure=adventure;data->villages=villages;data->edits.reserve(std::size_t(n));
     eachSavedEdit(edits_,[&](std::int32_t x,std::int32_t z,std::uint32_t i,Block b){data->edits.push_back({x,z,i,b});});
     data->furnaces.assign(furnaces_.begin(),furnaces_.end());data->chests.assign(chests_.begin(),chests_.end());
     data->texts.assign(buildingTexts_.begin(),buildingTexts_.end());data->drops=buildingDrops_;
@@ -159,7 +161,7 @@ std::function<bool()> World::captureSaveWorld(const std::string& path,const glm:
     const auto seed=seed_;const auto version=generationVersion_;const auto gear=equipmentLoot_;const int low=minimumY(),high=maximumY();
     return [frozen,path,playerPosition,seed,version,gear,low,high]{
         return writeWorldData(path,playerPosition,seed,version,gear,low,high,frozen->edits,frozen->furnaces,frozen->chests,
-            frozen->texts,frozen->drops,frozen->adventure,frozen->automation);
+            frozen->texts,frozen->drops,frozen->adventure,frozen->villages,frozen->automation);
     };
 }
 
@@ -181,7 +183,7 @@ std::function<bool()> SurvivalWorld::captureSave(const std::string& path,std::ui
     SaveFile::reserveSnapshotBytes(sizeof(SurvivalWorld)+animals_.size()*sizeof(Animal)+drops_.size()*sizeof(Drop)+spawnedStructureMarkers_.size()*32);
     auto copy=std::make_shared<SurvivalWorld>(seed_);
     copy->animals_.reserve(animals_.size());
-    for(const auto& a:animals_){Animal saved;saved.type=a.type;saved.relicEncounter=a.relicEncounter;saved.position=a.position;saved.health=a.health;
+    for(const auto& a:animals_){Animal saved;saved.type=a.type;saved.villagerId=a.villagerId;saved.relicEncounter=a.relicEncounter;saved.position=a.position;saved.health=a.health;
         saved.age=a.age;saved.deathTimer=a.deathTimer;saved.persistent=a.persistent;saved.sheared=a.sheared;
         saved.resourceTimer=a.resourceTimer;saved.woolTimer=a.woolTimer;saved.loveTimer=a.loveTimer;saved.breedingCooldown=a.breedingCooldown;
         copy->animals_.push_back(std::move(saved));}

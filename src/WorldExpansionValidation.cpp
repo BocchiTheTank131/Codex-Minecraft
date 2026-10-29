@@ -37,12 +37,13 @@ bool World::runExpansionAudit(const std::string& directory,std::string& report,c
         namespace fs=std::filesystem;fs::create_directories(directory);
         unsigned checks=0;
         const auto check=[&](bool ok,const char* label){++checks;if(!ok)throw std::runtime_error(label);};
-        if(mode=="freeze") {
+        if(mode=="freeze"||mode=="freeze24") {
+            const unsigned exportVersion=mode=="freeze24"?24:23;
             std::ofstream index(directory+"/chunks.csv"),stages(directory+"/stages.csv");
             index<<"seed,version,x,z,repeat,ms,hash,block_bytes\n";
             stages<<"seed,x,z,repeat,columns,plans,entrances,lattice,density,materials,vegetation,structures,shore,height_queries,height_hits\n";
             for(unsigned seed:{20260917U,123456789U,42U}) {
-                auto w=std::make_unique<World>(seed,23);
+                auto w=std::make_unique<World>(seed,exportVersion);
                 std::vector<glm::ivec2> coords;
                 for(int i=0;i<32;++i)coords.push_back({(i%8)*173-606,(i/8)*197-295});
                 for(int z=-2;z<=2;++z)for(int x=-2;x<=2;++x)coords.push_back({x,z});
@@ -52,11 +53,12 @@ bool World::runExpansionAudit(const std::string& directory,std::string& report,c
                     glm::ivec2(-3788,-3641),glm::ivec2(-768,-4032),glm::ivec2(-4032,-4032),
                     glm::ivec2(3264,-3648),glm::ivec2(1290,-690),glm::ivec2(-701,-1220)})
                     for(int z=-1;z<=1;++z)for(int x=-1;x<=1;++x)coords.push_back({floorDiv(p.x,16)+x,floorDiv(p.y,16)+z});
+                if(exportVersion==24){bool found=false;for(int radius=0;radius<=32&&!found;++radius)for(int rz=-radius;rz<=radius&&!found;++rz)for(int rx=-radius;rx<=radius&&!found;++rx){if(radius&&std::max(std::abs(rx),std::abs(rz))!=radius)continue;auto village=w->structures_.majorPlanForRegion(rx,rz,[&](int x,int z){return w->structureTerrainAt(x,z);});if(village.pieces.empty()||(village.kind!=StructureKind::PlainsVillage&&village.kind!=StructureKind::DesertVillage))continue;auto meeting=village.pieces.front();for(int z=-4;z<=4;++z)for(int x=-4;x<=4;++x)coords.push_back({floorDiv(meeting.x,16)+x,floorDiv(meeting.z,16)+z});found=true;}check(found,"Native village reference district");}
                 std::map<std::pair<int,int>,std::vector<Block>> expected;
                 for(int repeat=0;repeat<2;++repeat)for(auto c:coords) {
                     GenerationMetrics::Sample sample;GenerationMetrics::Capture capture(sample);
                     const auto start=Clock::now();auto data=w->generateChunkData(c.x,c.y);const auto elapsed=ms(start);
-                    index<<seed<<",23,"<<c.x<<','<<c.y<<','<<repeat<<','<<elapsed<<','<<blockHash(data.blocks)<<','<<data.blocks.size()*sizeof(Block)<<'\n';
+                    index<<seed<<','<<exportVersion<<','<<c.x<<','<<c.y<<','<<repeat<<','<<elapsed<<','<<blockHash(data.blocks)<<','<<data.blocks.size()*sizeof(Block)<<'\n';
                     stages<<seed<<','<<c.x<<','<<c.y<<','<<repeat;
                     for(auto t:sample.milliseconds)stages<<','<<t;
                     stages<<','<<sample.heightQueries<<','<<sample.heightHits<<'\n';

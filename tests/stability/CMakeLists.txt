@@ -7,7 +7,7 @@ set(BASE "${ROOT}/build/installed-release" CACHE PATH "Matching production Relea
 set(DEPENDENCIES "${BASE}" CACHE PATH "Shared dependency source tree")
 file(GLOB OBJECTS CONFIGURE_DEPENDS "${BASE}/VoxelFrontier.dir/Release/*.obj")
 list(FILTER OBJECTS EXCLUDE REGEX "/main.obj$")
-add_executable(StabilityDriver main.cpp adventure.cpp automation.cpp farming.cpp building.cpp icons.cpp qol.cpp generation.cpp engine.cpp FarmingBaseline.cpp ${OBJECTS})
+add_executable(StabilityDriver main.cpp village.cpp adventure.cpp automation.cpp farming.cpp building.cpp icons.cpp qol.cpp generation.cpp engine.cpp FarmingBaseline.cpp ${OBJECTS})
 target_include_directories(StabilityDriver PRIVATE "${ROOT}/include" "${DEPENDENCIES}/_deps/glm-src" "${DEPENDENCIES}/_deps/glfw-src/include" "${BASE}/_deps/glad-build/include")
 target_compile_definitions(StabilityDriver PRIVATE VOXEL_STANDALONE NOMINMAX)
 target_link_libraries(StabilityDriver PRIVATE "${BASE}/_deps/glfw-build/src/Release/glfw3.lib" "${BASE}/_deps/glad-build/Release/glad.lib" "${BASE}/_deps/glm-build/glm/Release/glm.lib" dbghelp opengl32 windowscodecs ole32 psapi shell32 user32 gdi32 winmm advapi32)

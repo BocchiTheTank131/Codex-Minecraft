@@ -10,6 +10,7 @@
 #include "SpriteManifest.h"
 
 #include "World.h"
+#include "VillageUi.h"
 #include "TerrainOcclusion.h"
 
 #include <glm/gtc/constants.hpp>
@@ -2847,7 +2848,7 @@ bool Renderer::validateTerrainPacking() const {return validateTerrainPackingGpu(
 unsigned Renderer::occlusionCulledCount() const {return occlusion_->diagnostics().culled;}
 unsigned Renderer::occlusionQueryCount() const {return occlusion_->diagnostics().queries;}
 
-void Renderer::renderAdventure(int width,int height,const Adventure& adventure,int category,int page) const {
+void Renderer::renderAdventure(int width,int height,const Adventure& adventure,int category,int page,const Villages* villages) const {
     thread_local std::vector<UiVertex> vertices;vertices.clear();
     const float panelWidth=std::min(680.f,float(width)-32),panelHeight=std::min(430.f,float(height)-32);
     const float x=(width-panelWidth)*.5f,y=(height-panelHeight)*.5f;
@@ -2857,6 +2858,7 @@ void Renderer::renderAdventure(int width,int height,const Adventure& adventure,i
     const char* categories[]={"DISCOVERIES","CHALLENGES","RELICS","ACHIEVEMENTS"};
     text(std::string(categories[category])+" / PAGE "+std::to_string(page+1),y+52,1.5f,{.65f,.9f,.92f,1});
     int row=0;for(const auto& line:adventure.journal(category,page))text(line,y+88+row++*22,1.12f);
+    if(villages&&category==1){unsigned completed=0,projects=0;for(const auto& e:villages->records()){completed+=e.second.completedRequests;projects+=(e.second.projects&1?1:0)+(e.second.projects&2?1:0);}text("VILLAGE REQUESTS "+std::to_string(completed)+" / PROJECTS "+std::to_string(projects)+" / TALK TO TRACK",y+panelHeight-52,1.0f,{.8f,.9f,.7f,1});}
     text("LEFT/RIGHT: CATEGORY  UP/DOWN: PAGE  ESC: CLOSE",y+panelHeight-28,1.1f,{.8f,.8f,.8f,1});
     drawMenuVertices(vertices.data(),vertices.size());
 }
@@ -2983,4 +2985,30 @@ void Renderer::renderQolFeedback(int width,int height,const std::string& hint,co
  if(!hint.empty()){const float scale=1.25f,w=std::min(float(width)-16,float(hint.size())*6*scale+16),x=(width-w)*.5f,y=height*.5f+36;addRect(v,x,y,w,24,{0,0,0,.65f},width,height);textGeometry_->appendRun(v,hint,x+8,y+8,scale,{.93f,.95f,.85f,1},width,height);}
  if(!save.empty()){const float w=std::min(float(width)-16,float(save.size())*6+16),x=pause?(width-w)*.5f:width-w-10,y=pause?height*.5f+244:height-18.f;addRect(v,x,y,w,18,{0,0,0,.72f},width,height);textGeometry_->appendRun(v,save,x+8,y+5,1,{.85f,.93f,.85f,1},width,height);}
  if(!v.empty())drawMenuVertices(v.data(),v.size());
+}
+
+void Renderer::renderVillage(int width,int height,const Villages& state,std::uint32_t id,int tab,int row,const std::string& message,const std::string& sneak)const{
+ auto n=state.npc(id);if(!n)return;auto town=state.village(n->village);VillageUiLayout l(width,height);
+ struct Cache{int width=-1,height=-1,tab=-1,row=-1;std::uint64_t state=0;std::string message,sneak;std::vector<UiVertex> vertices;};thread_local Cache cache;
+ std::uint64_t signature=1469598103934665603ULL;auto mix=[&](std::uint64_t value){signature=(signature^value)*1099511628211ULL;};
+ mix(id);mix(n->village);mix(unsigned(n->job));mix(n->routine);mix(n->variant);mix(n->dead);for(auto stock:n->stock)mix(stock);
+ if(town){mix(std::uint64_t(town->reputation));mix(town->supply);mix(town->projects);mix(town->completedRequests);for(auto f:town->funding)for(auto value:f)mix(value);for(auto q:town->requests){mix(q.kind);mix(q.status);mix(q.progress);}}
+ if(cache.width==width&&cache.height==height&&cache.tab==tab&&cache.row==row&&cache.state==signature&&cache.message==message&&cache.sneak==sneak){drawMenuVertices(cache.vertices.data(),cache.vertices.size());return;}
+ cache.width=width;cache.height=height;cache.tab=tab;cache.row=row;cache.state=signature;cache.message=message;cache.sneak=sneak;auto& v=cache.vertices;v.clear();
+ auto text=[&](std::string s,float x,float y,float scale,glm::vec4 color=glm::vec4(1)){scale=std::min(scale,(l.width-32)/std::max(1.f,float(s.size())*6));textGeometry_->appendRun(v,s,x,y,scale,color,width,height);};
+ addRect(v,l.x,l.y,l.width,l.height,{.06f,.09f,.11f,.98f},width,height);
+ text(std::string(Villages::profession(n->job))+" / "+(n->dead?"DECEASED":Villages::routineName(n->routine)),l.x+16,l.y+16,1.8f,{1,.85f,.45f,1});
+ text(town?std::string(Villages::reputationName(town->reputation))+"  REPUTATION "+std::to_string(town->reputation)+" / SUPPLIES "+std::to_string(town->supply):"INDEPENDENT TRAVELER / FINITE STOCK",l.x+16,l.y+42,1.2f);
+ const char* tabs[]={"TRADE","REQUESTS","PROJECTS","VILLAGE"};for(int i=0;i<4;++i){float x=l.x+16+i*(l.width-32)/4;addRect(v,x,l.y+68,(l.width-32)/4-3,28,i==tab?glm::vec4(.24f,.38f,.26f,1):glm::vec4(.15f,.18f,.22f,1),width,height);text(tabs[i],x+8,l.y+76,1.25f);}
+ auto lines=state.lines(id,tab);const bool list=tab==0||town;int count=tab==0?5:!town?int(lines.size()):tab==1?3:tab==2?2:int(lines.size());
+ for(int i=0;i<count;++i){float y=l.y+108+i*l.rowHeight;if(tab==3)y=l.y+108+i*std::min(26.f,(l.height-200)/std::max(1,count));
+  if(tab!=3)addRect(v,l.x+16,y,l.width-32,l.rowHeight-4,i==row?glm::vec4(.25f,.31f,.35f,1):glm::vec4(.12f,.15f,.17f,1),width,height);
+  if(tab==0){auto offer=state.pricedOffer(id,i);float size=std::min(40.f,l.rowHeight-6);addSprite(v,offer.input,l.x+20,y+1,size,size,{1,1,1,1},width,height);addSprite(v,offer.output,l.x+l.width-62,y+1,size,size,{1,1,1,1},width,height);
+   text(lines[i],l.x+22+size,y+10,std::min(1.15f,(l.width-150)/std::max(1.f,float(lines[i].size())*6)));}
+  else if(list&&(tab==1||tab==2)){text(lines[i*2],l.x+24,y+3,1.15f);text(lines[i*2+1],l.x+24,y+l.rowHeight*.5f,1.0f,{.75f,.85f,.9f,1});}
+  else text(lines[i],l.x+18,y,1.12f);
+ }
+ text(message,l.x+16,l.y+l.height-69,1.15f,{1,.83f,.55f,1});
+ text(tab==3?"Village information / trading and objectives are on the other tabs":tab==2?"ENTER: CONTRIBUTE / "+sneak+" + ENTER: BUILD / BACKSPACE: REFUND":tab==1?"ENTER: ACCEPT / CLAIM  BACKSPACE: ABANDON  R: ROTATE":"ENTER: TRADE / CLICK SELECTED OFFER",l.x+16,l.y+l.height-44,1.05f);
+ text("LEFT/RIGHT/TAB: CATEGORY   UP/DOWN: SELECT   ESC: CLOSE",l.x+16,l.y+l.height-24,1.0f,{.75f,.8f,.8f,1});drawMenuVertices(v.data(),v.size());
 }

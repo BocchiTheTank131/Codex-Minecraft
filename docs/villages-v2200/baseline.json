@@ -1,0 +1,26 @@
+{
+  "commit": "656763c9974b670374e7044cd65d57a9c04d91cd",
+  "status": "?? .codex-remote-attachments/\n?? .idea/\n?? tools/__pycache__/\n",
+  "files": {
+    "build/installed-release/Release/VoxelFrontier.exe": {
+      "sha256": "75a6dc66385fecc921950dfab809f4caa76fa099ca225072883c55c3841a5f4c",
+      "bytes": 77637120
+    },
+    "dist/VoxelFrontier-v2.19.0-Windows-Standalone.exe": {
+      "sha256": "8f547e149680c9ddcf4909b460a0ee2b7b6eb753460c852cf1aacb7ff9ba852b",
+      "bytes": 77358592
+    },
+    "build/v2190-validation/driver/Release/StabilityDriver.exe": {
+      "sha256": "00e169253e4d19525e0eeb15eb729c1f4f793521d301d75e5fc5c9109e670e71",
+      "bytes": 78264320
+    },
+    "tests/fixtures/v23-exact-v2180.zip": {
+      "sha256": "68d1c5f9811581a2d791cd1948a1b793d2a5d3a029f9dd7913afe39073bb74d9",
+      "bytes": 1497771
+    },
+    "assets/inventory_previews.json": {
+      "sha256": "1514cb011d521ee9333e919ee76b669ca6d7488da7e46a85cbba72561196b947",
+      "bytes": 141007
+    }
+  }
+}

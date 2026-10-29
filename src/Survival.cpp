@@ -23,6 +23,7 @@
 #include <limits>
 #include <random>
 #include <sstream>
+#include <set>
 #include <thread>
 
 namespace {
@@ -1811,6 +1812,7 @@ void SurvivalWorld::spawnExperience(const glm::vec3& p, int amount) {
 void SurvivalWorld::spawnStructureMob(const glm::ivec3& position, bool hostile) {
     const std::uint64_t id = structureMobMarkerId(
         position.x, position.y, position.z, hostile);
+    if(animals_.size()>=SaveValidation::MaxMobs||spawnedStructureMarkers_.size()>=SaveValidation::MaxMarkers)return;
     if (!spawnedStructureMarkers_.insert(id).second)
         return;
     Animal animal;
@@ -2047,6 +2049,7 @@ SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& a
     Animal& a = animals_[index];
     if (a.deathTimer > 0 || a.hurtCooldown > 0)
         return r;
+    if(a.type==AnimalType::Villager&&recoveryWorld&&!a.villagerId&&recoveryWorld->hasLoadedChunkAt(int(std::floor(a.position.x)),int(std::floor(a.position.z))))a.villagerId=recoveryWorld->villages.bind(*recoveryWorld,a.home);
     r.hit = true;
     r.critical = critical;
     r.damage = attackDamage(held) * (critical ? 1.5f : 1.f);
@@ -2077,10 +2080,12 @@ SurvivalWorld::attackMob(int index, Item held, bool critical, const glm::vec3& a
         if (a.health <= 0.0f) sounds_->playMobDeath(type, a.position);
         else sounds_->playMobHurt(type, a.position);
     }
+    if(a.type==AnimalType::Villager&&recoveryWorld)recoveryWorld->villages.attacked(a.villagerId,false);
     if (a.health <= 0) {
         if(!releaseDrops(a,recoveryWorld)){a.health=1;return r;}
         a.deathTimer = .65f;
         r.killed = true;
+        if(recoveryWorld){if(a.type==AnimalType::Villager)recoveryWorld->villages.attacked(a.villagerId,true);else if(isBillboard(a.type)||a.type==AnimalType::Pillager)recoveryWorld->villages.assistance(a.position);}
         spawnExperience(a.position, 4);
     }
     return r;
@@ -2302,6 +2307,7 @@ bool SurvivalWorld::canNavigateTo(const Animal& animal, const World& world,
                                    const glm::vec2& direction) const {
     if (glm::dot(direction, direction) < 0.001f)
         return true;
+    if(animal.type==AnimalType::Villager){float surface=0;return villageFooting(world,{animal.position.x+direction.x*.35f,animal.position.z+direction.y*.35f},animal.position.y,-1.05f,1.02f,surface)||villageFooting(world,{animal.position.x+direction.x*.95f,animal.position.z+direction.y*.95f},animal.position.y,-1.05f,1.02f,surface);}
     const glm::vec2 target(animal.position.x + direction.x * 1.2f,
                            animal.position.z + direction.y * 1.2f);
     const int x = static_cast<int>(std::floor(target.x));
@@ -2431,9 +2437,12 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         glm::vec2 desired(0.0f);
         bool active = false;
         if (a.type == AnimalType::Villager) {
+            if(!a.villagerId)a.villagerId=w.villages.bind(w,a.home);
+            if(auto n=w.villages.npc(a.villagerId))a.home=glm::vec3(n->home)+glm::vec3(.5f,.01f,.5f);
+            w.villages.destination(a.villagerId,w.villageTime,false,a.fleeTimer>0);
             for (const Animal& nearby : animals_) {
                 if ((!isBillboard(nearby.type) &&
-                     nearby.type != AnimalType::Pillager) || nearby.deathTimer > 0.0f)
+                     nearby.type != AnimalType::Pillager) || nearby.deathTimer > 0.0f || nearby.health<=0 || std::abs(nearby.position.y-a.position.y)>4)
                     continue;
                 const glm::vec2 threat(nearby.position.x - a.position.x,
                                        nearby.position.z - a.position.z);
@@ -2450,6 +2459,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
                 definition->behavior == BillboardBehavior::MeleeChase ? 4.0f : 3.0f;
         }
         if (a.fleeTimer > 0.0f) {
+            if(a.type==AnimalType::Villager)w.villages.destination(a.villagerId,w.villageTime,false,true);
             desired = glm::vec2(a.position.x - a.rememberedTarget.x,
                                 a.position.z - a.rememberedTarget.z);
             active = true;
@@ -2464,6 +2474,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
             active = true;
         } else if (a.type == AnimalType::Villager && weather_ && weather_->intensity()>.4f &&
                    Weather::precipitation(w,static_cast<int>(std::floor(a.position.x)),static_cast<int>(std::floor(a.position.z)))!=Precipitation::None) {
+            w.villages.destination(a.villagerId,w.villageTime,true,false);
             desired=glm::vec2(0); active=false;
             if(Weather::exposed(w,a.position+glm::vec3(0,1.5f,0))) {
                 // Search only at the existing think cadence and while exposed.
@@ -2478,6 +2489,19 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
                     }
                 }
                 desired={shelter.x-a.position.x,shelter.z-a.position.z}; active=true;
+            }
+        } else if(a.type==AnimalType::Villager&&a.villagerId){
+            const auto target=w.villages.destination(a.villagerId,w.villageTime,false,false);
+            desired=glm::vec2(target.x-a.position.x,target.z-a.position.z);active=glm::dot(desired,desired)>1.5f;
+            if(active)desired=villageHeading(a,w,target);
+            if(talkingVillager==a.villagerId){desired={0,0};active=false;}
+            // A brief glance at a nearby peer during the evening gathering.
+            // This bounded search runs on the existing think cadence only.
+            if(!active&&w.villageTime>=480&&w.villageTime<700&&talkingVillager!=a.villagerId){
+                unsigned examined=0;for(const auto& peer:animals_){if(++examined>32)break;
+                    if(&peer==&a||peer.type!=AnimalType::Villager||peer.health<=0||peer.deathTimer>0)continue;
+                    if(glm::distance(peer.position,a.position)<4){a.rememberedTarget=peer.position;a.memoryTimer=2;break;}
+                }
             }
         } else if (!hostile && preferredFood && visible) {
             desired = glm::vec2(delta.x, delta.z);
@@ -2521,6 +2545,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         }
         a.thinkTimer = hostile && a.memoryTimer > 0.0f ? 0.28f
                      : active ? 0.65f : 1.8f;
+        if(a.type==AnimalType::Villager)a.thinkTimer+=float(a.villagerId%17)*.017f;
     }
     if (hostile && silentExploder) {
         if (distance < 3.0f && canSeePlayer(a, w, player, 4.0f))
@@ -2636,7 +2661,8 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
             a.stepJumpCooldown = .7f;
         }
     }
-    if (billboard) {
+    if(a.type==AnimalType::Villager)moveVillager(a,w,navigationBlocked?glm::vec3(0):move,dt,next);
+    else if (billboard) {
         next = a.position;
         glm::vec3 allowedMove = move;
         if (navigationBlocked) {
@@ -2665,6 +2691,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
             a.grounded = false;
         }
     }
+    if(a.type==AnimalType::Villager&&a.grounded&&((navigationBlocked)||(glm::length(glm::vec2(next.x-a.position.x,next.z-a.position.z))<.0001f&&glm::dot(move,move)>.01f))){a.heading={0,0};a.thinkTimer=1.5f;}
     a.position = next;
     const float halfWidth = billboard ? BillboardMobHalfWidth : .38f;
     const glm::vec3 mobMinimum = a.position + glm::vec3(-halfWidth, 0.0f, -halfWidth);
@@ -2703,6 +2730,7 @@ void SurvivalWorld::update(float dt, World& w, Player& p, Inventory& i, float da
         if (!p.isSpectator())
             spawnNearbyAnimals(w, p.position(), day);
     }
+    villageNavigationBudget_=2;villageNodesLastTick_=villageQueriesLastTick_=0;
     navigationQueriesLastTick_ = 0;
     const auto aiStart = std::chrono::steady_clock::now();
     const glm::vec3 playerPosition = p.position();
@@ -2719,10 +2747,13 @@ void SurvivalWorld::update(float dt, World& w, Player& p, Inventory& i, float da
     for (auto& a : animals_) {
         if (!w.simulationActiveAt(a.position.x, a.position.z))
             continue;
+        if(a.type==AnimalType::Villager&&!w.hasLoadedChunkAt(int(std::floor(a.position.x)),int(std::floor(a.position.z))))continue;
+        if(a.type==AnimalType::Villager&&a.health>0&&a.deathTimer<=0&&!a.villagerId)a.villagerId=w.villages.bind(w,a.home);
         a.simulationAccumulator += dt;
         const float interval = intervalFor(a.position, 24.0f);
         if (a.simulationAccumulator >= interval) {
             updateAnimal(a, a.simulationAccumulator, w, p, i, day);
+            if(a.villagerId&&a.health<=0)if(auto n=w.villages.npc(a.villagerId))n->dead=true;
             a.simulationAccumulator = 0.0f;
         }
     }
@@ -2877,7 +2908,9 @@ void SurvivalWorld::renderCuboids(std::vector<RenderCuboid>& out,const glm::vec3
         float scale = baby * death;
         out.push_back(
             {a.position + glm::vec3(0, .55f * scale, 0), glm::vec3(1, .85f, .55f) * scale, c});
-        out.push_back({a.position + glm::vec3(a.heading.x * .42f, .75f * scale, a.heading.y * .42f),
+        glm::vec2 facing=a.heading;
+        if(a.type==AnimalType::Villager&&a.memoryTimer>0&&a.fleeTimer<=0&&glm::dot(facing,facing)<.01f){auto d=glm::vec2(a.rememberedTarget.x-a.position.x,a.rememberedTarget.z-a.position.z);if(glm::dot(d,d)>.01f)facing=glm::normalize(d);}
+        out.push_back({a.position + glm::vec3(facing.x * .42f, .75f * scale, facing.y * .42f),
                        glm::vec3(.55f) * scale,
                        c * 1.08f});
         for (int j = 0; j < 4; ++j)
@@ -2928,6 +2961,7 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     for(const auto& a:animals_)if(a.deathTimer<=0 && (!SaveValidation::position(a.position) || !std::isfinite(a.health) || a.health<=0 || a.health>20 || !std::isfinite(a.age) || a.age < -1000000 || a.age>1000000000 || int(a.type)<0 || int(a.type)==3 || (int(a.type)>=6+BillboardMobCount && a.type!=AnimalType::Chicken)))return false;
     for(const auto& a:animals_)if(a.deathTimer<=0 && (!std::isfinite(a.resourceTimer)||a.resourceTimer<0||a.resourceTimer>600||!std::isfinite(a.woolTimer)||a.woolTimer<0||a.woolTimer>180||!std::isfinite(a.loveTimer)||a.loveTimer<0||a.loveTimer>30||!std::isfinite(a.breedingCooldown)||a.breedingCooldown<0||a.breedingCooldown>300))return false;
     for(const auto& a:animals_)if(a.deathTimer<=0&&a.relicEncounter&&(!validRelicEncounterTag(a.relicEncounter)||a.type!=AnimalType::Pillager||!a.persistent))return false;
+    {std::set<std::uint32_t> ids;for(const auto& a:animals_)if(a.deathTimer<=0&&a.villagerId&&(a.type!=AnimalType::Villager||a.villagerId>8192||!ids.insert(a.villagerId).second))return false;}
     for(const auto& d:drops_)if(!SaveValidation::position(d.position) || !SaveValidation::velocity(d.velocity) || !SaveValidation::stack(d.stack) || !std::isfinite(d.age) || d.age<0 || !std::isfinite(d.pickupDelay) || d.pickupDelay<0)return false;
     return SaveFile::write(p, std::ios::binary, [&](std::ofstream& f) {
     f.write(MobMagic, 8);
@@ -2978,6 +3012,9 @@ bool SurvivalWorld::save(const std::string& p, std::uint32_t seed) const {
     for(const auto& a:animals_)if(a.deathTimer<=0){wr(f,std::uint8_t(a.sheared));wr(f,a.resourceTimer);wr(f,a.woolTimer);wr(f,a.loveTimer);wr(f,a.breedingCooldown);}
     if(std::any_of(animals_.begin(),animals_.end(),[](const Animal& a){return a.deathTimer<=0&&a.relicEncounter;})){
         f.write("ENC1",4);wr(f,n);for(const auto& a:animals_)if(a.deathTimer<=0)wr(f,a.relicEncounter);
+    }
+    if(std::any_of(animals_.begin(),animals_.end(),[](const Animal& a){return a.deathTimer<=0&&a.villagerId;})){
+        f.write("VIN1",4);wr(f,n);for(const auto& a:animals_)if(a.deathTimer<=0)wr(f,a.villagerId);
     }
     return !!f;
     });
@@ -3101,13 +3138,17 @@ bool SurvivalWorld::load(const std::string& p, std::uint32_t seed) {
             if(index<recordIndices.size() && recordIndices[index]==k) {auto& a=loaded[index++];a.sheared=sheared;a.resourceTimer=resource;a.woolTimer=wool;a.loveTimer=love;a.breedingCooldown=breed;}
         }
     }
-    if(f.peek()!=std::char_traits<char>::eof()){
+    if(f.peek()!=std::char_traits<char>::eof()&&([&]{auto p=f.tellg();char tag[4]{};f.read(tag,4);const bool match=f&&std::memcmp(tag,"ENC1",4)==0;f.clear();f.seekg(p);return match;})()){
         char tag[4];std::uint32_t count=0;f.read(tag,4);if(!f||std::memcmp(tag,"ENC1",4)||!rd(f,count)||count!=n)return false;
         std::size_t index=0;for(unsigned k=0;k<n;++k){std::uint64_t id=0;if(!rd(f,id))return false;if(index<recordIndices.size()&&recordIndices[index]==k){auto& a=loaded[index++];if(id&&(!validRelicEncounterTag(id)||a.type!=AnimalType::Pillager||!a.persistent))return false;a.relicEncounter=id;}}
     }
+    if(f.peek()!=std::char_traits<char>::eof()){
+        char tag[4]{};std::uint32_t count=0;if(!f.read(tag,4)||std::memcmp(tag,"VIN1",4)||!rd(f,count)||count!=n)return false;
+        std::set<std::uint32_t> ids;std::size_t index=0;for(unsigned k=0;k<n;++k){std::uint32_t id=0;if(!rd(f,id)||id>8192||(id&&!ids.insert(id).second))return false;if(index<recordIndices.size()&&recordIndices[index]==k){auto& a=loaded[index++];if(id&&a.type!=AnimalType::Villager)return false;a.villagerId=id;}else if(id)return false;}
+    }
     if(f.peek()!=std::char_traits<char>::eof())return false;
     drops_=std::move(loadedDrops);
-    animals_ = std::move(loaded);
+    animals_ = std::move(loaded);villagerIndex_.clear();
     arrows_.clear();
     explosionEffects_.clear();
     spawnedChunks_ = std::move(loadedSpawnedChunks);

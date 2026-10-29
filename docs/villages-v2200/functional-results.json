@@ -1,0 +1,77 @@
+[
+  {
+    "name": "village-tests",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "adventure-tests",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "adventure-review",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "subsystems",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "game",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "checkpoint",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "engine-tests",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "engine-stream-stress",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "automation",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "automation-stabilization",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "building",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "creative-ui",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "qol",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "farming",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  },
+  {
+    "name": "legacy-building",
+    "exit": 0,
+    "exe_sha256": "c26b339027e1f95b61cd4570e37a0a6cf9193b25905af7ac9ac081f667dd01eb"
+  }
+]

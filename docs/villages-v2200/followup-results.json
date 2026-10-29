@@ -1,0 +1,22 @@
+[
+  {
+    "name": "game",
+    "exit": 0
+  },
+  {
+    "name": "checkpoint",
+    "exit": 0
+  },
+  {
+    "name": "engine-stream-stress",
+    "exit": 0
+  },
+  {
+    "name": "full-survival",
+    "exit": 0
+  },
+  {
+    "name": "demo-survival",
+    "exit": 0
+  }
+]

@@ -3,6 +3,7 @@
 #include "Block.h"
 #include "GeneratorVersion.h"
 #include "Adventure.h"
+#include "Villages.h"
 #include "CompactBlocks.h"
 #include "Building.h"
 #include "Automation.h"
@@ -236,6 +237,7 @@ public:
 
 class World {
     friend class AdventureTest;
+    friend class VillageTest;
     friend class EngineOptimizationTest;
     friend class Automation;
     friend class AutomationTest;
@@ -333,6 +335,10 @@ public:
                                            int worldY = SEA_LEVEL,
                                            bool detailed = false) const;
     Adventure adventure;
+    bool villageSiteUnmodified(glm::ivec3) const;
+    Villages villages;
+    float villageTime=100.f;
+    std::shared_ptr<const StructurePlan> cachedVillageNear(glm::ivec3) const;
     std::shared_ptr<const UndergroundPlan> cachedUndergroundPlan(int rx,int rz) const;
     std::vector<AdventureDiscovery> nearbyAdventureSites(glm::vec3,float) const;
     int generationVersion() const { return generationVersion_; }

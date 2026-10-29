@@ -117,6 +117,7 @@ bool canPlaceStructure(const StructureBox& footprint, int maximumSlope,
                        const std::function<StructureTerrain(int, int)>& terrain);
 
 class StructureGenerator {
+    friend class VillageTest;
 public:
     explicit StructureGenerator(std::uint32_t seed) : seed_(seed) {}
     void setGenerationVersion(unsigned version);
@@ -125,6 +126,7 @@ public:
     std::vector<StructurePlan> plansForChunk(
         int chunkX, int chunkZ,
         const std::function<StructureTerrain(int, int)>& terrain) const;
+    std::shared_ptr<const StructurePlan> peekMajorPlan(int regionX,int regionZ) const;
     StructurePlan majorPlanForRegion(
         int regionX, int regionZ,
         const std::function<StructureTerrain(int, int)>& terrain) const;

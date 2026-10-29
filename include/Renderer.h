@@ -18,6 +18,7 @@
 #include <vector>
 
 class Adventure;
+class Villages;
 class World;
 class Transportation;
 class Player;
@@ -70,7 +71,8 @@ public:
     void renderBuildingOverlay(int width,int height,const World&,const Player&,const glm::mat4& view,const glm::mat4& projection,bool editor,const std::string& draft,const glm::ivec3& target,const SignEditor* editing=nullptr) const;
     void renderPlacementPreview(const PlacementPlan&,const glm::mat4& view,const glm::mat4& projection)const;
     void renderQolFeedback(int width,int height,const std::string& hint,const std::string& save,bool pause)const;
-    void renderAdventure(int,int,const Adventure&,int,int) const;
+    void renderVillage(int,int,const Villages&,std::uint32_t,int,int,const std::string&,const std::string&) const;
+    void renderAdventure(int,int,const Adventure&,int,int,const Villages* villages=nullptr) const;
     void renderNavigation(int,int,const Transportation&,const Player&,const Inventory&,bool,bool,std::uint32_t,const std::string&,const std::string&,bool,const std::string&) const;
     void renderChat(int width, int height, const ChatUI& chat, double now) const;
     void renderNowPlaying(int width, int height, const std::string& songName) const;

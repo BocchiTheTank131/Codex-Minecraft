@@ -4,6 +4,25 @@
 
 Everything in this project was created entirely with Codex, including the game code, README, GitHub updates, and development prompts.
 
+### v2.20.0 - Villages & Living World
+
+Trade with Farmers, Blacksmiths, Librarians and Merchants in existing villages.
+Finite barter stock, active-time replenishment, village reputation, delivery,
+seed-supply, public-works and assistance requests connect resource gathering to
+two explicitly funded improvements: paved public roads and a community stall.
+Villagers travel between their saved homes, workplaces and evening meeting spots,
+rest at night and seek shelter from weather or nearby danger.
+
+Right-click a villager; Sneak keeps normal placement behavior. Use the four
+compact tabs for offers, requests, projects and village information. Trading and
+contributions protect locked hotbar slots, equipment and cursor stacks. Village
+progress shares the immutable, verified world checkpoint. All 365 previews and
+Generators V1–V24 are retained; no new generation version is introduced.
+
+See [controls and local release notes](docs/RELEASE_v2.20.0.md) and
+[validation, measurements and limitations](docs/VILLAGES_LIVING_WORLD_VALIDATION_v2.20.0.md).
+[Download v2.20.0](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.0): full-game installer, stateless demo and checksums.
+
 ### v2.19.0 - Exploration & Relics
 
 Relics now power a Surveyor Compass, charged Echo Lantern with loaded-only cave

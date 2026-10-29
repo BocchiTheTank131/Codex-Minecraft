@@ -1,0 +1,30 @@
+{
+  "runs": [
+    {
+      "name": "full-v23",
+      "exit": 0,
+      "exe_sha256": "dc9d50c5e9364c8ffbb5b0af2d5462656f0ff88f7f1d514fbc0f4b4599f6adeb"
+    },
+    {
+      "name": "full-historical",
+      "exit": 0,
+      "exe_sha256": "6ec8f6d174f59eaff211f1cd9f429eaed19419ce19d298f26089df6551fdabbb"
+    },
+    {
+      "name": "demo-v23",
+      "exit": 0,
+      "exe_sha256": "2fcd36fc28d411674a3f0c21cc9c7664b85d8360377d46f4fa82193594a0b0dc"
+    },
+    {
+      "name": "demo-historical",
+      "exit": 0,
+      "exe_sha256": "81ea76436c0dc1d363c63a535a4c412207af1033343d230a118f18989fb2f7de"
+    }
+  ],
+  "historical_matching_records": 1326,
+  "v23_matching_fixtures_per_variant": 495,
+  "v24": {
+    "chunks_per_variant": 738,
+    "full_and_demo_byte_identical_to_v2190": true
+  }
+}

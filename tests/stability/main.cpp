@@ -1,3 +1,4 @@
+int runVillageTests(int,char**);
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include "World.h"
@@ -130,6 +131,7 @@ int StabilityTest::run(int argc,char** argv){
    if(e.path().extension()==".bmp")std::filesystem::copy_file(e.path(),output/e.path().filename());
   return result;
  }
+ if(argc>1 && std::string(argv[1]).find("--village")==0)return runVillageTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--adventure")==0)return runAdventureTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--engine-")==0)return runEngineTests(argc,argv);
  if(argc>1 && std::string(argv[1]).find("--generation-")==0)return runExpansionTests(argc,argv);

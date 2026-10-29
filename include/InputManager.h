@@ -21,6 +21,7 @@ std::string controlKeyName(int key);
 
 class InputManager {
     friend class AdventureTest;
+    friend class VillageTest;
 public:
     void attach(GLFWwindow* window);
     void pollEvents();

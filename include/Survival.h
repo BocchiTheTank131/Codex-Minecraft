@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <string>
 #include <unordered_set>
+#include <unordered_map>
 #include <vector>
 #include <functional>
 
@@ -199,7 +200,9 @@ struct RecipeInfo {
 const std::vector<RecipeInfo>& craftingRecipes();
 
 class Inventory {
+    friend class Villages;
     friend class AdventureTest;
+    friend class VillageTest;
     friend class EngineOptimizationTest;
 public:
     static constexpr int HotbarSlots = 9, TotalSlots = 36, CraftSlots = 9;
@@ -353,6 +356,7 @@ struct AttackResult {
 
 class Weather;
 class SurvivalWorld {
+    friend class VillageTest;
     friend class AdventureTest;
     friend class EngineOptimizationTest;
     friend class AutomationTest;
@@ -389,6 +393,11 @@ public:
     bool spawnRelicAmbush(std::uint64_t,const std::array<glm::ivec3,2>&,const World&);
     bool relicEncounterAlive(std::uint64_t) const;
     bool relicEncountersValid(const Adventure&) const;
+    bool isVillager(int)const;
+    std::uint32_t talkingVillager=0;
+    std::uint32_t villagerIdentity(int index,World&);
+    bool villagerAvailable(std::uint32_t,glm::vec3,float distance=7)const;
+    bool villageCheckpoint(World&,bool restore=false);
     void spawnBillboardPreview(const glm::vec3& origin, const glm::vec3& forward);
     bool summonMob(const std::string& name, const glm::vec3& position);
     void mapReferences(std::unordered_set<std::uint32_t>& references) const;
@@ -429,6 +438,7 @@ private:
     static AnimalType billboardType(std::size_t index);
     struct Animal {
         std::uint64_t relicEncounter=0;
+        std::uint32_t villagerId=0;
         Burning burning;
         AnimalType type = AnimalType::Cow;
         glm::vec3 position{0}, velocity{0}, home{0};
@@ -472,6 +482,7 @@ private:
     SoundSystem* sounds_ = nullptr;
     const Weather* weather_ = nullptr;
     std::vector<Animal> animals_;
+    mutable std::unordered_map<std::uint32_t,std::size_t> villagerIndex_;
     std::vector<Drop> drops_;
     std::vector<ExperienceOrb> experienceOrbs_;
     std::vector<Arrow> arrows_;
@@ -487,6 +498,10 @@ private:
     float aiMilliseconds_ = 0.0f;
     glm::vec3 lastActivePlayerPosition_{0.0f};
     bool hasActivePlayerPosition_ = false;
+    unsigned villageNavigationBudget_=0,villageNodesLastTick_=0,villageQueriesLastTick_=0;
+    glm::vec2 villageHeading(Animal&,World&,glm::vec3);
+    bool villageFooting(const World&,glm::vec2,float,float,float,float&)const;
+    void moveVillager(Animal&,World&,glm::vec3,float,glm::vec3&);
     void spawnNearbyAnimals(World& world, const glm::vec3& playerPosition, float daylight);
     void
     updateAnimal(Animal& animal, float deltaTime, World& world, Player& player,

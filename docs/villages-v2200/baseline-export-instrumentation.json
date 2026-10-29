@@ -1,0 +1,14 @@
+{
+  "original_commit": "656763c9974b670374e7044cd65d57a9c04d91cd",
+  "modified_test_hook": "src/WorldExpansionValidation.cpp",
+  "sha256": "d06e8f045131b857f97a7316b2fa4307e4f1bba29a30d30b92ffcb98f1b5e447",
+  "note": "Only export mode/coordinates changed; production generation, loot and structure algorithms untouched.",
+  "friend_headers": [
+    "Game.h",
+    "World.h",
+    "Player.h",
+    "Structure.h",
+    "Survival.h"
+  ],
+  "friend_note": "Only access declarations added for the common benchmark; no layout or production code changes."
+}

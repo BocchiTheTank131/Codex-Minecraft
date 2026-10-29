@@ -185,6 +185,7 @@ bool Game::buildingUse(Item held,bool offhand){
 }
 
 std::string Game::interactionHint()const {
+ if(interaction_.mobTarget.valid()&&survival_->isVillager(interaction_.mobTarget.index)&&!input_.actionDown(ControlAction::Sneak))return "RMB: TALK / TRADE WITH VILLAGER";
  if(!world_||!player_||player_->isDead()||spectatorMode_||!interaction_.hasBlockTarget||interaction_.mobTarget.valid()||signEditorOpen_)return "";
  const auto p=interaction_.blockTarget.block;const auto b=world_->getBlock(p.x,p.y,p.z);
  const bool off=buildingToolHand().value_or(inventory_->selectedStack().empty()||(!inventory_->equipment(4).empty()&&!hasMainHandUse(inventory_->selectedItem())));

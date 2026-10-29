@@ -32,6 +32,7 @@ namespace SaveFile { class Session; struct CommitStatus; }
 
 class Game {
     friend class AdventureTest;
+    friend class VillageTest;
     friend class EngineOptimizationTest;
     friend class AutomationTest;
     friend class QolTest;
@@ -166,6 +167,8 @@ private:
     bool waypointCoordinatesFocused_=false;
     float mapTimer_=0;
     bool journalOpen_=false;int journalCategory_=0,journalPage_=0;
+    bool villageOpen_=false;std::uint32_t villageNpc_=0;int villageTab_=0,villageRow_=0;std::string villageMessage_;
+    bool villageUse();bool villageInput();
     bool adventureInput();
     bool adventureUse(bool offhand);
     bool navigationInput();

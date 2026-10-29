@@ -1043,3 +1043,5 @@ bool StructureGenerator::runSelfTest(std::string& report) const {
         std::to_string(majorCounts[3]) + ")";
     return valid;
 }
+
+std::shared_ptr<const StructurePlan> StructureGenerator::peekMajorPlan(int x,int z)const{std::lock_guard<std::mutex> lock(cacheMutex_);auto i=majorCache_.find(std::int64_t((std::uint64_t(std::uint32_t(x))<<32)|std::uint32_t(z)));return i==majorCache_.end()?nullptr:i->second;}

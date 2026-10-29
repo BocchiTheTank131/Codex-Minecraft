@@ -2624,6 +2624,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     decltype(buildingDrops_) loadedBuildingDrops;
     Automation loadedAutomation;
     Adventure loadedAdventure;
+    Villages loadedVillages;
     const auto commit = [&] {
         equipmentLoot_=loadedEquipmentLoot;
         edits_.swap(loadedEdits);
@@ -2631,7 +2632,7 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
         chests_.swap(loadedChests);
         buildingTexts_.swap(loadedTexts);buildingDrops_.swap(loadedBuildingDrops);
         automation=std::move(loadedAutomation);
-        adventure=std::move(loadedAdventure);adventureSites_.clear();
+        villages=std::move(loadedVillages);adventure=std::move(loadedAdventure);adventureSites_.clear();
         fluidQueue_.clear();
         fluidQueued_.clear(); fluidLavaDue_.clear();
         fluidUpdateAccumulator_ = 0.0f;
@@ -2751,7 +2752,8 @@ bool World::loadWorld(const std::string& path, glm::vec3& playerPosition) {
     if(input.peek()!=std::char_traits<char>::eof()){
         if(!loadedAutomation.read(input,loadedGenerationVersion>=11?-64:0,loadedGenerationVersion>=11?320:WORLD_HEIGHT))return false;
     }
-    if(input.peek()!=std::char_traits<char>::eof()&&!loadedAdventure.read(input))return false;
+    if(input.peek()!=std::char_traits<char>::eof()){auto at=input.tellg();char tag[4]{};if(!input.read(tag,4))return false;input.seekg(at);if(!std::memcmp(tag,"ERL1",4)&&!loadedAdventure.read(input))return false;}
+    if(input.peek()!=std::char_traits<char>::eof()&&!loadedVillages.read(input,seed_,loadedGenerationVersion))return false;
     if(loadedGenerationVersion<24&&!loadedAdventure.puzzles().empty())return false;
     if(!loadedAutomation.placementsValid([&](glm::ivec3 p){
         auto chunk=loadedEdits.find(chunkKey(floorDiv(p.x,16),floorDiv(p.z,16)));
@@ -5100,3 +5102,5 @@ void World::revalidateSupports(glm::ivec3 changed){const int x=changed.x,y=chang
         takeBlockEntityContents(pos);setBlockInternal(pos.x,pos.y,pos.z,Block::Air,true,false);
     }
 }
+
+bool World::villageSiteUnmodified(glm::ivec3 p)const{auto chunk=edits_.find(chunkKey(floorDiv(p.x,16),floorDiv(p.z,16)));return chunk==edits_.end()||!chunk->second.count(localIndex(floorMod(p.x,16),p.y,floorMod(p.z,16)));}
