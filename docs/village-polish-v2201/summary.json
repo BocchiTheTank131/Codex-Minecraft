@@ -1,0 +1,39 @@
+{
+  "functional_groups": 15,
+  "generation_groups": 9,
+  "release_groups": 20,
+  "historical_records": 1326,
+  "v23_per_variant": 495,
+  "v24_per_variant": 738,
+  "native": {
+    "polish-demo": {
+      "assertions": 1873,
+      "passed": true
+    },
+    "polish-full": {
+      "assertions": 1895,
+      "passed": true
+    },
+    "route120": {
+      "assertions": 145119,
+      "passed": true
+    },
+    "route15": {
+      "assertions": 18279,
+      "passed": true
+    },
+    "route30": {
+      "assertions": 36399,
+      "passed": true
+    },
+    "route60": {
+      "assertions": 72639,
+      "passed": true
+    }
+  },
+  "endurance": {
+    "assertions": 49,
+    "passed": true
+  },
+  "benchmarks": 24
+}

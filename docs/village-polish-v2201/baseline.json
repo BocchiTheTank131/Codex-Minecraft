@@ -1,0 +1,9 @@
+{
+  "head": "48f751131a5a5d430fdbb4ce5b2dcba5a7aee6c1",
+  "status": "?? .codex-remote-attachments/\n?? .idea/\n?? AGENTS.md\n?? CODE_REVIEW.md\n?? CODE_REVIEW_VERIFIED.md\n?? \"assets/item_icons (1).rgba\"\n?? tools/__pycache__/\n",
+  "binaries": {
+    "build/installed-release/Release/VoxelFrontier.exe": "811a3350f42f8eb7161934cac9c574fb239009d497d2a1ba4afa0e229f1901f4",
+    "build/standalone-demo-release/Release/VoxelFrontier.exe": "cf53bf52f9a08d3032c45e734716c13b747a798d40905f9e25580d8c46ae1711",
+    "build/v2200-validation/driver/Release/StabilityDriver.exe": "59607cad3fbdaa1ba3ec5f84e56bbe5bb2bed5b746f96c484a9d929c94ac80e1"
+  }
+}

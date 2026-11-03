@@ -3,6 +3,7 @@
 #include "Player.h"
 #include "SaveValidation.h"
 #include "WorldTime.h"
+#include "QualityOfLife.h"
 #include <algorithm>
 #include <cmath>
 #include <set>
@@ -28,7 +29,7 @@ VillageOffer Villages::offer(VillageJob j,int row){static const VillageOffer off
  {{Item::Wheat,20,Item::Bread,4},{Item::Carrot,16,Item::Potato,8},{Item::Egg,8,Item::Seeds,4},{Item::IronIngot,2,Item::CookedBeef,5},{Item::GoldIngot,1,Item::PumpkinSeeds,4}},
  {{Item::IronIngot,6,Item::IronPickaxe,1},{Item::Coal,16,Item::IronIngot,2},{Item::IronIngot,4,Item::IronShovel,1},{Item::CopperIngot,12,Item::IronIngot,2},{Item::GoldIngot,6,Item::Diamond,1}},
  {{Item::Paper,24,Item::Book,2},{Item::Book,4,Item::EmptyMap,1},{Item::GoldIngot,3,Item::SurveyorToken,1},{Item::Paper,32,Item::Torch,8},{Item::GoldIngot,4,Item::CavernShard,1}},
- {{Item::Cobblestone,48,Item::Log,8},{Item::Log,16,Item::CookedBeef,4},{Item::IronIngot,2,Item::Coal,4},{Item::IronIngot,3,Item::OakBoat,1},{Item::GoldIngot,2,Item::EmptyMap,1}}};return offers[std::min(3u,unsigned(j))][std::clamp(row,0,4)];}
+ {{Item::Cobblestone,24,Item::Log,8},{Item::Log,12,Item::CookedBeef,4},{Item::IronIngot,1,Item::Coal,6},{Item::IronIngot,2,Item::Torch,24},{Item::GoldIngot,2,Item::EmptyMap,1}}};return offers[std::min(3u,unsigned(j))][std::clamp(row,0,4)];}
 bool Villages::exchange(Inventory& inv,Item input,int count,ItemStack output,std::string& msg){
  if(count<0||count>64||(!output.empty()&&!SaveValidation::stack(output))){msg="Invalid transaction";return false;}
  Inventory copy=inv;int left=count;
@@ -36,6 +37,21 @@ bool Villages::exchange(Inventory& inv,Item input,int count,ItemStack output,std
  if(left){msg="Missing "+std::to_string(left)+" "+itemDefinition(input).displayName+" / unlocked inventory only";return false;}
  for(int pass=0;pass<2&&!output.empty();++pass)for(int i=0;i<Inventory::TotalSlots&&!output.empty();++i){auto& s=copy.slots_[i];if(copy.hotbarLocked(i))continue;if((pass==0&&!s.empty()&&Inventory::canMerge(s,output))||(pass==1&&s.empty())){int n=std::min(output.count,Inventory::maxStack(output.item)-(s.empty()?0:s.count));if(s.empty()){s=output;s.count=n;}else s.count+=n;output.count-=n;if(!output.count)output.clear();}}
  if(!output.empty()){msg="Inventory full / protected slots are not used";return false;}inv=std::move(copy);return true;
+}
+int Villages::usableCount(const Inventory& inv,Item item){return available(inv,item);}
+std::string Villages::restockStatus(std::uint32_t id)const{
+ auto n=npc(id);auto v=n?village(n->village):nullptr;
+ if(!v)return "Traveler: finite stock; no village restocking";
+ const auto seconds=n->restockAt>v->seconds?n->restockAt-v->seconds:0;
+ return "Restock in "+std::to_string(seconds)+" active seconds / needs 4 supplies / reserve "+std::to_string(v->supply)+(v->supply<4?" - supply shortage":"");
+}
+std::string Villages::tradeStatus(std::uint32_t id,int row,const Inventory& inv)const{
+ auto n=npc(id);if(!n||n->dead||row<0||row>=5)return "Unavailable";
+ auto v=village(n->village);if(row==4&&(!v||!(v->projects&2)))return "Unlock: build Community Stall";
+ if(n->routine>=2)return "Return during work hours";
+ if(!n->stock[row])return "Out of stock";
+ auto o=pricedOffer(id,row);Inventory copy=inv;std::string reason;
+ return exchange(copy,o.input,o.cost,{o.output,o.count,Inventory::maxDurability(o.output)},reason)?"Trade available":reason;
 }
 VillageNpc* Villages::npc(std::uint32_t id){auto i=npcs_.find(id);return i==npcs_.end()?nullptr:&i->second;}
 const VillageNpc* Villages::npc(std::uint32_t id)const{auto i=npcs_.find(id);return i==npcs_.end()?nullptr:&i->second;}
@@ -69,6 +85,7 @@ glm::vec3 Villages::destination(std::uint32_t id,float time,bool shelter,bool da
  if(v&&v->seconds>=n->restockAt){if(v->supply>=4){for(auto& s:n->stock)s=std::min(6,int(s)+1);v->supply-=4;}n->restockAt=v->seconds+300;}
  if(danger&&v)v->threatUntil=std::min(MaxClock,v->seconds+20);
  if(n->routine>=2)return glm::vec3(n->home)+glm::vec3(.5f,.01f,.5f);
+ if(v&&(v->projects&2)&&n->job==VillageJob::Merchant&&n->routine==0)return glm::vec3(v->projectOrigin[1])+glm::vec3(.5f,1.01f,2.5f);
  auto target=n->routine==1&&v?v->center+buildingFacing(int(n->id%4))*5:n->work;return glm::vec3(target)+glm::vec3(.5f,.01f,.5f);
 }
 bool Villages::trade(std::uint32_t id,int row,Inventory& inv,std::string& msg){auto n=npc(id);if(!n||n->dead||row<0||row>=5){msg="Villager unavailable";return false;}auto v=village(n->village);if(row==4&&(!v||!(v->projects&2))){msg="Build the community stall to unlock this offer";return false;}if(n->trades>=1000000000){msg="Lifetime trade limit reached";return false;}if(n->routine>=2){msg="Resting, sheltering or fleeing; return during work hours";return false;}if(!n->stock[row]){msg="Out of stock / replenishment needs village supplies and active time";return false;}
@@ -81,7 +98,7 @@ bool Villages::request(std::uint32_t id,int row,int action,Inventory& inv,Player
  auto& q=v->requests[row];if(action==0){if(q.status!=0){msg="Request already accepted or finished";return false;}q.status=1;msg="Request accepted / objective tracked here";return true;}
  if(action==2){if(q.status!=1){msg="No accepted request";return false;}q.status=3;msg="Request abandoned; donated project funding is retained";return true;}
  if(action==3){if(std::any_of(v->requests.begin(),v->requests.end(),[](auto a){return a.status<2;})||v->seconds<v->rotatedAt+600||v->rotation>=10000){msg="Finish or abandon this set; rotation requires 600 active seconds";return false;}++v->rotation;v->rotatedAt=v->seconds;rotate(*v);msg="New request set posted";return true;}
- if(q.status!=1){msg="Accept this request first; completed rewards cannot repeat";return false;}
+ if(q.status!=1){msg=q.status==2?"Reward already claimed":q.status==3?"Request abandoned":"Accept this request first";return false;}
  auto o=objective(q.kind);if(q.kind==3&&!q.progress){msg="Help during a witnessed village threat: defeat a nearby hostile";return false;}
  if(q.kind==2&&!(v->projects&1)){msg="Complete funded Village Repairs, then claim this request";return false;}
  if(!exchange(inv,q.kind==2?Item::None:o.input,q.kind==2?0:o.cost,{o.output,o.count,Inventory::maxDurability(o.output)},msg))return false;
@@ -107,13 +124,21 @@ std::vector<std::pair<glm::ivec3,Block>> projectCells(const VillageRecord& v,int
   for(const auto& piece:plan->pieces)if(piece.bounds.intersectsXZ(o.x-1,o.z-1,o.x+2,o.z+2))clear=false;
   for(int z=0;z<2;++z)for(int x=0;x<2;++x){if(!w.hasLoadedChunkAt(o.x+x,o.z+z)){clear=false;continue;}auto ground=w.getBlock(o.x+x,o.y,o.z+z);if((ground!=Block::Grass&&ground!=Block::Dirt&&ground!=Block::Sand)||!w.villageSiteUnmodified(o+glm::ivec3(x,0,z)))clear=false;
    for(int y=1;y<4;++y)if(w.getBlock(o.x+x,o.y+y,o.z+z)!=Block::Air)clear=false;}
+  auto approach=o+glm::ivec3(0,0,2);
+  if(!w.hasLoadedChunkAt(approach.x,approach.z)||!isSolid(w.getBlock(approach.x,approach.y,approach.z))||w.aabbIntersectsSolid(glm::vec3(approach)+glm::vec3(.2f,1.01f,.2f),glm::vec3(approach)+glm::vec3(.8f,2.61f,.8f)))clear=false;
   if(!clear)continue;
-  edits.clear();for(int z=0;z<2;++z)for(int x=0;x<2;++x){edits.push_back({o+glm::ivec3(x,0,z),Block::Planks});edits.push_back({o+glm::ivec3(x,3,z),Block::Planks});}
-  for(int x=0;x<2;++x)for(int y=1;y<3;++y)edits.push_back({o+glm::ivec3(x,y,0),Block::OakFence});edits.push_back({o+glm::ivec3(1,1,1),Block::Barrel});return edits;
+  edits.clear();for(int z=0;z<2;++z)for(int x=0;x<2;++x){edits.push_back({o+glm::ivec3(x,0,z),Block::Planks});edits.push_back({o+glm::ivec3(x,3,z),Block::OakSlab});}
+  for(int x=0;x<2;++x)for(int y=1;y<3;++y)edits.push_back({o+glm::ivec3(x,y,0),Block::OakFence});edits.push_back({o+glm::ivec3(1,1,1),Block::Barrel});edits.push_back({o+glm::ivec3(0,1,1),Block::OakTable});edits.push_back({o+glm::ivec3(1,2,1),Block::Lantern});return edits;
  }return {};
 }
 }
 bool Villages::withdraw(std::uint32_t id,int project,Inventory& inv,std::string& msg){auto n=npc(id);auto v=n?village(n->village):nullptr;if(!v||n->dead||project<0||project>1||(v->projects&(1<<project))){msg="Completed or unavailable project cannot refund";return false;}Inventory copy=inv;auto m=materials(project);bool any=false;for(int i=0;i<2;++i)if(v->funding[project][i]){any=true;if(!exchange(copy,Item::None,0,{m[i],v->funding[project][i],0},msg))return false;}if(!any){msg="No pledged materials to refund";return false;}inv=std::move(copy);v->funding[project]={0,0};msg="Unspent materials refunded / no reward or reputation granted";return true;}
+PlacementPlan Villages::projectPreview(std::uint32_t id,int project,const World& w)const{
+ PlacementPlan plan;auto n=npc(id);auto v=n?village(n->village):nullptr;
+ if(!v||project<0||project>1||(v->projects&(1<<project)))return plan;
+ auto cells=projectCells(*v,project,w);plan.valid=!cells.empty();
+ for(auto e:cells)plan.blocks.push_back({e.first,e.second});return plan;
+}
 std::string Villages::projectSite(std::uint32_t id,int project,const World& w)const{auto n=npc(id);auto v=n?village(n->village):nullptr;if(!v||project<0||project>1)return "No associated village";auto edits=projectCells(*v,project,w);auto p=v->projects&(1<<project)?std::optional<glm::ivec3>(v->projectOrigin[project]):edits.empty()?std::optional<glm::ivec3>{}:edits.front().first;if(!p)return "SITE BLOCKED OR UNLOADED / FUNDING IS REFUNDABLE";return std::string(v->projects&(1<<project)?"COMPLETED SITE ":"PROPOSED SITE ")+std::to_string(p->x)+" "+std::to_string(p->y)+" "+std::to_string(p->z);}
 bool Villages::construct(std::uint32_t id,int project,World& w,SurvivalWorld& mobs,Player& player,std::string& msg){auto n=npc(id);auto v=n?village(n->village):nullptr;if(!v||n->dead||project<0||project>1||(v->projects&(1<<project))){msg="Already complete or no associated village";return false;}
  auto cost=costs(project);for(int i=0;i<2;++i)if(v->funding[project][i]!=cost[i]){msg="Project needs full funding / contributions retained";return false;}
@@ -130,9 +155,9 @@ void Villages::damageProperty(glm::ivec3 p){for(auto& e:villages_){auto& v=e.sec
 std::vector<std::string> Villages::lines(std::uint32_t id,int tab)const{auto n=npc(id);if(!n)return {"Villager unavailable"};auto v=village(n->village);std::vector<std::string> out;
  if(tab==0){for(int i=0;i<5;++i){auto o=pricedOffer(id,i);out.push_back(std::to_string(o.cost)+" "+itemDefinition(o.input).displayName+" -> "+std::to_string(o.count)+" "+itemDefinition(o.output).displayName+" / STOCK "+std::to_string(n->stock[i])+(i==4&&(!v||!(v->projects&2))?" / NEEDS STALL":""));}}
  else if(!v)out={"Independent traveler / no village requests or projects","Find a generated village to join community activities."};
- else if(tab==1){for(auto q:v->requests){auto o=objective(q.kind);const char* names[]={"DELIVERY","FARMING / SEED SUPPLIES","BUILDING / REPAIRS","ASSISTANCE / WITNESSED THREAT"};const char* states[]={"OFFERED","ACCEPTED","CLAIMED","ABANDONED"};out.push_back(std::string(names[q.kind])+" / "+states[q.status]);out.push_back(q.kind==2?"Finish Village Repairs / reward 8 torches":q.kind==3?std::string(q.progress?"Threat cleared / reward 4 cooked beef":"Help a threatened villager; defeat its local attacker / reward 4 cooked beef"):"Deliver "+std::to_string(o.cost)+" "+itemDefinition(o.input).displayName+" / reward "+std::to_string(o.count)+" "+itemDefinition(o.output).displayName);out.back()+=" / +8 REP / +4 XP";}}
+ else if(tab==1){for(auto q:v->requests){auto o=objective(q.kind);const char* names[]={"DELIVERY","FARMING / SEED SUPPLIES","BUILDING / REPAIRS","ASSISTANCE / WITNESSED THREAT"};const char* states[]={"OFFERED","ACCEPTED","CLAIMED","ABANDONED"};out.push_back(std::string(names[q.kind])+" / "+states[q.status]);out.push_back(q.kind==2?"Finish Village Repairs / reward 8 torches":q.kind==3?std::string(q.progress?"Threat cleared / reward 4 cooked beef":"Wait for witnessed danger, then defeat a local hostile / reward 4 cooked beef"):"Deliver "+std::to_string(o.cost)+" "+itemDefinition(o.input).displayName+" / reward "+std::to_string(o.count)+" "+itemDefinition(o.output).displayName);out.back()+=" / +8 REP / +4 XP";}}
  else if(tab==2){for(int i=0;i<2;++i){auto c=costs(i);auto m=materials(i);out.push_back(std::string(i?"COMMUNITY STALL":"VILLAGE REPAIRS")+(v->projects&(1<<i)?" / COMPLETE":" / FUNDING"));out.push_back(std::to_string(v->funding[i][0])+"/"+std::to_string(c[0])+" "+itemDefinition(m[0]).displayName+" + "+std::to_string(v->funding[i][1])+"/"+std::to_string(c[1])+" "+itemDefinition(m[1]).displayName);}}
- else {out={"VILLAGE "+std::to_string(v->regionX)+" / "+std::to_string(v->regionZ),"CENTER "+std::to_string(v->center.x)+" "+std::to_string(v->center.y)+" "+std::to_string(v->center.z),"SUPPLIES "+std::to_string(v->supply)+" / 256","Restock: one unit per offer per 300 ACTIVE seconds, costs 4 supplies.","Trade reputation: +1, lifetime cap 10. Requests: +8. Projects: +12.","Requests rotate after 600 active seconds and a finished set.","No automatic village rebuilding. Fund, then explicitly confirm."};}
+ else {out={"VILLAGE "+std::to_string(v->regionX)+" / "+std::to_string(v->regionZ),"CENTER "+std::to_string(v->center.x)+" "+std::to_string(v->center.y)+" "+std::to_string(v->center.z),"SUPPLIES "+std::to_string(v->supply)+" / 256",restockStatus(id),"COMPLETED REQUESTS "+std::to_string(v->completedRequests),"REPUTATION "+std::to_string(v->reputation)+" / NEXT TIER "+(v->reputation>=75?std::string("HONORED"):std::to_string(v->reputation<0?0:v->reputation<20?20:v->reputation<45?45:75)),"Restock: one unit per offer per 300 ACTIVE seconds, costs 4 supplies.","Trade reputation: +1, lifetime cap 10. Requests: +8. Projects: +12.","Requests rotate after 600 active seconds and a finished set.","No automatic village rebuilding. Fund, then explicitly confirm."};}
  return out;
 }
 bool Villages::valid(std::uint32_t seed,unsigned version)const{if(villages_.size()>MaxVillages||npcs_.size()>MaxNpcs)return false;std::map<std::uint64_t,unsigned> populations;

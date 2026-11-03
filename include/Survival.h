@@ -331,6 +331,7 @@ struct RenderCuboid {
     glm::vec3 direction{0};
     float yaw=0;
     int woodTexture=-1;
+    bool instanced=false;
 };
 struct RenderBillboard {
     glm::vec3 feet{0};
@@ -456,6 +457,10 @@ private:
         glm::vec3 rememberedTarget{0};
         bool sheared = false;
         float resourceTimer = 0, woolTimer = 0, gait = 0;
+        // Presentation only: reconstructed from live state, never serialized.
+        float modelYaw=0, modelMotion=0, modelClock=0;
+        unsigned villageJob=3, villageRoutine=0;
+        bool villageTalking=false, villageWorking=false;
         bool persistent = false;
         bool grounded = false, dropsReleased = false;
     };

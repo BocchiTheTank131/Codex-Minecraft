@@ -11,6 +11,9 @@
 #include "World.h"
 #include "SpriteManifest.h"
 #include "Explosion.h"
+#include "VillagerModel.h"
+#include "LivestockModel.h"
+#include "LivestockMovement.h"
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -29,7 +32,8 @@
 namespace {
 constexpr char InventoryMagic[8] = {'V', 'X', 'I', 'N', 'V', '8', '\0', '\0'};
 constexpr char MobMagic[8] = {'V', 'X', 'M', 'O', 'B', '1', '\0', '\0'};
-constexpr int PassiveMobCap = 26;
+constexpr int PassiveMobCap = 52;
+constexpr float PassiveSpawnCooldown = 10.0f; // v2.20.1: twice the former 20-second rate.
 constexpr int HostileMobCap = 18;
 constexpr int NaturalSpawnCandidates = 16;
 constexpr int NightHostileBonusCandidates = 8;
@@ -1989,7 +1993,7 @@ void SurvivalWorld::spawnNearbyAnimals(World& world, const glm::vec3& playerPosi
         (hostile ? hostileCount : passiveCount)++;
     }
     if (passiveSpawned > 0)
-        passiveSpawnCooldown_ = 20.0f;
+        passiveSpawnCooldown_ = PassiveSpawnCooldown;
 }
 int SurvivalWorld::targetedAnimal(const glm::vec3& o, const glm::vec3& d, float reach) const {
     int best = -1;
@@ -2000,7 +2004,11 @@ int SurvivalWorld::targetedAnimal(const glm::vec3& o, const glm::vec3& d, float 
             continue;
         float t;
         const bool billboard = isBillboard(a.type);
-        const bool hit = billboard
+        const bool livestock=a.type==AnimalType::Pig||a.type==AnimalType::Cow;
+        const auto bounds=livestock?livestockModelBounds(a.position,a.age<0?.55f:1,a.modelYaw,a.type==AnimalType::Cow):RenderCuboid{};
+        const bool hit = livestock?rayBox(o,d,bounds.center-bounds.size*.5f,bounds.center+bounds.size*.5f,reach,t):a.type==AnimalType::Villager
+            ? rayBox(o,d,a.position+glm::vec3(-.3f,0,-.3f),a.position+glm::vec3(.3f,1.6f,.3f),reach,t)
+            : billboard
             ? rayBox(o, d, a.position + glm::vec3(-BillboardMobHalfWidth, 0, -BillboardMobHalfWidth),
                      a.position + glm::vec3(BillboardMobHalfWidth, BillboardMobHeight,
                                             BillboardMobHalfWidth), reach, t)
@@ -2026,8 +2034,11 @@ MobTarget SurvivalWorld::raycastMob(const glm::vec3& o,
     float along = 0;
     const bool billboard = isBillboard(animals_[i].type);
     glm::vec3 center = animals_[i].position + glm::vec3(
-        0, billboard ? BillboardMobHeight * .5f : .55f, 0);
-    if (billboard)
+        0, animals_[i].type==AnimalType::Villager ? .8f : billboard ? BillboardMobHeight * .5f : .55f, 0);
+    if(animals_[i].type==AnimalType::Pig||animals_[i].type==AnimalType::Cow){auto b=livestockModelBounds(animals_[i].position,animals_[i].age<0?.55f:1,animals_[i].modelYaw,animals_[i].type==AnimalType::Cow);center=b.center;rayBox(o,d,b.center-b.size*.5f,b.center+b.size*.5f,reach,along);}
+    else if(animals_[i].type==AnimalType::Villager)
+        rayBox(o,d,animals_[i].position+glm::vec3(-.3f,0,-.3f),animals_[i].position+glm::vec3(.3f,1.6f,.3f),reach,along);
+    else if (billboard)
         rayBox(o, d, animals_[i].position +
                glm::vec3(-BillboardMobHalfWidth, 0, -BillboardMobHalfWidth),
                animals_[i].position +
@@ -2110,6 +2121,8 @@ RenderCuboid SurvivalWorld::mobOutline(int i) const {
     if (i < 0 || i >= static_cast<int>(animals_.size()))
         return {};
     const Animal& a = animals_[i];
+    if(a.type==AnimalType::Pig||a.type==AnimalType::Cow)return livestockModelBounds(a.position,a.age<0?.55f:1,a.modelYaw,a.type==AnimalType::Cow);
+    if(a.type==AnimalType::Villager)return {a.position+glm::vec3(0,.8f,0),glm::vec3(.6f,1.6f,.6f),{1,1,1}};
     if (isBillboard(a.type))
         return {a.position + glm::vec3(0, BillboardMobHeight * .5f, 0),
                 glm::vec3(BillboardMobHalfWidth * 2, BillboardMobHeight,
@@ -2371,6 +2384,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
     a.loveTimer = std::max(0.f, a.loveTimer - dt);
     a.breedingCooldown = std::max(0.f, a.breedingCooldown - dt);
     a.age = std::min(0.f, a.age + dt);
+    if(a.type==AnimalType::Villager&&talkingVillager&&talkingVillager==a.villagerId&&a.fleeTimer<=0){a.heading={0,0};a.thinkTimer=0;}
     if (a.deathTimer > 0) {
         a.deathTimer -= dt;
         a.position.y -= dt * .35f;
@@ -2493,7 +2507,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         } else if(a.type==AnimalType::Villager&&a.villagerId){
             const auto target=w.villages.destination(a.villagerId,w.villageTime,false,false);
             desired=glm::vec2(target.x-a.position.x,target.z-a.position.z);active=glm::dot(desired,desired)>1.5f;
-            if(active)desired=villageHeading(a,w,target);
+            if(active&&talkingVillager!=a.villagerId)desired=villageHeading(a,w,target);
             if(talkingVillager==a.villagerId){desired={0,0};active=false;}
             // A brief glance at a nearby peer during the evening gathering.
             // This bounded search runs on the existing think cadence only.
@@ -2662,6 +2676,7 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         }
     }
     if(a.type==AnimalType::Villager)moveVillager(a,w,navigationBlocked?glm::vec3(0):move,dt,next);
+    else if(a.type==AnimalType::Pig||a.type==AnimalType::Cow)next=moveLivestock(w,a.position,navigationBlocked?glm::vec3(0):move,dt,a.type==AnimalType::Cow,a.velocity,a.grounded);
     else if (billboard) {
         next = a.position;
         glm::vec3 allowedMove = move;
@@ -2692,11 +2707,27 @@ void SurvivalWorld::updateAnimal(Animal& a, float dt, World& w, Player& player,
         }
     }
     if(a.type==AnimalType::Villager&&a.grounded&&((navigationBlocked)||(glm::length(glm::vec2(next.x-a.position.x,next.z-a.position.z))<.0001f&&glm::dot(move,move)>.01f))){a.heading={0,0};a.thinkTimer=1.5f;}
+    if(a.type==AnimalType::Pig||a.type==AnimalType::Cow){
+        const auto moved=glm::vec2(next.x-a.position.x,next.z-a.position.z);
+        advanceLivestockPose(a.modelYaw,a.gait,a.modelMotion,a.modelClock,moved,a.heading,dt,a.grounded,a.type==AnimalType::Cow);
+    }
+    if(a.type==AnimalType::Villager){
+        const float moved=glm::length(glm::vec2(next.x-a.position.x,next.z-a.position.z));
+        a.modelClock=std::fmod(a.modelClock+dt,62.831853f);
+        a.gait=std::fmod(a.gait+moved*8.f,6.2831853f);
+        a.modelMotion+=(std::min(1.f,moved/std::max(.001f,dt)) - a.modelMotion)*(1-std::exp(-dt*12));
+        a.villageTalking=talkingVillager&&talkingVillager==a.villagerId&&a.fleeTimer<=0;
+        glm::vec2 facing=a.heading;
+        if(a.villageTalking)facing={player.position().x-next.x,player.position().z-next.z};
+        else if(a.memoryTimer>0&&glm::dot(facing,facing)<.01f)facing={a.rememberedTarget.x-next.x,a.rememberedTarget.z-next.z};
+        if(glm::dot(facing,facing)>.01f){float target=std::atan2(facing.x,facing.y);float delta=std::remainder(target-a.modelYaw,6.2831853f);a.modelYaw+=delta*(1-std::exp(-dt*10));}
+        if(auto n=w.villages.npc(a.villagerId)){a.villageJob=unsigned(n->job);a.villageRoutine=n->routine;auto town=w.villages.village(n->village);auto work=town&&(town->projects&2)&&n->job==VillageJob::Merchant?glm::vec3(town->projectOrigin[1])+glm::vec3(.5f,1.01f,2.5f):glm::vec3(n->work)+glm::vec3(.5f,.01f,.5f);a.villageWorking=n->routine==0&&!a.villageTalking&&moved<.002f&&glm::distance(next,work)<1.5f;}
+    }
     a.position = next;
-    const float halfWidth = billboard ? BillboardMobHalfWidth : .38f;
+    const float halfWidth = a.type==AnimalType::Villager?.3f:billboard ? BillboardMobHalfWidth : .38f;
     const glm::vec3 mobMinimum = a.position + glm::vec3(-halfWidth, 0.0f, -halfWidth);
     const glm::vec3 mobMaximum = a.position +
-        glm::vec3(halfWidth, billboard ? BillboardMobHeight : 1.15f, halfWidth);
+        glm::vec3(halfWidth, a.type==AnimalType::Villager?1.6f:billboard ? BillboardMobHeight : 1.15f, halfWidth);
     const int burnDamage=a.burning.update(dt,w.aabbTouchesBlock(mobMinimum,mobMaximum,Block::Lava),
                                          w.aabbTouchesBlock(mobMinimum,mobMaximum,Block::Water));
     if (burnDamage>0 || (a.hurtCooldown <= 0.0f && w.aabbTouchesBlock(mobMinimum, mobMaximum, Block::Cactus))) {
@@ -2873,6 +2904,14 @@ void SurvivalWorld::renderCuboids(std::vector<RenderCuboid>& out,const glm::vec3
             continue;
         float baby = a.age < 0 ? .55f : 1,
               death = a.deathTimer > 0 ? std::max(.1f, a.deathTimer / .65f) : 1;
+        if(a.type==AnimalType::Villager){
+            appendVillagerModel(out,a.position,baby*death,a.modelYaw,a.gait,a.modelMotion,a.modelClock,a.villageJob,a.villageRoutine,a.villageTalking,a.villageWorking,a.hurtFlash);
+            continue;
+        }
+        if(a.type==AnimalType::Pig||a.type==AnimalType::Cow){
+            appendLivestockModel(out,a.position,baby*death,a.modelYaw,a.gait,a.modelMotion,a.modelClock,a.type==AnimalType::Cow,a.grounded,a.hurtFlash);
+            continue;
+        }
         if(a.type==AnimalType::Chicken) {
             const float scale=baby*death;
             const glm::vec3 forward=glm::length(a.heading)>.01f?glm::vec3(a.heading.x,0,a.heading.y):glm::vec3(0,0,1);
@@ -3947,9 +3986,9 @@ bool Inventory::replaceHeld(bool offhand,const ItemStack& expected,const ItemSta
 void SurvivalWorld::vehicleObstacles(std::vector<RenderCuboid>& out,const glm::vec3& origin,float radius) const {
     out.clear();
     for(const auto& a:animals_)if(a.deathTimer<=0 && glm::distance(a.position,origin)<radius){
-        const bool billboard=isBillboard(a.type);const float half=billboard?BillboardMobHalfWidth:.38f,height=billboard?BillboardMobHeight:1.15f;
+        const bool billboard=isBillboard(a.type);const float half=a.type==AnimalType::Villager?.3f:billboard?BillboardMobHalfWidth:.38f,height=a.type==AnimalType::Villager?1.6f:billboard?BillboardMobHeight:1.15f;
         out.push_back({a.position+glm::vec3(0,height*.5f,0),{half*2,height,half*2},{1,1,1},{}});
     }
 }
 
-bool SurvivalWorld::anyMobIntersects(const glm::vec3& mn,const glm::vec3& mx) const {for(const auto& a:animals_){if(a.deathTimer>0)continue;float width=isBillboard(a.type)?BillboardMobHalfWidth:.38f;auto low=a.position-glm::vec3(width,0,width),high=a.position+glm::vec3(width,isBillboard(a.type)?BillboardMobHeight:1.15f,width);if(low.x<mx.x&&high.x>mn.x&&low.y<mx.y&&high.y>mn.y&&low.z<mx.z&&high.z>mn.z)return true;}return false;}
+bool SurvivalWorld::anyMobIntersects(const glm::vec3& mn,const glm::vec3& mx) const {for(const auto& a:animals_){if(a.deathTimer>0)continue;float width=a.type==AnimalType::Villager?.3f:isBillboard(a.type)?BillboardMobHalfWidth:.38f;auto low=a.position-glm::vec3(width,0,width),high=a.position+glm::vec3(width,a.type==AnimalType::Villager?1.6f:isBillboard(a.type)?BillboardMobHeight:1.15f,width);if(low.x<mx.x&&high.x>mn.x&&low.y<mx.y&&high.y>mn.y&&low.z<mx.z&&high.z>mn.z)return true;}return false;}

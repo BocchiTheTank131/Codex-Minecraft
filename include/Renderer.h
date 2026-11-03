@@ -71,7 +71,7 @@ public:
     void renderBuildingOverlay(int width,int height,const World&,const Player&,const glm::mat4& view,const glm::mat4& projection,bool editor,const std::string& draft,const glm::ivec3& target,const SignEditor* editing=nullptr) const;
     void renderPlacementPreview(const PlacementPlan&,const glm::mat4& view,const glm::mat4& projection)const;
     void renderQolFeedback(int width,int height,const std::string& hint,const std::string& save,bool pause)const;
-    void renderVillage(int,int,const Villages&,std::uint32_t,int,int,const std::string&,const std::string&) const;
+    void renderVillage(int,int,const Villages&,std::uint32_t,int,int,const std::string&,const std::string&,const Inventory* inventory=nullptr) const;
     void renderAdventure(int,int,const Adventure&,int,int,const Villages* villages=nullptr) const;
     void renderNavigation(int,int,const Transportation&,const Player&,const Inventory&,bool,bool,std::uint32_t,const std::string&,const std::string&,bool,const std::string&) const;
     void renderChat(int width, int height, const ChatUI& chat, double now) const;
@@ -230,6 +230,7 @@ private:
            entityProgram_ = 0, itemProgram_ = 0, billboardProgram_ = 0;
     GLuint atlasTexture_ = 0, itemTexture_ = 0, skyVao_ = 0, uiVao_ = 0, uiVbo_ = 0,
            particleVao_ = 0, particleVbo_ = 0;
+    GLuint villagerInstanceVbo_ = 0;
     GLuint entityVao_ = 0, entityVbo_ = 0, itemVao_ = 0, itemVbo_ = 0;
     GLuint hudVao_ = 0, hudVbo_ = 0;
     std::array<GLuint, 4> hostileTextures_{};

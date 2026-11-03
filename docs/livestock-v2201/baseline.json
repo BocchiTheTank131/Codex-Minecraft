@@ -1,0 +1,14 @@
+{
+  "head": "48f751131a5a5d430fdbb4ce5b2dcba5a7aee6c1",
+  "status": " M CMakeLists.txt\n M README.md\n M assets/inventory_previews.json\n M include/Renderer.h\n M include/Survival.h\n M include/VillageUi.h\n M include/Villages.h\n M src/Game.cpp\n M src/GameVillages.cpp\n M src/Renderer.cpp\n M src/Survival.cpp\n M src/Villages.cpp\n M tests/stability/village.cpp\n M tests/stability/village_native.inc\n?? .codex-remote-attachments/\n?? .idea/\n?? AGENTS.md\n?? CODE_REVIEW.md\n?? CODE_REVIEW_VERIFIED.md\n?? \"assets/item_icons (1).rgba\"\n?? docs/RELEASE_v2.20.1.md\n?? docs/VILLAGE_POLISH_VALIDATION_v2.20.1.md\n?? docs/village-polish-v2201/\n?? include/VillagerModel.h\n?? tools/__pycache__/\n?? tools/check_village_polish_previews.py\n?? tools/run_village_polish_evidence.py\n?? tools/validate_village_polish.py\n?? tools/verify_village_polish_packages.py\n",
+  "hashes": {
+    "include/Survival.h": "5dcb77cf5aa503370b8b3a80ee05b4715cfb35bcef206ba8972a9c3959ab76c4",
+    "src/Survival.cpp": "30ce4a8605fb9252d7d2d289e45fb6ccdaa7f4a54d9ac8a2ae003217297c2951",
+    "include/VillagerModel.h": "6edda3423674eb8ad1a314e3cebedecef295dda26650ba95b5d7f24379f724bc",
+    "src/Renderer.cpp": "9cab1473b7b00de3110e66498a7b4bc900fdd977b1ebc15dfad91df661ea1979",
+    "tests/stability/village.cpp": "0605e41b6d2bb489aeec13246aa036a09ff1a7e6cb474e6e22c88bf6a7873c53",
+    "assets/inventory_previews.json": "18e280700ab75856006b1c4206a978903048cbebd64f879fbdee6e3c14f36f73",
+    "build/installed-release/Release/VoxelFrontier.exe": "0665fcc75bd8d4e390ac509807efa45f234db0fd20e1a223ce1bcac60bff748b",
+    "build/standalone-demo-release/Release/VoxelFrontier.exe": "1c6c340f05f2234a7d5aa2fdcd41bec89ae248a4f588763f9b285d3ae6c51bfd"
+  }
+}

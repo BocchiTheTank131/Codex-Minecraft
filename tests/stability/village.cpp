@@ -9,6 +9,10 @@
 #include "Transportation.h"
 #include "Villages.h"
 #include "VillageUi.h"
+#include "VillagerModel.h"
+#include "LivestockModel.h"
+#include "LivestockMovement.h"
+#include <glm/gtc/matrix_transform.hpp>
 #include "UiLayout.h"
 #include "Screenshot.h"
 #include "Weather.h"
@@ -46,7 +50,7 @@ class VillageTest {
   for(int row=0;row<3;++row)check(w.villages.request(id,row,0,inv,player,msg),"accept_request");
   inv.clear();inv.add(Item::Bread,12);check(w.villages.request(id,0,1,inv,player,msg),"delivery_reward");auto xp=player.experience();before=inv;check(!w.villages.request(id,0,1,inv,player,msg)&&player.experience()==xp&&same(inv,before),"exactly_once_request");
   inv.clear();inv.add(Item::Seeds,24);check(w.villages.request(id,1,1,inv,player,msg),"farming_seed_delivery");check(!w.villages.request(id,2,1,inv,player,msg),"rescue_requires_help");w.villages.assistance(glm::vec3(c));check(w.villages.request(id,2,1,inv,player,msg),"witnessed_assistance_reward");
-  inv.clear();inv.add(Item::Cobblestone,8);check(w.villages.contribute(id,0,inv,msg)&&v->funding[0][0]==8,"partial_project_funding");before=inv;Inventory full;full.clear();for(auto& stack:full.slots_)stack={Item::Stone,64};check(!w.villages.withdraw(id,0,full,msg)&&v->funding[0][0]==8,"full_refund_keeps_escrow");check(w.villages.withdraw(id,0,inv,msg)&&v->funding[0][0]==0&&inv.count(Item::Cobblestone)==8,"refund_once_conserves_materials");check(w.villages.contribute(id,0,inv,msg),"refunded_materials_can_be_repledged");before=inv;check(!w.villages.construct(id,0,w,mobs,player,msg)&&v->projects==0&&same(inv,before),"incomplete_project_rejected");inv.add(Item::Cobblestone,8);inv.add(Item::Log,4);check(w.villages.contribute(id,0,inv,msg),"complete_project_funding");check(w.villages.construct(id,0,w,mobs,player,msg)&&v->projects==1,"explicit_road_improvement");xp=player.experience();check(!w.villages.construct(id,0,w,mobs,player,msg)&&player.experience()==xp,"project_never_repeats");
+  inv.clear();inv.add(Item::Cobblestone,8);check(w.villages.contribute(id,0,inv,msg)&&v->funding[0][0]==8,"partial_project_funding");before=inv;Inventory full;full.clear();for(auto& stack:full.slots_)stack={Item::Stone,64};check(!w.villages.withdraw(id,0,full,msg)&&v->funding[0][0]==8,"full_refund_keeps_escrow");check(w.villages.withdraw(id,0,inv,msg)&&v->funding[0][0]==0&&inv.count(Item::Cobblestone)==8,"refund_once_conserves_materials");check(w.villages.contribute(id,0,inv,msg),"refunded_materials_can_be_repledged");before=inv;check(!w.villages.construct(id,0,w,mobs,player,msg)&&v->projects==0&&same(inv,before),"incomplete_project_rejected");inv.add(Item::Cobblestone,8);inv.add(Item::Log,4);check(w.villages.contribute(id,0,inv,msg),"complete_project_funding");auto preview=w.villages.projectPreview(id,0,w);check(preview.valid&&!preview.blocks.empty()&&v->projects==0,"preview_does_not_construct");check(w.villages.construct(id,0,w,mobs,player,msg)&&v->projects==1,"explicit_road_improvement");for(auto e:preview.blocks)check(w.getBlock(e.position.x,e.position.y,e.position.z)==e.block,"preview_matches_complete_edits");check(w.villages.projectPreview(id,0,w).blocks.empty(),"completed_project_has_no_ghost");xp=player.experience();check(!w.villages.construct(id,0,w,mobs,player,msg)&&player.experience()==xp,"project_never_repeats");
   v->rotation=1;v->requests[0]={2,1,0};check(w.villages.request(id,0,1,inv,player,msg),"building_request_links_public_works");
   inv.clear();inv.add(Item::Log,8);inv.add(Item::IronIngot,4);check(w.villages.contribute(id,1,inv,msg),"stall_funding");
   auto savedChunks=std::move(w.chunks_);check(!w.villages.construct(id,1,w,mobs,player,msg)&&v->funding[1][0]==8,"unloaded_project_keeps_funding");w.chunks_=std::move(savedChunks);bool built=w.villages.construct(id,1,w,mobs,player,msg);if(!built)std::cout<<"Construction diagnostic: "<<msg<<std::endl;check(built&&(v->projects&2),"community_stall_visible_edits");
@@ -78,12 +82,53 @@ class VillageTest {
    check(walk(doorBlock(0,false,false,true),true).z>base.z+3,"villager_crosses_open_door_leaf");check(walk(Block::Stone).z>base.z+3,"villager_steps_full_block");check(walk(Block::OakSlab).z>base.z+3,"villager_steps_half_slab");check(walk(Block::OakFence).z<base.z+1.2f,"villager_respects_fence");
    clear();w.setBlockInternal(base.x,base.y,base.z+1,Block::Stone,false,false);SurvivalWorld::Animal person;person.type=SurvivalWorld::AnimalType::Villager;person.position=person.home=glm::vec3(base)+glm::vec3(.5f,.01f,.5f);person.heading={0,1};person.health=20;person.grounded=true;for(int frame=0;frame<360;++frame){person.thinkTimer=10;mobs.updateAnimal(person,1.f/60,w,player,inv,1);}check(person.position.z>base.z+3,"whole_villager_update_preserves_step_jump_heading");
   }
-  for(auto size:{glm::ivec2(1280,720),glm::ivec2(1920,1080),glm::ivec2(2560,1440)})for(int scale=0;scale<4;++scale){float s=UiLayout::interfaceScale(size.x,size.y,scale);VillageUiLayout l(int(size.x/s),int(size.y/s));for(int row=0;row<5;++row)check(l.row(l.x+24,l.y+108+(row+.5f)*l.rowHeight,5)==row,"scaled_mouse_rows");}
+  for(auto size:{glm::ivec2(1280,720),glm::ivec2(1920,1080),glm::ivec2(2560,1440)})for(int scale=0;scale<4;++scale){float s=UiLayout::interfaceScale(size.x,size.y,scale);VillageUiLayout l(int(size.x/s),int(size.y/s));for(int a=0;a<3;++a)check(l.action(l.x+16+(a+.5f)*(l.width-32)/3,l.y+l.height-85)==a,"scaled_action_button_hitbox");for(int row=0;row<5;++row)check(l.row(l.x+24,l.y+108+(row+.5f)*l.rowHeight,5)==row,"scaled_mouse_rows");}
  }
+ static void endurance(Game& g,const std::filesystem::path& out){
+  auto saved=WorldLibrary::create("Village endurance",20260917,GameMode::Creative,false);g.playSavedWorld(saved);std::vector<glm::ivec3> centers;
+  for(int z=-5;z<=5&&centers.size()<3;++z)for(int x=-5;x<=5&&centers.size()<3;++x){auto p=g.world_->structures_.majorPlanForRegion(x,z,[&](int X,int Z){return g.world_->structureTerrainAt(X,Z);});if(p.pieces.empty()||(p.kind!=StructureKind::PlainsVillage&&p.kind!=StructureKind::DesertVillage))continue;auto first=p.pieces.front();centers.push_back({first.x,first.y+1,first.z});}
+  check(centers.size()==3,"three_natural_villages_for_endurance");std::ofstream csv(out/"endurance.csv");csv<<"visit,villages,npcs,mobs,ram_mb\n";
+  for(int visit=0;visit<9;++visit){auto center=centers[visit%3];auto& w=*g.world_;auto plan=w.structures_.majorPlanForRegion(adventureFloorDiv(center.x,320),adventureFloorDiv(center.z,320),[&](int x,int z){return w.structureTerrainAt(x,z);});
+   for(auto piece:plan.pieces)w.prepareSpawnTerrain({piece.x+.5f,piece.y+1.01f,piece.z+.5f});g.player_->teleport(w.findSafeSpawnNear(center.x,center.z));g.weather_->set(WeatherType::Clear,1500);
+   for(int frame=0;frame<1200*15;++frame){g.timing_.worldTime=float(frame)/15;g.timing_.previousFrame=glfwGetTime();g.updateSimulation(1.f/15);if(frame%150==0){glfwPollEvents();g.renderFrame(0);}}
+   check(w.villages.valid(w.seed(),w.generationVersion())&&g.survival_->villageCheckpoint(w),"endurance_bounded_identity_and_state");
+   auto selected=std::uint32_t(0);for(const auto& e:w.villages.people())if(!e.second.dead&&glm::distance(glm::vec3(e.second.home),glm::vec3(center))<160){selected=e.first;break;}
+   if(selected){auto n=w.villages.npc(selected);w.villages.destination(selected,100,false,false);auto offer=w.villages.pricedOffer(selected,0);g.inventory_->add(offer.input,offer.cost);auto before=*g.inventory_;auto stock=n->stock[0];std::string msg;bool success=w.villages.trade(selected,0,*g.inventory_,msg);check(success?n->stock[0]+1==stock:same(before,*g.inventory_),"endurance_trade_admission");}
+   if(visit==4&&selected){for(auto& a:g.survival_->animals_)if(a.villagerId==selected){a.health=0;a.deathTimer=.65f;w.villages.attacked(selected,true);break;}check(w.villages.npc(selected)->dead,"endurance_dead_identity_tombstone");}
+   auto before=*g.inventory_;auto people=w.villages.people().size();g.pollSave(true);check(g.saveAll(true),"endurance_save_queued");g.pollSave(true);check(SaveFile::verifyCheckpoint(saved.directory.string()),"endurance_verified_commit");
+   PROCESS_MEMORY_COUNTERS mem{};GetProcessMemoryInfo(GetCurrentProcess(),&mem,sizeof(mem));csv<<visit<<','<<w.villages.records().size()<<','<<people<<','<<g.survival_->animals_.size()<<','<<double(mem.WorkingSetSize)/1048576<<'\n';csv.flush();
+   g.returnToMainMenu();g.playSavedWorld(saved);check(same(before,*g.inventory_)&&g.world_->villages.people().size()==people&&g.survival_->villageCheckpoint(*g.world_,true),"endurance_reload_inventory_and_NPCs");
+  }
+  check(g.world_->villages.records().size()>=3,"three_actual_village_records_visited");g.saveOnExit_=false;
+ }
+ static void polish(Game& g,const std::filesystem::path& out){
+  unit(out);
+  SurvivalWorld mobs(991);SurvivalWorld::Animal a;a.type=SurvivalWorld::AnimalType::Villager;a.position={0,81,0};a.age=0;a.health=20;a.modelYaw=0;mobs.animals_.push_back(a);
+  auto shapes=mobs.renderCuboids();check(shapes.size()>20,"dedicated_humanoid_details");
+  for(auto p:shapes)check(p.instanced&&p.center.y-p.size.y*.5f>=80.99f&&p.center.y+p.size.y*.5f<82.66f,"humanoid_bounds_and_shared_batch");
+  check(mobs.targetedAnimal({0,82.45f,3},{0,0,-1},5)==0,"select_villager_at_head_height");check(mobs.targetedAnimal({0,81.9f,3},{0,0,-1},5)==0,"select_villager_at_torso_height");check(mobs.targetedAnimal({.7f,82.45f,3},{0,0,-1},5)<0,"reject_outside_humanoid_width");
+  auto bound=mobs.mobOutline(0);check(bound.size==glm::vec3(.6f,1.6f,.6f),"upright_selection_outline");
+  for(auto type:{SurvivalWorld::AnimalType::Pig,SurvivalWorld::AnimalType::Cow,SurvivalWorld::AnimalType::Sheep}){mobs.animals_[0].type=type;check(type==SurvivalWorld::AnimalType::Sheep?mobs.renderCuboids().size()==6:mobs.renderCuboids().size()>20,"authorized_livestock_models_and_unchanged_sheep");}
+  for(unsigned job=0;job<4;++job){std::vector<RenderCuboid> parts;appendVillagerModel(parts,{0,0,0},1,0,0,0,1,job,0,false,false,0);check(parts.size()>20,"all_profession_variants");}
+  if(!Persistence::enabled())return; // Demo model/unit coverage; native saved-world route belongs to full build.
+  g.playSavedWorld(WorldLibrary::create("Polish visual fixture",20260917,GameMode::Creative,false));auto& w=*g.world_;auto plan=w.structures_.majorPlanForRegion(5,-1,[&](int x,int z){return w.structureTerrainAt(x,z);});check(!plan.roads.empty(),"natural_visual_village");auto road=plan.roads[0];auto origin=w.findSafeSpawnNear(road.x,road.z);w.prepareSpawnTerrain(origin);g.player_->teleport(origin+glm::vec3(0,0,5));g.survival_=std::make_unique<SurvivalWorld>(w.seed());g.survival_->spawnAccumulator_=-100000;g.timing_.worldTime=100;g.showDebug_=false;
+  for(int job=0;job<4;++job){a={};a.type=SurvivalWorld::AnimalType::Villager;a.health=20;a.position=w.findSafeSpawnNear(int(origin.x)+job*2,int(origin.z));a.home=a.position;a.villageJob=job;a.modelYaw=0;g.survival_->animals_.push_back(a);}
+  const auto center=g.survival_->animals_[1].position+glm::vec3(1,.8f,0);
+  auto aim=[&](glm::vec3 target){auto d=glm::normalize(target-g.player_->cameraPosition());g.player_->yaw_=glm::degrees(std::atan2(d.z,d.x));g.player_->pitch_=glm::degrees(std::asin(d.y));};
+  for(int view=0;view<3;++view){g.player_->teleport(center+glm::vec3(view==1?7:0,-.8f,view==0?7:view==2?-7:0));w.prepareSpawnTerrain(g.player_->position());aim(center);auto until=glfwGetTime()+2;while(glfwGetTime()<until){w.updateStreaming(g.player_->cameraPosition(),8);g.renderFrame(0);}glBindFramebuffer(GL_READ_FRAMEBUFFER,0);glReadBuffer(GL_FRONT);check(Screenshot::saveBmp(1280,720,(out/("professions-view-"+std::to_string(view))).string()),"native_profession_capture");glReadBuffer(GL_BACK);}
+  for(int pose=0;pose<6;++pose){std::vector<RenderCuboid> parts;
+   for(unsigned job=0;job<4;++job)appendVillagerModel(parts,{float(job)*1.2f,0,0},1,pose==1?1.5708f:pose==2?3.14159f:0,1.2f,pose==3?1.f:0,2,job,0,pose==4,pose==5,0);
+   glBindFramebuffer(GL_FRAMEBUFFER,0);glViewport(0,0,1280,720);glEnable(GL_DEPTH_TEST);glClearColor(.13f,.18f,.22f,1);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+   auto camera=glm::vec3(1.8f,1.15f,5.7f);g.renderer_->renderEntities(parts,glm::lookAt(camera,glm::vec3(1.8f,.8f,0),glm::vec3(0,1,0)),glm::perspective(glm::radians(46.f),1280.f/720,.1f,50.f),100,32);
+   check(glGetError()==GL_NO_ERROR,"instanced_models_GL_valid");glReadBuffer(GL_BACK);check(Screenshot::saveBmp(1280,720,(out/("turntable-"+std::to_string(pose))).string()),"native_turntable_capture");
+  }
+  g.saveOnExit_=false;
+ }
+ #include "livestock_native.inc"
  #define VILLAGE_NEW_BUILD
  #include "village_native.inc"
  #include "../village_benchmark.inc"
 public:
- static int run(int argc,char** argv){auto out=std::filesystem::absolute(argc>2?argv[2]:"village-validation");std::filesystem::create_directories(out);Game g;char app[]="VillageFixture";char* args[]={app};check(g.initialize(1,args),"initialize");glfwHideWindow(g.window_);if(std::string(argv[1])=="--village-residency")residency();else if(std::string(argv[1])=="--village-benchmark")benchmark(g,out,argc,argv);else if(std::string(argv[1])=="--village-route")route(g,out,argc>3?std::stoi(argv[3]):30,argc>4?std::stoi(argv[4]):8);else unit(out);g.saveOnExit_=false;g.shutdown();std::ofstream(out/"results.json")<<"{\"assertions\":"<<checks<<",\"passed\":true}\n";std::cout<<"Village checks passed: "<<checks<<std::endl;return 0;}
+ static int run(int argc,char** argv){auto out=std::filesystem::absolute(argc>2?argv[2]:"village-validation");std::filesystem::create_directories(out);Game g;char app[]="VillageFixture";char* args[]={app};check(g.initialize(1,args),"initialize");glfwHideWindow(g.window_);if(std::string(argv[1])=="--village-livestock")livestock(g,out);else if(std::string(argv[1])=="--village-endurance")endurance(g,out);else if(std::string(argv[1])=="--village-polish")polish(g,out);else if(std::string(argv[1])=="--village-residency")residency();else if(std::string(argv[1])=="--village-benchmark")benchmark(g,out,argc,argv);else if(std::string(argv[1])=="--village-route")route(g,out,argc>3?std::stoi(argv[3]):30,argc>4?std::stoi(argv[4]):8);else unit(out);g.saveOnExit_=false;g.shutdown();std::ofstream(out/"results.json")<<"{\"assertions\":"<<checks<<",\"passed\":true}\n";std::cout<<"Village checks passed: "<<checks<<std::endl;return 0;}
 };
 int runVillageTests(int argc,char** argv){return VillageTest::run(argc,argv);}

@@ -6,6 +6,7 @@
 #include <istream>
 #include <ostream>
 struct StructurePlan;
+struct PlacementPlan;
 class World; class Player;
 enum class VillageJob : std::uint8_t { Farmer, Smith, Librarian, Merchant };
 struct VillageOffer {Item input;int cost;Item output;int count;};
@@ -34,6 +35,9 @@ public:
  static const char* reputationName(int);
  static const char* routineName(unsigned);
  static VillageOffer offer(VillageJob,int row);
+ static int usableCount(const Inventory&,Item);
+ std::string restockStatus(std::uint32_t)const;
+ std::string tradeStatus(std::uint32_t,int,const Inventory&)const;
  VillageOffer pricedOffer(std::uint32_t,int)const;
  static bool exchange(Inventory&,Item input,int count,ItemStack output,std::string&);
  std::uint32_t bind(World&,glm::vec3 home);
@@ -46,6 +50,7 @@ public:
  bool request(std::uint32_t,int,int action,Inventory&,Player&,std::string&);
  bool contribute(std::uint32_t,int,Inventory&,std::string&);
  bool withdraw(std::uint32_t,int,Inventory&,std::string&);
+ PlacementPlan projectPreview(std::uint32_t,int,const World&)const;
  std::string projectSite(std::uint32_t,int,const World&)const;
  bool construct(std::uint32_t,int,World&,SurvivalWorld&,Player&,std::string&);
  void attacked(std::uint32_t,bool killed);

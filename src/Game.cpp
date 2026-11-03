@@ -2244,6 +2244,7 @@ void Game::renderFrame(float deltaTime) {
                                 timing_.worldTime, settings_.brightness, fullbright_, entityDistance);
     renderer_->renderItemSprites(items.get(), view, projection, timing_.worldTime, entityDistance);
     renderer_->renderParticles(view, projection, entityDistance);
+    if(villageOpen_&&villageTab_==2)renderer_->renderPlacementPreview(world_->villages.projectPreview(villageNpc_,villageRow_,*world_),view,projection);
     weatherRenderer_->render(*weather_, *world_, settings_, player_->cameraPosition(),
                              view, projection, timing_.worldTime, daylight(timing_.worldTime));
 
@@ -2316,7 +2317,7 @@ void Game::renderFrame(float deltaTime) {
     if(ui_.state()==GameState::Playing && !chat_.isOpen() && !journalOpen_ && !villageOpen_) renderer_->renderNavigation(width,height,*transportation_,*player_,*inventory_,navigationOpen_,mapView_,viewedMap_,waypointName_,waypointCoordinates_,waypointCoordinatesFocused_,navigationMessage_);
 
     if(journalOpen_ && ui_.state()==GameState::Playing)renderer_->renderAdventure(width,height,world_->adventure,journalCategory_,journalPage_,&world_->villages);
-    if(villageOpen_)renderer_->renderVillage(width,height,world_->villages,villageNpc_,villageTab_,villageRow_,villageMessage_,controlKeyName(settings_.controls[int(ControlAction::Sneak)]));
+    if(villageOpen_)renderer_->renderVillage(width,height,world_->villages,villageNpc_,villageTab_,villageRow_,villageMessage_,controlKeyName(settings_.controls[int(ControlAction::Sneak)]),inventory_.get());
     const glm::dvec2 cursor = input_.framebufferCursorPosition()/double(uiScale);
     if (ui_.gameplayInterfaceOpen()) {
         if (input_.mousePressed(GLFW_MOUSE_BUTTON_LEFT) ||

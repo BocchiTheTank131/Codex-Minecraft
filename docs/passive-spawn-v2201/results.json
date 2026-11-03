@@ -1,0 +1,17 @@
+[
+  {
+    "name": "farming",
+    "exit": 0,
+    "sha256": "c3d45416f4f7c65a1a857367aa87a6379d560d9be2be700f125e51370f215277"
+  },
+  {
+    "name": "full-survival",
+    "exit": 0,
+    "sha256": "c044e55130c129fccdcc94f3ef31b9cb8065db36260ebe5c3af6145bef8b0fac"
+  },
+  {
+    "name": "demo-survival",
+    "exit": 0,
+    "sha256": "475c729faac74d6df4f134592ad3c5dd25a7e4b222017d5c728175fce53fa3a1"
+  }
+]

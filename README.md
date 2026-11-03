@@ -6,16 +6,41 @@
 
 ### A modern C++17 / OpenGL 3.3 voxel sandbox crafted entirely with ChatGPT Codex.
 
-[![Release](https://img.shields.io/badge/Release-v2.20.0-blue.svg?style=for-the-badge&logo=github)](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.0)
+[![Release](https://img.shields.io/badge/Release-v2.20.1-blue.svg?style=for-the-badge&logo=github)](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.1)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C.svg?style=for-the-badge&logo=c%2B%2B)](https://en.wikipedia.org/wiki/C%2B%2B17)
 [![OpenGL 3.3](https://img.shields.io/badge/OpenGL-3.3%20Core-5586A4.svg?style=for-the-badge&logo=opengl)](https://www.khronos.org/opengl/)
 [![CMake](https://img.shields.io/badge/CMake-3.20%2B-064F8C.svg?style=for-the-badge&logo=cmake)](https://cmake.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey.svg?style=for-the-badge&logo=windows)](https://github.com/BocchiTheTank131/Codex-Minecraft)
 [![Built with Codex](https://img.shields.io/badge/Developed%20With-ChatGPT%20Codex-brightgreen.svg?style=for-the-badge&logo=openai)](https://openai.com)
 
-**[Latest Release (v2.20.0)](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.0)** • **[Features](#core-gameplay-systems)** • **[Controls](#complete-controls-reference)** • **[Commands](#in-game-console-commands)** • **[Crafting](#crafting-smelting--recipes)** • **[Architecture](#engine-architecture--technical-deep-dive)** • **[Building](#building-from-source)**
+**[Latest Release (v2.20.1)](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.1)** • **[Features](#core-gameplay-systems)** • **[Controls](#complete-controls-reference)** • **[Commands](#in-game-console-commands)** • **[Crafting](#crafting-smelting--recipes)** • **[Architecture](#engine-architecture--technical-deep-dive)** • **[Building](#building-from-source)**
 
 </div>
+
+### v2.20.1 - Village Polish & Living World Improvements
+
+Passive wildlife now uses a 10-second spawn cooldown (formerly 20) and a
+52-mob cap (formerly 26), for twice the natural spawn rate and capacity.
+Hostile spawning settings are unchanged.
+
+
+Pigs and cows also receive distinct voxel models, movement-driven diagonal
+strides, smooth turning, young-animal proportions and body collision/step jumps.
+See [livestock validation](docs/LIVESTOCK_VISUALS_v2.20.1.md) for captures and tests.
+
+
+Original upright humanoid villagers now have distinct profession clothing and
+movement/work/conversation animation. The larger trading dialog shows usable
+resources, stock, discounts and availability, with explicit mouse buttons.
+Merchant exchanges, newly funded Community Stalls and project guidance are improved.
+Existing saves, completed projects, 365 previews and Generators V1–V24 are retained.
+
+See [local release notes](docs/RELEASE_v2.20.1.md) and
+[validation and limitations](docs/VILLAGE_POLISH_VALIDATION_v2.20.1.md).
+Download the full installer, stateless demo and checksums from the
+[v2.20.1 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.1).
+Validation used isolated profiles; no real saved worlds were modified.
+
 
 ---
 

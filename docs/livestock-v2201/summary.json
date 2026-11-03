@@ -1,0 +1,48 @@
+{
+  "focused": [
+    {
+      "name": "full-village-livestock",
+      "exit": 0,
+      "exe_sha256": "52d3ab7087c2362acef93045d88484dd525de4c01e12670e5621cd2f3220eb84"
+    },
+    {
+      "name": "full-village-tests",
+      "exit": 0,
+      "exe_sha256": "52d3ab7087c2362acef93045d88484dd525de4c01e12670e5621cd2f3220eb84"
+    },
+    {
+      "name": "demo-village-livestock",
+      "exit": 0,
+      "exe_sha256": "56e17087be01fc80f17aa45b98f091b7f6f489307ffd838f71897c4c016637ed"
+    },
+    {
+      "name": "demo-village-tests",
+      "exit": 0,
+      "exe_sha256": "56e17087be01fc80f17aa45b98f091b7f6f489307ffd838f71897c4c016637ed"
+    }
+  ],
+  "assertions": {
+    "demo-village-livestock": {
+      "assertions": 3015,
+      "passed": true
+    },
+    "demo-village-tests": {
+      "assertions": 1836,
+      "passed": true
+    },
+    "full-village-livestock": {
+      "assertions": 3024,
+      "passed": true
+    },
+    "full-village-tests": {
+      "assertions": 1842,
+      "passed": true
+    }
+  },
+  "functional_suites": 15,
+  "release_suites": 20,
+  "historical_matching_hashes": 1326,
+  "embedded_resources_per_variant": 135,
+  "protected_files": 1002,
+  "unchanged_previews": 365
+}

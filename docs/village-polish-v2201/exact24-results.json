@@ -1,0 +1,14 @@
+[
+  {
+    "name": "full",
+    "exit": 0,
+    "seconds": 9.464931726455688,
+    "exe_sha256": "f8ebf1991d14cbab0240af41271d2b4bc16ab1ece7262f2b0a072f9098b55f0e"
+  },
+  {
+    "name": "demo",
+    "exit": 0,
+    "seconds": 9.21452283859253,
+    "exe_sha256": "4da61af06b4f7629ffef44b03559b2fe059547a421f3554f7c6b7656667bdf92"
+  }
+]

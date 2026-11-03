@@ -381,16 +381,22 @@ constexpr const char* EntityVertexShader = R"GLSL(
 #version 330 core
 layout(location=0) in vec3 aPosition;
 layout(location=1) in vec3 aNormal;
+layout(location=2) in mat4 aInstanceModel;
+layout(location=6) in vec3 aInstanceColor;
+uniform bool uInstanced;
+out vec3 vInstanceColor;
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 out vec3 vNormal;
 out vec2 vWoodUv;
-void main(){ gl_Position=uProjection*uView*uModel*vec4(aPosition,1.0); vNormal=mat3(uModel)*aNormal; vec3 p=aPosition+vec3(.5); vWoodUv=abs(aNormal.y)>.5?p.xz:abs(aNormal.x)>.5?p.zy:p.xy; }
+void main(){ mat4 model=uInstanced?aInstanceModel:uModel;vInstanceColor=aInstanceColor; gl_Position=uProjection*uView*model*vec4(aPosition,1.0); vNormal=mat3(model)*aNormal; vec3 p=aPosition+vec3(.5); vWoodUv=abs(aNormal.y)>.5?p.xz:abs(aNormal.x)>.5?p.zy:p.xy; }
 )GLSL";
 constexpr const char* EntityFragmentShader = R"GLSL(
 #version 330 core
 in vec3 vNormal;
+in vec3 vInstanceColor;
+uniform bool uInstanced;
 in vec2 vWoodUv;
 uniform sampler2D uWood;
 uniform int uWoodFamily;
@@ -405,7 +411,7 @@ void main(){
     float light=mix(0.14,0.58,uDaylight)+sun*0.38*uDaylight+
                 moon*0.14*(1.0-uDaylight);
     vec3 tint=mix(vec3(0.62,0.70,0.92),vec3(1.0,0.96,0.84),uDaylight);
-    vec3 base=uColor;
+    vec3 base=uInstanced?vInstanceColor:uColor;
     if(uWoodFamily>=0){vec2 uv=(floor(clamp(vWoodUv,vec2(0),vec2(.999))*16.0)+.5)/16.0;uv.x=(uv.x+float(uWoodFamily))/6.0;base=texture(uWood,uv).rgb*uColor;}
     fragColor=vec4(base*light*tint,1.0);
 }
@@ -958,6 +964,7 @@ Renderer::Renderer() {
     for (int face = 0; face < 6; ++face)
         for (int index : indices)
             cube.push_back({corners[face][index], normals[face]});
+    glGenBuffers(1,&villagerInstanceVbo_);
     glGenVertexArrays(1, &entityVao_);
     glGenBuffers(1, &entityVbo_);
     glBindVertexArray(entityVao_);
@@ -1008,6 +1015,7 @@ Renderer::~Renderer() {
         glDeleteVertexArrays(1, &itemVao_);
     if (entityVbo_)
         glDeleteBuffers(1, &entityVbo_);
+    if(villagerInstanceVbo_)glDeleteBuffers(1,&villagerInstanceVbo_);
     if (entityVao_)
         glDeleteVertexArrays(1, &entityVao_);
     if (particleVbo_)
@@ -1646,12 +1654,15 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
                  glm::value_ptr(state.sunDirection));
     glUniform1f(entityUniforms_.daylight, state.daylight*(1-.25f*weather_.x-.55f*weather_.y));
     glBindVertexArray(entityVao_);
+    struct Instance {glm::mat4 model;glm::vec3 color;};
+    thread_local std::vector<Instance> instances;instances.clear();
+    glUniform1i(glGetUniformLocation(entityProgram_,"uInstanced"),0);
     int currentWood=-1;
     for (const RenderCuboid& cuboid : cuboids) {
         if (!visibility.visible(cuboid.center, glm::length(cuboid.size) * 0.5f))
             continue;
         ++visibleEntityCount_;
-        if(cuboid.woodTexture!=currentWood){currentWood=cuboid.woodTexture;glUniform1i(boatFamilyUniform_,currentWood);if(currentWood>=0){glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,boatTexture_);}}
+        if(!cuboid.instanced&&cuboid.woodTexture!=currentWood){currentWood=cuboid.woodTexture;glUniform1i(boatFamilyUniform_,currentWood);if(currentWood>=0){glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,boatTexture_);}}
         glm::mat4 model = glm::translate(glm::mat4(1.0f), cuboid.center);
         if(cuboid.yaw!=0) model=glm::rotate(model,-cuboid.yaw,glm::vec3(0,1,0));
         if (glm::dot(cuboid.direction, cuboid.direction) > .0001f) {
@@ -1663,6 +1674,7 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
             model = glm::rotate(model, angle, glm::normalize(axis));
         }
         model = glm::scale(model, cuboid.size);
+        if(cuboid.instanced){instances.push_back({model,cuboid.color});continue;}
         glUniformMatrix4fv(
             entityUniforms_.model, 1, GL_FALSE, glm::value_ptr(model));
         glUniform3fv(
@@ -1670,6 +1682,16 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
         glDrawArrays(GL_TRIANGLES, 0, 36);
     }
     glUniform1i(boatFamilyUniform_,-1);
+    if(!instances.empty()){
+        glUniform1i(glGetUniformLocation(entityProgram_,"uInstanced"),1);
+        glBindBuffer(GL_ARRAY_BUFFER,villagerInstanceVbo_);
+        glBufferData(GL_ARRAY_BUFFER,GLsizeiptr(instances.size()*sizeof(Instance)),instances.data(),GL_STREAM_DRAW);
+        for(unsigned i=0;i<4;++i){glEnableVertexAttribArray(2+i);glVertexAttribPointer(2+i,4,GL_FLOAT,GL_FALSE,sizeof(Instance),reinterpret_cast<void*>(i*sizeof(glm::vec4)));glVertexAttribDivisor(2+i,1);}
+        glEnableVertexAttribArray(6);glVertexAttribPointer(6,3,GL_FLOAT,GL_FALSE,sizeof(Instance),reinterpret_cast<void*>(offsetof(Instance,color)));glVertexAttribDivisor(6,1);
+        glDrawArraysInstanced(GL_TRIANGLES,0,36,GLsizei(instances.size()));
+        for(unsigned i=2;i<=6;++i){glDisableVertexAttribArray(i);glVertexAttribDivisor(i,0);}
+        glUniform1i(glGetUniformLocation(entityProgram_,"uInstanced"),0);
+    }
     glBindVertexArray(0);
 }
 void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
@@ -2987,15 +3009,16 @@ void Renderer::renderQolFeedback(int width,int height,const std::string& hint,co
  if(!v.empty())drawMenuVertices(v.data(),v.size());
 }
 
-void Renderer::renderVillage(int width,int height,const Villages& state,std::uint32_t id,int tab,int row,const std::string& message,const std::string& sneak)const{
+void Renderer::renderVillage(int width,int height,const Villages& state,std::uint32_t id,int tab,int row,const std::string& message,const std::string& sneak,const Inventory* inventory)const{
  auto n=state.npc(id);if(!n)return;auto town=state.village(n->village);VillageUiLayout l(width,height);
  struct Cache{int width=-1,height=-1,tab=-1,row=-1;std::uint64_t state=0;std::string message,sneak;std::vector<UiVertex> vertices;};thread_local Cache cache;
  std::uint64_t signature=1469598103934665603ULL;auto mix=[&](std::uint64_t value){signature=(signature^value)*1099511628211ULL;};
- mix(id);mix(n->village);mix(unsigned(n->job));mix(n->routine);mix(n->variant);mix(n->dead);for(auto stock:n->stock)mix(stock);
+ if(inventory)for(int i=0;i<Inventory::TotalSlots;++i){auto stack=inventory->slot(i);mix(unsigned(stack.item));mix(stack.count);mix(stack.durability);mix(stack.identity);mix(inventory->hotbarLocked(i));}
+ mix(n->restockAt);if(town)mix(town->seconds);mix(id);mix(n->village);mix(unsigned(n->job));mix(n->routine);mix(n->variant);mix(n->dead);for(auto stock:n->stock)mix(stock);
  if(town){mix(std::uint64_t(town->reputation));mix(town->supply);mix(town->projects);mix(town->completedRequests);for(auto f:town->funding)for(auto value:f)mix(value);for(auto q:town->requests){mix(q.kind);mix(q.status);mix(q.progress);}}
  if(cache.width==width&&cache.height==height&&cache.tab==tab&&cache.row==row&&cache.state==signature&&cache.message==message&&cache.sneak==sneak){drawMenuVertices(cache.vertices.data(),cache.vertices.size());return;}
  cache.width=width;cache.height=height;cache.tab=tab;cache.row=row;cache.state=signature;cache.message=message;cache.sneak=sneak;auto& v=cache.vertices;v.clear();
- auto text=[&](std::string s,float x,float y,float scale,glm::vec4 color=glm::vec4(1)){scale=std::min(scale,(l.width-32)/std::max(1.f,float(s.size())*6));textGeometry_->appendRun(v,s,x,y,scale,color,width,height);};
+ auto text=[&](std::string s,float x,float y,float scale,glm::vec4 color=glm::vec4(1)){scale=std::min(scale,(l.x+l.width-16-x)/std::max(1.f,float(s.size())*6));textGeometry_->appendRun(v,s,x,y,scale,color,width,height);};
  addRect(v,l.x,l.y,l.width,l.height,{.06f,.09f,.11f,.98f},width,height);
  text(std::string(Villages::profession(n->job))+" / "+(n->dead?"DECEASED":Villages::routineName(n->routine)),l.x+16,l.y+16,1.8f,{1,.85f,.45f,1});
  text(town?std::string(Villages::reputationName(town->reputation))+"  REPUTATION "+std::to_string(town->reputation)+" / SUPPLIES "+std::to_string(town->supply):"INDEPENDENT TRAVELER / FINITE STOCK",l.x+16,l.y+42,1.2f);
@@ -3003,12 +3026,20 @@ void Renderer::renderVillage(int width,int height,const Villages& state,std::uin
  auto lines=state.lines(id,tab);const bool list=tab==0||town;int count=tab==0?5:!town?int(lines.size()):tab==1?3:tab==2?2:int(lines.size());
  for(int i=0;i<count;++i){float y=l.y+108+i*l.rowHeight;if(tab==3)y=l.y+108+i*std::min(26.f,(l.height-200)/std::max(1,count));
   if(tab!=3)addRect(v,l.x+16,y,l.width-32,l.rowHeight-4,i==row?glm::vec4(.25f,.31f,.35f,1):glm::vec4(.12f,.15f,.17f,1),width,height);
-  if(tab==0){auto offer=state.pricedOffer(id,i);float size=std::min(40.f,l.rowHeight-6);addSprite(v,offer.input,l.x+20,y+1,size,size,{1,1,1,1},width,height);addSprite(v,offer.output,l.x+l.width-62,y+1,size,size,{1,1,1,1},width,height);
-   text(lines[i],l.x+22+size,y+10,std::min(1.15f,(l.width-150)/std::max(1.f,float(lines[i].size())*6)));}
+  if(tab==0){auto offer=state.pricedOffer(id,i);float size=std::min(44.f,l.rowHeight-8);addSprite(v,offer.input,l.x+22,y+3,size,size,{1,1,1,1},width,height);addSprite(v,offer.output,l.x+l.width-64,y+3,size,size,{1,1,1,1},width,height);
+   auto name=std::to_string(offer.cost)+" "+itemDefinition(offer.input).displayName+" > "+std::to_string(offer.count)+" "+itemDefinition(offer.output).displayName;
+   text(name,l.x+28+size,y+5,std::min(1.6f,(l.width-160)/std::max(1.f,float(name.size())*6)));
+   const int discount=Villages::offer(n->job,i).cost-offer.cost;
+   std::string status="STOCK "+std::to_string(n->stock[i]);if(inventory)status+=" / HAVE "+std::to_string(Villages::usableCount(*inventory,offer.input))+" / "+state.tradeStatus(id,i,*inventory);if(discount>0)status+=" / SAVE "+std::to_string(discount);
+   text(status,l.x+28+size,y+l.rowHeight*.56f,std::min(1.05f,(l.width-160)/std::max(1.f,float(status.size())*6)),{.80f,.88f,.77f,1});}
   else if(list&&(tab==1||tab==2)){text(lines[i*2],l.x+24,y+3,1.15f);text(lines[i*2+1],l.x+24,y+l.rowHeight*.5f,1.0f,{.75f,.85f,.9f,1});}
   else text(lines[i],l.x+18,y,1.12f);
  }
+ if(tab!=3){const bool done=town&&(tab==1?town->requests[std::clamp(row,0,2)].status>=2:tab==2?bool(town->projects&(1<<std::clamp(row,0,1))):false);
+ const char* labels[3]={tab==0?"TRADE":tab==1?"ACCEPT / CLAIM":"CONTRIBUTE",tab==1?"ABANDON":tab==2?"BUILD":"",tab==1?"NEXT SET":tab==2?"REFUND":""};
+ for(int a=0;a<3;++a)if(*labels[a]){float x=l.x+16+a*(l.width-32)/3;addRect(v,x,l.y+l.height-100,(l.width-32)/3-4,26,done?glm::vec4(.14f,.18f,.18f,1):glm::vec4(.25f,.36f,.28f,1),width,height);text(done&&a<2?"FINISHED":labels[a],x+8,l.y+l.height-93,1.2f);}}
  text(message,l.x+16,l.y+l.height-69,1.15f,{1,.83f,.55f,1});
- text(tab==3?"Village information / trading and objectives are on the other tabs":tab==2?"ENTER: CONTRIBUTE / "+sneak+" + ENTER: BUILD / BACKSPACE: REFUND":tab==1?"ENTER: ACCEPT / CLAIM  BACKSPACE: ABANDON  R: ROTATE":"ENTER: TRADE / CLICK SELECTED OFFER",l.x+16,l.y+l.height-44,1.05f);
- text("LEFT/RIGHT/TAB: CATEGORY   UP/DOWN: SELECT   ESC: CLOSE",l.x+16,l.y+l.height-24,1.0f,{.75f,.8f,.8f,1});drawMenuVertices(v.data(),v.size());
+ const bool finished=town&&(tab==2?bool(town->projects&(1<<std::clamp(row,0,1))):tab==1?town->requests[std::clamp(row,0,2)].status>=2:false);
+ text(finished?"Finished / no further contribution or reward is available":tab==3?"Village information / trading and objectives are on the other tabs":tab==2?"ENTER: CONTRIBUTE / "+sneak+" + ENTER: BUILD / BACKSPACE: REFUND":tab==1?"ENTER: ACCEPT / CLAIM  BACKSPACE: ABANDON  R: ROTATE":"SELECT AN OFFER / ENTER OR TRADE BUTTON",l.x+16,l.y+l.height-44,1.05f);
+ text("LEFT/RIGHT/TAB: CATEGORY   UP/DOWN: SELECT   W: WAYPOINT   ESC: CLOSE",l.x+16,l.y+l.height-24,1.0f,{.75f,.8f,.8f,1});drawMenuVertices(v.data(),v.size());
 }

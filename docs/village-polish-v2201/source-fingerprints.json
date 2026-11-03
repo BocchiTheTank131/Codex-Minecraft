@@ -1,0 +1,19 @@
+{
+  "CMakeLists.txt": "a65a3a2c7d8c0a5a1e38e25307948433d2a7c2f3ff326f982b7168d4cb908905",
+  "include/Renderer.h": "35327c93b3bc375e3d3b9b3f4af9e71a473ed0efa7dcde841b7d66f2e9f0f682",
+  "include/Survival.h": "5dcb77cf5aa503370b8b3a80ee05b4715cfb35bcef206ba8972a9c3959ab76c4",
+  "include/VillageUi.h": "5a47d8728a2bc460de1681733a4576d09d5000b02fd101a2f99ab11fcd787da6",
+  "include/Villages.h": "eea79d1ead39a2e15eef2151827baa6882877598e057fc77dd6d816aba548a9a",
+  "src/Game.cpp": "0bd9216746588e4adb31923ac73f063188cbb461a8ad6999235eae3c864adf55",
+  "src/GameVillages.cpp": "e1177386d2b655b3b7222d547334cebbed449af800c616f6f1b94e3ac3afabb8",
+  "src/Renderer.cpp": "9cab1473b7b00de3110e66498a7b4bc900fdd977b1ebc15dfad91df661ea1979",
+  "src/Survival.cpp": "30ce4a8605fb9252d7d2d289e45fb6ccdaa7f4a54d9ac8a2ae003217297c2951",
+  "src/Villages.cpp": "62cb34c1deededd7ebe4c78ba3de16ee34e4a6fe892dddc1caea8634434c53c3",
+  "tests/stability/village.cpp": "0605e41b6d2bb489aeec13246aa036a09ff1a7e6cb474e6e22c88bf6a7873c53",
+  "tests/stability/village_native.inc": "5800a67e242d5f10d0234685bba95f300f5812895c76750e02dcfe81705e78c5",
+  "include/VillagerModel.h": "6edda3423674eb8ad1a314e3cebedecef295dda26650ba95b5d7f24379f724bc",
+  "tools/run_village_polish_evidence.py": "2138c12839a1b92fc69d70cd939d4cfc17db78d1ae86395f5b7470ac30fd1282",
+  "tools/validate_village_polish.py": "9d0789380d65f0a34af188364dbd4b51c58f9b8f61a346b7f3bb9622e0088ff5",
+  "tools/verify_village_polish_packages.py": "1e6fff10e9a947c0d6fcd71526763d7d91a7b3249c79cac62da2d7021ba5754a",
+  "tools/check_village_polish_previews.py": "e0bf0d108483761a02f606219717967af99a88be07226629a7c840c70b0be9cb"
+}
