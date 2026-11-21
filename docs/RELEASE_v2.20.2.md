@@ -1,6 +1,11 @@
 # v2.20.2 — Visual & Atmospheric Polish
 
-Local review candidate. Not committed, tagged, published or installed.
+Release authorized November 21, 2026.
+
+Download the **Windows Setup** for the full persistent game or **Windows Standalone**
+for the stateless demo from the [v2.20.2 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.2).
+`SHA256SUMS.txt` verifies both downloads. No installation or real-save changes
+were performed during preparation.
 
 - Richer blue sky gradients, directional warm twilight and cool nights; bounded
   procedural cloud detail, softer edges, subdued stars and cloud-occluded sun/moon.
@@ -32,7 +37,7 @@ and four cached light-source points. High uses four octaves, stronger but subtle
 motion, at most 64 dust motes and sixteen light-source points. Particle amount
 also scales dust; zero clears both new particle effects.
 
-See [validation](VISUAL_POLISH_VALIDATION_v2.20.2.md) for native comparisons,
+See [validation](https://github.com/BocchiTheTank131/Codex-Minecraft/blob/v2.20.2/docs/VISUAL_POLISH_VALIDATION_v2.20.2.md) for native comparisons,
 measured performance, package verification, compatibility and unresolved limits.
 Physical low-end/integrated-GPU certification is not implied by desktop testing.
 
@@ -43,4 +48,5 @@ per variant match. Original 365 preview images and mappings are unchanged.
 Performance limit: GPU median overhead at RD8 is about 1–3% on the tested desktop,
 but active engine work rises 5.8% on Low and 9.6% on Medium, missing those targets.
 Some RD8 p99 increases remain variable. See the report before judging low-end
-readiness; this is a local review candidate.
+readiness. Interior models can remain too dark near doorways. Textured drifting
+leaves and deformation of connected leaf cubes remain deferred.

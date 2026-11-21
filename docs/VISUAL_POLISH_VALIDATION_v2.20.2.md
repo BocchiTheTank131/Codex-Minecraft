@@ -1,6 +1,7 @@
 # v2.20.2 — Visual & Atmospheric Polish validation
 
-Local candidate; no commit, push, tag, release, installation or real-save access.
+Development validation used a local candidate without publication, installation
+or real-save access. Publication was subsequently authorized November 21, 2026.
 
 Evidence collected November 3–4, 2026.
 
@@ -382,3 +383,18 @@ never a reset or overwrite of the working tree.
   this visual update. Existing compiler warnings are recorded in build logs.
 - Native screenshots and focused assertions do not establish every seed, graphics
   driver, camera pose, or weather/geometry combination as defect-free.
+
+## Publication verification — November 21, 2026
+
+The original November 4 installer and standalone demo are published unchanged;
+their hashes match the package table above. The full-game build directory was
+subsequently rebuilt and no longer matches the tested full executable fingerprint;
+that later executable is not the release payload. The installer remains byte-for-byte
+identical to the original validated package. The 20 recorded Release suite results
+refer to the original executable fingerprints; those suites were not rerun for this
+documentation-only publication. Fresh thumbnail, embedded-resource and download
+checksum verification was performed during publication preparation.
+
+The release includes only Setup, Standalone and SHA256SUMS.txt as uploaded assets.
+Build directories, test profiles and local archives are excluded. Existing committed
+repository files were preserved. No real installation or saved world was accessed.

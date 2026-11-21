@@ -6,18 +6,18 @@
 
 ### A modern C++17 / OpenGL 3.3 voxel sandbox crafted entirely with ChatGPT Codex.
 
-[![Release](https://img.shields.io/badge/Release-v2.20.1-blue.svg?style=for-the-badge&logo=github)](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.1)
+[![Release](https://img.shields.io/badge/Release-v2.20.2-blue.svg?style=for-the-badge&logo=github)](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.2)
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-00599C.svg?style=for-the-badge&logo=c%2B%2B)](https://en.wikipedia.org/wiki/C%2B%2B17)
 [![OpenGL 3.3](https://img.shields.io/badge/OpenGL-3.3%20Core-5586A4.svg?style=for-the-badge&logo=opengl)](https://www.khronos.org/opengl/)
 [![CMake](https://img.shields.io/badge/CMake-3.20%2B-064F8C.svg?style=for-the-badge&logo=cmake)](https://cmake.org/)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux-lightgrey.svg?style=for-the-badge&logo=windows)](https://github.com/BocchiTheTank131/Codex-Minecraft)
 [![Built with Codex](https://img.shields.io/badge/Developed%20With-ChatGPT%20Codex-brightgreen.svg?style=for-the-badge&logo=openai)](https://openai.com)
 
-**[Latest Release (v2.20.1)](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.1)** • **[Features](#core-gameplay-systems)** • **[Controls](#complete-controls-reference)** • **[Commands](#in-game-console-commands)** • **[Crafting](#crafting-smelting--recipes)** • **[Architecture](#engine-architecture--technical-deep-dive)** • **[Building](#building-from-source)**
+**[Latest Release (v2.20.2)](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.2)** • **[Features](#core-gameplay-systems)** • **[Controls](#complete-controls-reference)** • **[Commands](#in-game-console-commands)** • **[Crafting](#crafting-smelting--recipes)** • **[Architecture](#engine-architecture--technical-deep-dive)** • **[Building](#building-from-source)**
 
 </div>
 
-### Local candidate: v2.20.2 — Visual & Atmospheric Polish
+### v2.20.2 — Visual & Atmospheric Polish
 
 The local build adds warmer twilight, softer cloud layers, restrained celestial
 lighting, textured water ripples and horizon reflections, and smooth camera-based
@@ -28,10 +28,11 @@ halos reuse the existing particle pass. Rain, splash rings, snowfall and lightni
 receive cosmetic refinements, with clearer selected inventory borders.
 
 OpenGL 3.3, pixel-art textures, existing graphics presets and gameplay are retained.
-The published download above remains v2.20.1; this candidate is local and unpublished.
+Download the Windows installer, stateless standalone demo and SHA-256 checksums
+from the [v2.20.2 release](https://github.com/BocchiTheTank131/Codex-Minecraft/releases/tag/v2.20.2).
 Measured RD8 GPU overhead is about 1–3% on the test desktop; Low/Medium active
 engine-work targets remain unmet. See the validation report for timings and limits.
-See [candidate release notes](docs/RELEASE_v2.20.2.md) and
+See [release notes](docs/RELEASE_v2.20.2.md) and
 [visual evidence, measurements and limitations](docs/VISUAL_POLISH_VALIDATION_v2.20.2.md).
 
 ### v2.20.1 - Village Polish & Living World Improvements
