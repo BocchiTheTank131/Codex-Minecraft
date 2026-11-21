@@ -17,6 +17,23 @@
 
 </div>
 
+### Local candidate: v2.20.2 — Visual & Atmospheric Polish
+
+The local build adds warmer twilight, softer cloud layers, restrained celestial
+lighting, textured water ripples and horizon reflections, and smooth camera-based
+underwater attenuation. Terrain, models, dropped items and held sprites now use
+more consistent local sunlight/blocklight and weather coloration. Grass and
+flowers move subtly on Medium/High; bounded dust and depth-tested light-source
+halos reuse the existing particle pass. Rain, splash rings, snowfall and lightning
+receive cosmetic refinements, with clearer selected inventory borders.
+
+OpenGL 3.3, pixel-art textures, existing graphics presets and gameplay are retained.
+The published download above remains v2.20.1; this candidate is local and unpublished.
+Measured RD8 GPU overhead is about 1–3% on the test desktop; Low/Medium active
+engine-work targets remain unmet. See the validation report for timings and limits.
+See [candidate release notes](docs/RELEASE_v2.20.2.md) and
+[visual evidence, measurements and limitations](docs/VISUAL_POLISH_VALIDATION_v2.20.2.md).
+
 ### v2.20.1 - Village Polish & Living World Improvements
 
 Passive wildlife now uses a 10-second spawn cooldown (formerly 20) and a
@@ -763,7 +780,7 @@ The codebase compiles into two distinct release configurations:
 2. **Stateless Standalone Demo (`Windows-Standalone.exe`)**: A single standalone executable. Runs strictly in-memory without creating or reading saved world files. Cheat commands are disabled. Perfect for immediate zero-footprint gameplay previews.
 
 ### Asset Pipeline & Offline Thumbnail Previews
-All 365 registered inventory items feature offline-rendered **64×64 pixel previews** packed into an embedded texture atlas. Blocks are rendered in an isometric orthographic projection sampling true material textures; tools and items feature shaded pixel silhouettes. The atlas is generated offline via `tools/generate_item_thumbnails.py`, eliminating runtime preview generation overhead.
+All 365 registered inventory items feature offline-rendered **64×64 pixel previews** packed into an embedded texture atlas. Blocks are rendered in an isometric orthographic projection sampling true material textures; tools and items feature shaded pixel silhouettes. The atlas is generated offline via `tools/generate_item_thumbnails.py`, eliminating runtime preview generation overhead. Thumbnail authoring pins Pillow 12.0.0 through `tools/requirements-thumbnails.txt` to preserve released downsampling exactly; packaging and gameplay do not require Pillow.
 
 ---
 
@@ -771,11 +788,15 @@ All 365 registered inventory items feature offline-rendered **64×64 pixel previ
 
 ```
 Codex-Minecraft/
+├── .archive/                   # Local ignored archive of historical outputs/prototypes
 ├── assets/                     # Embedded 16x16 textures, audio, and icon manifests
 │   ├── inventory_atlas_16.png  # Base pixel art item sprite atlas
 │   ├── inventory_previews.json # 365 offline thumbnail geometry definitions
 │   └── sounds/                 # OGG sound effects and background music tracks
 ├── docs/                       # Validation reports, audit logs, and release notes
+├── build/                      # Ignored builds, disposable profiles and task evidence
+│   ├── installed-release/      # Active full persistent Release build
+│   └── standalone-demo-release/ # Active stateless demo Release build
 ├── include/                    # Public C++ header declarations
 │   ├── Adventure.h             # Relic chambers, puzzles, and adventure journal
 │   ├── Automation.h            # Redstone logic, wires, repeaters, pistons, hoppers
@@ -811,6 +832,13 @@ Codex-Minecraft/
 ---
 
 ## Building from Source
+
+Keep temporary logs, captures, test profiles and diagnostic scripts under a named
+`build/<task>-<date>/` folder. Historical outputs may be moved to `.archive/` after
+checking their consumers; `.archive/ARCHIVE_MANIFEST.md` records original paths.
+Restore archived experiments to their original locations before reuse and
+reconfigure any archived CMake build. Required fixtures and referenced validation
+evidence stay in their documented locations.
 
 ### Prerequisites
 * **C++17 Compiler**: MSVC (Visual Studio 2022 / 2026), GCC 9+, or Clang 10+

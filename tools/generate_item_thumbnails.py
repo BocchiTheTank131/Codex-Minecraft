@@ -6,7 +6,7 @@ Legacy 16px files remain source artwork for silhouette-shaped non-block items.
 """
 from pathlib import Path
 import argparse, csv, hashlib, json, struct, subprocess, time, os, uuid, io, re
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, __version__ as pillow_version
 ROOT=Path(__file__).resolve().parents[1]
 version=re.search(r'project\(VoxelFrontier VERSION ([0-9.]+)',(ROOT/'CMakeLists.txt').read_text()).group(1)
 validation=ROOT/('build/v'+version.replace('.','')+'-validation')
@@ -16,7 +16,7 @@ parser.add_argument('--skip-build',action='store_true')
 parser.add_argument('--check',action='store_true')
 args=parser.parse_args()
 assets=ROOT/'assets';manifest=assets/'inventory_previews.json'
-inputs=['src/World.cpp','src/Renderer.cpp','src/Building.cpp','src/Definitions.cpp','src/Transportation.cpp',
+inputs=['tools/requirements-thumbnails.txt','include/VisualLighting.h','include/Renderer.h','src/World.cpp','src/Renderer.cpp','src/Building.cpp','src/Definitions.cpp','src/Transportation.cpp',
         'include/Block.h','include/Survival.h','include/BuildingContent.inc','include/Definitions.h',
         'assets/crafting_blocks.rgba','assets/inventory_atlas_16.png','tests/stability/icons.cpp',
         'tools/generate_item_thumbnails.py','src/Automation.cpp','include/Automation.h','include/Building.h','include/AutomationContent.inc','tools/generate_automation_assets.py','tools/generate_relic_assets.py']
@@ -41,6 +41,8 @@ def verify():
     print('Thumbnail source fingerprint and all exported assets verified:',data['items'],'items')
 if args.check:
     verify();raise SystemExit
+if pillow_version!='12.0.0':
+    raise SystemExit('Thumbnail authoring requires Pillow 12.0.0 for byte-stable downsampling. Install tools/requirements-thumbnails.txt in an isolated authoring environment; --check does not rebake images.')
 start=time.perf_counter();output=args.output.resolve();output.mkdir(parents=True,exist_ok=True)
 art=Image.open(assets/'inventory_atlas_16.png').convert('RGBA')
 source=assets/'inventory_art_source.rgba';atomic_bytes(source,struct.pack('<ii',*art.size)+art.tobytes())
@@ -93,6 +95,7 @@ for title,sourceImage in [('before',before),('after',atlas)]:
     sheet.save(output/(title+'-contact.png'))
 outputs=['assets/item_icons_expansion.png','assets/item_icons_expansion.rgba','assets/inventory_art_source.rgba']+[f'assets/inventory_previews/{r["file"]}' for r in records]
 data=dict(schema=1,tile_pixels=64,supersample_pixels=128,columns=10,rows=atlas.height//64,items=len(entries),
+          authoring=dict(pillow_version=pillow_version,native_rgba_sha256=digest(output/'thumbnails-128.rgba')),
           camera=dict(azimuth_degrees=45,elevation_degrees=30,projection='orthographic',padding_factor=1.13),
           inputs={name:digest(ROOT/name) for name in inputs},outputs={name:digest(ROOT/name) for name in outputs},entries=records)
 atomic_bytes(manifest,(json.dumps(data,indent=2)+'\n').encode())

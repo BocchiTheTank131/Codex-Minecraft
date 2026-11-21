@@ -5,6 +5,10 @@
   "columns": 10,
   "rows": 37,
   "items": 365,
+  "authoring": {
+    "pillow_version": "12.0.0",
+    "native_rgba_sha256": "c614426ef611b83a28c9a7db525ae9af77f83ab26ac54f1feabc3ae48b84f039"
+  },
   "camera": {
     "azimuth_degrees": 45,
     "elevation_degrees": 30,
@@ -12,8 +16,11 @@
     "padding_factor": 1.13
   },
   "inputs": {
+    "tools/requirements-thumbnails.txt": "d46ac5226c05797d12bd795e6173fa2e713c9e90566faef55228c6755b557cda",
+    "include/VisualLighting.h": "032abeda5cadf6222ce12cfdd647552436c7de98502568c27d18a3c65920b477",
+    "include/Renderer.h": "790c69b0b2d8252892bda211fa37a04f166887a378ed5f716c938ab4152db819",
     "src/World.cpp": "c3c92e6ba0b0c234b995160e16d534769ddb5caac065670f859eac64b14cef8f",
-    "src/Renderer.cpp": "9cab1473b7b00de3110e66498a7b4bc900fdd977b1ebc15dfad91df661ea1979",
+    "src/Renderer.cpp": "53bbd7cd2e92416d68700c3857e146147608f503faf125647268e30a566fa052",
     "src/Building.cpp": "c890c04c1f177ae57eacdda627681553bcea3014e1cdd5ed67e52aafd3d9bd03",
     "src/Definitions.cpp": "b61f1f5096721422d69ef24c9c422348c9253a7200848266d409da2cd8575ac5",
     "src/Transportation.cpp": "2d759eb93b51231c61dee81d6b4b75898b6f3ed8a882b7ea9878fe4a9d4a9aee",
@@ -24,7 +31,7 @@
     "assets/crafting_blocks.rgba": "2e4bb3d2581410e0eb0297115dc2092d01f229764e72e18cf1fb7538c962ae44",
     "assets/inventory_atlas_16.png": "21182655c1d01ad9ffbf0d555d73af57942bf5925519a10987bd194cd9d7920f",
     "tests/stability/icons.cpp": "abf2e0bc44e3be7315bee6e77d08c562f23a036c395e733137f9e39f2cb97869",
-    "tools/generate_item_thumbnails.py": "2aba266537df0cf3292110ae57c5a3070f501aa05a79fd1554ccc9ed93755657",
+    "tools/generate_item_thumbnails.py": "b7b8c958f5305e70cb0813b216a01d73653db5af7b79de9c924c45af324da615",
     "src/Automation.cpp": "908da9106b01e4b10c64553432fdafdbc2ff7cbc4f1be1287f2acfbd37d883fb",
     "include/Automation.h": "74bebd8709076e4552dde096f3f78b778224d0189783d20f321adc323be097fb",
     "include/Building.h": "46cc5f2f1d87bd38b64b34a538fcd607af0f4da41fe9d650fed66eefe1160a11",

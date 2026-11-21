@@ -2142,6 +2142,7 @@ void Game::finishSimulationFrame(float deltaTime, float oldHealth) {
         if(player_->isBurning()) renderer_->spawnBurningParticles(player_->position()+glm::vec3(0,.6f,0));
         for(const auto& p:burningPositions_) if(glm::distance(p,player_->position())<48.f) renderer_->spawnBurningParticles(p);
     }
+    renderer_->updateAtmospherics(deltaTime,*world_,player_->cameraPosition(),timing_.worldTime);
     renderer_->updateParticles(deltaTime);
     interaction_.heldItemSwing = std::max(0.0f, interaction_.heldItemSwing - deltaTime * 4.0f);
     if (Persistence::enabled() && saveBlockedReason_.empty() && glfwGetTime() - timing_.lastSave >= 12.0 &&
@@ -2209,7 +2210,9 @@ void Game::renderFrame(float deltaTime) {
                                         0.0f));
     }
 
-    const bool underwater = player_->isSwimming();
+    const auto eyeCell=glm::ivec3(glm::floor(player_->cameraPosition()));
+    const auto eyeBlock=world_->getBlock(eyeCell.x,eyeCell.y,eyeCell.z);
+    const bool underwater = isWater(eyeBlock)&&player_->cameraPosition().y<float(eyeCell.y)+waterHeight(eyeBlock);
     renderer_->setWeather(weather_->intensity(), weather_->storm(),
         settings_.lightningEffects && settings_.weatherQuality > 0 ? weather_->flash()*settings_.lightningFlash : 0,
         settings_.weatherFog && settings_.weatherQuality >= 2, weather_->wetness());
@@ -2239,10 +2242,10 @@ void Game::renderFrame(float deltaTime) {
     survival_->renderBillboards(billboards.get());
     survival_->renderItemSprites(items.get(),player_->cameraPosition(),entityDistance);
     world_->renderBuildingItems(items.get(),player_->cameraPosition());
-    renderer_->renderEntities(cuboids.get(), view, projection, timing_.worldTime, entityDistance);
+    renderer_->renderEntities(cuboids.get(), view, projection, timing_.worldTime, entityDistance,world_.get(),settings_.brightness,fullbright_);
     renderer_->renderBillboards(billboards.get(), *world_, view, projection,
                                 timing_.worldTime, settings_.brightness, fullbright_, entityDistance);
-    renderer_->renderItemSprites(items.get(), view, projection, timing_.worldTime, entityDistance);
+    renderer_->renderItemSprites(items.get(), view, projection, timing_.worldTime, entityDistance,world_.get(),settings_.brightness,fullbright_);
     renderer_->renderParticles(view, projection, entityDistance);
     if(villageOpen_&&villageTab_==2)renderer_->renderPlacementPreview(world_->villages.projectPreview(villageNpc_,villageRow_,*world_),view,projection);
     weatherRenderer_->render(*weather_, *world_, settings_, player_->cameraPosition(),
@@ -2276,7 +2279,7 @@ void Game::renderFrame(float deltaTime) {
     // Resolve the 3D scene before any HUD, menus, maps, held sprites or text.
     resolveRenderTarget(width, height);
     width=int(screenWidth/uiScale);height=int(screenHeight/uiScale);
-    if (underwater) renderer_->renderUnderwaterOverlay(width, height);
+    renderer_->renderUnderwaterOverlay(width, height);
 
     if (!zooming) {
         if(!(smokeTest_.worldgenEnabled&&smokeTest_.previewClean)) {

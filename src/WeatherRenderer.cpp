@@ -9,6 +9,15 @@
 namespace {
 std::uint32_t hash(std::uint32_t n) { n ^= n>>16; n*=0x7feb352dU; n^=n>>15; n*=0x846ca68bU; return n^(n>>16); }
 float unit(std::uint32_t n) { return (hash(n)&0xffff)/65536.0f; }
+struct SplashEdge {glm::vec3 start,end,outward;};
+const std::array<SplashEdge,8>& splashEdges(){
+    // The ring is rigid. Compute its trigonometry once, not for every splash.
+    static const auto edges=[] {std::array<SplashEdge,8> result{};
+        for(int i=0;i<8;++i){float a=i*.78539816f,b=(i+1)*.78539816f;
+            auto start=glm::vec3(std::cos(a),0,std::sin(a)),end=glm::vec3(std::cos(b),0,std::sin(b));
+            result[i]={start,end,glm::normalize(start+end)};}
+        return result;}();return edges;
+}
 GLuint shader(GLenum kind,const char* source) {
     GLuint s=glCreateShader(kind); glShaderSource(s,1,&source,nullptr); glCompileShader(s);
     GLint success=0; glGetShaderiv(s,GL_COMPILE_STATUS,&success);
@@ -34,6 +43,7 @@ WeatherRenderer::WeatherRenderer() {
 WeatherRenderer::~WeatherRenderer() { glDeleteBuffers(1,&vbo_); glDeleteVertexArrays(1,&vao_); glDeleteProgram(program_); }
 void WeatherRenderer::clear() { for(auto& c:columns_) c.valid=false; vertices_.clear(); particleCount_=0; }
 void WeatherRenderer::quad(const glm::vec3& p,const glm::vec3& r,const glm::vec3& u,const glm::vec4& c) {
+    if(vertices_.size()+6>150000)return;
     vertices_.insert(vertices_.end(),{{p-r-u,c},{p+r-u,c},{p+r+u,c},{p-r-u,c},{p+r+u,c},{p-r+u,c}});
 }
 void WeatherRenderer::render(const Weather& weather,const World& world,const GameSettings& s,
@@ -64,19 +74,19 @@ void WeatherRenderer::render(const Weather& weather,const World& world,const Gam
         if(floor<world.minimumY() || floor>camera.y+15) continue;
         const bool snow=column.kind==Precipitation::Snow;
         const int lanes=s.weatherQuality==1 ? 1 : s.weatherQuality==2 ? 2 : 4;
-        const float alpha=(1-d/(radius*radius))*(snow ? .72f : .35f)*(.35f+.65f*daylight);
+        const float alpha=(1-d/(radius*radius))*(snow ? .68f : .26f)*(.50f+.50f*daylight);
         for(int i=0;i<lanes;++i) {
             const auto seed=key+static_cast<std::uint32_t>(i)*7277U;
             if(unit(seed+133U)>density) continue;
             const float bottom=std::max(floor,camera.y-10);
-            const float y=bottom+.06f+26.0f-std::fmod(unit(seed)*26+t*(snow ? 1.3f : 15.0f),26.0f);
+            const float y=bottom+.06f+26.0f-std::fmod(unit(seed)*26+t*(snow ? 1.3f : 14.9933333f),26.0f);
             const glm::vec3 p(x+.15f+unit(seed+2)*.7f,y,z+.15f+unit(seed+3)*.7f);
-            const glm::vec3 wind=s.weatherWind ? right*(snow ? std::sin(t+unit(seed)*6)*.02f : .08f) : glm::vec3(0);
+            const glm::vec3 wind=s.weatherWind ? glm::vec3(snow ? std::sin(t*.0052359878f*124+unit(seed)*6)*.025f : .055f,0,snow?std::cos(t*.0052359878f*94+unit(seed+1)*6)*.02f:.02f) : glm::vec3(0);
             if(snow) {
                 glm::vec3 center=p+wind*6.0f;
                 center.x=std::clamp(center.x,x+.04f,x+.96f);
                 center.z=std::clamp(center.z,z+.04f,z+.96f);
-                quad(center,right*.035f,up*.035f,{.85f,.90f,1.0f,alpha});
+                quad(center,right*(.025f+.018f*unit(seed+9)),up*(.025f+.018f*unit(seed+9)),{.85f,.90f,1.0f,alpha});
             }
             else {
                 // Clip the bottom of each streak exactly at the roof/surface.
@@ -89,7 +99,12 @@ void WeatherRenderer::render(const Weather& weather,const World& world,const Gam
            std::fmod(t+unit(key)*7,1.0f)<.14f && unit(key+4)<density) {
             const float size=.025f+.11f*std::fmod(t+unit(key)*7,1.0f)/.14f;
             const glm::vec3 p(x+.5f,floor+.015f,z+.5f);
-            quad(p,{size,0,0},{0,0,size},{.7f,.83f,.92f,alpha*.7f}); ++particleCount_;
+            const float age=std::fmod(t+unit(key)*7,1.0f)/.14f;
+            // Detailed rings are useful nearby; retain the original cheap splash
+            // representation farther away instead of drawing subpixel ring edges.
+            const float detailRadius=s.weatherQuality>=3?10.f:8.f;
+            if(d<detailRadius*detailRadius){for(const auto& edge:splashEdges()){auto start=edge.start*size,end=edge.end*size;quad(p+(start+end)*.5f,(end-start)*.5f,edge.outward*.006f,{.65f,.78f,.85f,alpha*.55f*(1-age)*(1-age)});}}
+            else quad(p,{size,0,0},{0,0,size},{.65f,.78f,.85f,alpha*.32f*(1-age)*(1-age)}); ++particleCount_;
         }
     }
     if(s.lightningEffects) for(const auto& bolt:weather.bolts()) {
@@ -97,8 +112,8 @@ void WeatherRenderer::render(const Weather& weather,const World& world,const Gam
         for(int i=1;i<=12;++i) {
             glm::vec3 next=bolt.position+glm::vec3((unit(bolt.shape+i)*2-1)*2,i*5.0f,(unit(bolt.shape+i+50)*2-1)*2);
             const glm::vec3 center=(previous+next)*.5f;
-            quad(center,right*.065f,(next-previous)*.5f,{.80f,.86f,1,1-bolt.age/.45f});
-            quad(center,right*.22f,(next-previous)*.5f,{.55f,.65f,1,(1-bolt.age/.45f)*.25f});
+            quad(center,right*.065f,(next-previous)*.5f,{.88f,.91f,1,std::pow(std::max(0.f,1-bolt.age/.45f),2.f)});
+            quad(center,right*.22f,(next-previous)*.5f,{.55f,.65f,1,std::pow(std::max(0.f,1-bolt.age/.45f),2.f)*.18f});
             previous=next;
         }
     }

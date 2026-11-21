@@ -1,5 +1,10 @@
+# Generated builds, disposable test profiles and local archives
 /build/
 /dist/
+/.archive/
+/cmake-build-*/
+# Python tool caches
+__pycache__/
 /.vs/
 *.user
 *.suo

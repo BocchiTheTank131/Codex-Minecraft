@@ -1,3 +1,4 @@
+#include "VisualLighting.h"
 #include "Renderer.h"
 #include <GLFW/glfw3.h>
 #include "Building.h"
@@ -174,6 +175,10 @@ uniform uint uSunBits[64];
 layout(location=6) in uint aMaterial;
 uniform mat4 uView;
 uniform mat4 uProjection;
+uniform float uTime;
+uniform float uAtlasTiles;
+uniform int uEffectQuality;
+uniform vec4 uWeather;
 out vec2 vUv;
 out vec3 vNormal;
 out float vSunLight;
@@ -184,7 +189,16 @@ out vec3 vWorldPosition;
 out float vAtlasTile;
 out vec3 vClimateTint;
 void main() {
-    vec4 viewPosition = uView * vec4(aPosition, 1.0);
+    vec3 position=aPosition;
+    uint material=aMaterial&255u;if(material==255u)material=uint(floor(aUv.x*uAtlasTiles));
+    if(uEffectQuality>0 && (material==40u||material==41u||material==42u)){
+        float anchor=clamp(fract(aPosition.y)/.9,0.0,1.0); // crossed mesh UV: verified below by native fixture
+        float phase=dot(floor(aPosition.xz),vec2(.73,1.17));
+        float strength=(uEffectQuality==1?.018:.035)*(1.0+uWeather.x*.7);
+        position.x+=sin(uTime*.0052359878*267.0+phase)*strength*anchor;
+        position.z+=sin(uTime*.0052359878*216.0+phase*1.3)*strength*anchor;
+    }
+    vec4 viewPosition = uView * vec4(position, 1.0);
     gl_Position = uProjection * viewPosition;
     float d=uintBitsToFloat(0x3f3504f3u);
     vec3 normals[10]=vec3[10](vec3(1,0,0),vec3(-1,0,0),vec3(0,1,0),vec3(0,-1,0),vec3(0,0,1),vec3(0,0,-1),
@@ -228,9 +242,12 @@ uniform float uWetness;
 uniform bool uWaterPass;
 uniform bool uFullbright;
 uniform bool uUnderwater;
+uniform float uUnderwaterBlend;
+uniform float uFogFar;
 uniform bool uSpectatorInsideBlock;
 uniform int uEffectQuality;
 out vec4 fragColor;
+)GLSL" VOXEL_VISUAL_LIGHTING R"GLSL(
 void main() {
     if (uSpectatorInsideBlock &&
         all(equal(ivec3(floor(vWorldPosition - normalize(vNormal) * 0.001)),
@@ -267,39 +284,41 @@ void main() {
         (1.0 - ambientFloor) * response * faceShade * ao, 0.0, 1.0), 0.75);
     vec3 sunTint = mix(vec3(1.0,0.48,0.20), vec3(1.0,0.93,0.76),
                        smoothstep(-0.02,0.42,uSunDirection.y));
-    vec3 naturalLight = mix(vec3(0.56,0.66,0.88), sunTint, day);
+    vec3 naturalLight = visualTint(uSunDirection,uDaylight);
+    if(vBlockLight>.02)naturalLight=mix(naturalLight,vec3(1,.78,.52),smoothstep(.02,.5,vBlockLight)*(1.0-clamp(vSunLight*day/max(vBlockLight,.0001),0.0,1.0)));
     vec3 lit = uFullbright ? texel.rgb :
         texel.rgb * brightness * naturalLight +
-        vec3(1.0,0.50,0.16) * vBlockLight * 0.14;
+        vec3(1.0,.60,.28) * vBlockLight * 0.14;
     float alpha = texel.a;
     if (uWaterPass) {
         float topSurface = max(normal.y,0.0);
         vec3 waterColor = mix(vec3(0.035,0.17,0.34), vec3(0.08,0.34,0.56), day);
         lit = mix(lit, waterColor * vClimateTint, 0.34);
-        if (uEffectQuality > 0) {
-            float ripple = sin(vWorldPosition.x*0.34 + uTime*0.75) *
-                           sin(vWorldPosition.z*0.29 - uTime*0.58);
-            float highlight = topSurface * max(ripple,0.0) * (0.05 + 0.12*day);
-            lit += highlight;
-            if (uEffectQuality > 1) {
-                vec3 viewDirection = normalize(uCameraPosition-vWorldPosition);
-                float fresnel = pow(1.0-max(dot(viewDirection,normal),0.0),3.0);
-                lit += uSkyColor * fresnel * topSurface * 0.16;
-            }
+        vec3 viewDirection=normalize(uCameraPosition-vWorldPosition+vec3(1e-5));
+        float fresnel=pow(1.0-clamp(dot(viewDirection,normal),0.0,1.0),4.0);
+        if(uEffectQuality>0){
+            vec2 p=vWorldPosition.xz;
+            float t=uTime*.0052359878;
+            vec2 slope=vec2(cos(dot(p,vec2(.53,.31))+t*172.0),sin(dot(p,vec2(-.27,.64))-t*139.0))*.035;
+            if(uEffectQuality>1)slope+=vec2(sin(dot(p,vec2(.91,-.43))+t*210.0),cos(dot(p,vec2(.37,1.03))-t*166.0))*.018;
+            vec3 wave=normalize(normal+vec3(slope.x,0,slope.y)*topSurface);
+            float sparkle=pow(max(dot(reflect(-uSunDirection,wave),viewDirection),0.0),64.0);
+            lit+=visualSunTint(uSunDirection)*sparkle*day*.24*topSurface;
         }
+        vec3 reflection=visualHorizon(uSunDirection,uDaylight,uWeather.x,uWeather.y);
+        lit=mix(lit,reflection,fresnel*topSurface*.32);
+        alpha*=mix(.62,.88,fresnel);
         alpha *= 0.68;
     }
-    if (uUnderwater) {
-        float underwaterFog = smoothstep(3.0,24.0,vDistance);
-        lit = mix(lit,vec3(0.025,0.18,0.30),underwaterFog);
-    }
+    if(!uFullbright)lit=visualWaterFog(lit,vDistance,uUnderwaterBlend,uDaylight);
     if(!uFullbright) {
         lit *= 1.0 - uWetness * .10 * max(normal.y,0.0) * smoothstep(.6,1.0,vSunLight);
-        lit += texel.rgb * uWeather.z * .55 * vSunLight;
+        lit += texel.rgb * uWeather.z * .35 * vSunLight;
+        if(uEffectQuality>0&&!uWaterPass){vec3 eye=normalize(uCameraPosition-vWorldPosition+vec3(1e-5));float grazing=pow(1.0-max(dot(eye,normal),0.0),4.0);lit+=vec3(.035,.045,.055)*grazing*uWetness*max(normal.y,0.0)*smoothstep(.65,1.0,vSunLight);}
     }
-    if(!uUnderwater && !uFullbright) {
-        float fog = uWeather.w * (uWeather.x*.35 + uWeather.y*.12) * smoothstep(32.0,256.0,vDistance);
-        lit = mix(lit,vec3(.28,.32,.36),fog);
+    if(!uFullbright) {
+        float fog=visualHaze(vDistance,uFogFar,vSunLight,uEffectQuality,uWeather);
+        lit=mix(lit,visualHorizon(uSunDirection,uDaylight,uWeather.x,uWeather.y),fog*(1-uUnderwaterBlend));
     }
     fragColor = vec4(lit,alpha);
 }
@@ -323,6 +342,7 @@ uniform vec4 uWeather;
 uniform vec3 uSunDirection;
 uniform float uDaylight;
 uniform float uTime;
+uniform float uUnderwaterBlend;
 uniform int uEffectQuality;
 out vec4 fragColor;
 float hash(vec3 p) {
@@ -341,39 +361,44 @@ float cloudNoise(vec2 p) {
     for(int i=0;i<octaves;i++){ value+=valueNoise(p)*amplitude; p=p*2.03+17.1; amplitude*=0.5; }
     return value;
 }
+)GLSL" VOXEL_VISUAL_LIGHTING R"GLSL(
 void main() {
     vec4 farPoint = uInverseViewProjection * vec4(vNdc, 1.0, 1.0);
     vec3 ray = normalize(farPoint.xyz / farPoint.w);
-    float horizon = clamp(ray.y * 0.55 + 0.45, 0.0, 1.0);
-    vec3 nightHorizon = vec3(0.025,0.035,0.075);
-    vec3 nightZenith = vec3(0.005,0.008,0.025);
-    vec3 dayHorizon = vec3(0.58,0.76,0.94);
-    vec3 dayZenith = vec3(0.22,0.48,0.82);
-    vec3 color = mix(mix(nightHorizon, nightZenith, horizon),
-                     mix(dayHorizon, dayZenith, horizon), uDaylight);
-    float twilight = 1.0-smoothstep(0.02,0.34,abs(uSunDirection.y));
-    float horizonBand = exp(-abs(ray.y)*5.5);
-    color = mix(color,vec3(0.94,0.29,0.08),twilight*horizonBand*0.42);
-    color += vec3(0.34,0.08,0.025) * twilight * pow(1.0-horizon,2.0);
-    float twinkle = 0.72 + 0.28*sin(uTime*2.0 + hash(floor(ray*520.0))*40.0);
-    float star = step(0.9962, hash(floor(ray * 520.0))) * (1.0-uDaylight) * smoothstep(-0.12,0.18,ray.y) * twinkle;
-    color += vec3(star);
-    if(ray.y > 0.025 && uEffectQuality > 0) {
-        vec2 cloudUv = ray.xz / (ray.y + 0.22) * 1.8 + vec2(uTime*0.012, uTime*0.002);
-        float clouds = smoothstep(mix(.54,.30,uWeather.x),mix(.68,.48,uWeather.x),cloudNoise(cloudUv));
-        clouds *= smoothstep(0.02,0.16,ray.y) * (0.18 + 0.82*uDaylight);
-        color = mix(color, mix(vec3(0.16,0.18,0.24),vec3(0.96,0.97,1.0),uDaylight), clouds*0.72);
+    float height=smoothstep(-.05,.85,ray.y);
+    float day=clamp(uDaylight,0.0,1.0);
+    float dusk=1.0-smoothstep(.025,.32,abs(uSunDirection.y));
+    vec3 horizon=visualHorizon(uSunDirection,day,0,0);
+    vec3 zenith=mix(vec3(.004,.009,.027),vec3(.18,.40,.69),day);
+    zenith=mix(zenith,vec3(.20,.16,.31),dusk*.26);
+    vec3 color=mix(horizon,zenith,pow(height,.65));
+    float toward=pow(max(dot(normalize(vec3(ray.x,0,ray.z)+vec3(1e-5)),normalize(vec3(uSunDirection.x,0,uSunDirection.z))),0.0),3.0);
+    color=mix(color,vec3(.91,.48,.28),dusk*exp(-abs(ray.y)*6.0)*toward*.46);
+    float coverage=0.0;
+    if(ray.y>.015&&uEffectQuality>0){
+        vec2 uv=ray.xz/(ray.y+.25)*1.65+vec2(sin(uTime*.0052359878),cos(uTime*.0052359878))*.9;
+        float normalization=uEffectQuality==0?.55:uEffectQuality==1?.825:1.03125;
+        float cloud=cloudNoise(uv)/normalization;
+        coverage=smoothstep(mix(.56,.34,uWeather.x),mix(.75,.61,uWeather.x),cloud)*smoothstep(.015,.18,ray.y);
+        float shade=mix(.76,1.0,smoothstep(.4,.8,cloud));
+        vec3 cloudColor=mix(vec3(.055,.075,.115),mix(vec3(.83,.86,.90),visualSunTint(uSunDirection),dusk*.4),day)*shade;
+        cloudColor=mix(cloudColor,vec3(.18,.21,.26),uWeather.y*.65);
+        color=mix(color,cloudColor,coverage*.88);
     }
-    float sun = smoothstep(0.9987, 0.99965, dot(ray, uSunDirection));
-    float glow = pow(max(dot(ray, uSunDirection), 0.0), 96.0);
-    color += vec3(1.0,0.78,0.38) * (sun * 1.5 + glow * 0.32) * uDaylight;
-    float moonDot=dot(ray,-uSunDirection);
-    float moon = smoothstep(0.9989,0.99972,moonDot);
-    float phaseCut = smoothstep(0.9990,0.99974,dot(normalize(ray+vec3(0.018,0.0,0.0)),-uSunDirection));
-    color += vec3(0.70,0.78,0.94) * max(moon-phaseCut*0.46,0.0) * (1.0-uDaylight);
-    color = mix(color, mix(vec3(.28,.32,.38),vec3(.085,.105,.14),uWeather.y),uWeather.x*.78);
-    color += vec3(.7,.75,.85)*uWeather.z;
-    fragColor = vec4(color,1.0);
+    if(day<.28){
+    vec3 cell=floor(ray*390.0);float starSeed=hash(cell);
+    float star=step(.997,starSeed)*(1.0-smoothstep(.02,.28,day))*smoothstep(.0,.18,ray.y);
+    color+=vec3(.68,.75,.89)*star*(.86+.08*sin(uTime*.0052359878*76.0+starSeed*100.0))*(1.0-coverage);
+    }
+    float sd=dot(ray,uSunDirection),md=dot(ray,-uSunDirection);
+    float sun=smoothstep(.9991,.99965,sd);
+    float glow=pow(max(sd,0.0),110.0)*.16;
+    float moonLight=0.0;
+    if(day<.999){float moon=smoothstep(.9990,.99972,md);float cut=smoothstep(.99915,.99975,dot(normalize(ray+vec3(.014,0,0)),-uSunDirection));moonLight=max(0.0,moon-cut*.55)*(1.0-day);}
+    color+=(visualSunTint(uSunDirection)*(sun*1.15+glow)*smoothstep(-.10,.03,uSunDirection.y)+vec3(.62,.71,.88)*moonLight)*(1.0-coverage*.9);
+    color=mix(color,visualHorizon(uSunDirection,day,uWeather.x,uWeather.y),uWeather.x*.45);
+    color+=vec3(.43,.47,.55)*uWeather.z;
+    fragColor = vec4(visualWaterFog(color,48.0,uUnderwaterBlend,uDaylight),1.0);
 }
 )GLSL";
 
@@ -384,19 +409,33 @@ layout(location=1) in vec3 aNormal;
 layout(location=2) in mat4 aInstanceModel;
 layout(location=6) in vec3 aInstanceColor;
 uniform bool uInstanced;
+layout(location=7) in vec2 aInstanceLight;
+uniform vec2 uLocalLight;
+out vec2 vLocalLight;
+out vec3 vPosition;
 out vec3 vInstanceColor;
 uniform mat4 uModel;
 uniform mat4 uView;
 uniform mat4 uProjection;
 out vec3 vNormal;
 out vec2 vWoodUv;
-void main(){ mat4 model=uInstanced?aInstanceModel:uModel;vInstanceColor=aInstanceColor; gl_Position=uProjection*uView*model*vec4(aPosition,1.0); vNormal=mat3(model)*aNormal; vec3 p=aPosition+vec3(.5); vWoodUv=abs(aNormal.y)>.5?p.xz:abs(aNormal.x)>.5?p.zy:p.xy; }
+void main(){ mat4 model=uInstanced?aInstanceModel:uModel;vInstanceColor=aInstanceColor;vLocalLight=uInstanced?aInstanceLight:uLocalLight;vPosition=vec3(model*vec4(aPosition,1)); gl_Position=uProjection*uView*model*vec4(aPosition,1.0); vNormal=mat3(model)*aNormal; vec3 p=aPosition+vec3(.5); vWoodUv=abs(aNormal.y)>.5?p.xz:abs(aNormal.x)>.5?p.zy:p.xy; }
 )GLSL";
 constexpr const char* EntityFragmentShader = R"GLSL(
 #version 330 core
 in vec3 vNormal;
 in vec3 vInstanceColor;
+in vec2 vLocalLight;
+in vec3 vPosition;
+uniform vec4 uWeather;
+uniform float uBrightness;
+uniform bool uFullbright;
+uniform float uUnderwaterBlend;
+uniform float uFogFar;
+uniform int uEffectQuality;
+uniform vec3 uCameraPosition;
 uniform bool uInstanced;
+uniform bool uLegacyPreview;
 in vec2 vWoodUv;
 uniform sampler2D uWood;
 uniform int uWoodFamily;
@@ -404,6 +443,7 @@ uniform vec3 uColor;
 uniform vec3 uSunDirection;
 uniform float uDaylight;
 out vec4 fragColor;
+)GLSL" VOXEL_VISUAL_LIGHTING R"GLSL(
 void main(){
     vec3 normal=normalize(vNormal);
     float sun=max(dot(normal,uSunDirection),0.0);
@@ -413,7 +453,10 @@ void main(){
     vec3 tint=mix(vec3(0.62,0.70,0.92),vec3(1.0,0.96,0.84),uDaylight);
     vec3 base=uInstanced?vInstanceColor:uColor;
     if(uWoodFamily>=0){vec2 uv=(floor(clamp(vWoodUv,vec2(0),vec2(.999))*16.0)+.5)/16.0;uv.x=(uv.x+float(uWoodFamily))/6.0;base=texture(uWood,uv).rgb*uColor;}
-    fragColor=vec4(base*light*tint,1.0);
+    vec3 color=uLegacyPreview?base*light*tint:uFullbright?base:base*visualResponse(normal,vLocalLight.x,vLocalLight.y,uDaylight,uSunDirection,uWeather,uBrightness);
+    float distance=length(vPosition-uCameraPosition);
+    if(!uFullbright&&!uLegacyPreview){color+=base*uWeather.z*.35*vLocalLight.x;color=visualWaterFog(color,distance,uUnderwaterBlend,uDaylight);color=mix(color,visualHorizon(uSunDirection,uDaylight,uWeather.x,uWeather.y),visualHaze(distance,uFogFar,vLocalLight.x,uEffectQuality,uWeather)*(1.0-uUnderwaterBlend));}
+    fragColor=vec4(color,1.0);
 }
 )GLSL";
 constexpr const char* UiVertexShader = R"GLSL(
@@ -459,13 +502,16 @@ void main() {
 constexpr const char* ItemVertexShader = R"GLSL(
 #version 330 core
 layout(location=0) in vec3 aPosition; layout(location=1) in vec2 aUv;
+layout(location=2) in vec2 aItemLight;out vec2 vItemLight;out vec3 vPosition;
 uniform mat4 uView; uniform mat4 uProjection; out vec2 vUv;
-void main(){gl_Position=uProjection*uView*vec4(aPosition,1.0);vUv=aUv;}
+void main(){gl_Position=uProjection*uView*vec4(aPosition,1.0);vUv=aUv;vPosition=aPosition;vItemLight=aItemLight;}
 )GLSL";
 constexpr const char* ItemFragmentShader = R"GLSL(
 #version 330 core
-in vec2 vUv; uniform sampler2D uItemAtlas; out vec4 fragColor;
-void main(){vec4 c=texture(uItemAtlas,vUv);if(c.a<0.12)discard;fragColor=vec4(c.rgb,c.a);}
+in vec2 vUv;in vec2 vItemLight;uniform bool uWorldItems;uniform sampler2D uItemAtlas;out vec4 fragColor;
+in vec3 vPosition;uniform vec3 uCameraPosition;uniform vec3 uSunDirection;uniform float uDaylight;uniform vec4 uWeather;uniform float uBrightness;uniform float uFogFar;uniform float uUnderwaterBlend;uniform int uEffectQuality;uniform bool uFullbright;
+)GLSL" VOXEL_VISUAL_LIGHTING R"GLSL(
+void main(){vec4 c=texture(uItemAtlas,vUv);if(c.a<0.12)discard;vec3 color=c.rgb;if(uWorldItems&&!uFullbright){color*=visualResponse(vec3(0,1,0),vItemLight.x,vItemLight.y,uDaylight,uSunDirection,uWeather,uBrightness);color+=c.rgb*uWeather.z*.35*vItemLight.x;float distance=length(vPosition-uCameraPosition);color=visualWaterFog(color,distance,uUnderwaterBlend,uDaylight);color=mix(color,visualHorizon(uSunDirection,uDaylight,uWeather.x,uWeather.y),visualHaze(distance,uFogFar,vItemLight.x,uEffectQuality,uWeather)*(1-uUnderwaterBlend));}fragColor=vec4(color,c.a);}
 )GLSL";
 constexpr const char* BillboardFragmentShader = R"GLSL(
 #version 330 core
@@ -473,12 +519,17 @@ in vec2 vUv;
 uniform sampler2D uSprite;
 uniform float uLight;
 uniform float uHurt;
-uniform float uOpacity;
+uniform float uOpacity;uniform vec2 uVisualLight;
+in vec3 vPosition;uniform vec3 uCameraPosition;uniform vec3 uSunDirection;uniform float uDaylight;uniform vec4 uWeather;uniform float uBrightness;uniform float uFogFar;uniform float uUnderwaterBlend;uniform int uEffectQuality;uniform bool uFullbright;
+
 out vec4 fragColor;
+)GLSL" VOXEL_VISUAL_LIGHTING R"GLSL(
 void main(){
     vec4 pixel=texture(uSprite,vUv);
     if(pixel.a<0.10) discard;
-    vec3 color=mix(pixel.rgb*uLight,vec3(1.0,0.07,0.05),clamp(uHurt,0.0,1.0)*0.72);
+    vec3 base=uFullbright?pixel.rgb:pixel.rgb*visualResponse(vec3(0,1,0),uVisualLight.x,uVisualLight.y,uDaylight,uSunDirection,uWeather,uBrightness);
+    if(!uFullbright){float distance=length(vPosition-uCameraPosition);base+=pixel.rgb*uWeather.z*.35*uVisualLight.x;base=visualWaterFog(base,distance,uUnderwaterBlend,uDaylight);base=mix(base,visualHorizon(uSunDirection,uDaylight,uWeather.x,uWeather.y),visualHaze(distance,uFogFar,uVisualLight.x,uEffectQuality,uWeather)*(1-uUnderwaterBlend));}
+    vec3 color=mix(base,vec3(1.0,.07,.05),clamp(uHurt,0.0,1.0)*.72);
     fragColor=vec4(color,pixel.a*uOpacity);
 }
 )GLSL";
@@ -486,19 +537,20 @@ constexpr const char* ParticleVertexShader = R"GLSL(
 #version 330 core
 layout(location=0) in vec3 aPosition;
 layout(location=1) in vec3 aColor;
+layout(location=2) in float aCosmetic;out float vCosmetic;
 uniform mat4 uView; uniform mat4 uProjection;
 out vec3 vColor;
 void main(){
     vec4 viewPos=uView*vec4(aPosition,1.0);
     gl_Position=uProjection*viewPos;
     gl_PointSize=clamp(55.0/max(-viewPos.z,1.0),2.0,7.0);
-    vColor=aColor;
+    vColor=aColor;vCosmetic=aCosmetic;if(aCosmetic>1.5)gl_PointSize=clamp(80.0/max(-viewPos.z,1.0),2.0,16.0);
 }
 )GLSL";
 constexpr const char* ParticleFragmentShader = R"GLSL(
 #version 330 core
-in vec3 vColor; out vec4 fragColor;
-void main(){ fragColor=vec4(vColor,1.0); }
+in vec3 vColor;in float vCosmetic;out vec4 fragColor;
+void main(){float a=1.0;if(vCosmetic>.5){float r=length(gl_PointCoord-vec2(.5))*2.0;a=pow(max(0.0,1.0-r),2.0)*(vCosmetic>1.5?.32:.4);if(a<.005)discard;}fragColor=vec4(vColor,a);}
 )GLSL";
 
 struct UiVertex {
@@ -510,6 +562,7 @@ struct UiVertex {
 struct ParticleVertex {
     glm::vec3 position;
     glm::vec3 color;
+    float cosmetic;
 };
 struct EntityVertex {
     glm::vec3 position;
@@ -521,6 +574,14 @@ struct CelestialState {
     glm::vec3 skyColor;
     float daylight;
 };
+
+std::array<float,9> visualColors(glm::vec3 sun,float day){
+    const auto direct=glm::mix(glm::vec3(1,.59f,.36f),glm::vec3(1,.96f,.87f),glm::smoothstep(-.02f,.46f,sun.y));
+    const auto natural=glm::mix(glm::vec3(.53f,.65f,.88f),direct,glm::smoothstep(0.f,1.f,day));
+    auto horizon=glm::mix(glm::vec3(.025f,.035f,.065f),glm::vec3(.62f,.76f,.87f),day);
+    horizon=glm::mix(horizon,glm::vec3(.68f,.40f,.34f),(1-glm::smoothstep(.025f,.32f,std::abs(sun.y)))*.45f);
+    return {direct.r,direct.g,direct.b,natural.r,natural.g,natural.b,horizon.r,horizon.g,horizon.b};
+}
 
 CelestialState celestial(float worldTime) {
 
@@ -774,6 +835,12 @@ struct Renderer::TextGeometryCache {
     }
 };
 
+void Renderer::visualUniforms(const ProgramUniforms& u,const glm::vec3& camera,float day,glm::vec3 sun,glm::vec4 weather,float brightness,bool fullbright,float water,float farDistance,int quality){
+    const auto colors=visualColors(sun,day);glUniform3fv(u.visualColors,3,colors.data());
+    glUniform3fv(u.cameraPosition,1,glm::value_ptr(camera));glUniform3fv(u.sunDirection,1,glm::value_ptr(sun));glUniform4fv(u.weather,1,glm::value_ptr(weather));
+    glUniform1f(u.daylight,day);glUniform1f(u.brightness,brightness);glUniform1f(u.fogFar,farDistance);glUniform1f(u.underwaterBlend,water);glUniform1i(u.fullbright,fullbright);glUniform1i(u.effectQuality,quality);
+}
+
 Renderer::ProgramUniforms Renderer::cacheUniforms(GLuint program) {
     ProgramUniforms locations;
     locations.atlas = glGetUniformLocation(program, "uAtlas");
@@ -801,6 +868,14 @@ Renderer::ProgramUniforms Renderer::cacheUniforms(GLuint program) {
     locations.weather = glGetUniformLocation(program,"uWeather");
     locations.wetness = glGetUniformLocation(program,"uWetness");
     locations.waterPass = glGetUniformLocation(program, "uWaterPass");
+    locations.visualColors=glGetUniformLocation(program,"uVisualColors[0]");
+    locations.fogFar = glGetUniformLocation(program,"uFogFar");
+    locations.underwaterBlend = glGetUniformLocation(program,"uUnderwaterBlend");
+    locations.legacyPreview = glGetUniformLocation(program,"uLegacyPreview");
+    locations.localLight = glGetUniformLocation(program,"uLocalLight");
+    locations.visualLight = glGetUniformLocation(program,"uVisualLight");
+    locations.worldItems = glGetUniformLocation(program,"uWorldItems");
+    locations.instanced = glGetUniformLocation(program,"uInstanced");
     return locations;
 }
 
@@ -1464,10 +1539,12 @@ void Renderer::renderSky(const glm::mat4& view,
                          const glm::mat4& projection,
                          float worldTime) const {
     const CelestialState state = celestial(worldTime);
+    const auto colors=visualColors(state.sunDirection,state.daylight);
     glm::mat4 rotationView = glm::mat4(glm::mat3(view));
     glm::mat4 inverse = glm::inverse(projection * rotationView);
     glDisable(GL_DEPTH_TEST);
     glUseProgram(skyProgram_);
+    glUniform3fv(skyUniforms_.visualColors,3,colors.data());
     glUniformMatrix4fv(skyUniforms_.inverseViewProjection,
                        1,
                        GL_FALSE,
@@ -1478,6 +1555,7 @@ void Renderer::renderSky(const glm::mat4& view,
     glUniform4fv(skyUniforms_.weather,1,glm::value_ptr(weather_));
     glUniform1f(skyUniforms_.time, worldTime);
     glUniform1i(skyUniforms_.effectQuality, effectQuality_);
+    glUniform1f(skyUniforms_.underwaterBlend,waterBlend_);
     glBindVertexArray(skyVao_);
     glDrawArrays(GL_TRIANGLES, 0, 3);
     glEnable(GL_DEPTH_TEST);
@@ -1494,8 +1572,21 @@ void Renderer::renderWorld(const World& world,
                            bool spectatorInsideBlock) const {
     const auto terrainStart=std::chrono::steady_clock::now();
     const CelestialState state = celestial(worldTime);
+    const auto colors=visualColors(state.sunDirection,state.daylight);
     const glm::mat4 vp = projection * view;
     glUseProgram(worldProgram_);
+    glUniform3fv(worldUniforms_.visualColors,3,colors.data());
+    const double now=glfwGetTime();const float elapsed=visualTime_>0?float(std::clamp(now-visualTime_,0.0,.1)):0;visualTime_=now;
+    waterBlend_+=(float(underwater)-waterBlend_)*(1-std::exp(-elapsed*9));visualFar_=float(world.renderDistance()*16);
+    auto eye=glm::ivec3(glm::floor(camera));float sky=world.sunlightAt(eye.x,eye.y,eye.z)/15.f,block=world.blockLightAt(eye.x,eye.y,eye.z)/15.f;
+    const float day=glm::smoothstep(0.f,1.f,state.daylight);
+    float raw=std::clamp(std::max(sky*(glm::mix(.055f,.48f,day)+.54f*std::max(0.f,state.sunDirection.y)*day)*(1-.25f*weather_.x-.55f*weather_.y)+sky*std::max(0.f,-state.sunDirection.y)*(1-day)*.17f,block*.9f),0.f,1.f);
+    float floorLight=.025f+.06f*brightness;float value=std::pow(floorLight+(1-floorLight)*std::pow(raw,1-.28f*brightness),.75f);
+    glm::vec3 handTint=glm::mix(glm::mix(glm::vec3(.53f,.65f,.88f),glm::mix(glm::vec3(1,.59f,.36f),glm::vec3(1,.96f,.87f),glm::smoothstep(-.02f,.46f,state.sunDirection.y)),glm::smoothstep(0.f,1.f,state.daylight)),glm::vec3(1,.78f,.52f),glm::smoothstep(.02f,.5f,block)*(1-std::clamp(sky*day/std::max(block,.0001f),0.f,1.f)));
+    heldTint_=fullbright?glm::vec3(1):handTint*value+glm::vec3(1,.60f,.28f)*block*.14f+glm::vec3(weather_.z*.35f*sky);
+
+    glUniform1f(worldUniforms_.fogFar,visualFar_);
+    glUniform1f(worldUniforms_.underwaterBlend,waterBlend_);
     glUniformMatrix4fv(
         worldUniforms_.view, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(worldUniforms_.projection,
@@ -1591,7 +1682,7 @@ void Renderer::spawnExplosionParticles(const glm::vec3& position) {
 void Renderer::updateParticles(float dt) {
     for (Particle& p : particles_) {
         p.life -= dt;
-        p.velocity.y -= 10.0f * dt;
+        if(!p.cosmetic)p.velocity.y -= 10.0f * dt;
         p.position += p.velocity * dt;
     }
     particles_.erase(std::remove_if(particles_.begin(),
@@ -1602,16 +1693,22 @@ void Renderer::updateParticles(float dt) {
 void Renderer::renderParticles(const glm::mat4& view,
                                const glm::mat4& projection,
                                float maximumDistance) const {
-    if (particles_.empty())
+    if (particles_.empty()&&haloSources_.empty())
         return;
     const EntityVisibility visibility(view, projection, maximumDistance);
     thread_local std::vector<ParticleVertex> verticesStorage;
     RenderScratch<ParticleVertex> verticesScratch(verticesStorage, 524288);
     auto& vertices = verticesScratch.get();
     vertices.reserve(particles_.size());
+    // Original combat particles stay opaque and write depth. Append translucent
+    // cosmetics afterward so they cannot increase combat overdraw or alter it.
     for (const Particle& p : particles_)
-        if (visibility.visible(p.position, 0.2f))
-            vertices.push_back({p.position, p.color * std::min(1.0f, p.life * 2.0f)});
+        if (!p.cosmetic && visibility.visible(p.position, 0.2f))
+            vertices.push_back({p.position, p.color * std::min(1.0f, p.life * 2.0f),0});
+    const auto opaqueCount=static_cast<GLsizei>(vertices.size());
+    if(effectQuality_>0&&particlePercent_>0)for(const Particle& p:particles_)
+        if(p.cosmetic&&visibility.visible(p.position,.2f))vertices.push_back({p.position,p.color*std::min(1.f,p.life*2),float(p.cosmetic)});
+    if(effectQuality_>0&&particlePercent_>0)for(auto cell:haloSources_){auto p=glm::vec3(cell)+glm::vec3(.5f,.75f,.5f);if(visibility.visible(p,.2f))vertices.push_back({p,{1,.63f,.27f},2});}
     if (vertices.empty())
         return;
     glBindBuffer(GL_ARRAY_BUFFER, particleVbo_);
@@ -1628,7 +1725,13 @@ void Renderer::renderParticles(const glm::mat4& view,
                        glm::value_ptr(projection));
     glEnable(GL_PROGRAM_POINT_SIZE);
     glBindVertexArray(particleVao_);
-    glDrawArrays(GL_POINTS, 0, static_cast<GLsizei>(vertices.size()));
+    glEnableVertexAttribArray(2);glVertexAttribPointer(2,1,GL_FLOAT,GL_FALSE,sizeof(ParticleVertex),reinterpret_cast<void*>(offsetof(ParticleVertex,cosmetic)));
+    if(opaqueCount){glDisable(GL_BLEND);glDepthMask(GL_TRUE);glDrawArrays(GL_POINTS,0,opaqueCount);}
+    if(vertices.size()>std::size_t(opaqueCount)){
+        glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glDepthMask(GL_FALSE);
+        glDrawArrays(GL_POINTS,opaqueCount,static_cast<GLsizei>(vertices.size())-opaqueCount);
+        glDepthMask(GL_TRUE);glDisable(GL_BLEND);
+    }
     glBindVertexArray(0);
 }
 
@@ -1636,13 +1739,15 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
                               const glm::mat4& view,
                               const glm::mat4& projection,
                               float worldTime,
-                              float maximumDistance) const {
+                              float maximumDistance,const World* lightingWorld,float brightness,bool fullbright) const {
     visibleEntityCount_ = 0;
     if (cuboids.empty())
         return;
     const EntityVisibility visibility(view, projection, maximumDistance);
     const CelestialState state = celestial(worldTime);
+    const auto colors=visualColors(state.sunDirection,state.daylight);
     glUseProgram(entityProgram_);
+    glUniform3fv(entityUniforms_.visualColors,3,colors.data());
     glUniformMatrix4fv(
         entityUniforms_.view, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(entityUniforms_.projection,
@@ -1652,12 +1757,24 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
     glUniform3fv(entityUniforms_.sunDirection,
                  1,
                  glm::value_ptr(state.sunDirection));
-    glUniform1f(entityUniforms_.daylight, state.daylight*(1-.25f*weather_.x-.55f*weather_.y));
+    glUniform1f(entityUniforms_.daylight, state.daylight);
     glBindVertexArray(entityVao_);
-    struct Instance {glm::mat4 model;glm::vec3 color;};
+    glUniform1i(entityUniforms_.legacyPreview,lightingWorld==nullptr);
+    glUniform4fv(entityUniforms_.weather,1,glm::value_ptr(weather_));
+    glUniform1f(entityUniforms_.brightness,brightness);
+    glUniform1i(entityUniforms_.fullbright,fullbright);
+    glUniform1f(entityUniforms_.underwaterBlend,lightingWorld?waterBlend_:0);
+    glUniform1f(entityUniforms_.fogFar,lightingWorld?visualFar_:100000);
+    glUniform1i(entityUniforms_.effectQuality,effectQuality_);
+    glUniform3fv(entityUniforms_.cameraPosition,1,glm::value_ptr(visibility.camera));
+    struct Instance {glm::mat4 model;glm::vec3 color;glm::vec2 light;};
     thread_local std::vector<Instance> instances;instances.clear();
-    glUniform1i(glGetUniformLocation(entityProgram_,"uInstanced"),0);
+    glUniform1i(entityUniforms_.instanced,0);
     int currentWood=-1;
+    // Model parts frequently share a cell. sunlightAt can inspect twelve nearby
+    // cells indoors; reuse its exact result within this draw, never across frames.
+    struct LightSample {glm::ivec3 cell{};glm::vec2 light{};bool valid=false;};
+    std::array<LightSample,64> lightSamples{};
     for (const RenderCuboid& cuboid : cuboids) {
         if (!visibility.visible(cuboid.center, glm::length(cuboid.size) * 0.5f))
             continue;
@@ -1674,7 +1791,16 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
             model = glm::rotate(model, angle, glm::normalize(axis));
         }
         model = glm::scale(model, cuboid.size);
-        if(cuboid.instanced){instances.push_back({model,cuboid.color});continue;}
+        glm::vec2 local(1,0);
+        if(lightingWorld){
+            auto p=glm::ivec3(glm::floor(cuboid.center));
+            const auto key=(std::uint32_t(p.x)*73856093U^std::uint32_t(p.y)*83492791U^std::uint32_t(p.z)*19349663U)&63U;
+            auto& sample=lightSamples[key];
+            if(!sample.valid||sample.cell!=p){sample={p,{lightingWorld->sunlightAt(p.x,p.y,p.z)/15.f,lightingWorld->blockLightAt(p.x,p.y,p.z)/15.f},true};}
+            local=sample.light;
+        }
+        if(cuboid.instanced){instances.push_back({model,cuboid.color,local});continue;}
+        glUniform2fv(entityUniforms_.localLight,1,glm::value_ptr(local));
         glUniformMatrix4fv(
             entityUniforms_.model, 1, GL_FALSE, glm::value_ptr(model));
         glUniform3fv(
@@ -1683,14 +1809,15 @@ void Renderer::renderEntities(const std::vector<RenderCuboid>& cuboids,
     }
     glUniform1i(boatFamilyUniform_,-1);
     if(!instances.empty()){
-        glUniform1i(glGetUniformLocation(entityProgram_,"uInstanced"),1);
+        glUniform1i(entityUniforms_.instanced,1);
         glBindBuffer(GL_ARRAY_BUFFER,villagerInstanceVbo_);
         glBufferData(GL_ARRAY_BUFFER,GLsizeiptr(instances.size()*sizeof(Instance)),instances.data(),GL_STREAM_DRAW);
         for(unsigned i=0;i<4;++i){glEnableVertexAttribArray(2+i);glVertexAttribPointer(2+i,4,GL_FLOAT,GL_FALSE,sizeof(Instance),reinterpret_cast<void*>(i*sizeof(glm::vec4)));glVertexAttribDivisor(2+i,1);}
         glEnableVertexAttribArray(6);glVertexAttribPointer(6,3,GL_FLOAT,GL_FALSE,sizeof(Instance),reinterpret_cast<void*>(offsetof(Instance,color)));glVertexAttribDivisor(6,1);
+        glEnableVertexAttribArray(7);glVertexAttribPointer(7,2,GL_FLOAT,GL_FALSE,sizeof(Instance),reinterpret_cast<void*>(offsetof(Instance,light)));glVertexAttribDivisor(7,1);
         glDrawArraysInstanced(GL_TRIANGLES,0,36,GLsizei(instances.size()));
-        for(unsigned i=2;i<=6;++i){glDisableVertexAttribArray(i);glVertexAttribDivisor(i,0);}
-        glUniform1i(glGetUniformLocation(entityProgram_,"uInstanced"),0);
+        for(unsigned i=2;i<=7;++i){glDisableVertexAttribArray(i);glVertexAttribDivisor(i,0);}
+        glUniform1i(entityUniforms_.instanced,0);
     }
     glBindVertexArray(0);
 }
@@ -1719,6 +1846,7 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
         return glm::dot(leftDelta, leftDelta) > glm::dot(rightDelta, rightDelta);
     });
     glUseProgram(billboardProgram_);
+    const auto skyState=celestial(worldTime);visualUniforms(billboardUniforms_,visibility.camera,skyState.daylight,skyState.sunDirection,weather_,brightness,fullbright,waterBlend_,visualFar_,effectQuality_);
     glUniformMatrix4fv(billboardUniforms_.view, 1,
                        GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(billboardUniforms_.projection, 1,
@@ -1754,6 +1882,7 @@ void Renderer::renderBillboards(const std::vector<RenderBillboard>& billboards,
         const int z = static_cast<int>(std::floor(sprite->feet.z));
         const float sky = world.sunlightAt(x, y, z) / 15.0f * daylight;
         const float block = world.blockLightAt(x, y, z) / 15.0f;
+        glUniform2f(billboardUniforms_.visualLight,world.sunlightAt(x,y,z)/15.f,block);
         const float ambient = 0.16f + std::max(sky * .70f, block * .75f);
         const float adjusted = ambient + (brightness - .5f) * .20f;
         glUniform1f(billboardUniforms_.light,
@@ -2004,7 +2133,7 @@ void Renderer::renderItemSprites(const std::vector<RenderItemSprite>& sprites,
                                  const glm::mat4& view,
                                  const glm::mat4& projection,
                                  float time,
-                                 float maximumDistance) const {
+                                 float maximumDistance,const World* lightingWorld,float brightness,bool fullbright) const {
     if (sprites.empty())
         return;
     const EntityVisibility visibility(view, projection, maximumDistance);
@@ -2014,10 +2143,12 @@ void Renderer::renderItemSprites(const std::vector<RenderItemSprite>& sprites,
     RenderScratch<float> verticesScratch(verticesStorage, 524288);
     auto& vertices = verticesScratch.get();
     vertices.reserve(sprites.size() * 30);
+    glm::vec2 spriteLight(1,0);
     auto push = [&](glm::vec3 p, float u, float v) {
-        vertices.insert(vertices.end(), {p.x, p.y, p.z, u, v});
+        vertices.insert(vertices.end(), {p.x, p.y, p.z, u, v,spriteLight.x,spriteLight.y});
     };
     for (const auto& s : sprites) {
+        if(lightingWorld){auto p=glm::ivec3(glm::floor(s.center));spriteLight={lightingWorld->sunlightAt(p.x,p.y,p.z)/15.f,lightingWorld->blockLightAt(p.x,p.y,p.z)/15.f};}
         if (s.worldPlant || !visibility.visible(s.center, s.size))
             continue;
         ItemSpriteUv uv;
@@ -2038,11 +2169,12 @@ void Renderer::renderItemSprites(const std::vector<RenderItemSprite>& sprites,
         push(e, uv.u1, uv.v1);
         push(d, uv.u1, uv.v0);
     }
-    const auto itemVertexCount=static_cast<GLsizei>(vertices.size()/5);
+    const auto itemVertexCount=static_cast<GLsizei>(vertices.size()/7);
     // Crossed, double-sided planes use the same plant tile as the ground mesh.
     // Keep them in one extra batch, sharing the item shader and streaming buffer.
     for(const auto& s:sprites){
         if(!s.worldPlant || !visibility.visible(s.center,s.size))continue;
+        if(lightingWorld){auto p=glm::ivec3(glm::floor(s.center));spriteLight={lightingWorld->sunlightAt(p.x,p.y,p.z)/15.f,lightingWorld->blockLightAt(p.x,p.y,p.z)/15.f};}
         const Block plant=itemToBlock(s.item);
         if(plant==Block::Air)continue;
         ++visibleEntityCount_;
@@ -2067,6 +2199,9 @@ void Renderer::renderItemSprites(const std::vector<RenderItemSprite>& sprites,
                  vertices.data(),
                  GL_STREAM_DRAW);
     glUseProgram(itemProgram_);
+    auto sky=celestial(time);visualUniforms(itemUniforms_,visibility.camera,sky.daylight,sky.sunDirection,weather_,brightness,fullbright,lightingWorld?waterBlend_:0,lightingWorld?visualFar_:100000,effectQuality_);glUniform1i(itemUniforms_.worldItems,lightingWorld!=nullptr);
+    glBindVertexArray(itemVao_);for(int i=0;i<2;++i)glVertexAttribPointer(i,i==0?3:2,GL_FLOAT,GL_FALSE,7*sizeof(float),reinterpret_cast<void*>(i==0?0:3*sizeof(float)));glEnableVertexAttribArray(2);glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,7*sizeof(float),reinterpret_cast<void*>(5*sizeof(float)));
+
     glUniformMatrix4fv(
         itemUniforms_.view, 1, GL_FALSE, glm::value_ptr(view));
     glUniformMatrix4fv(
@@ -2078,15 +2213,16 @@ void Renderer::renderItemSprites(const std::vector<RenderItemSprite>& sprites,
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glBindVertexArray(itemVao_);
     if(itemVertexCount)glDrawArrays(GL_TRIANGLES,0,itemVertexCount);
-    const auto plantVertexCount=static_cast<GLsizei>(vertices.size()/5)-itemVertexCount;
+    const auto plantVertexCount=static_cast<GLsizei>(vertices.size()/7)-itemVertexCount;
     if(plantVertexCount){glBindTexture(GL_TEXTURE_2D,atlasTexture_);glDrawArrays(GL_TRIANGLES,itemVertexCount,plantVertexCount);}
+    glDisableVertexAttribArray(2);for(int i=0;i<2;++i)glVertexAttribPointer(i,i==0?3:2,GL_FLOAT,GL_FALSE,5*sizeof(float),reinterpret_cast<void*>(i==0?0:3*sizeof(float)));
     glBindVertexArray(0);
     glDisable(GL_BLEND);
 }
 void Renderer::renderSelectionOutline(const glm::ivec3& block, Block type,
                                       const glm::mat4& view,
                                       const glm::mat4& projection) const {
-    glUseProgram(entityProgram_);
+    glUseProgram(entityProgram_);glUniform1i(entityUniforms_.fullbright,1);glUniform1i(entityUniforms_.legacyPreview,0);
     BuildingBoxes boxes;
     if(isBuilding(type))boxes=buildingBoxes(type);
     else {auto g=blockGeometry(type);boxes.add(g.minX,g.minY,g.minZ,g.maxX,g.maxY,g.maxZ);}
@@ -2121,7 +2257,7 @@ void Renderer::renderSelectionOutline(const glm::ivec3& block, Block type,
 void Renderer::renderMobOutline(const RenderCuboid& bounds,
                                 const glm::mat4& view,
                                 const glm::mat4& projection) const {
-    glUseProgram(entityProgram_);
+    glUseProgram(entityProgram_);glUniform1i(entityUniforms_.fullbright,1);glUniform1i(entityUniforms_.legacyPreview,0);
     glm::mat4 model = glm::translate(glm::mat4(1), bounds.center);
     model = glm::scale(model, bounds.size * 1.018f);
     glUniformMatrix4fv(

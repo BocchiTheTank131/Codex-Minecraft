@@ -6,7 +6,7 @@ This file guides work throughout this repository. Follow the user's current task
 and any more specific instructions in a subdirectory. Inspect `git status`, the
 current source and relevant validation reports before editing. Preserve unrelated
 tracked and untracked work; never reset, stash, discard or overwrite it to obtain a
-clean tree. Do not treat `work/` prototypes as the production implementation.
+clean tree. Archived prototypes under `.archive/work/` are not the production implementation.
 
 Use the local working tree as the source of truth, including unpublished changes.
 At the time this guide was written, the released version is **v2.20.1: Village Polish &
@@ -72,6 +72,25 @@ coordination instead of adding competing implementations.
   coordinate migration.
 
 ## Build and package workflow
+
+### Temporary outputs and local archives
+
+Put disposable profiles, captures, logs, benchmarks and one-off diagnostic scripts
+under a uniquely named `build/<task>-<date>/` directory. Keep maintained runners
+in `tools/` and curated validation reports/evidence in `docs/`; do not scatter
+generated files in the repository root or production trees.
+
+Before archiving historical outputs, check references in source, tools, reports,
+IDE configuration and retained build scripts/caches. Keep `build/installed-release`,
+`build/standalone-demo-release`, required dependencies, current candidate evidence,
+frozen fixtures and real saved worlds. Retain uncertain files and explain why.
+Move approved obsolete outputs to `.archive/<original-relative-path>` without
+overwriting existing entries; append paths, date and reasons to
+`.archive/ARCHIVE_MANIFEST.md`. Never recursively archive `.archive/` itself.
+Archived CMake caches and experimental scripts may contain old absolute paths;
+restore their original location and reconfigure before reuse. Archiving on the
+same disk reduces active-tree clutter, not disk usage. Keep archives local and
+ignored, and never commit or publish cleanup changes without authorization.
 
 Use PowerShell-compatible commands from the repository root. Check installed
 tools first. Current packaging defaults to Visual Studio 18 2026 x64; select an

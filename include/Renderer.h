@@ -139,7 +139,7 @@ public:
                         const glm::mat4& view,
                         const glm::mat4& projection,
                         float worldTime,
-                        float maximumDistance) const;
+                        float maximumDistance,const World* lightingWorld=nullptr,float brightness=.5f,bool fullbright=false) const;
     void renderBillboards(const std::vector<RenderBillboard>& billboards,
                           const World& world, const glm::mat4& view,
                           const glm::mat4& projection, float worldTime,
@@ -149,7 +149,7 @@ public:
                            const glm::mat4& view,
                            const glm::mat4& projection,
                            float time,
-                           float maximumDistance) const;
+                           float maximumDistance,const World* lightingWorld=nullptr,float brightness=.5f,bool fullbright=false) const;
     void renderSelectionOutline(const glm::ivec3& block, Block type,
                                 const glm::mat4& view,
                                 const glm::mat4& projection) const;
@@ -161,7 +161,9 @@ public:
     void spawnHitParticles(const glm::vec3& position, bool critical);
     void spawnExplosionParticles(const glm::vec3& position);
     void updateParticles(float deltaTime);
-    void clearParticles() { particles_.clear(); }
+    void updateAtmospherics(float dt,const World&,glm::vec3 camera,float worldTime);
+    std::size_t cosmeticParticleCount()const;
+    void clearParticles() { particles_.clear();haloSources_.clear();waterBlend_=0;visualTime_=0; }
     void renderParticles(const glm::mat4& view,
                          const glm::mat4& projection,
                          float maximumDistance) const;
@@ -206,8 +208,11 @@ private:
         GLint waterPass = -1;
         GLint weather = -1;
         GLint wetness = -1;
+        GLint visualColors=-1;
+        GLint fogFar=-1,underwaterBlend=-1,legacyPreview=-1,localLight=-1,visualLight=-1,worldItems=-1,instanced=-1;
     };
     static ProgramUniforms cacheUniforms(GLuint program);
+    static void visualUniforms(const ProgramUniforms&,const glm::vec3&,float,glm::vec3,glm::vec4,float,bool,float,float,int);
     ProgramUniforms billboardUniforms_;
     ProgramUniforms entityUniforms_;
     ProgramUniforms itemUniforms_;
@@ -225,6 +230,7 @@ private:
     struct Particle {
         glm::vec3 position, velocity, color;
         float life;
+        int cosmetic=0;
     };
     GLuint worldProgram_ = 0, skyProgram_ = 0, uiProgram_ = 0, particleProgram_ = 0,
            entityProgram_ = 0, itemProgram_ = 0, billboardProgram_ = 0;
@@ -249,6 +255,11 @@ private:
     glm::vec4 weather_{0};
     float weatherWetness_=0;
     mutable int visibleEntityCount_ = 0;
+    mutable float waterBlend_=0,visualFar_=128;
+    mutable glm::vec3 heldTint_{1};
+    mutable double visualTime_=0;
+    float ambientTimer_=0;unsigned ambientSequence_=0,haloScan_=0;
+    std::vector<glm::ivec3> haloSources_;
     static GLuint compileShader(GLenum type, const char* source);
     static GLuint linkProgram(GLuint vertexShader, GLuint fragmentShader);
     static GLuint createAtlasTexture();

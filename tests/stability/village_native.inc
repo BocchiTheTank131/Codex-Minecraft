@@ -50,7 +50,19 @@
             g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_LEFT]=false;for(const auto& a:g.survival_->animals_)if((SurvivalWorld::isBillboard(a.type)||a.type==SurvivalWorld::AnimalType::Pillager)&&a.health>0&&glm::distance(a.position,g.player_->position())<4){aim(a.position+glm::vec3(0,.8f,0));g.updateTargets();if(g.interaction_.mobTarget.valid()&&!g.survival_->isVillager(g.interaction_.mobTarget.index))g.input_.mouseButtons_[GLFW_MOUSE_BUTTON_LEFT]=true;break;}
             frame(false);
             if(!merchantWorked&&i%fps==0)for(const auto& a:g.survival_->animals_)if(a.type==SurvivalWorld::AnimalType::Villager&&a.villageJob==3&&a.villageWorking&&glm::distance(a.position,glm::vec3(stall)+glm::vec3(.5f,1.01f,2.5f))<1.5f){auto previous=g.player_->position();g.player_->teleport(view);aim(a.position+glm::vec3(0,1.1f,0));capture("10-merchant-working-at-stall");g.player_->teleport(previous);merchantWorked=true;break;}
-            if(i==fps*400){aim(glm::vec3(center));g.renderFrame(0);capture("07-daily-gathering");}if(i==fps*750){aim(glm::vec3(n->home)+glm::vec3(0,1,0));g.renderFrame(0);capture("08-night-return");}
+            if(i==fps*400){aim(glm::vec3(center));g.renderFrame(0);capture("07-daily-gathering");}if(i==fps*750){aim(glm::vec3(n->home)+glm::vec3(0,1,0));g.renderFrame(0);capture("08-night-return");
+                // Inspect a naturally simulated NPC up close at night, then
+                // restore the route camera before the next simulation step.
+                auto prior=g.player_->position();float priorYaw=g.player_->yaw_,priorPitch=g.player_->pitch_;bool seen=false;
+                for(const auto& actor:g.survival_->animals_)if(actor.villagerId==npc){
+                    for(auto side:{glm::vec3(1.1f,0,0),glm::vec3(-1.1f,0,0),glm::vec3(0,0,1.1f),glm::vec3(0,0,-1.1f)}){
+                        auto at=actor.position+side;if(w.aabbIntersectsSolid(at-glm::vec3(.3f,0,.3f),at+glm::vec3(.3f,1.8f,.3f)))continue;
+                        g.player_->teleport(at);auto target=actor.position+glm::vec3(0,1.1f,0);auto d=glm::normalize(target-g.player_->cameraPosition());
+                        aim(target+glm::normalize(glm::cross(d,glm::vec3(0,1,0)))*.65f);capture("08-night-villager");seen=true;break;
+                    }break;
+                }
+                check(seen,"native_night_villager_camera");g.player_->teleport(prior);g.player_->yaw_=priorYaw;g.player_->pitch_=priorPitch;
+            }
         }
         g.input_.mouseButtons_.fill(false);check(merchantWorked,"merchant_reached_actual_stall_and_worked");check(observed[0]&&observed[1]&&observed[2],"complete_simulation_day_observed");
         std::ofstream targets(out/"npc-targets.csv"),cells(out/"npc-cells.csv");targets<<"id,job,home_x,home_y,home_z,work_x,work_y,work_z\n";cells<<"id,x,y,z,block,door,open\n";for(const auto& a:g.survival_->animals_)if(a.villagerId){auto state=w.villages.npc(a.villagerId);targets<<a.villagerId<<','<<int(state->job)<<','<<state->home.x<<','<<state->home.y<<','<<state->home.z<<','<<state->work.x<<','<<state->work.y<<','<<state->work.z<<'\n';for(int z=-8;z<=8;++z)for(int x=-8;x<=8;++x)for(int y=0;y<=2;++y){auto p=state->home+glm::ivec3(x,y,z);auto b=w.getBlock(p.x,p.y,p.z);cells<<a.villagerId<<','<<p.x<<','<<p.y<<','<<p.z<<','<<unsigned(b)<<','<<isDoor(b)<<','<<isDoorOpen(b)<<'\n';}}

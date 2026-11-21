@@ -16,6 +16,7 @@
 #include "UiLayout.h"
 #include "Screenshot.h"
 #include "Weather.h"
+#include "WeatherRenderer.h"
 #include "Sound.h"
 #include "SaveFile.h"
 #include "Persistence.h"
@@ -125,10 +126,14 @@ class VillageTest {
   g.saveOnExit_=false;
  }
  #include "livestock_native.inc"
+ #include "visual_native.inc"
+ #include "underwater_native.inc"
+ #include "particle_stress.inc"
+ #include "atmosphere_native.inc"
  #define VILLAGE_NEW_BUILD
  #include "village_native.inc"
  #include "../village_benchmark.inc"
 public:
- static int run(int argc,char** argv){auto out=std::filesystem::absolute(argc>2?argv[2]:"village-validation");std::filesystem::create_directories(out);Game g;char app[]="VillageFixture";char* args[]={app};check(g.initialize(1,args),"initialize");glfwHideWindow(g.window_);if(std::string(argv[1])=="--village-livestock")livestock(g,out);else if(std::string(argv[1])=="--village-endurance")endurance(g,out);else if(std::string(argv[1])=="--village-polish")polish(g,out);else if(std::string(argv[1])=="--village-residency")residency();else if(std::string(argv[1])=="--village-benchmark")benchmark(g,out,argc,argv);else if(std::string(argv[1])=="--village-route")route(g,out,argc>3?std::stoi(argv[3]):30,argc>4?std::stoi(argv[4]):8);else unit(out);g.saveOnExit_=false;g.shutdown();std::ofstream(out/"results.json")<<"{\"assertions\":"<<checks<<",\"passed\":true}\n";std::cout<<"Village checks passed: "<<checks<<std::endl;return 0;}
+ static int run(int argc,char** argv){auto out=std::filesystem::absolute(argc>2?argv[2]:"village-validation");std::filesystem::create_directories(out);Game g;char app[]="VillageFixture";char* args[]={app};check(g.initialize(1,args),"initialize");glfwHideWindow(g.window_);if(std::string(argv[1])=="--village-atmosphere")atmosphere(g,out);else if(std::string(argv[1])=="--village-particle-stress")particleStress(g,out);else if(std::string(argv[1])=="--village-underwater")underwaterComparison(g,out);else if(std::string(argv[1])=="--village-visual")visual(g,out,argc,argv);else if(std::string(argv[1])=="--village-livestock")livestock(g,out);else if(std::string(argv[1])=="--village-endurance")endurance(g,out);else if(std::string(argv[1])=="--village-polish")polish(g,out);else if(std::string(argv[1])=="--village-residency")residency();else if(std::string(argv[1])=="--village-benchmark")benchmark(g,out,argc,argv);else if(std::string(argv[1])=="--village-route")route(g,out,argc>3?std::stoi(argv[3]):30,argc>4?std::stoi(argv[4]):8);else unit(out);g.saveOnExit_=false;g.shutdown();std::ofstream(out/"results.json")<<"{\"assertions\":"<<checks<<",\"passed\":true}\n";std::cout<<"Village checks passed: "<<checks<<std::endl;return 0;}
 };
 int runVillageTests(int argc,char** argv){return VillageTest::run(argc,argv);}

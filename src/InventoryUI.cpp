@@ -131,8 +131,10 @@ void slot(std::vector<V>& v,
           int W,
           int H,
           bool selected = false) {
-    if (selected)
-        rect(v, x - 3, y - 3, z + 6, z + 6, {.96f, .96f, .96f, 1}, W, H);
+    if (selected) {
+        rect(v,x-4,y-4,z+8,z+8,{.015f,.02f,.025f,.95f},W,H);
+        rect(v,x-3,y-3,z+6,z+6,{.94f,.97f,1,1},W,H);
+    }
     rect(v, x, y, z, z, {.08f, .08f, .10f, .96f}, W, H);
     rect(v, x + 3, y + 3, z - 6, z - 6, {.30f, .30f, .33f, .96f}, W, H);
     icon(v, s, x, y, z, W, H);
@@ -525,15 +527,19 @@ void Renderer::renderHeldItem(int W, int H, const ItemStack& stack, float swing,
     float wave = std::sin(std::clamp(swing, 0.f, 1.f) * 3.1415926f), size = 168.f,
           x = W - size - 28.f + wave * 28.f, y = H - size + 25.f + wave * 34.f;
     if(!stack.empty()) sprite(v, stack.item, x, y, size, size, W, H, .98f);
+    for(auto& point:v){point.c.r*=heldTint_.r;point.c.g*=heldTint_.g;point.c.b*=heldTint_.b;}
     if(!offhand.empty()) {
+        const auto offhandStart=v.size();
         const float shieldSize=blocking?225.f:150.f;
         sprite(v,offhand.item,blocking?W*.30f:28.f,H-shieldSize+(blocking?-115.f:22.f),shieldSize,shieldSize,W,H);
+        for(auto i=offhandStart;i<v.size();++i){v[i].c.r*=heldTint_.r;v[i].c.g*=heldTint_.g;v[i].c.b*=heldTint_.b;}
         if(shieldFeedback>0) text(v,"BLOCKED",W*.5f-36,H*.65f,1.5f,{.8f,.9f,1,1},W,H);
     }
     flush(v, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
 void Renderer::renderUnderwaterOverlay(int W, int H) const {
+    if(waterBlend_<.001f)return;
     std::vector<V> v;
-    rect(v, 0, 0, static_cast<float>(W), static_cast<float>(H), {.02f, .20f, .36f, .28f}, W, H);
+    rect(v, 0, 0, static_cast<float>(W), static_cast<float>(H), {.02f, .20f, .28f, .14f*waterBlend_}, W, H);
     flush(v, uiVbo_, uiVao_, uiProgram_, itemTexture_, uiItemAtlasUniform_);
 }
